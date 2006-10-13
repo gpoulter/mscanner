@@ -14,6 +14,7 @@ and pseudocount as parameters.
 
 """
 
+from itertools import chain
 import cPickle
 import logging as log
 import os
@@ -59,12 +60,12 @@ def do_validation():
     if v.genedrug:
         log.debug("Getting gene-drug associations") 
         genedrug_articles = set()
-        pos_arts = getArticles(v.posfile)
-        neg_arts = getArticles(v.negfile)
+        pos_arts = getArticles(m.articledb, v.posfile)
+        neg_arts = getArticles(m.articledb, v.negfile)
         gdfilter = getGeneDrugFilter(gd.genedrug, gd.drugtable, gd.gapscore)
         for article in chain(pos_arts, neg_arts):
-            gd = gdfilter(article)
-            if len(gd) > 0:
+            gdresult = gdfilter(article)
+            if len(gdresult) > 0:
                 genedrug_articles.add(article.pmid)
     # Initialist validator
     val = Validator(

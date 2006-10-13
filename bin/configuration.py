@@ -111,16 +111,15 @@ q.stylesheet = b.stylesheet
 v = validation = module("config_validation")
 ## File with all PubMed IDs (used for CGI script)
 v.allpmids = b.input / "allpmids.txt"
-
 ## Positive training set (processed by fixcorpora.py)
 #v.posfile = b.input / "newpositives.txt"
 v.posfile = b.input / "oldpositives.txt"
-
 ## Negative training / testing set (processed by fixcorpora.py)
 v.negfile = b.input / "oldnegatives.txt"
+#v.negfile = b.input / "20kpmids.txt"
+#v.negfile = b.input / "200kpmids.txt"
 #v.negfile = b.input / "500kpmids.txt"
 #v.negfile = v.allpmids
-
 ## Recall to achieve on training set
 v.recall = 0.9
 ## Validation folds to use
@@ -128,11 +127,12 @@ v.nfolds = 5
 ## Pseudocounts to use
 v.pseudocount = 0.01
 ## Whether to do a gene-drug co-occurrence filter
-v.genedrug = False
+#v.genedrug = False
+v.genedrug = True
 ## Whether to use Daniel's 10^-8 pseudocounts
 v.daniel = False
 ## Prefix to use for report file
-v.prefix = b.output / "valid/"
+v.prefix = b.output / "validation/"
 ## Stylesheet for report
 v.stylesheet = b.stylesheet
 

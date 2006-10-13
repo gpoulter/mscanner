@@ -11,10 +11,11 @@ getGeneDrugFilter() -- Return a caching gene-drug association lister
 
 """
 
-import re, xmlrpclib
-import dbshelve
 import logging as log
 import os
+import re
+import xmlrpclib
+import dbshelve
 
 class CachingGeneFinder:
     """Cache results of gene finding queries"""
@@ -33,7 +34,10 @@ class CachingGeneFinder:
         # Set up XMLRPC (possibly proxied)
         bionlp_uri="http://bionlp.stanford.edu/xmlrpc"
         proxy = os.environ.get("http_proxy", None)
-        rpc_server = self.HTTPProxiedXMLRPC(bionlp_uri,proxy)
+        if proxy is None:
+            rpc_server = xmlrpclib.ServerProxy(bionlp_uri)
+        else:
+            rpc_server = self.HTTPProxiedXMLRPC(bionlp_uri, proxy)
         self.geneFinder=rpc_server.find_gene_and_protein_names
         # Set up results cache
         if isinstance( cache, basestring ):
@@ -42,6 +46,26 @@ class CachingGeneFinder:
             self.cache = cache
         else:
             raise ValueError("Cache is neither a filename nor dictionary")
+
+    @staticmethod
+    def HTTPProxiedXMLRPC(url,proxy):
+        """Access an XMLRPC server from behind an HTTP proxy
+        
+        @param url: URL of XMLRPC service
+        @param proxy: string with hostname:port for HTTP proxy
+        """
+        class ProxyTransport(xmlrpclib.Transport):
+            def __init__(self,proxy):
+                self.proxy = proxy
+            def make_connection(self,host):
+                self.realhost = host
+                import httplib
+                return httplib.HTTP(self.proxy)
+            def send_request(self, connection, handler, request_body):
+                connection.putrequest("POST", 'http://%s%s' % (self.realhost, handler))
+            def send_host(self, connection, host):
+                connection.putheader('Host', self.realhost)
+        return xmlrpclib.ServerProxy(url,transport=ProxyTransport(proxy))
 
     def __del__(self):
         if isinstance( self.cache, dbshelve.Shelf):
@@ -61,39 +85,16 @@ class CachingGeneFinder:
         @return: (gene name,start index,end index,score) for each
         gene/protein name found.
         """
-        key=repr(text)
+        key = repr(text)
         if key in self.cache:
             return self.cache[key]
-        genes=self.geneFinder(text)
-        result=[]
+        genes = self.geneFinder(text)
+        result = []
         for (name,start,end,score) in genes:
             if score >= 0.1: # throw away lowest scorers for efficiency
                 result.append((name,start,end,score))
             self.cache[key] = result
         return result
-
-    @staticmethod
-    def HTTPProxiedXMLRPC(url,proxy):
-        """Access an XMLRPC server from behind an HTTP proxy
-        
-        @type url: C{string}
-        @param url: URL of XMLRPC service
-        
-        @type proxy: C{string}
-        @param proxy: URL of HTTP proxy service
-        """
-        class ProxyTransport(xmlrpclib.Transport):
-            def __init__(self,proxy):
-                self.proxy = proxy
-            def make_connection(self,host):
-                self.realhost = host
-                import httplib
-                return httplib.HTTP(self.proxy)
-            def send_request(self, connection, handler, request_body):
-                connection.putrequest("POST", 'http://%s%s' % (self.realhost, handler))
-            def send_host(self, connection, host):
-                connection.putheader('Host', self.realhost)
-        return xmlrpclib.ServerProxy(url,transport=ProxyTransport(proxy))
 
 class GeneDrugFilter:
     """Retrieve gene-drug associations for articles"""
@@ -297,10 +298,11 @@ class CachingGeneDrugLister:
 
     def listGeneDrugs(self,article):
         """Return gene-drug association for an article"""
-        key=str(article.pmid)
+        key = str(article.pmid)
         if key in self.cache:
             return self.cache[key]
-        result=self.gdfilter(article)
+        result = self.gdfilter(article)
+        log.debug("%s", str(result))
         self.cache[key]=result
         return result
 

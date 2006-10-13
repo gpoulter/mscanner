@@ -1,0 +1,74 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+
+
+  <title>MedScanner Result Citations</title>
+  <link rel="stylesheet" type="text/css" href="style.css"/>
+
+  <style type="text/css">
+    #content {
+    max-width: 55em;
+    }
+    .citation {
+    margin: 1ex;
+    border-style: solid;
+    background-color: lightblue;
+    }
+    .citation .heading {
+    font-size: large;
+    border-bottom: solid;
+    background-color: #0773DF;
+    }
+    .citation .title {
+    margin-top: 0.5ex;
+    font-weight: bold;
+    font-size: large;
+    }
+    .citation .abstract {
+    padding: 1ex;
+    }
+  </style>
+
+</head>
+
+<body>
+
+<h1 id="heading">MedScanner Result Citations</h1>
+
+<div id="content">
+
+  <div class="box">
+    <p class="para">
+      {{len(scores)}} of the top-scoring result are in this report.
+    </p>
+  </div>
+
+  <!--
+  {{script}}ncbi='http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;db=pubmed&amp;dopt=Abstract&amp;list_uids='{{endscript}}
+  -->
+
+  <div class="box">
+    <!--{{for score, pmid in scores}}-->
+    <div class="citation">
+      <h2 class="heading">
+        PubMed ID <a href="{{ncbi}}{{pmid}}">{{pmid}}</a>, Score {{"%.5f"%score}}
+      </h2>
+      <!--{{if articles is not None}}-->
+      <!--{{script}}art = articles[str(pmid)]{{endscript}}-->
+      <h3 class="title">
+        {{art.title.encode("ascii","xmlcharrefreplace")}}
+      </h3>
+      <p class="abstract">
+        {{art.abstract.encode("ascii","xmlcharrefreplace")}}
+      </p>
+      <!--{{endif}}-->
+    </div>
+    <!--{{endfor}}-->
+  </div>
+
+</body>
+
+</html>

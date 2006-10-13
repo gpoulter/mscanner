@@ -1,0 +1,355 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+
+  <title>Medline Scanner Web Interface</title>
+
+  <link rel="stylesheet" type="text/css" href="style.css"/>
+
+  <script type="text/javascript" src="script/jsolait/jsolait.js"> </script>  
+  <script type="text/javascript" src="script/jsolait/lib/urllib.js"> </script>  
+  <script type="text/javascript" src="script/jsolait/lib/xml.js"> </script>  
+  <script type="text/javascript" src="script/jsolait/lib/xmlrpc.js"> </script>  
+  <script type="text/javascript" src="script/moo/prototype.lite.js"> </script>
+  <script type="text/javascript" src="script/moo/moo.fx.js"> </script>
+  <script type="text/javascript" src="script/moo/moo.fx.pack.js"> </script>
+  <script type="text/javascript" src="script/sxoop/sxoop_template.js"> </script>
+  <script type="text/javascript" src="site.js"> </script>
+
+</head>
+
+<body>
+
+  <h1 id="heading">
+    MedScan: The Medline Scanner
+  </h1>
+
+  <div id="content">
+
+    <div class="box" id="intro">
+      <p class="para">
+        This is a web frontend for the Medline Scanner.  Given the
+        PubMed IDs for a set of articles, it looks for articles that
+        are similar to the query set.  The <q> <a
+        href="http://www.ncbi.nlm.nih.gov/entrez/query/static/computation.html">
+        Related Articles</a></q> feature on NCBI is similar, but only uses one
+        article instead of a set and uses heuristic term weighting
+        instead of a statistical classifier.
+      </p>
+      <p class="para">
+        The scanner builds a statistical model comparing distribution
+        of mesh terms in the query articles to the background
+        distribution in Medline.  You can use cross-validation to see
+        how the classifier performs for your particular query set.
+      </p>
+      <p class="para">
+        The scanner was built to identify articles as input to
+        literature curation at the Pharmacogenetics Knowledge Base (<a
+        href="http://www.pharmgkb.org">PharmGKB</a>).  It was trained
+        on 4400+ articles describing relationships between genes and
+        drugs, to uncover relationships in the biomedical
+        literature not entered into PharmGKB.
+      </p>
+    </div>
+
+    <div class="box" id="status" style="display: none;"></div>
+
+    <div class="box" id="form">
+
+      <h2 class="heading">
+        Submit Scanning Job
+      </h2>
+
+      <div class="body">
+      
+        <div class="group">
+
+          <h3 class="heading">
+            Standard Options
+          </h3>
+
+          <div class="body">
+
+            <p class="item">
+              <button class="help" onclick="g.fx['positives_help'].toggle()">help</button>
+              <button class="help" onclick="$('positives').value=$('example_pmids').value">example</button>
+              <b class="label">Positives</b>
+              <textarea class="field" id="positives" rows="2" cols="10"></textarea>
+            </p>
+            <p class="help" id="positives_help">
+              Paste a list of PubMed IDs (not <a
+              href="http://www.ncbi.nlm.nih.gov/entrez/publisher/uidpmid.cgi">Medline
+              UIs</a>) one per line into the text box.  The scanner
+              will be trained to detect further articles like
+              these. If the data in this box is invalid (non-parseable
+              or invalid IDs) you will get a nasty error box.
+            </p>
+
+            <p class="item">
+              <button class="help" onclick="g.fx['pseudocount_help'].toggle()">help</button>
+              <b class="label">Pseudocount</b>
+              <select class="field" id="pseudocount">
+                <option value="0.001">0.001</option>
+                <option value="0.01" selected="selected">0.01</option>
+                <option value="0.1">0.1</option>
+                <option value="0.5">0.5</option>
+              </select>
+            </p>
+            <p class="help" id="pseudocount_help">
+              The pseudocount is the number of occurrences of each term that
+              the classifier should add on, to avoid divide-by-zero in
+              calculating the score for terms not found in the query set.
+            </p>
+            
+          </div>
+          
+        </div>
+        
+        <div class="group">
+          <h3 class="heading">Query Options</h3>
+
+          <div class="body">
+            
+            <p class="item">
+              <button class="help" onclick="g.fx['limit_help'].toggle()">help</button>
+              <b class="label">Result limit</b>
+              <select class="field" id="limit">
+                <option value="10">10</option>
+                <option value="100">100</option>
+                <option value="500" selected="selected">500</option>
+                <option value="1000">1000</option>
+                <option value="5000">5000</option>
+                <option value="10000">10000</option>
+              </select>
+            </p>
+            <p class="help" id="limit_help">
+              This is the maximum number of results to return (probably
+              worth keeping it high).  A hard score threshold is only
+              used for validation.
+            </p>
+
+            <button class="action" onclick="query()">Perform a query</button>
+
+          </div>
+
+        </div>
+        
+        <div class="group">
+          <h3 class="heading">Validation Options</h3>
+
+          <div class="body">
+
+            <p class="item">
+              <button class="help" onclick="g.fx['nfold_help'].toggle()">help</button>
+              <b class="label">Number of folds</b>
+              <select class="field" id="nfold">
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5" selected="selected">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
+              </select>
+            </p>
+            <p class="help" id="nfold_help">
+              The number of groups to split the positives into.  Validation
+              is repeated with each group being taken out and used as test
+              data instead of training data to see if the classifier
+              correctly guesses them to be positive without having seen them
+              before.
+            </p>
+
+            <p class="item">
+              <button class="help" onclick="g.fx['recall_help'].toggle()">help</button>
+              <b class="label">Training recall</b>
+              <select class="field" id="recall">
+                <option value="0.5">0.5</option>
+                <option value="0.75">0.75</option>
+                <option value="0.9">0.9</option>
+                <option value="0.95" selected="selected">0.95</option>
+                <option value="0.99" selected="selected">0.99</option>
+              </select>
+            </p>
+            <p class="help" id="recall_help">
+              The threshold for calling an article positive during
+              validation is chosen so that this proportion of the training
+              articles would be recalled by the classifier.
+            </p>
+
+            <p class="item">
+              <button class="help" onclick="g.fx['negatives_help'].toggle()">help</button>
+              <b class="label">Number of negatives</b>
+              <input class="field" type="text" size="6" value="1000" id="negatives"/>
+            </p>
+            <p class="help" id="negatives_help">
+              The validator will choose a random selection of this many
+              articles out of Medline to use as test negatives.  They
+              partitioned into folds just like the positives.  You will
+              get an error if this value is less than 10 or greater than
+              500,000.
+            </p>
+
+            <button class="action" onclick="validate()">Perform validation</button>
+
+          </div><!--body-->
+        </div><!--group-->
+      </div><!--body-->
+    </div><!--box-->
+    
+    <div class="box" id="batches" style="display: none;"></div>
+
+  </div>
+
+  <div id="templates" style="display: none;">
+       
+    <textarea id="t_deleted" style="display:none" rows="0" cols="0">
+      <![CDATA[
+      <h2 class="heading">Batch Deleted</h2>
+      <div class="body">
+      <p class="para">
+      Batch ID [:=$_:] has been deleted.
+      </p>
+      </div>
+      [:showBlock("status"):]
+      ]]>
+    </textarea>
+
+    <textarea id="t_busy" style="display:none" rows="0" cols="0">
+      <![CDATA[
+      <h2 class="heading">Busy Scanning...</h2>
+      <div class="body">
+      <p class="para">
+      Batch ID [:=$_:] is still running.
+      </p>
+      <p class="para">
+      Note that queries may take up to an hour (typically 20 minutes), and validation
+      anywhere from 1 minute to 5 hours.  The output will be placed in
+      <a href="[:=g.outdir:]/[:=$_:]">[:=g.outdir:]/[:=$_:]</a>, 
+      if you want to save the link and come back later.
+      </p>
+      <p class="para">
+      [:now = new Date();:]
+      It has been [:=(now.getTime()-g.started)/1000:] seconds since scanning started.
+      </p>
+      </div>
+      [:showBlock("status"):]
+      ]]>
+    </textarea>
+
+    <textarea id="t_done" style="display:none" rows="0" cols="0">
+      <![CDATA[
+      <h2 class="heading">Scanning Complete!</h2>
+      <div class="body">
+      <p class="para">
+      Results are available for batch ID
+      <a href="[:=g.outdir:]/[:=$_:]/index.html"><b>[:=$_:]</b></a>.
+      </p>
+      </div>
+      [:showBlock("status"):]
+      ]]>
+    </textarea>
+    
+    <textarea id="t_batches" style="display:none" rows="0" cols="0">
+      <![CDATA[
+      [:if ($_.length == 0) { hideBlock("batches"); } else { :]
+      <h2 class="heading">Results</h2>
+      <div class="body">
+      [:for (var x = 0; x < $_.length; x++) { //> :]
+      [:batch = $_[x]:]
+      <p class="item">
+      <button class="delete" onclick="deleteBatch('[:=batch:]');listBatches();">Delete</button>
+      <a href="[:=g.outdir:]/[:=batch:]/index.html"><b>[:=batchIdToDate(batch):]</b></a>
+      </p>
+      [:showBlock("batches");:]
+      [:} }:]
+      </div>
+      ]]>
+    </textarea>
+
+    <textarea id="example_pmids" style="display:none" rows="0" cols="0">9549641
+10904024
+2020918
+8004130
+9224780
+10755579
+9276194
+2223426
+10660000
+8747411
+9719084
+10656877
+9569045
+9660842
+3816023
+11597824
+9857976
+7690693
+10379516
+2568832
+8742240
+2311333
+11740344
+8110777
+12006904
+2897240
+12172218
+1867960
+11950793
+9867757
+9211656
+11523725
+8685072
+10997944
+10868744
+10668853
+11089838
+10764140
+8752164
+9632445
+10620209
+12052139
+9345314
+9806540
+11580286
+9806549
+8986921
+12172211
+12175731
+7862671
+12049175
+6641087
+12152005
+11942593
+3335642
+7891353
+12082588
+12082589
+9869506
+8643688
+11919084
+2849209
+9510461
+11668216
+9825838
+9663807
+12189368
+</textarea>
+
+    <script type="text/javascript">
+      //doTemplate('status','t_deleted',"TESTING");
+      //doTemplate('status','t_busy',"TESTING");
+      //doTemplate('status','t_done',"TESTING");
+      //doTemplate('batches','t_batches',["T1","T2"]);
+      //showBlock("batches");
+    </script>
+
+  </div>
+  
+</body>
+  
+</html>

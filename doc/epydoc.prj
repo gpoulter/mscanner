@@ -1,0 +1,56 @@
+(dp0
+S'show_imports'
+p1
+I0
+sS'private_css'
+p2
+S'default'
+p3
+sS'prj_name'
+p4
+S''
+p5
+sS'docformat'
+p6
+S'epytext'
+p7
+sS'inheritance'
+p8
+S'grouped'
+p9
+sS'help'
+p10
+NsS'modules'
+p11
+(S'C:/Documents and Settings/Graham/My Documents/mutable/medscanner/source/lib/article.py'
+p12
+S'C:/Documents and Settings/Graham/My Documents/mutable/medscanner/source/lib/dbexport.py'
+p13
+S'C:/Documents and Settings/Graham/My Documents/mutable/medscanner/source/lib/genedrug.py'
+p14
+S'C:/Documents and Settings/Graham/My Documents/mutable/medscanner/source/lib/medline.py'
+p15
+S'C:/Documents and Settings/Graham/My Documents/mutable/medscanner/source/lib/scoring.py'
+p16
+S'C:/Documents and Settings/Graham/My Documents/mutable/medscanner/source/lib/validation.py'
+p17
+S'C:/Documents and Settings/Graham/My Documents/mutable/medscanner/source/lib/xmlparse.py'
+p18
+tp19
+sS'private'
+p20
+I1
+sS'prj_url'
+p21
+NsS'frames'
+p22
+I1
+sS'css'
+p23
+S'default'
+p24
+sS'outdir'
+p25
+S'html'
+p26
+s.

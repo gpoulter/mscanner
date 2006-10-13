@@ -1,0 +1,334 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+
+  <title>MedScanner Performance Statistics</title>
+
+  <link rel="stylesheet" type="text/css" href="style.css"/>
+
+  <style type="text/css">
+    td.tp { background-color: #FF3333; }
+    td.fn { background-color: #FFCCCC; }
+    td.tn { background-color: #3333FF; }
+    td.fp { background-color: #CCCCFF; }
+  </style>
+
+  <script type="text/javascript">
+    current = null;
+    function hide(id) {
+    if (id == null) return;
+    current = null;
+    document.getElementById(id).style.display = "none";
+    }
+    function show(id) {
+    hide(current);
+    current = id;
+    document.getElementById(id).style.display = "block";
+    }
+    function toggle(id) {
+    dstyle = document.getElementById(id).style;
+    if (dstyle.display == "none") {
+    dstyle.display = "block";
+    }
+    else {
+    dstyle.display = "none";
+    }
+    }
+  </script>
+
+</head>
+
+<body>
+
+<h1 id="heading">Medline Scanner Performance Statistics</h1>
+
+<div id="content">
+
+  <div class="box">
+  
+    <h2 class="heading">Related Files</h2>
+
+    <table>
+      <tr>
+        <th>
+          Term scores (HTML)
+          <button onclick="show('terms_help')">?</button>
+        </th>
+        <td><a href="{{terms_html}}">{{terms_html}}</a></td>
+      </tr>
+      <tr>
+        <th>
+          Term scores (CSV)
+          <button onclick="show('csv_help')">?</button>
+        </th>
+        <td><a href="{{terms_csv}}">{{terms_csv}}</a></td>
+      </tr>
+      <tr>
+        <th>
+          Target recall (threshold tuning)
+          <button onclick="show('recall_help')">?</button>
+        </th>
+        <td>{{"%.2f"%trainrecall}}</td>
+      </tr>
+      <tr>
+        <th>
+          Average threshold
+          <button onclick="show('threshold_help')">?</button>
+        </th>
+        <td>{{"%.5f"%threshold}}</td>
+      </tr>
+    </table>
+
+    <div class="help" id="csv_help">
+      Spreadsheet table with the score of each MeSH term.  The score of
+      a MeSH term is the natural logarithm of the ratio of the term
+      frequency amongst the positive documents to the term frequency in
+      Medline as a whole.  Each article has a number of MeSH terms
+      associated with it, and the score for an article is the sum of the
+      scores of its MeSH terms.  This file is more compact than the HTML
+      below.
+    </div>
+    
+    <div class="help" id="terms_help">
+      HTML display of MeSH term scores. This file can be very large
+      (2Mb).
+    </div>
+    
+    <div class="help" id="recall_help">
+      During each fold of validation, choose the article score threshold
+      so that that this proportion of the training set of positive
+      articles would be classified positive.
+    </div>
+
+    <div class="help" id="threshold_help">
+      Averaged over the folds of validation, this was the score above
+      which an article was classified as positive.
+    </div>
+
+  </div>
+
+  <div class="box">
+
+    <h2 class="heading">
+      Raw classifier counts
+      <button onclick="toggle('counts_help')">?</button>
+    </h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Correct</th>
+          <th>Incorrect</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th>Positive</th>
+          <td class="tp">TP={{TP}}</td>
+          <td class="fn">FN={{FN}}</td>
+          <td>P={{P}}</td>
+        </tr>
+        <tr>
+          <th>Negative</th>
+          <td class="tn">TN={{TN}}</td>
+          <td class="fp">FP={{FP}}</td>
+          <td>N={{N}}</td>
+        </tr>
+        <tr>
+          <th>Total</th>
+          <td>T={{T}}</td>
+          <td>F={{F}}</td>
+          <td>A={{A}}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="help" id="counts_help">
+      <ul>
+        <li>TP = True Positives</li>
+        <li>FP = False Positives</li>
+        <li>TN = True Negatives</li>
+        <li>FN = False Negatives</li>
+        <li>P = Number of positives</li>
+        <li>N = Number of negatives</li>
+        <li>A = Total number of articles</li>
+        <li>T = Correctly classified</li>
+        <li>F = Incorrectly classified</li>
+      </ul>
+    </div>
+    
+  </div>
+
+  <div class="box">
+
+    <h2 class="heading">
+      Proportional measures
+      <button onclick="toggle('proportions_help')">?</button>
+    </h2>
+
+    <table border="1">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Correct</th>
+          <th>Incorrect</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th>Positive</th>
+          <td class="tp">TPR={{"%.2f"%TPR}}</td>
+          <td class="fn">FNR={{"%.2f"%FNR}}</td>
+          <td>{{"%.2f"%(TPR+FNR)}}</td>
+        </tr>
+        <tr>
+          <th>Negative</th>
+          <td class="tn">TNR={{"%.2f"%TNR}}</td>
+          <td class="fp">FPR={{"%.2f"%FPR}}</td>
+          <td>{{"%.2f"%(TNR+FPR)}}</td>
+        </tr>
+        <tr>
+          <th>Total</th>
+          <td>{{"%.2f"%(TPR+TNR)}}</td>
+          <td>{{"%.2f"%(FNR+FPR)}}</td>
+          <td>{{"%.2f"%(TPR+FNR+TNR+FPR)}}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="help" id="proportions_help">
+      <ul>
+        <li>TPR = True Positive Rate (TP/P)</li>
+        <li>FNR = False Negative Rate (FN/P)</li>
+        <li>FPR = False Positive Rate (FP/N)</li>
+        <li>TNR = True Negative Rate (TN/N)</li>
+      </ul>
+    </div>
+    
+  </div>
+
+  <div class="box">
+
+    <h2 class="heading">
+      Derived measures
+      <button onclick="toggle('derived_help')">?</button>
+    </h2>
+
+    <table>
+      <tr>
+        <th><b>Positive Predictive Value</b> <span class="footnote">(= PPV = TP/(TP+FP))</span></th>
+        <td>{{"%.5f"%PPV}}</td>
+      </tr>
+      <tr>
+        <th><b>Negative Preditive Value</b> <span class="footnote">(= NPV = TN/(TN+FN))</span></th>
+        <td>{{"%.5f"%NPV}}</td>
+      </tr>
+      <tr>
+        <th><b>Prevalence</b> <span class="footnote">(=P/A)</span></th>
+        <td>{{"%.5f"%prevalence}}</td>
+      </tr>
+      <tr>
+        <th><b>Accuracy</b> <span class="footnote">(=T/A)</span></th>
+        <td>{{"%.5f"%accuracy}}</td>
+      </tr>
+    </table>
+
+    <div class="help" id="derived_help">
+      <ul>
+        <li>PPV = Proportion of those classified positive which actually were positive</li>
+        <li>NPV = Proportion of those classified negative which actually were negative</li>
+        <li>Prevalence = Proportion of data which was positive</li>
+        <li>Accuracy = Proportion of correct classifications</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="box">
+
+    <h2 class="heading">
+      Information Recall (IR) measures
+      <button onclick="toggle('ir_help')">?</button>
+    </h2>
+
+    <table>
+      <tr>
+        <th><b>Recall</b> <span class="footnote">(= TPR = sensitivity = TP/P)</span></th>
+        <td>{{"%.5f"%TPR}}</td>
+      </tr>
+      <tr>
+        <th><b>Precision</b> <span class="footnote">(= PPV = TP/(TP+FP))</span></th>
+        <td>{{"%.5f"%PPV}}</td>
+      </tr>
+      <tr>
+        <th><b>F-Measure</b> <span class="footnote">(2*recall*precision/(recall+precision))</span></th>
+        <td>{{"%.5f"%fmeasure}}</td>
+      </tr>
+    </table>
+
+    <div class="help" id="ir_help">
+      <ul>
+        <li>Recall = Proportion of positives classified correctly</li>
+        <li>Precision = Proportion of those classified positive which actually were positive</li>
+        <li>F-Measure = Combined performance measure of recall and precision</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="box">
+
+    <h2 class="heading">
+      Performance graphs
+      <button onclick="toggle('graph_help')">?</button>
+    </h2>
+
+    <div class="help" id="graph_help">
+      <ul>
+        <li>
+          The score histogram compares the distributions of scores of
+          the background ("negative") articles to those of the query
+          ("positive") articles.  When the distributions are
+          well-separated, the classifier performance is better than
+          when the distributions largely overlap.
+        </li>
+        <li>
+          The ROC curve plots the True Positive Rate (or recall)
+          against the False Positive Rate (which is 1-precision).  The
+          worst performance is a straight line of gradient 1, and
+          performance is better the steeper the initial gradient,
+          since you get a lot of recall for little loss in precision.
+        </li>
+        <li>
+          The precision recall curve plots precision against recall.
+          Good performance is when the precision remains high at high
+          recall.
+        </li>
+        <li>
+          The precision and recall against threshold is like the
+          previous, but shows how tuning the threshold would affect
+          the results.  Higher threshold reduces recall and (usually)
+          increases increases precision.
+        </li>
+      </ul>
+    </div>
+
+    <img src="{{hist_img}}" alt="Score Histogram"/>
+    
+    <img src="{{roc_img}}" alt="ROC Curve"/>
+    
+    <img src="{{p_vs_r_img}}" alt="Precision-Recall Curve"/>
+    
+    <img src="{{pr_vs_score_img}}" alt="Precision and Recall vs Threshold"/>
+
+  </div>
+  
+</div>
+
+</body>
+</html>

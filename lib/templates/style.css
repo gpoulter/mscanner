@@ -1,0 +1,88 @@
+/* COLOR SCHEME */
+
+html { background: url(../background-blue.gif) #C2D7EE; /* stripey blue */ }
+#heading { background-color: #FFFFFF; /* white */ }
+#content { background-color: #F6F9FE; /* off-white */ }
+.box {  background-color: #C2D7EE; /* light blue */ }
+.box > .heading {  background-color: #0773DF; /* dark blue */ }
+table {  background-color: #C2D7EE; /* light blue */ }
+thead {  background-color: #0773DF; /* dark blue */ }
+tbody > tr > th { background-color: #A3C2E2; /* middle blue */ }
+tbody > tr > td { background-color: #FFFFFF; /* white */ }
+
+/* GENERAL CLASSES */
+
+html, body, div, p {
+  display: block;
+  padding: 0;
+  margin: 0;
+}
+
+.help {
+  border-style: solid;
+  margin: 1ex;
+  display: none;
+  background-color: #C2D7EE; /* light blue */
+  padding: 1ex;
+}
+
+button {
+  padding: 0;
+}
+
+.para {
+  padding: 0.5em;
+}
+
+.heading {
+  width: auto;
+  margin: 0;
+}
+
+#heading {
+  margin: 0;
+  padding: 0.5em;
+  text-align: center;
+  border-bottom-style: ridge;
+}
+
+#content {
+  padding: 1ex;
+  max-width: 50em;
+  margin: 1em auto 1em auto;
+  border-style: outset;
+  -moz-border-radius: 10px;
+}
+
+.box {
+  border-style: solid;
+  margin: 1ex;
+}
+
+.box > .heading {
+  padding-left: 1em;
+  text-align: center;
+  margin: 0 0 1ex 0;
+  border-style: none none solid none;
+}
+
+table {
+  border: thick ridge black;
+  border-collapse: collapse;
+  margin: 1em auto 1em auto;
+}
+
+tr, td, th {
+  border: thin solid black;
+  padding: 0.5ex;
+}
+
+tbody th {
+  text-align: left;
+}
+
+img {
+  display: block;
+  margin: auto;
+  text-align: center;
+}

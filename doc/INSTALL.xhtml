@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+  <title>Medline Scanner</title>
+</head>
+
+<body>
+
+<h1>MedScanner: The MEDLINE Scanner</h1>
+
+                                
+
+<h2>Introduction</h2>
+
+<p>
+  MedScanner takes a set of articles from MEDLINE, and trains a
+  classifier to search MEDLINE for other articles similar that set.
+  It works best when all the articles in the set are on a particular
+  topic.
+</p>
+
+<p>
+  As a post-processing step it can extract gene-drug associations
+  using each article's title and abstract, exporting to a database
+  schema compatible with <tt>pharmdemo.stanford.edu</tt>.
+</p>
+
+<h2>Installation Instructions</h2>
+
+<p>
+  After unzipping the program, it should be run from its bin
+  directory.  The description of each program is at the top of its .py
+  file in the <tt>bin</tt> directory.  Run update.py to create the
+  MEDLINE cache or add MEDLINE updates, and run query.py to get the
+  top-scoring results.
+</p>
+
+<p>Further documentation may be found in:</p>
+
+<dl>
+  <dt><a href="../bin/README.txt">bin/</a></dt>
+  <dd>README for the application programs</dd>
+
+  <dt><a href="README.txt">doc/</a></dt>
+  <dd>README for this documentation directory</dd>
+
+  <dt><a href="html/index.html">doc/html</a></dt>
+  <dd>HTML documentation for the code</dd>
+
+  <dt><a href="../lib/README.txt">lib/</a></dt>
+  <dd>README for the library code</dd>
+
+  <dt><a href="../units/README.txt">units/</a></dt>
+  <dd>README for the unit tests</dd>
+</dl>
+
+<h2>Runtime Dependencies</h2>
+
+<p>You will need to install these dependencies before the program can
+be used:</p>
+
+<dl>
+  <dt><a href="http://www.python.org">Python-2.4</a></dt>
+  <dd>
+    The Python programming language.
+  </dd>
+
+  <dt><a href="http://www.reportlab.org/pyrxp.html">pyRXP</a> </dt>
+  <dd>
+    Extremely fast XML parser (a single function call to C code) based
+    on the RXP library.  For Windows, just download the win32 dlls for
+    Python 2.4.  For UNIX, compile from source.
+  </dd>
+
+  <dt><a href="http://www.jorendorff.com/articles/python/path/">path</a></dt>
+  <dd>
+    The Python "path" module provides convenient path manipulation and
+    is used throughout the package.
+  </dd>
+
+  <dt><a href="http://matplotlib.sourceforge.net">Matplotlib</a></dt>
+  <dd>
+    Generates graphs during validation. Matplotlib in turn depends on:
+    <dl>
+      <dt><a href="http://sourceforge.net/projects/numpy">Numarray</a></dt>
+      <dd>Provides fast homogenous arrays for scientific computing in Python.</dd>
+    </dl>
+  </dd>
+
+  <dt><a href="http://pysqlite.org/">PySQlite</a></dt>
+  <dd>
+    <p>
+    Python interface to the SQLite embedded database.  This dependency
+    can be removed if the <tt>dbexport</tt> module is modified to use
+    a different database engine (such as Oracle, which I do not have
+    available).
+    </p>
+
+    <p>
+      PySQLite can be installed directly on windows, but
+      has the following dependencies when done as a custom-install on
+      UNIX-like systems:
+    </p>
+    <dl>
+      <dt><a href="http://www.sqlite.org/">SQLite</a></dt>
+      <dd>Lightweight embedded SQL database</dd>
+      <dt><a href="http://cheeseshop.python.org/pypi/setuptools/">setuptools</a></dt>
+      <dd>Tools for Python package installers</dd>
+    </dl>
+  </dd>
+
+  <dt><a href="http://epydoc.sourceforge.net/">ePyDoc</a></dt>
+  <dd>
+    Optional dependency, for regenerating the HTML API documentation.
+  </dd>
+  
+</dl>
+
+<h2>Input Data</h2>
+
+You will need to obtain the following data:
+
+<dl>
+
+  <dt>MEDLINE</dt>
+  <dd>
+    <p>
+    <b>Format:</b>A directory containing .xml.gz files of MEDLINE
+    citation records.
+    </p>
+
+    <p><b>Where:</b>MEDLINE can be obtained by signing and faxing a
+    memorandum of understanding with the NLM and downloading via
+    FTP.</p>
+  </dd>
+
+  <dt>List of positive PubMed IDs</dt>
+  <dd>
+    <p><b>Format:</b> A text file containing one PubMed ID per line, listing
+    articles known to have pharmacogenetic relevance (i.e. articles
+    discussing the interaction of at least one gene-drug pair).</p>
+
+    <p><b>Reason:</b> These articles, together with MEDLINE as a
+    background, are used to train the classifier.</p>
+
+    <p><b>Where:</b>Updated lists can be obtained via a PharmGKB
+    database dump of "evidence PMIDs" - ask a PharmGKB developer.</p>
+  </dd>
+  
+  <dt>List of negative PubMed IDs</dt>
+  <dd>
+    <p>
+      <b>Format:</b> A file containing one PubMed ID per line, listing
+      articles known not to have pharmacogenetic relevance.
+    </p>
+
+    <p>
+      <b>Reason:</b> These are used as dummies to validate classifier
+      performance (generating false positives).  In the validation
+      process used in the JAMIA paper, they are used as a training
+      background in place of the whole of MEDLINE.
+    </p>
+
+    <p>
+      <b>Where:</b> Negative but gene-related PMIDs can be obtained by
+      running <tt>geneontology.py</tt> on GeneOntology Annotation
+      files, such as <tt>gene_association.goa_human.gz</tt>.  Note
+      that PMIDs from GeneOntology are much more difficult to
+      distinguish from pharmacogenetics articles than is the average
+      PubMed citation.
+    </p>
+  </dd>
+
+  <dt>Table of Drugs</dt>
+  <dd>
+    <p>
+      <b>Format:</b> A Python pickle mapping PharmGKB Accession ID's
+      to drug names, used to scan abstracts for occurrences of drugs.
+    </p>
+
+    <p>
+      <b>Where:</b> Text version of the tables can be obtained from
+      the PharmGKB database developers.  The text should be in the
+      format specified in <tt>drugtable.py</tt>, which will convert
+      the text file into the pickle used by medscanner.
+    </p>
+  </dd>
+
+  <dt>Mesh Exclude Files</dt>
+  <dd>
+    <p>
+      <b>Format:</b> Python pickles listing probably-useless MeSH
+      terms to exclude while parsing, to reduce the size of the
+      inverse document, as well as mapping synonyms to their main
+      term.
+    </p>
+
+    <p>
+      <b>Where:</b> Download MeSH from the NLM, and use
+      <tt>meshexcludes.py</tt> to generate the pickles.
+    </p>
+  </dd>
+  
+</dl>
+
+</body>
+
+</html>

@@ -185,7 +185,7 @@ class Validator:
         p.close()
 
     @staticmethod
-    def make_histogram(data):
+    def makeHistogram(data):
         """Returns a tuple (centers,freqs) of normalised frequencies
         at centers, given data points in data and a set bin width."""
         small = min(data)
@@ -215,8 +215,8 @@ class Validator:
         g.title('Score Densities')
         g('set terminal png')
         g('set output "'+name+'"')
-        (pcen,pfreq) = Validator.make_histogram(pdata)
-        (ncen,nfreq) = Validator.make_histogram(ndata)
+        (pcen,pfreq) = Validator.makeHistogram(pdata)
+        (ncen,nfreq) = Validator.makeHistogram(ndata)
         threshold_height = max( chain( pfreq, nfreq ) )
         g.plot(Data([threshold,threshold],[0,threshold_height],title="threshold",with='lines'),
                Data(pcen,pfreq,title='Positives',with='histeps'),

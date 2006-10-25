@@ -19,6 +19,74 @@ from array import array
 from path import path
 import dbshelve
 
+def chooseRandomLines(infile_path, outfile_path, N):
+    """Choose N random lines from infile_path and print them to outfile_path"""
+    from random import randint
+    lines = file(infile_path,"r").readlines()
+    size = len(lines)
+    outfile = file(outfile_path,"w")
+    if N > size:
+        raise ValueError("N > length of file")
+    i = 0
+    while i < N:
+        i += 1
+        r = randint(0,size-1)
+        outfile.write(lines[r])
+        lines[r] = lines[size-1]
+        size = size - 1
+
+def readPMIDFile(filename):
+    """Read PubMed IDs from filename.
+
+    Format ignores blank lines and lines starting with #, and only
+    parses the line up to the first whitespace character.
+    """
+    for line in file(filename,"r"):
+        if line.strip() != "" and not line.startswith("#"):
+            yield int(line.split()[0])
+
+def getArticles(article_db_path, pmidlist_path):
+    """Return list of Article's, given the path to an article database
+    and the path to a file with a list of pubmed IDs.
+
+    The first time it is called for a given pmidlist_path, the results
+    are cached in a .pickle appended to pmidlist_path, and later calls
+    simply use the cached results.
+    """
+    cache_path = path(pmidlist_path + ".pickle")
+    if cache_path.isfile():
+        return cPickle.load(file( cache_path, "rb" ))
+    pmids = readPMIDFile(pmidlist_path)
+    artdb = dbshelve.open(article_db_path, 'r')
+    articles = [ artdb[p] for p in pmids ]
+    cPickle.dump(articles, file(cache_path,"wb"), protocol=2)
+    artdb.close()
+    return articles
+
+def _makeBackup(filepath):
+    """Make a .recovery backup of a file.
+
+    Raise RuntimeError if the backup already exists.
+    """
+    if filepath == "None": return
+    oldfile = filepath+".recover"
+    if oldfile.exists():
+        raise RuntimeError("Recovery required: %s exists" % oldfile)
+    if filepath.exists():
+        filepath.rename( oldfile )
+
+def _removeBackup(filepath):
+    """Remove the .recovery backup of a file.
+
+    Raise RuntimeError if the backup does not exist.
+    """
+    if filepath == "None": return
+    if not filepath.exists():
+        raise RuntimeError("Recovery required: %s does not exist (backup removal requested)" % filepath)
+    oldfile = filepath+".recover"
+    if oldfile.exists():
+        oldfile.remove()
+
 class Article:
     """A simple wrapper for parsed Medline articles
 
@@ -44,8 +112,10 @@ class Article:
         return astr % (self.pmid,repr(self.title),repr(self.abstract),pp.pformat(self.meshterms) )
 
 class FileTracker(set):
-    """Class which tracks processed files.  It accepts all path
-    objects f, but only checks membership using f.basename()"""
+    """Class which tracks processed files.
+
+    It accepts all paths, but membership is checked according to basename()
+    """
 
     def __init__( self, trackfile=None ):
         """Initialise, specifying path to write the list of files"""
@@ -201,49 +271,9 @@ class TermCounts(dict):
             result[termid] = count - other.get(termid,0)
         return result
 
-def getArticles(article_db_path, pmidlist_path):
-    """Return Article from file with a list of pubmed IDs.
-
-    Results are retreived from the article DB, and cached in a .pickle
-    file for reuse.
-    """
-    cache_path = path( pmidlist_path + ".pickle" )
-    if cache_path.isfile():
-        return cPickle.load( file( cache_path, "rb" ) )
-    pmids = [ line.split()[0] for line in file( pmidlist_path, "r" ) ]
-    artdb = dbshelve.open( article_db_path, 'r' )
-    articles = [ artdb[p] for p in pmids ]
-    cPickle.dump( articles, file( cache_path, "wb" ), protocol=2 )
-    artdb.close()
-    return articles
-
-def _makeBackup( filepath ):
-    """Make a .recovery backup of a file.
-
-    Raise RuntimeError if backup already exists.
-    """
-    if filepath == "None": return
-    oldfile = filepath+".recover"
-    if oldfile.exists():
-        raise RuntimeError("Recovery required: %s exists" % oldfile)
-    if filepath.exists():
-        filepath.rename( oldfile )
-
-def _removeBackup( filepath ):
-    """Remove the .recovery backup of a file.
-
-    Raise RuntimeError if backup does not exist.
-    """
-    if filepath == "None": return
-    if not filepath.exists():
-        raise RuntimeError("Recovery required: %s does not exist (backup removal requested)" % filepath)
-    oldfile = filepath+".recover"
-    if oldfile.exists():
-        oldfile.remove()
-
 class _FileTrackerTests(unittest.TestCase):
     """Unit tests for the file tracker"""
-    def setUp( self ):
+    def setUp(self):
         self.home = path( '/tmp/test_filetracker' )
         self.home.rmtree( ignore_errors=True )
         self.home.mkdir()
@@ -260,7 +290,7 @@ class _FileTrackerTests(unittest.TestCase):
         self.assertEqual( t, set( [ 'a.xml', 'b.xml' ] ) )
         
 class _FeatureMappingTests(unittest.TestCase):
-    def test( self ):
+    def test(self):
         fn = path( "/tmp/test_featuremapping" )
         fm = FeatureMapping( fn )
         self.assertEqual( fm.getids( ["A","B"] ), array("H",[0,1]) )
@@ -277,7 +307,7 @@ class _FeatureMappingTests(unittest.TestCase):
         except os.error: pass
         
 class _TermCountsTests(unittest.TestCase):
-    def test( self ):
+    def test(self):
         t = TermCounts()
         t.add( [1,3] )
         t.add( [2,3] )
@@ -296,6 +326,11 @@ class _TermCountsTests(unittest.TestCase):
         self.assertEqual( r[3], 1 )
         self.assertEqual( r.docs, 1 )
         self.assertEqual( r.total, 2 )
+
+class _ArticleTests(unittest.TestCase):
+    def test(self):
+        # Test _makeBackup, _removeBackup, readPMIDFile, chooseRandomLines, getArticles
+        pass
 
 if __name__ == "__main__":
     unittest.main()

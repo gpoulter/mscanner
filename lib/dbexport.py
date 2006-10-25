@@ -56,7 +56,7 @@ create table dg_pmid_coes (
 );
 """
 
-def exportDatabase( con, articles ):
+def exportDatabase(con, articles):
     """Export articles to database
 
     @param con: Connection to destination database. Database should be
@@ -92,7 +92,7 @@ def exportDatabase( con, articles ):
                     ( str(art.pmid), art.title, art.abstract, " ".join(genelist), " ".join(druglist), None, None ) )
     con.commit()
 
-def exportText( outfile, articles):
+def exportText(outfile, articles):
     class TextOutput:
         def __init__( self, outfile ):
             self.out = file( outfile, "w" )
@@ -116,9 +116,9 @@ def exportText( outfile, articles):
         def executemany( self, sql, subs ):
             for sub in subs:
                 self.execute( sql, sub )
-    exportDatabase( TextOutput( outfile ), articles )
+    exportDatabase(TextOutput( outfile ), articles)
 
-def exportSQLite( outfile, articles ):
+def exportSQLite(outfile, articles):
     """Export article results to SQLite database file
 
     @param outfile: SQLite database file to write to.
@@ -132,3 +132,9 @@ def exportSQLite( outfile, articles ):
     con = sqlite.connect( outfile )
     exportDatabase( con, articles )
     con.close()
+
+def exportOracle(outfile, articles):
+    """Export article results to an Oracle database"""
+    pass
+
+exportDefault = exportText

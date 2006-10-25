@@ -22,12 +22,21 @@ import dbshelve
 from article import Article, FileTracker, FeatureMapping, TermCounts
 
 class FeatureDatabase:
-    """Persistent mapping from document ID to feature array"""
+    """Persistent mapping from integer key to array objects of numerical values"""
     
-    def __init__( self, filename=None, flags='c', mode=0660, dbenv=None, txn=None ):
-        """Initialise as database for docid to feature ID array mapping"""
+    def __init__(self, filename=None, flags='c', mode=0660, dbenv=None, txn=None, value_type='H'):
+        """Initialise database
+
+        @param filename: Database file
+        @param flags: Opening flats (r,rw,w,c,n)
+        @param mode: Numeric file permissions
+        @param dbenv: Optional database environment
+        @param txn: Optional database transaction
+        @param value_type: Typecode for packing/unpacking of value structs, typically 'H' or 'i'
+        """
         self.db = db.DB( dbenv )
-        if isinstance( flags, basestring ):
+        self.value_type = value_type
+        if isinstance(flags, basestring):
             if flags == 'r':
                 flags = db.DB_RDONLY
             elif flags == 'rw':
@@ -42,42 +51,42 @@ class FeatureDatabase:
                 raise db.DBError("Flag %s is not in 'r', 'rw', 'w', 'c' or 'n'"  % str(flags))
         self.db.open( filename, None, db.DB_HASH, flags, mode, txn=txn )
 
-    def __del__( self ):
+    def __del__(self):
         if hasattr(self,"db"):
             self.close()
 
-    def close( self ):
+    def close(self):
         """Close the database.  Do not use this object after doing so"""
         self.db.close()
-        delattr(self,"db")
+        delattr(self, "db")
 
-    def getitem( self, docid, txn=None ):
-        """Return array of features for a document id"""
-        feats_packed = self.db.get( struct.pack( "i", docid ), txn=txn )
-        if feats_packed is None:
-            raise KeyError("Record %d not found in feature database" % docid)
-        return array('H', feats_packed)
+    def getitem(self, key, txn=None):
+        """Return array of values for a document id"""
+        values_packed = self.db.get(struct.pack("i",key), txn=txn)
+        if values_packed is None:
+            raise KeyError("Record %d not found in feature database" % key)
+        return array(self.value_type, values_packed)
 
-    def __getitem__( self, docid ):
-        return self.getitem( docid )
+    def __getitem__(self, key):
+        return self.getitem(key)
 
-    def setitem( self, docid, features, txn=None ):
-        """Set array of features for a given document ID"""
-        if not isinstance( features, array ):
-            raise TypeError("features must be an array('H')")
-        self.db.put( struct.pack( "i", docid ), features.tostring(), txn=txn )
+    def setitem(self, key, values, txn=None ):
+        """Set array of values for a given key"""
+        if not isinstance( values, array ):
+            raise TypeError("values must be an array('%s')" % self.value_type)
+        self.db.put(struct.pack("i",key), values.tostring(), txn=txn)
         
-    def delitem( self, docid, txn=None ):
-        """Delete a given docid from the database"""
-        self.db.delete( struct.pack( "i", docid ), txn=txn )
+    def delitem(self, key, txn=None ):
+        """Delete a given key from the database"""
+        self.db.delete(struct.pack("i",key), txn=txn)
 
-    def __len__( self ):
-        return len( self.db )
+    def __len__(self):
+        return len(self.db)
 
-    def __contains__( self, docid ):
-        return self.db.has_key( struct.pack( "i", docid ) )
+    def __contains__(self, key):
+        return self.db.has_key(struct.pack("i",key))
 
-    def keys( self ):
+    def keys(self):
         return [ k for k in self ]
 
     def __iter__( self ):
@@ -92,7 +101,7 @@ class FeatureDatabase:
         cur = self.db.cursor()
         rec = cur.first()
         while rec is not None:
-            yield struct.unpack("i",rec[0])[0], array("H",rec[1])
+            yield struct.unpack("i",rec[0])[0], array(self.value_type,rec[1])
             rec = cur.next()
         cur.close()
 
@@ -194,7 +203,7 @@ class MedlineCache:
 
 class _FeatureDatabaseTests(unittest.TestCase):
     def test( self ):
-        d = FeatureDatabase()
+        d = FeatureDatabase(value_type="H")
         d.setitem( 1, array("H",[1,3]) )
         d.setitem( 2, array("H",[2,3]) )
         self.assertEqual( d.getitem(1), array("H",[1,3]) )
@@ -221,8 +230,13 @@ class _MedlineCacheTests(unittest.TestCase):
     def test( self ):
         import xmlparse
         h = self.home
-        m = MedlineCache( FeatureMapping(), xmlparse.ArticleParser(), h, h/"articles.db",
-                          h/"features.db", h/"termcounts.pickle", h/"processed.txt" )
+        m = MedlineCache( FeatureMapping(),
+                          xmlparse.ArticleParser(),
+                          h,
+                          h/"articles.db",
+                          h/"features.db",
+                          h/"termcounts.pickle",
+                          h/"processed.txt" )
         (h/"test.xml").write_text( xmlparse.xmltext )
         m.updateCacheFromDir( h, save_delay=1 )
         (h/"pmids.xml").write_lines( [ "1", "2" ] )

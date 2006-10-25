@@ -23,33 +23,17 @@ import sys
 from path import path
 
 from configuration import base, genedrug as gd, medline as m, validation as v
-from article import FeatureMapping, getArticles
+from article import FeatureMapping, getArticles, chooseRandomLines, readPMIDFile
 from genedrug import getGeneDrugFilter
 from medline import FeatureDatabase
 from validation import Validator
-
-def random_subset(ifname,ofname,N):
-    """Choose N random lines from ifname and print them to ofname"""
-    from random import randint
-    lines = file(ifname, "r").readlines()
-    size = len(lines)
-    outfile = file(ofname, "w")
-    if N > size:
-        raise ValueError("N > length of file")
-    i = 0
-    while i < N:
-        i += 1
-        r = randint(0,size-1)
-        outfile.write(lines[r])
-        lines[r] = lines[size-1]
-        size = size - 1
 
 def do_validation():
     # Read training data
     meshdb = FeatureMapping(m.meshdb)
     featdb = FeatureDatabase(m.featuredb, 'r')
-    positives = set( int(line.split()[0]) for line in file(v.posfile,"r") if line.strip()!="" )
-    negatives = set( int(line.split()[0]) for line in file(v.negfile,"r") if line.strip()!="" )
+    positives = set(readPMIDFile(v.posfile))
+    negatives = set(readPMIDFile(v.negfile))
     # Remove positives found in the negative set
     log.debug("Removing negatives found in positives") 
     for x in positives:
@@ -85,6 +69,9 @@ def do_validation():
         log.info("Using cached results from %s", v.prefix.dirname().relpathto(pickle))
         results = cPickle.load(file(pickle, "rb"))
     else:
+        # Create directory if necessary
+        if not v.prefix.dirname().exists():
+            v.prefix.dirname().makedirs()
         # Recalculate results
         log.info("Recalculating results, to store in %s", v.prefix.dirname().relpathto(pickle))
         results = val.validate()
@@ -103,7 +90,7 @@ def cgi_invocation():
         v.prefix = (base.weboutput / batchid) + "/"
         v.posfile = v.prefix / "positives.txt"
         v.negfile = v.prefix / "negatives.txt"
-        random_subset(v.allpmids, v.negfile, v.numnegs)
+        chooseRandomLines(v.allpmids, v.negfile, v.numnegs)
     except Exception:
         print __doc__
         sys.exit(1)

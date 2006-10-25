@@ -25,8 +25,8 @@ from path import path
 
 from configuration import base, genedrug as gd, query as q, medline as m
 import dbshelve
-from article import FeatureMapping, TermCounts
-from dbexport import exportSQLite
+import dbexport
+from article import FeatureMapping, TermCounts, readPMIDFile
 from genedrug import getGeneDrugFilter
 from medline import FeatureDatabase
 from scoring import getTermScores, filterDocuments, writeReport
@@ -34,14 +34,14 @@ from scoring import getTermScores, filterDocuments, writeReport
 def do_query():
     # Perform query
     log.debug("Opening databases")
-    meshdb = FeatureMapping( m.meshdb )
-    featdb = FeatureDatabase( m.featuredb, 'r' )
-    artdb = dbshelve.open( m.articledb, 'r' )
-    posids = set( int(line.split()[0]) for line in file(q.posfile,"r") if line.strip()!="" ) 
+    meshdb = FeatureMapping(m.meshdb)
+    featdb = FeatureDatabase(m.featuredb,'r')
+    artdb = dbshelve.open(m.articledb,'r')
+    posids = set(readPMIDFile(q.posfile))
     pos_counts = TermCounts( featdb[d] for d in posids )
-    bg_counts = TermCounts.load( m.termcounts )
-    neg_counts = bg_counts.subtract( pos_counts )
-    term_scores = getTermScores( pos_counts, neg_counts, q.pseudocount )
+    bg_counts = TermCounts.load(m.termcounts)
+    neg_counts = bg_counts.subtract(pos_counts)
+    term_scores = getTermScores(pos_counts, neg_counts, q.pseudocount)
     # Load pickled results
     pickle = q.prefix+"results.pickle"
     if pickle.isfile():
@@ -50,7 +50,7 @@ def do_query():
     # Recalculate results
     else:
         log.info("Recalculating results, to store in %s", q.prefix.dirname().relpathto(pickle))
-        results = filterDocuments( featdb.iteritems(), term_scores, q.limit )
+        results = filterDocuments(featdb.iteritems(), term_scores, q.limit)
         cPickle.dump(results, file(pickle,"wb"), protocol=2)
     # Write result report
     log.debug("Writing report")
@@ -78,7 +78,7 @@ def do_query():
             if len(a.genedrug) > 0:
                 gdarticles.append(a)
         log.debug("Exporting database")
-        exportSQLite(q.outputdb, gdarticles)
+        dbexport.exportDefault(q.outputdb, gdarticles)
     featdb.close()
     artdb.close()
 

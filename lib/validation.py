@@ -286,13 +286,13 @@ class Validator:
         @param stylesheet: Path to CSS stylesheet
         """
         # Set up output files
-        terms_csv = prefix+"termscores.csv"
-        terms_html = prefix+"termscores.html"
-        hist_img = prefix+"histogram.png"
-        roc_img = prefix+"roc.png"
-        p_vs_r_img = prefix+"prcurve.png"
-        pr_vs_score_img = prefix+"prscore.png"
-        mainfile = prefix+"index.html"
+        terms_csv = prefix/"termscores.csv"
+        terms_html = prefix/"termscores.html"
+        hist_img = prefix/"histogram.png"
+        roc_img = prefix/"roc.png"
+        p_vs_r_img = prefix/"prcurve.png"
+        pr_vs_score_img = prefix/"prscore.png"
+        mainfile = prefix/"index.html"
         # Calculate performance measures
         TP, TN, FP, FN, threshold, pscores, nscores = results
         P = TP+FN
@@ -300,7 +300,7 @@ class Validator:
         A = TP+FN+TN+FP # = P + N = T + F
         T = TP+TN
         F = FP+FN
-        TPR,FNR,TNR,FPR,PPV,NPV = 0, 0, 0, 0, 0, 0
+        TPR, FNR, TNR, FPR, PPV, NPV = 0, 0, 0, 0, 0, 0
         accuracy, prevalence, fmeasure = 0, 0, 0
         if TP+FN != 0:
             TPR = TP/(TP+FN) # TPR = TP/P = sensitivity = recall
@@ -320,19 +320,17 @@ class Validator:
         if recall > 0 and precision > 0:
             fmeasure = 2*recall*precision/(recall+precision)
         # Term scores
-        pfreqs = TermCounts( self.featdb[d] for d in self.pos )
-        nfreqs = TermCounts( self.featdb[d] for d in self.neg )
-        termscores = getTermScores( pfreqs, nfreqs, self.pseudocount, self.daniel )
-        writeTermScoresCSV( file(terms_csv,"w"), self.meshdb, termscores, pfreqs, nfreqs )
-        writeTermScoresHTML( file(terms_html,"w"), self.meshdb, termscores, pfreqs, nfreqs, self.pseudocount )
+        pfreqs = TermCounts(self.featdb[d] for d in self.pos)
+        nfreqs = TermCounts(self.featdb[d] for d in self.neg)
+        termscores = getTermScores( pfreqs, nfreqs, self.pseudocount, self.daniel)
+        writeTermScoresCSV(file(terms_csv,"w"), self.meshdb, termscores, pfreqs, nfreqs)
+        writeTermScoresHTML(file(terms_html,"w"), self.meshdb, termscores, pfreqs, nfreqs, self.pseudocount)
         # Output performance statistics
         self.plotHistograms(hist_img, pscores, nscores, threshold)
         self.plotCurves(roc_img, p_vs_r_img, pr_vs_score_img, pscores, nscores)
         templates.validation.run(dict(
-            TP = TP, TN = TN, FP = FP, FN = FN,
-            P = P, N = N, A = A, T = T, F = F,
-            TPR = TPR, FNR = FNR, TNR = TNR, FPR = FPR,
-            PPV = PPV, NPV = NPV,
+            TP=TP, TN=TN, FP=FP, FN=FN, P=P, N=N, A=A, T=T, F=F,
+            TPR=TPR, FNR=FNR, TNR=TNR, FPR=FPR, PPV=PPV, NPV=NPV,
             accuracy = accuracy,
             prevalence = prevalence,
             recall = recall,
@@ -347,7 +345,7 @@ class Validator:
             p_vs_r_img = p_vs_r_img.basename(),
             pr_vs_score_img = pr_vs_score_img.basename(),
             ), outputfile=file(mainfile, "w"))
-        stylesheet.copy(prefix.dirname() / "style.css")
+        stylesheet.copy(prefix / "style.css")
         
 class _ValidatorTest(unittest.TestCase):
     def test(self):
@@ -362,7 +360,6 @@ class _ValidatorTest(unittest.TestCase):
             daniel = False,
             genedrug_articles = None,
             )
-        
         seed(0)
         self.assertEqual(
             val.partition(set([1,2,3,4,5,6,7,8,9,10]),3) ,

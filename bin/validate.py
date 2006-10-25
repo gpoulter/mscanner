@@ -64,16 +64,16 @@ def do_validation():
         genedrug_articles
         )
     # Load pickled results
-    pickle = v.prefix+"results.pickle"
+    pickle = v.prefix / "results.pickle"
     if pickle.isfile():
-        log.info("Using cached results from %s", v.prefix.dirname().relpathto(pickle))
+        log.info("Using cached results from %s", pickle)
         results = cPickle.load(file(pickle, "rb"))
     else:
         # Create directory if necessary
-        if not v.prefix.dirname().exists():
-            v.prefix.dirname().makedirs()
+        if not v.prefix.exists():
+            v.prefix.makedirs()
         # Recalculate results
-        log.info("Recalculating results, to store in %s", v.prefix.dirname().relpathto(pickle))
+        log.info("Recalculating results, to store in %s", pickle)
         results = val.validate()
         cPickle.dump(results, file(pickle,"wb"), protocol=2)
     # Output performance statistics
@@ -87,7 +87,7 @@ def cgi_invocation():
         v.nfolds = int(sys.argv[3])
         v.recall = float(sys.argv[4])
         v.pseudocount = float(sys.argv[5])
-        v.prefix = (base.weboutput / batchid) + "/"
+        v.prefix = base.weboutput / batchid
         v.posfile = v.prefix / "positives.txt"
         v.negfile = v.prefix / "negatives.txt"
         chooseRandomLines(v.allpmids, v.negfile, v.numnegs)

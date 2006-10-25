@@ -61,7 +61,7 @@ class FeatureDatabase:
         delattr(self, "db")
 
     def getitem(self, key, txn=None):
-        """Return array of values for a document id"""
+        """Return an array object of values for a given key"""
         values_packed = self.db.get(struct.pack("i",key), txn=txn)
         if values_packed is None:
             raise KeyError("Record %d not found in feature database" % key)
@@ -71,7 +71,7 @@ class FeatureDatabase:
         return self.getitem(key)
 
     def setitem(self, key, values, txn=None ):
-        """Set array of values for a given key"""
+        """Associate integer key with an array object of values"""
         if not isinstance( values, array ):
             raise TypeError("values must be an array('%s')" % self.value_type)
         self.db.put(struct.pack("i",key), values.tostring(), txn=txn)

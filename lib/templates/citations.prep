@@ -36,13 +36,19 @@
 
 <body>
 
-<h1 id="heading">MedScanner Result Citations</h1>
+<h1 id="heading">
+{{if mode == "input"}}
+Citations for input corpus
+{{else if mode == "output"}}
+Citations for the output results
+{{endif}}
+</h1>
 
 <div id="content">
 
   <div class="box">
     <p class="para">
-      {{len(scores)}} of the top-scoring result are in this report.
+      This report contains {{len(scores)}} citations.
     </p>
   </div>
 
@@ -54,7 +60,8 @@
     <!--{{for score, pmid in scores}}-->
     <div class="citation">
       <h2 class="heading">
-        PubMed ID <a href="{{ncbi}}{{pmid}}">{{pmid}}</a>, Score {{"%.5f"%score}}
+        PubMed ID <a href="{{ncbi}}{{pmid}}">{{pmid}}</a>
+        {{if mode == "output"}}, Score {{"%.5f"%score}}{{endif}}
       </h2>
       <!--{{if articles is not None}}-->
       <!--{{script}}art = articles[str(pmid)]{{endscript}}-->

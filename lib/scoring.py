@@ -150,18 +150,19 @@ def writeReport(
     @param termscores: termid:(score,...) mapping
     @param pfreq: termid:count mappings for positives 
     @param nfreq: termid:count mappings for negatives
-    @param prefix: Path to prepend to output file names
+    @param prefix: Directory in which to place output
     @param stylesheet: Path to CSS stylesheet
     @param pseudocount: From @{getTermScores}
     @param limit: From @{filterDocuments}
     @param posfile: Path to positive docids
-    @param articles: str(pmid):Article mapping for PMIDS mentioned in scores
+    @param articles: Mapping from str(pmid) to Article object
     """
-    terms_csv = prefix+"termscores.csv"
-    terms_html = prefix+"termscores.html"
-    res_txt = prefix+"resultscores.txt"
-    cite_html= prefix+"citations.html"
-    index_html = prefix+"index.html"
+    terms_csv = prefix/"termscores.csv"
+    terms_html = prefix/"termscores.html"
+    res_txt = prefix/"resultscores.txt"
+    input_html = prefix/"input_citations.html"
+    result_html= prefix/"result_citations.html"
+    index_html = prefix/"index.html"
     # Term scores
     writeTermScoresCSV(file(terms_csv,'w'), meshdb, termscores, pfreq, nfreq)
     writeTermScoresHTML(file(terms_html,'w'), meshdb, termscores, pfreq, nfreq, pseudocount)
@@ -169,24 +170,32 @@ def writeReport(
     f = file(res_txt,'w')
     for score, pmid in scores:
         f.write( "%-13d%.5f\n" % ( pmid, score ) )
-    # Citations
+    # Citations for input articles
+    import article
+    posids = list(article.readPMIDFile(posfile))
     templates.citations.run(
-        dict(scores=scores, articles=articles),
-        outputfile=file(cite_html, "w"))
+        dict(mode="input", scores=[(0,p) for p in posids], articles=articles),
+        outputfile=file(input_html, "w"))
+    # Citations for output articles
+    templates.citations.run(
+        dict(mode="output", scores=scores, articles=articles),
+        outputfile=file(result_html, "w"))
     # Index file
     templates.results.run(dict(
         pseudocount = pseudocount,
         limit = limit,
         num_results = len(scores),
         lowest_score = scores[-1][0],
-        posfile = prefix.dirname().relpathto(posfile),
-        terms_csv = prefix.dirname().relpathto(terms_csv),
-        terms_html = prefix.dirname().relpathto(terms_html),
-        res_txt = prefix.dirname().relpathto(res_txt),
-        cite_html = prefix.dirname().relpathto(cite_html),
+        posfile = posfile.basename(),
+        terms_csv = terms_csv.basename(),
+        terms_html = terms_html.basename(),
+        res_txt = res_txt.basename(),
+        input_html = input_html.basename(),
+        result_html = result_html.basename(),
         ),
         outputfile=index_html.open("w"))
-    stylesheet.copy(prefix.dirname() / "style.css")
+    posfile.copy(prefix / posfile.basename())
+    stylesheet.copy(prefix / "style.css")
 
 class _ScoringTests(unittest.TestCase):
 

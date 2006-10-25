@@ -97,7 +97,7 @@ q.limit = 10000
 ## Per-term pseudocount to use
 q.pseudocount = 0.01
 ## Prefix for result report files
-q.prefix = b.output / "results/"
+q.prefix = b.output / "results"
 ## Path to database output
 q.outputdb = None
 ## Stylesheet for report
@@ -121,7 +121,7 @@ v.genedrug = False
 ## Whether to use Daniel's 10^-8 pseudocounts
 v.daniel = False
 ## Prefix to use for report file
-v.prefix = b.output / "validation/"
+v.prefix = b.output / "validation"
 ## Stylesheet for report
 v.stylesheet = b.stylesheet
 
@@ -140,32 +140,32 @@ sys.path.insert( 0, base.lib )
 #### Configure which data sets to ues
 
 #dataset = "cur-vs-500k"
+#dataset = "cur-vs-med"
 #dataset = "cur-vs-go4"
 #dataset = "full-vs-500k"
 #dataset = "full-vs-go4"
 dataset = "old-vs-go4"
 
-if dataset == "cur-vs-500k":
-    q.posfile = b.corpora / "pharmgkb-Oct06.txt"
-    v.posfile = q.posfile
-    v.negfile = b.corpora / "500kpmids.txt"
+q.prefix = b.output / (dataset+"-result")
+v.prefix = b.output / (dataset+"-valid")
 
 if dataset == "cur-vs-med":
-    q.posfile = b.corpora / "pharmgkb-Oct06.txt"
-    v.posfile = q.posfile
-    v.negfile = v.allpmids
-
+    v.posfile = b.corpora / "pharmgkb-Oct06.txt"
+    v.negfile = m.articlelist
+if dataset == "cur-vs-500k":
+    v.posfile = b.corpora / "pharmgkb-Oct06.txt"
+    v.negfile = b.corpora / "medline-500k.txt"
+if dataset == "cur-vs-g04":
+    v.posfile = b.corpora / "pharmgkb-Oct06.txt"
+    v.negfile = b.corpora / "geneontology-2004.txt"
 if dataset == "full-vs-500k":
-    q.posfile = b.corpora / "pharmgkb-full-Jan06.txt"
-    v.posfile = q.posfile
-    v.negfile = b.corpora / "500kpmids.txt"
-
+    v.posfile = b.corpora / "pharmgkb-full-Jan06.txt"
+    v.negfile = b.corpora / "medline-500k.txt"
 if dataset == "full-vs-go4":
-    q.posfile = b.corpora / "pharmgkb-full-Jan06.txt"
-    v.posfile = q.posfile
+    v.posfile = b.corpora / "pharmgkb-full-Jan06.txt"
+    v.negfile = b.corpora / "geneontology-2004.txt"
+if dataset == "old-vs-go4":
+    v.posfile = b.corpora / "pharmgkb-2004.txt"
     v.negfile = b.corpora / "geneontology-2004.txt"
 
-if dataset == "old-vs-go4":
-    q.posfile = b.corpora / "pharmgkb-2004.txt"
-    v.posfile = q.posfile
-    v.negfile = b.corpora / "geneontology-2004.txt"
+q.posfile = v.posfile

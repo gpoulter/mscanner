@@ -68,38 +68,45 @@
       </tr>
       <tr>
         <th>
-          Document IDs of query
+          Input PubMed IDs
           <button onclick="show('query_help')">?</button>
         </th>
         <td><a href="{{posfile}}">{{posfile}}</a></td>
       </tr>
       <tr>
         <th>
-          Scores of mesh terms (CSV)
+          MeSH Scores (CSV)
           <button onclick="show('csv_help')">?</button>
         </th>
         <td><a href="{{terms_csv}}">{{terms_csv}}</a></td>
       </tr>
       <tr>
         <th>
-          Scores of mesh terms (HTML)
+          MeSH scores (HTML)
           <button onclick="show('terms_help')">?</button>
         </th>
         <td><a href="{{terms_html}}">{{terms_html}}</a></td>
       </tr>
       <tr>
         <th>
-          Scores for results (TXT)
+          Result scores (TXT)
           <button onclick="show('results_help')">?</button>
         </th>
         <td><a href="{{res_txt}}">{{res_txt}}</a></td>
       </tr>
       <tr>
         <th>
-          Citations for results (HTML)
-          <button onclick="show('citations_help')">?</button>
+          Input citations (HTML)
+          <button onclick="show('input_citations_help')">?</button>
         </th>
-        <td><a href="{{cite_html}}">{{cite_html}}</a></td>
+        <td><a href="{{input_html}}">{{input_html}}</a></td>
+      </tr>
+      <tr>
+        <th>
+          Result citations (HTML)
+          <button onclick="show('result_citations_help')">?</button>
+        </th>
+        <td><a href="{{result_html}}">{{result_html}}</a></td>
       </tr>
     </tbody>
   </table>
@@ -134,13 +141,20 @@
   
   <div class="help" id="results_help">
     Text file listing the result PubMed IDs and their scores, in
-    decreasing order of score. More compact than the HTML below.
+    decreasing order of score. More compact than the HTML version
+    which also contains the citations.
   </div>
   
-  <div class="help" id="citations_help">
-    HTML file with the result citations, including a link to NCBI, the
-    title, and the abstract.  This file can be very
-    large.
+  <div class="help" id="input_citations_help">
+    HTML file for the input citations used to train the classifier.
+    Includes links to NCBI, and title and abstract.  This file is
+    useful for seeing exactly what data you are using to train the
+    classifier.
+  </div>
+  
+  <div class="help" id="result_citations_help">
+    HTML file for the result citations, including links to NCBI,
+    titles and abstracts.  This file can be very large.
   </div>
   
 </div>

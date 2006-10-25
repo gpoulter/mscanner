@@ -20,6 +20,7 @@ import cPickle
 import os
 import time
 import sys
+from itertools import chain
 import logging as log
 from path import path
 
@@ -38,19 +39,22 @@ def do_query():
     featdb = FeatureDatabase(m.featuredb,'r')
     artdb = dbshelve.open(m.articledb,'r')
     posids = set(readPMIDFile(q.posfile))
-    pos_counts = TermCounts( featdb[d] for d in posids )
+    pos_counts = TermCounts(featdb[d] for d in posids)
     bg_counts = TermCounts.load(m.termcounts)
     neg_counts = bg_counts.subtract(pos_counts)
     term_scores = getTermScores(pos_counts, neg_counts, q.pseudocount)
     # Load pickled results
-    pickle = q.prefix+"results.pickle"
+    pickle = q.prefix / "results.pickle"
     if pickle.isfile():
-        log.info("Loading pickled results from %s", q.prefix.dirname().relpathto(pickle))
+        log.info("Loading pickled results from %s", pickle)
         results = cPickle.load(file(pickle, "rb"))
     # Recalculate results
     else:
-        log.info("Recalculating results, to store in %s", q.prefix.dirname().relpathto(pickle))
-        results = filterDocuments(featdb.iteritems(), term_scores, q.limit)
+        # Create directory if necessary
+        if not q.prefix.exists():
+            q.prefix.makedirs()
+        log.info("Recalculating results, to store in %s", pickle)
+        results = filterDocuments(((k,v) for k,v in featdb.iteritems() if k not in posids), term_scores, q.limit)
         cPickle.dump(results, file(pickle,"wb"), protocol=2)
     # Write result report
     log.debug("Writing report")
@@ -65,14 +69,14 @@ def do_query():
         pseudocount = q.pseudocount,
         limit = q.limit,
         posfile = q.posfile,
-        articles = artdb
+        articles = artdb,
         )
     # Database export
     if q.outputdb is not None:
         log.debug("Getting gene-drug associations on results")
         gdfilter = getGeneDrugFilter(gd.genedrug, gd.drugtable, gd.gapscore)
         gdarticles=[]
-        for score,pmid in results:
+        for pmid in chain((a for s,a in results),posids):
             a = artdb[str(pmid)]
             a.genedrug = gdfilter(a)
             if len(a.genedrug) > 0:

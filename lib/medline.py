@@ -28,7 +28,7 @@ class FeatureDatabase:
         """Initialise database
 
         @param filename: Database file
-        @param flags: Opening flats (r,rw,w,c,n)
+        @param flags: Opening flags (r,rw,w,c,n)
         @param mode: Numeric file permissions
         @param dbenv: Optional database environment
         @param txn: Optional database transaction
@@ -121,6 +121,7 @@ class MedlineCache:
         db_env_home,
         article_db_path,
         feature_db_path,
+        article_list_path,
         termcounts_path,
         processed_path ):
         """Initialse a cache of the results of parsing medline.
@@ -130,6 +131,7 @@ class MedlineCache:
         @param db_env_home: Path to DB home directory 
         @param article_db_path: Path to article database
         @param feature_db_path: Path to feature database
+        @param article_list_path: Path to list of article PMIDs
         @param termcounts_path: Path to the TermCounts pickle
         @param processed_path: Path to list of processed files 
         """
@@ -138,6 +140,7 @@ class MedlineCache:
         self.parser = parser
         self.article_db_path = article_db_path
         self.feature_db_path = feature_db_path
+        self.article_list_path = article_list_path
         self.termcounts_path = termcounts_path
         self.processed_path = processed_path
         self.termcounts = TermCounts.load( termcounts_path )
@@ -161,15 +164,18 @@ class MedlineCache:
         try:
             artdb = dbshelve.open( self.article_db_path, dbenv=dbenv, txn=txn )
             featdb = FeatureDatabase( self.feature_db_path, dbenv=dbenv, txn=txn )
+            artlist = file( self.article_list_path, "a" )
             for art in articles:
                 # Refuse to add or overwrite duplicates
                 if not art.pmid in featdb:
                     termids = self.meshdb.getids( art.meshterms )
                     artdb[str(art.pmid)] = art
                     featdb.setitem( art.pmid, termids, txn )
+                    artlist.write("%d\n" % art.pmid)
                     self.termcounts.add( termids )
             artdb.close()
             featdb.close()
+            artlist.close()
             txn.commit()
             self.meshdb.dump()
             TermCounts.dump( self.termcounts, self.termcounts_path )

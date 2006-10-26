@@ -13,7 +13,7 @@ from medline import FeatureDatabase
 import sys
 
 d = FeatureDatabase(sys.argv[1], 'r')
-f = file(sys.argv[1], "w")
+f = file(sys.argv[2], "w")
 for key in d:
     f.write("%d\n" % key)
 d.close()

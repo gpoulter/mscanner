@@ -37,6 +37,7 @@ med = MedlineCache(
         m.db_home,
         m.articledb,
         m.featuredb,
+        m.articlelist,
         m.termcounts,
         m.processed,
         )
@@ -55,4 +56,4 @@ if len(sys.argv) == 2:
 # Parse articles from XML directory
 else:
     log.info("Starting update from %s" % u.medline.relpath())
-    med.updateCacheFromDir( u.medline, u.save_delay )
+    med.updateCacheFromDir(u.medline, u.save_delay)

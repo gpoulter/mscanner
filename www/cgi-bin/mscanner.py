@@ -17,8 +17,8 @@ from datetime import datetime
 from xmlrpclib import Fault
 from DocXMLRPCServer import DocCGIXMLRPCRequestHandler
 
-#mtree = True
 mtree = False
+mtree = True
 
 if mtree:
     source = path("/export/home/medscan/source")

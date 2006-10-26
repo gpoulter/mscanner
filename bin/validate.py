@@ -32,20 +32,13 @@ def do_validation():
     # Read training data
     meshdb = FeatureMapping(m.meshdb)
     featdb = FeatureDatabase(m.featuredb, 'r')
-    positives = set(readPMIDFile(v.posfile))
-    negatives = set(readPMIDFile(v.negfile))
+    positives = set(readPMIDFile(v.posfile, featdb))
+    negatives = set(readPMIDFile(v.negfile, featdb))
     # Remove positives found in the negative set
     log.debug("Removing negatives found in positives") 
     for x in positives:
         if x in negatives:
             negatives.remove(x)
-        if x not in featdb:
-            positives.remove(x)
-            log.debug("Positive with PMID %d missing from database")
-    for x in negatives:
-        if x not in featdb:
-            negatives.remove(x)
-            log.debug("Negative with PMID %d missing from database")
     # Get which document ids have gene-drug assocations
     genedrug_articles = None
     if v.genedrug:

@@ -15,6 +15,7 @@ getArticles() -- Retrieve Articles from a DB, caching results in a Pickle
 
 import cPickle
 import unittest
+import logging as log
 from array import array
 from path import path
 import dbshelve
@@ -35,17 +36,28 @@ def chooseRandomLines(infile_path, outfile_path, N):
         lines[r] = lines[size-1]
         size = size - 1
 
-def readPMIDFile(filename):
-    """Read PubMed IDs from filename.
+def readPMIDFile(filename, allpmids=None):
+    """Read PubMed IDs one per line from filename.
 
-    Format ignores blank lines and lines starting with #, and only
+    File format ignores blank lines and lines starting with #, and only
     parses the line up to the first whitespace character.
+
+    If allpmids is provided, we only return those PMID integers that
+    satisfy 'pmid in allpmids'.
     """
     if not isinstance(filename,path) or not filename.exists():
-        raise ValueError("File %s does not exist")
+        raise ValueError("File %s does not exist" % filename)
+    count = 0
     for line in file(filename,"r"):
         if line.strip() != "" and not line.startswith("#"):
-            yield int(line.split()[0])
+            pmid = int(line.split()[0])
+            if allpmids is None or pmid in allpmids:
+                yield pmid
+                count += 1
+            else:
+                log.warn("Failed to find PMID %d in allpmids" % pmid)
+    if count == 0:
+        raise RuntimeError("Did not succeed in reading any PMIDs from %s" % filename)
 
 def getArticles(article_db_path, pmidlist_path):
     """Return list of Article's, given the path to an article database

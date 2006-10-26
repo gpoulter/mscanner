@@ -110,7 +110,7 @@ def filterDocuments( docs, feature_scores, limit=-100000.0 ):
 
 def writeTermScoresCSV(f, meshdb, scores, pfreqs, nfreqs):
     """Write term scores to CSV file"""
-    LINE = "%.3f,%.3f,%.3f,%d,%d,%d,%s\n"
+    LINE = "%.3f,%.2e,%.2e,%d,%d,%d,%s\n"
     f.write("score,numerator,denominator,positives,negatives,termid,term\n")
     for termid, s in sorted( scores.iteritems(), key=lambda x:x[1][0], reverse=True ):
         f.write(LINE % (s[0],s[1],s[2],s[3],s[4],termid,meshdb[termid]))

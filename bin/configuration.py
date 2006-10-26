@@ -38,6 +38,7 @@ b.templates = b.lib / "templates"
 b.stylesheet = b.templates / "style.css"
 ## Path to base for working data
 b.working = b.top / "data"
+#b.working = b.top / "testing"
 ## Path to output files
 b.output = b.working / "output"
 ## Path to cache directory

@@ -39,7 +39,7 @@ def do_query():
     featdb = FeatureDatabase(m.featuredb,'r')
     artdb = dbshelve.open(m.articledb,'r')
     posids = set(readPMIDFile(q.posfile))
-    pos_counts = TermCounts(featdb[d] for d in posids)
+    pos_counts = TermCounts(featdb[d] for d in posids if d in featdb)
     bg_counts = TermCounts.load(m.termcounts)
     neg_counts = bg_counts.subtract(pos_counts)
     term_scores = getTermScores(pos_counts, neg_counts, q.pseudocount)
@@ -80,6 +80,8 @@ def do_query():
             a = artdb[str(pmid)]
             a.genedrug = gdfilter(a)
             if len(a.genedrug) > 0:
+
+
                 gdarticles.append(a)
         log.debug("Exporting database")
         dbexport.exportDefault(q.outputdb, gdarticles)

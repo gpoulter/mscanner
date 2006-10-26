@@ -41,6 +41,8 @@ def readPMIDFile(filename):
     Format ignores blank lines and lines starting with #, and only
     parses the line up to the first whitespace character.
     """
+    if not isinstance(filename,path) or not filename.exists():
+        raise ValueError("File %s does not exist")
     for line in file(filename,"r"):
         if line.strip() != "" and not line.startswith("#"):
             yield int(line.split()[0])

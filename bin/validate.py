@@ -39,6 +39,13 @@ def do_validation():
     for x in positives:
         if x in negatives:
             negatives.remove(x)
+        if x not in featdb:
+            positives.remove(x)
+            log.debug("Positive with PMID %d missing from database")
+    for x in negatives:
+        if x not in featdb:
+            negatives.remove(x)
+            log.debug("Negative with PMID %d missing from database")
     # Get which document ids have gene-drug assocations
     genedrug_articles = None
     if v.genedrug:

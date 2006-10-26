@@ -20,12 +20,14 @@ ofile = file("narticles.txt","w")
 
 for pmid in pmids:
     if str(pmid) not in adb:
-        print "%d not in adb" % pmid
+        print "%d not in articles" % pmid
         if pmid in fdb:
+            print "deleting %d from features" % pmid
             fdb.delitem(pmid)
     if pmid not in fdb:
-        print "%d not in fdb" % pmid
+        print "%d not in features" % pmid
         if str(pmid) in adb:
+            print "deleting %d from articles" % pmid
             adb.delitem(pmid)
     if str(pmid) in adb and pmid in fdb:
         ofile.write("%d\n"%pmid)

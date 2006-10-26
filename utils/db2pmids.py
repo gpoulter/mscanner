@@ -1,19 +1,18 @@
-#!/usr/bin/env python
+#!env python
 
 """Extract PubMed IDs from the feature database
 
-Usage: ./extractpmids.py <outputfile>
+Usage: ./db2pmids.py <dbfile> <outputfile>
 
-Iterate through the configured feature database, and print all the
-PubMed IDs therein to <outputfile>.
+Iterate through <dbfile>, and print all the PubMed IDs therein to
+<outputfile>.
 
 """
 
-import configuration as c
 from medline import FeatureDatabase
 import sys
 
-d = FeatureDatabase(c.medline.featuredb, 'r')
+d = FeatureDatabase(sys.argv, 'r')
 f = file(sys.argv[1], "w")
 for key in d:
     f.write("%d\n" % key)

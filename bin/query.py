@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!env python
 
 """Query the MEDLINE database with a set of positive articles
 

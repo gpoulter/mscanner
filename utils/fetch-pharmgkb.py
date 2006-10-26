@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!env python
 
 """Fetch current literature annotations from PharmGKB
 

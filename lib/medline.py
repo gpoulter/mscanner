@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!env python
 
 """Manage Article and feature database
 

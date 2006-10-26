@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!env python
 
 """Persistent shelf backed by Berkeley DB
 

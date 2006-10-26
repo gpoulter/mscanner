@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!env python
 
 """Find associations of genes and drugs
 

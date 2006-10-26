@@ -1,11 +1,11 @@
-#!/usr/bin/env python
+#!env python
 
 """Extracts PubMed IDs from GeneOntology annotation files
 
 @author: Graham Poulter
                                    
 
-Usage: parse_geneontology.sh <file1.gz> <file2.gz> ...
+Usage: go2pmids.sh <file1.gz> <file2.gz> ...
 
 Files should be .gz (gzip) files containing GeneOntology annotations.
 The program prints a sorted list of unique PubMed IDs from the to

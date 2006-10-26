@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!env python
 
 """Handle Articles, processed files, features, feature occurrence counts
 

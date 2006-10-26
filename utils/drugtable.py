@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!env python
 
 """Parses a drug table
 

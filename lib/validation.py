@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!env python
 
 """Cross-validation and performance statistics module
 

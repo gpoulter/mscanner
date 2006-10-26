@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!env python
 
 """Export a database compatible with pharmdemo.stanford.edu
 

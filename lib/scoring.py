@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!env python
 
 """Calculate term and document scores, and print results
 

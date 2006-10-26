@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!env python
 
 """Update MEDLINE database with articles
 

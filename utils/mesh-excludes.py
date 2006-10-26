@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!env python
 
 """Creates exclude lists from the MeSH term tree
 

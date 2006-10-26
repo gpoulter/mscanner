@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!env python
 
 """Filter positive and negative corpora
 

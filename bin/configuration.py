@@ -93,8 +93,10 @@ u.mesh_synonyms = b.working / "mesh-excludes" / "meshsynonyms.pickle"
 q = query = module("config_query")
 ## Path to file of positive training PMIDs (processed by fixcorpora.py)
 q.posfile = None
-## Integer for number of results, or float minimum score threshold
+## Integer for maximum number of results (may be fewer due to threshold)
 q.limit = 10000
+## Float for minimum score threshold
+q.threshold = 0
 ## Per-term pseudocount to use
 q.pseudocount = 0.01
 ## Prefix for result report files
@@ -111,8 +113,6 @@ v = validation = module("config_validation")
 v.posfile = None
 ## Negative training / testing set (processed by fixcorpora.py)
 v.negfile = None
-## Recall to achieve on training set
-v.recall = 0.9
 ## Validation folds to use
 v.nfolds = 5
 ## Pseudocounts to use
@@ -140,13 +140,13 @@ sys.path.insert( 0, base.lib )
 
 #### Configure which data sets to ues
 
-dataset = "aids-vs-500k"
+#dataset = "aids-vs-500k"
 #dataset = "cur-vs-500k"
 #dataset = "cur-vs-med"
 #dataset = "cur-vs-go4"
 #dataset = "full-vs-500k"
 #dataset = "full-vs-go4"
-#dataset = "old-vs-go4"
+dataset = "old-vs-go4"
 
 q.prefix = b.output / (dataset+"-result")
 v.prefix = b.output / (dataset+"-valid")

@@ -78,7 +78,7 @@ def do_validation():
         cPickle.dump(results, file(pickle,"wb"), protocol=2)
     # Output performance statistics
     log.debug("Writing performance statistics")
-    val.report(results, v.prefix, v.stylesheet)
+    val.report(results[0], results[1], v.prefix, v.stylesheet)
 
 def cgi_invocation():
     try:

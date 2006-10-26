@@ -60,37 +60,6 @@ class Validator:
         self.daniel = daniel
         self.genedrug_articles = genedrug_articles
 
-    def doFold( self, ptrain, ptest, ntrain, ntest ):
-        """Carry out one inner iteration of the validation loop
-        @param ptrain,ptest,ntrain,ntest: Positive and negative training / testing data sets
-        @return: Return TP,TN,FP,FN, threshold, threshold, positive scores, negative scores
-        """
-        featdb = self.featdb
-        pfreqs = TermCounts( featdb[d] for d in ptrain )
-        nfreqs = TermCounts( featdb[d] for d in ntrain )
-        termscores = getTermScores( pfreqs, nfreqs, self.pseudocount, self.daniel )
-        if self.daniel:
-            threshold = 10 # Hardcoded for Daniel's scoring method
-        else:
-            ptrain_scores = [ (d,scoreDocument(featdb[d],termscores)) for d in ptrain ]
-            threshold = self.getThreshold( [s for d,s in ptrain_scores], self.recall )
-        ptest_scores = [ (d,scoreDocument(featdb[d],termscores)) for d in ptest ]
-        ntest_scores = [ (d,scoreDocument(featdb[d],termscores)) for d in ntest ]
-        # Evaluate positive test articles to get TPs and FNs
-        TP = 0
-        for docid, score in ptest_scores:
-            if self.articleIsPositive( docid, score, threshold ):
-                TP += 1
-        FN = len(ptest) - TP
-        # Evaluate negative test articles to get FPs and TNs
-        FP = 0
-        for docid, score in ntest_scores:
-            if self.articleIsPositive( docid, score, threshold ):
-                FP += 1
-        TN = len(ntest) - FP
-        # Return overall performance statistics
-        return TP, TN, FP, FN, threshold, [s for d,s in ptest_scores], [s for d,s in ntest_scores]
-
     def articleIsPositive( self, docid, score, threshold ):
         """Classifies an article as positive or negative based on score threshold"""
         if self.genedrug_articles is None or docid in self.genedrug_articles:
@@ -99,20 +68,7 @@ class Validator:
             return False
 
     @staticmethod
-    def getThreshold( scores, recall ):
-        """Return score threshold for given recall
-        @param scores: Log-likelihood scores of articles
-        @param recall: Proportion of articles to score higher than return value
-        @return: Threshold that achieves given recall
-        """
-        if recall < 0 or recall > 1:
-            raise ValueError("recall %s is not between 0.0 and 1.0" % str(recall))
-        scores.sort()
-        cutindex = int( (1.0-recall) * len( scores ) )
-        return scores[cutindex]
-
-    @staticmethod
-    def partition( items, nfold ):
+    def partition(items, nfold):
         """Partitions indeces into data items for cross-validation
 
         @param items: Set of objects to be partitioned
@@ -120,18 +76,18 @@ class Validator:
         @return: List of sets, each set being length len(items)/nfold
         """
         tests = [ set() for n in range(nfold) ]
-        ct = 0 # current test
+        ct = 0                  # current test
         available = list(items) # items to assign
-        N = len(available) # number of items
-        i = 0 # current iteration
-        size = N # number of items left
+        N = len(available)      # number of items
+        i = 0                   # current iteration
+        size = N                # number of items left
         while i < N:
-            r = randint(0,size-1) # choose a random item
-            tests[ct].add(available[r]) # add item to current set
+            r = randint(0,size-1)            # choose a random item
+            tests[ct].add(available[r])      # add item to current set
             available[r] = available[size-1] # over write with last item
-            i += 1 # next iteration
-            ct = (ct+1) % len(tests) # next test
-            size = size - 1 # virtual deletion
+            i += 1                           # next iteration
+            ct = (ct+1) % len(tests)         # next test
+            size = size - 1                  # virtual deletion
         return tests
 
     def validate(self):
@@ -139,29 +95,40 @@ class Validator:
         positives = self.pos
         negatives = self.neg
         log.info( "%d pos and %d neg articles", len(positives), len(negatives) )
-        TP,TN,FP,FN = (0,0,0,0)
         ptests = self.partition(positives, self.nfold)
         ntests = self.partition(negatives, self.nfold)
         pscores, nscores, threshold = [],[],0
         for fold, (ptest, ntest) in enumerate(zip(ptests, ntests)):
+            log.debug("Carrying out fold number %d", fold)
             ptrain = positives - ptest
             ntrain = negatives - ntest
-            _TP,_TN,_FP,_FN,_threshold,_pscores,_nscores = self.doFold(ptrain, ptest, ntrain, ntest)
-            pscores.extend( _pscores )
-            nscores.extend( _nscores )
-            log.info( "Fold %d: TP=%d, TN=%d, FP=%d, FN=%d", fold, _TP, _TN, _FP, _FN )
-            TP,TN,FP,FN = ( TP+_TP, TN+_TN, FP+_FP, FN+_FN )
-            threshold += _threshold
-        recall = 0
-        precision = 0
-        fmeasure = 0
-        if TP+FN != 0: recall = TP/(TP+FN)
-        if TP+FP != 0: precision = TP/(TP+FP)
-        if recall > 0 and precision > 0: fmeasure = 2*recall*precision/(recall+precision)
-        threshold = threshold / self.nfold
-        log.info( "Average: threshold=%g, recall=%g, precision=%g, fmeasure=%g",
-                  threshold, recall, precision, fmeasure )
-        return TP, TN, FP, FN, threshold, pscores, nscores
+            featdb = self.featdb
+            pfreqs = TermCounts( featdb[d] for d in ptrain )
+            nfreqs = TermCounts( featdb[d] for d in ntrain )
+            termscores = getTermScores(pfreqs, nfreqs, self.pseudocount, self.daniel)
+            pscores.extend( scoreDocument(featdb[d], termscores) for d in ptest )
+            nscores.extend( scoreDocument(featdb[d], termscores) for d in ntest )
+        return pscores, nscores
+
+    @staticmethod
+    def makeHistogram(data):
+        """Returns a tuple (centers,freqs) of normalised frequencies
+        at centers, given data points in data and a set bin width."""
+        small = min(data)
+        big = max(data)
+        npoints = len(data)
+        bin_width = min(npoints, (big-small)/20)
+        centers = [ 0.0 for x in range(0,int((big+1e-5-small)/bin_width)) ]
+        if len(centers) == 0:
+            return [0], [0]
+        for i in range(len(centers)):
+            centers[i] = small+bin_width*(2*i+1)/2
+        freqs = [ 0.0 for x in centers ]
+        for x in data:
+            pos = int((x-small)//bin_width)
+            if pos == len(freqs): pos = len(freqs)-1
+            freqs[pos] += 1/npoints
+        return centers, freqs
 
     @staticmethod
     def plotHistogramsPYLAB(name,pdata,ndata,threshold,recall,precision):
@@ -185,26 +152,6 @@ class Validator:
         p.close()
 
     @staticmethod
-    def makeHistogram(data):
-        """Returns a tuple (centers,freqs) of normalised frequencies
-        at centers, given data points in data and a set bin width."""
-        small = min(data)
-        big = max(data)
-        npoints = len(data)
-        bin_width = min(npoints, (big-small)/20)
-        centers = [ 0.0 for x in range(0,int((big+1e-5-small)/bin_width)) ]
-        if len(centers) == 0:
-            return [0], [0]
-        for i in range(len(centers)):
-            centers[i] = small+bin_width*(2*i+1)/2
-        freqs = [ 0.0 for x in centers ]
-        for x in data:
-            pos = int((x-small)//bin_width)
-            if pos == len(freqs): pos = len(freqs)-1
-            freqs[pos] += 1/npoints
-        return centers, freqs
-
-    @staticmethod
     def plotHistograms(name, pdata, ndata, threshold):
         """Plot histograms of the positive and negative scores, with a
         vertical line marking the classifier threshold."""
@@ -224,17 +171,29 @@ class Validator:
         
     @staticmethod
     def plotCurves(roc, p_vs_r, pr_vs_score, pscores, nscores):
-        """Plot precision-recall, and precision,recall vs threshold"""
+        """Plot curves for ROC, precision-recall, and stats vs threshold
 
-        # Calculate TPR (recall), FPR, and precision
+        Returns threshold, TP, FN, TN, FP counts once it has tuned the
+        threshold to maximise PPV (precision) subject to the F-Measure
+        being at least 80% of the best F-Measure attained.
+        """
+
+        # Calculate TPR (recall), FPR, PPV (precision), FM (F-measure)
         pscores.sort()
         nscores.sort()
         P = len(pscores)
         N = len(nscores)
         TPR = [ 0 for xi in xrange(P) ] # recall
         FPR = [ 0 for xi in xrange(P) ] # 1-specificity
-        precision = [ 0 for xi in xrange(P) ] # precision
-        TN = 1
+        PPV = [ 0 for xi in xrange(P) ] # precision
+        FM  = [ 0 for xi in xrange(P) ] # F-measure
+        TN  = 1                         # True negatives
+        maxFM_xi = 0                    # Maximum of F-measure
+        maxPPV_xi = 0                   
+        maxPPV_TP = 0
+        maxPPV_FN = 0
+        maxPPV_TN = 0
+        maxPPV_FP = 0
         for xi in xrange(P):
             threshold = pscores[xi]
             while (nscores[TN-1] < threshold) and (TN < N):
@@ -245,40 +204,58 @@ class Validator:
             TPR[xi] = TP/P # TPR = TP/P
             FPR[xi] = FP/N # FPR = FP/N = 1 - TN/N = 1 - specificity
             if TP+FP > 0:
-                precision[xi] = TP/(TP+FP) # PPV = TP/(TP+FP) = precision
+                PPV[xi] = TP/(TP+FP) # PPV = TP/(TP+FP) = precision
+            if PPV[xi] > 0 and TPR[xi] > 0:
+                FM[xi] = 2*TPR[xi]*PPV[xi]/(PPV[xi]+TPR[xi]) # PPV=2*recall*precision/(recall+precision)
+            else:
+                FM[xi] = 0
+            if FM[xi] > FM[maxFM_xi]:
+                maxFM_xi = xi
+            if PPV[xi] > PPV[maxPPV_xi] and FM[xi] > 0.9*FM[maxFM_xi]:
+                maxPPV_xi = xi
+                maxPPV_TP = TP
+                maxPPV_FN = FN
+                maxPPV_TN = TN
+                maxPPV_FP = FP
             #print "thresh = %g, TPR = %d/%d = %.1e, FPR = %d/%d = %.1e" % (threshold, TP, P, TP/P, FP, N, FP/N)
-        recall = TPR
             
         from Gnuplot import Gnuplot, Data
         g = Gnuplot(debug=1)
 
         # ROC (TPR vs FPR)
-        g.xlabel("False Positive Rate (FPR)")
         g.ylabel("True Positive Rate (TPR)")
+        g.xlabel("False Positive Rate (FPR)")
         g.title("ROC curve (TPR vs FPR)")
         g('set terminal png')
         g('set output "%s"' % roc)
-        g.plot( Data( FPR, TPR, title="TPR", with="lines" ) )
+        g.plot( Data( FPR, TPR, title="TPR", with="lines" ),
+                Data([FPR[maxPPV_xi],FPR[maxPPV_xi]],[0,1.0],title="threshold",with='lines') )
 
         # Precision vs recall
-        g.xlabel("Recall")
         g.ylabel("Precision")
+        g.xlabel("Recall")
         g.title("Precision vs Recall")
         g('set terminal png')
         g('set output "%s"' % p_vs_r)
-        g.plot( Data( recall, precision, title="Precision", with="lines" ) )
+        g.plot( Data( TPR, PPV, title="Precision", with="lines" ),
+                Data([TPR[maxPPV_xi],TPR[maxPPV_xi]],[0,1.0],title="threshold",with='lines') )
 
-        # Precision and recall vs threshold
+        # Precision, Recall, F-Measure vs threshold
         g.reset()
+        g.ylabel('Precision, Recall, F-Measure')
         g.xlabel('Threshold Score')
-        g.ylabel('Precision and Recall')
         g.title('Precision and Recall vs Threshold')
         g('set terminal png')
         g('set output "%s"' % pr_vs_score)
-        g.plot( Data( pscores, recall, title="Recall", with="lines" ),
-                Data( pscores, precision, title="Precision", with="lines" ) )
+        g.plot( Data( pscores, TPR, title="Recall", with="lines" ),
+                Data( pscores, PPV, title="Precision", with="lines" ),
+                Data( pscores, FM, title="F-Measure", with="lines" ),
+                Data([pscores[maxPPV_xi],pscores[maxPPV_xi]],[0,1],title="threshold",with='lines') )
 
-    def report(self, results, prefix, stylesheet):
+        # Return tuned results
+        return pscores[maxPPV_xi], maxPPV_TP, maxPPV_FN, maxPPV_TN, maxPPV_FP
+
+    def report(self, pscores, nscores, prefix, stylesheet):
         """Write a full validation report
 
         @param resuls: (TP,TN,FP,FN,threshold,pscores,nscores) from self.validate()
@@ -293,8 +270,18 @@ class Validator:
         p_vs_r_img = prefix/"prcurve.png"
         pr_vs_score_img = prefix/"prscore.png"
         mainfile = prefix/"index.html"
+
+        # Plot graphs and get tuned performancs
+        threshold, TP, FN, TN, FP = self.plotCurves(roc_img, p_vs_r_img, pr_vs_score_img, pscores, nscores)
+
+        # Output term scores
+        pfreqs = TermCounts(self.featdb[d] for d in self.pos)
+        nfreqs = TermCounts(self.featdb[d] for d in self.neg)
+        termscores = getTermScores( pfreqs, nfreqs, self.pseudocount, self.daniel)
+        writeTermScoresCSV(file(terms_csv,"w"), self.meshdb, termscores, pfreqs, nfreqs)
+        writeTermScoresHTML(file(terms_html,"w"), self.meshdb, termscores, pfreqs, nfreqs, self.pseudocount)
+
         # Calculate performance measures
-        TP, TN, FP, FN, threshold, pscores, nscores = results
         P = TP+FN
         N = TN+FP
         A = TP+FN+TN+FP # = P + N = T + F
@@ -319,15 +306,11 @@ class Validator:
         precision = PPV
         if recall > 0 and precision > 0:
             fmeasure = 2*recall*precision/(recall+precision)
-        # Term scores
-        pfreqs = TermCounts(self.featdb[d] for d in self.pos)
-        nfreqs = TermCounts(self.featdb[d] for d in self.neg)
-        termscores = getTermScores( pfreqs, nfreqs, self.pseudocount, self.daniel)
-        writeTermScoresCSV(file(terms_csv,"w"), self.meshdb, termscores, pfreqs, nfreqs)
-        writeTermScoresHTML(file(terms_html,"w"), self.meshdb, termscores, pfreqs, nfreqs, self.pseudocount)
-        # Output performance statistics
+
+        # Output score histograms
         self.plotHistograms(hist_img, pscores, nscores, threshold)
-        self.plotCurves(roc_img, p_vs_r_img, pr_vs_score_img, pscores, nscores)
+
+        # Write main index file
         templates.validation.run(dict(
             TP=TP, TN=TN, FP=FP, FN=FN, P=P, N=N, A=A, T=T, F=F,
             TPR=TPR, FNR=FNR, TNR=TNR, FPR=FPR, PPV=PPV, NPV=NPV,

@@ -82,12 +82,13 @@
     </table>
 
     <div class="help" id="csv_help">
-      Spreadsheet table with the score of each MeSH term.  The score of
-      a MeSH term is the natural logarithm of the ratio of the term
-      frequency amongst the positive documents to the term frequency in
-      Medline as a whole.  Each article has a number of MeSH terms
-      associated with it, and the score for an article is the sum of the
-      scores of its MeSH terms.  This file is more compact than the HTML
+      A CSV table (which Excel can import) with the calculation of
+      each MeSH term's score.  The score of a MeSH term is the natural
+      logarithm of the ratio of the term frequency amongst the
+      positive documents to frequency of the term in the rest of
+      Medline.  Each article has a number of MeSH terms associated
+      with it, and the score for an article is the sum of the scores
+      of its MeSH terms.  This file is more compact than the HTML
       below.
     </div>
     

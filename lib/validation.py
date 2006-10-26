@@ -35,7 +35,6 @@ class Validator:
         featdb,
         posids,
         negids,
-        recall,
         nfold,
         pseudocount=0.1,
         daniel=False,
@@ -45,7 +44,6 @@ class Validator:
         @param featdb: docid:[termid] mapping
         @param posids: Set of positive docids
         @param negids: Set of negative docids
-        @param recall: Calibrate threshold to achieve this recall on training data
         @param nfold: Number of folds in cross-validation.
         @param pseudocount, daniel: Passed to Scoring.getTermScores
         @param genedrug_articles: Set of docids having gene-drug co-occurrences
@@ -54,7 +52,6 @@ class Validator:
         self.featdb = featdb
         self.pos = posids
         self.neg = negids
-        self.recall = recall
         self.nfold = nfold
         self.pseudocount = pseudocount
         self.daniel = daniel
@@ -131,7 +128,7 @@ class Validator:
         return centers, freqs
 
     @staticmethod
-    def plotHistogramsPYLAB(name,pdata,ndata,threshold,recall,precision):
+    def plotHistogramsPYLAB(name,pdata,ndata,threshold):
         """Plot histograms of the positive and negative scores, with a
         vertical line marking the classifier threshold."""
         import pylab as p
@@ -147,7 +144,7 @@ class Validator:
         p.xlabel('Article score')
         p.ylabel('Probability density')
         p.legend(lcolors,('Positive Set','Negative Set'))
-        p.title('Score Densities (r=%d,p=%d)' % (int(recall*100),int(precision*100)))
+        p.title('Score Densities')
         p.savefig(name)
         p.close()
 
@@ -194,6 +191,7 @@ class Validator:
         maxPPV_FN = 0
         maxPPV_TN = 0
         maxPPV_FP = 0
+        ROC_area = 0
         for xi in xrange(P):
             threshold = pscores[xi]
             while (nscores[TN-1] < threshold) and (TN < N):
@@ -203,6 +201,8 @@ class Validator:
             FP = N - TN    # TN+FP = N
             TPR[xi] = TP/P # TPR = TP/P
             FPR[xi] = FP/N # FPR = FP/N = 1 - TN/N = 1 - specificity
+            if xi > 0:
+                ROC_area += 0.5*(TPR[xi]+TPR[xi-1])*(FPR[xi-1]-FPR[xi])
             if TP+FP > 0:
                 PPV[xi] = TP/(TP+FP) # PPV = TP/(TP+FP) = precision
             if PPV[xi] > 0 and TPR[xi] > 0:
@@ -253,7 +253,7 @@ class Validator:
                 Data([pscores[maxPPV_xi],pscores[maxPPV_xi]],[0,1],title="threshold",with='lines') )
 
         # Return tuned results
-        return pscores[maxPPV_xi], maxPPV_TP, maxPPV_FN, maxPPV_TN, maxPPV_FP
+        return pscores[maxPPV_xi], maxPPV_TP, maxPPV_FN, maxPPV_TN, maxPPV_FP, ROC_area
 
     def report(self, pscores, nscores, prefix, stylesheet):
         """Write a full validation report
@@ -272,7 +272,7 @@ class Validator:
         mainfile = prefix/"index.html"
 
         # Plot graphs and get tuned performancs
-        threshold, TP, FN, TN, FP = self.plotCurves(roc_img, p_vs_r_img, pr_vs_score_img, pscores, nscores)
+        threshold, TP, FN, TN, FP, ROC_area = self.plotCurves(roc_img, p_vs_r_img, pr_vs_score_img, pscores, nscores)
 
         # Output term scores
         pfreqs = TermCounts(self.featdb[d] for d in self.pos)
@@ -314,10 +314,10 @@ class Validator:
         templates.validation.run(dict(
             TP=TP, TN=TN, FP=FP, FN=FN, P=P, N=N, A=A, T=T, F=F,
             TPR=TPR, FNR=FNR, TNR=TNR, FPR=FPR, PPV=PPV, NPV=NPV,
+            ROC_area = ROC_area,
             accuracy = accuracy,
             prevalence = prevalence,
             recall = recall,
-            trainrecall = self.recall,
             threshold = threshold,
             precision = precision,
             fmeasure = fmeasure,

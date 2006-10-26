@@ -4,9 +4,9 @@
 
 <head>
 
-  <title>Medline Scanner Web Interface</title>
+  <title>MScanner: Medline Scanner Web Interface</title>
 
-  <link rel="stylesheet" type="text/css" href="style.css"/>
+  <link rel="stylesheet" type="text/css" href="mscanner.css"/>
 
   <script type="text/javascript" src="script/jsolait/jsolait.js"> </script>  
   <script type="text/javascript" src="script/jsolait/lib/urllib.js"> </script>  
@@ -16,41 +16,32 @@
   <script type="text/javascript" src="script/moo/moo.fx.js"> </script>
   <script type="text/javascript" src="script/moo/moo.fx.pack.js"> </script>
   <script type="text/javascript" src="script/sxoop/sxoop_template.js"> </script>
-  <script type="text/javascript" src="site.js"> </script>
+  <script type="text/javascript" src="mscanner.js"> </script>
 
 </head>
 
 <body>
 
   <h1 id="heading">
-    MedScan: The Medline Scanner
+    MScanner: The Medline Scanner
   </h1>
 
   <div id="content">
 
     <div class="box" id="intro">
       <p class="para">
-        This is a web frontend for the Medline Scanner.  Given the
-        PubMed IDs for a set of articles, it looks for articles that
-        are similar to the query set.  The <q> <a
-        href="http://www.ncbi.nlm.nih.gov/entrez/query/static/computation.html">
-        Related Articles</a></q> feature on NCBI is similar, but only uses one
-        article instead of a set and uses heuristic term weighting
-        instead of a statistical classifier.
+        This is a web frontend for MScanner, the Medline Scanner.  It
+        extends a set of input articles by finding other article in
+        MEDLINE most similar to the query set.
       </p>
       <p class="para">
-        The scanner builds a statistical model comparing distribution
-        of mesh terms in the query articles to the background
-        distribution in Medline.  You can use cross-validation to see
-        how the classifier performs for your particular query set.
-      </p>
-      <p class="para">
-        The scanner was built to identify articles as input to
-        literature curation at the Pharmacogenetics Knowledge Base (<a
-        href="http://www.pharmgkb.org">PharmGKB</a>).  It was trained
-        on 4400+ articles describing relationships between genes and
-        drugs, to uncover relationships in the biomedical
-        literature not entered into PharmGKB.
+        MScanner compares the frequencies of MeSH terms in the query
+        corpus to the rest of Medline, and assigns each term a score.
+        The score of an article is the sum of the scores of its terms,
+        and the MScanner returns up to a limited number articles,
+        which score higher than a chosen threshold.  You can use
+        cross-validation to get some idea of MScanner's performance on
+        a particular query set.
       </p>
     </div>
 
@@ -125,9 +116,21 @@
               </select>
             </p>
             <p class="help" id="limit_help">
-              This is the maximum number of results to return (probably
-              worth keeping it high).  A hard score threshold is only
-              used for validation.
+              This is the maximum number of results to return.
+            </p>
+
+            <p class="item">
+              <button class="help" onclick="g.fx['threshold_help'].toggle()">help</button>
+              <b class="label">Score threshold</b>
+              <input class="field" type="text" size="6" value="10" id="threshold"/>
+            </p>
+            <p class="help" id="threshold_help">
+              Articles are only included in results if they score
+              greater than this threshold.  For a high threshold,
+              there may be fewer results returned than the result
+              limit.  Use cross-validation to tell you what a good
+              choice of threshold would be to achieve high precision
+              in your results.
             </p>
 
             <button class="action" onclick="query()">Perform a query</button>
@@ -162,23 +165,6 @@
               data instead of training data to see if the classifier
               correctly guesses them to be positive without having seen them
               before.
-            </p>
-
-            <p class="item">
-              <button class="help" onclick="g.fx['recall_help'].toggle()">help</button>
-              <b class="label">Training recall</b>
-              <select class="field" id="recall">
-                <option value="0.5">0.5</option>
-                <option value="0.75">0.75</option>
-                <option value="0.9">0.9</option>
-                <option value="0.95" selected="selected">0.95</option>
-                <option value="0.99" selected="selected">0.99</option>
-              </select>
-            </p>
-            <p class="help" id="recall_help">
-              The threshold for calling an article positive during
-              validation is chosen so that this proportion of the training
-              articles would be recalled by the classifier.
             </p>
 
             <p class="item">

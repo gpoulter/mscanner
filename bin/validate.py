@@ -57,7 +57,6 @@ def do_validation():
         featdb,
         positives,
         negatives,
-        v.recall,
         v.nfolds,
         v.pseudocount,
         v.daniel,
@@ -81,21 +80,16 @@ def do_validation():
     val.report(results[0], results[1], v.prefix, v.stylesheet)
 
 def cgi_invocation():
-    try:
-        batchid = sys.argv[1]
-        v.numnegs = int(sys.argv[2])
-        v.nfolds = int(sys.argv[3])
-        v.recall = float(sys.argv[4])
-        v.pseudocount = float(sys.argv[5])
-        v.prefix = base.weboutput / batchid
-        v.posfile = v.prefix / "positives.txt"
-        v.negfile = v.prefix / "negatives.txt"
-        chooseRandomLines(v.allpmids, v.negfile, v.numnegs)
-    except Exception:
-        print __doc__
-        sys.exit(1)
+    batchid = sys.argv[1]
+    v.numnegs = int(sys.argv[2])
+    v.nfolds = int(sys.argv[3])
+    v.pseudocount = float(sys.argv[4])
+    v.prefix = base.weboutput / batchid
+    v.posfile = v.prefix / "positives.txt"
+    v.negfile = v.prefix / "negatives.txt"
+    chooseRandomLines(m.articlelist, v.negfile, v.numnegs)
     # Lock with PID, batch id and start time
-    pidfile = path("/var/run/medscan.pid")
+    pidfile = path("/var/run/mscanner.pid")
     if pidfile.exists():
         raise RuntimeError("MedScanner instance is already running")
     pidfile.write_text("%d\n%s\n%s\n" % (os.getpid(), batchid, str(time.time())))

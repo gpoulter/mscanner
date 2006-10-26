@@ -54,7 +54,8 @@ def do_query():
         if not q.prefix.exists():
             q.prefix.makedirs()
         log.info("Recalculating results, to store in %s", pickle)
-        results = filterDocuments(((k,v) for k,v in featdb.iteritems() if k not in posids), term_scores, q.limit)
+        results = filterDocuments(((k,v) for k,v in featdb.iteritems() if k not in posids),
+                                  term_scores, q.limit, q.threshold)
         cPickle.dump(results, file(pickle,"wb"), protocol=2)
     # Write result report
     log.debug("Writing report")
@@ -89,16 +90,13 @@ def do_query():
     artdb.close()
 
 def cgi_invocation():
-    try:
-        batchid = sys.argv[1]
-        q.pseudocount = float(sys.argv[2])
-        q.limit = int(sys.argv[3])
-        q.prefix = (base.weboutput / batchid) + "/"
-        q.posfile = q.prefix / "positives.txt"
-    except Exception:
-        print __doc__
-        sys.exit(1)
-    pidfile = path("/var/run/medscan.pid")
+    batchid = sys.argv[1]
+    q.pseudocount = float(sys.argv[2])
+    q.limit = int(sys.argv[3])
+    q.threshold = float(sys.argv[4])
+    q.prefix = (base.weboutput / batchid) + "/"
+    q.posfile = q.prefix / "positives.txt"
+    pidfile = path("/var/run/mscanner.pid")
     if pidfile.exists():
         raise RuntimeError("MedScanner instance is already running")
     # Lock with PID, batch id and start time

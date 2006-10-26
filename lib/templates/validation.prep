@@ -67,20 +67,24 @@
       </tr>
       <tr>
         <th>
-          Target recall (threshold tuning)
-          <button onclick="show('recall_help')">?</button>
-        </th>
-        <td>{{"%.2f"%trainrecall}}</td>
-      </tr>
-      <tr>
-        <th>
-          Average threshold
+          Tuned threshold
           <button onclick="show('threshold_help')">?</button>
         </th>
         <td>{{"%.5f"%threshold}}</td>
       </tr>
+      <tr>
+        <th>
+          Area under ROC curve
+          <button onclick="show('roc_area_help')">?</button>
+        </th>
+        <td>{{"%.5f"%ROC_area}}</td>
     </table>
 
+    <div class="help" id="terms_help">
+      HTML display of MeSH term scores. This file can be very large
+      (2Mb).
+    </div>
+    
     <div class="help" id="csv_help">
       A CSV table (which Excel can import) with the calculation of
       each MeSH term's score.  The score of a MeSH term is the natural
@@ -92,20 +96,19 @@
       below.
     </div>
     
-    <div class="help" id="terms_help">
-      HTML display of MeSH term scores. This file can be very large
-      (2Mb).
-    </div>
-    
-    <div class="help" id="recall_help">
-      During each fold of validation, choose the article score threshold
-      so that that this proportion of the training set of positive
-      articles would be classified positive.
+    <div class="help" id="threshold_help">
+      After cross-validation assigned scores to all of the articles in
+      the positive and negative sets, the threshold score is tuned to
+      maximise precision subject to the constraint that the F-measure
+      should be at least 90% of the maximum F-measure.  The line for
+      this tuned threshold is marked on all of the graphs.
     </div>
 
-    <div class="help" id="threshold_help">
-      Averaged over the folds of validation, this was the score above
-      which an article was classified as positive.
+    <div class="help" id="roc_area_help">
+      The area under the ROC curve is a global measure of classifier
+      performance.  The closer to 1.0, the better the classifier.  A
+      classifier which randomly assigned scores would have a linear
+      ROC curve, with an area of 0.5.
     </div>
 
   </div>
@@ -292,18 +295,17 @@
     <div class="help" id="graph_help">
       <ul>
         <li>
-          The score histogram compares the distributions of scores of
-          the background ("negative") articles to those of the query
-          ("positive") articles.  When the distributions are
-          well-separated, the classifier performance is better than
-          when the distributions largely overlap.
+          The first graph is a score histogram comparing the
+          distributions of the background ("negative") articles to
+          those of the query ("positive") articles.  When the
+          distributions are well-separated, the classifier performance
+          is better than when the distributions largely overlap.
         </li>
         <li>
-          The ROC curve plots the True Positive Rate (or recall)
-          against the False Positive Rate (which is 1-precision).  The
-          worst performance is a straight line of gradient 1, and
-          performance is better the steeper the initial gradient,
-          since you get a lot of recall for little loss in precision.
+          The second graph is an ROC curve plotting the True Positive
+          Rate (or recall) against the False Positive Rate (which is
+          1-specificity).  The greater the area under the curve, the
+          better the global performance of the classifier.
         </li>
         <li>
           The precision recall curve plots precision against recall.
@@ -311,10 +313,13 @@
           recall.
         </li>
         <li>
-          The precision and recall against threshold is like the
-          previous, but shows how tuning the threshold would affect
-          the results.  Higher threshold reduces recall and (usually)
-          increases increases precision.
+          The precision, recall and F-measure against threshold is like the
+          previous graph, but shows how tuning the threshold would affect
+          the results.  
+        </li>
+        <li>
+          All of the graphs have a vertical line marking the tuned
+          threshold.
         </li>
       </ul>
     </div>

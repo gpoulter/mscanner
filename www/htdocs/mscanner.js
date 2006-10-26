@@ -9,7 +9,8 @@ window.onload = function() {
    jsolait.baseURI = "/htdocs/script/jsolait";
    g.xmlrpc = imprt("xmlrpc");
    g.service = new g.xmlrpc.ServiceProxy(
-      "http://jonbn.med.uct.ac.za:8080/cgi-bin/medscan.py",
+      "http://jonbn.med.uct.ac.za/cgi-bin/mscanner.py",
+      //"http://medline.stanford.edu/cgi-bin/mscanner.py",
       ["getStatus","listBatches","deleteBatch","query","validate"]);
    // Set up sliding help effects
    g.fx = new Object();
@@ -17,8 +18,8 @@ window.onload = function() {
       "positives_help",
       "pseudocount_help",
       "limit_help",
+      "threshold_help",
       "negatives_help",
-      "recall_help",
       "nfold_help"
    ];
    for (var i = 0; i < names.length; i++) {
@@ -59,12 +60,13 @@ function deleteBatch(batchid) {
 
 /* Start a query, returning batch id */
 function query() {
-   alert($("positives"));
+   //alert($("positives"));
    positives = $("positives").value;
    pseudocount = parseFloat($("pseudocount").value);
    limit = parseInt($("limit").value);
+   threshold = parseFloat($("threshold").value);
    try {
-      batchid = g.service.query(positives, pseudocount, limit);
+      batchid = g.service.query(positives, pseudocount, limit, threshold);
    } catch(e) {
       alert("Error: \n\n" + e.message);
       return;
@@ -78,10 +80,9 @@ function validate() {
    positives = $("positives").value;
    negatives = parseInt($("negatives").value);
    nfold = parseInt($("nfold").value);
-   recall = parseFloat($("recall").value);
    pseudocount = parseFloat($("pseudocount").value);
    try {
-      batchid = g.service.validate(positives, negatives, nfold, recall, pseudocount);
+      batchid = g.service.validate(positives, negatives, nfold, pseudocount);
    } catch(e) {
       alert("Error: \n\n" + e.message);
       return;

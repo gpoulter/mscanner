@@ -80,32 +80,26 @@ def scoreDocument( features, feature_scores ):
             score += feature_scores[f][0]
     return score
 
-def filterDocuments( docs, feature_scores, limit=-100000.0 ):
+def filterDocuments( docs, feature_scores, limit=10000, threshold=0.0 ):
     """Return scores for documents given features and feature scores
     @param docs: Iteratable over (doc ID, feature ID list) pairs
     @param feature_scores: Mapping from feature ID to score
-    @param limit: If int, it is maximum number of results to return.
-    If float, it is the cutoff score.
+    @param limit: Maximum number of results to return.
+    @param threshold: Cutoff score for including an article in the results
     @return: List of (score,docid) pairs
     """
     results = list()
-    if isinstance( limit, float ):
-        for docid, features in docs:
-            score = scoreDocument(features,feature_scores)
-            if score >= limit:
-                results.append( (score,docid) )
-        results.sort( reverse=True )
-    elif isinstance( limit, int ):
-        ndocs = 0
-        results = [ (-100000,0) for i in range( limit ) ]
-        from heapq import heapreplace
-        for docid, features in docs:
-            ndocs += 1
-            score = scoreDocument(features,feature_scores)
+    ndocs = 0
+    results = [ (-100000,0) for i in range( limit ) ]
+    from heapq import heapreplace
+    for docid, features in docs:
+        ndocs += 1
+        score = scoreDocument(features,feature_scores)
+        if score >= threshold:
             if score >= results[0][0]:
                 heapreplace( results, (score,docid) )
-        results.sort( reverse=True )
-        if ndocs < limit: del results[ndocs:]
+    results.sort( reverse=True )
+    if ndocs < limit: del results[ndocs:]
     return results
 
 def writeTermScoresCSV(f, meshdb, scores, pfreqs, nfreqs):
@@ -194,7 +188,8 @@ def writeReport(
         result_html = result_html.basename(),
         ),
         outputfile=index_html.open("w"))
-    posfile.copy(prefix / posfile.basename())
+    if not (prefix / posfile.basename()).exists():
+        posfile.copy(prefix / posfile.basename())
     stylesheet.copy(prefix / "style.css")
 
 class _ScoringTests(unittest.TestCase):

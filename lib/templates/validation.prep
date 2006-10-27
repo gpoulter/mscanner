@@ -270,6 +270,10 @@
         <td>{{"%.5f"%PPV}}</td>
       </tr>
       <tr>
+        <th><b>Enrichment</b> <span class="footnote">(= precision/prevalence)</span></th>
+        <td>{{"%.5f"%(PPV/prevalence)}}</td>
+      </tr>
+      <tr>
         <th><b>F-Measure</b> <span class="footnote">(2*recall*precision/(recall+precision))</span></th>
         <td>{{"%.5f"%fmeasure}}</td>
       </tr>
@@ -279,6 +283,8 @@
       <ul>
         <li>Recall = Proportion of positives classified correctly</li>
         <li>Precision = Proportion of those classified positive which actually were positive</li>
+        <li>Enrichment = Precision over prevalence.  This is how many
+            times the precision is enriched over a classifier which calls everything positive.</li>
         <li>F-Measure = Combined performance measure of recall and precision</li>
       </ul>
     </div>

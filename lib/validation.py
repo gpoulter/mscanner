@@ -1,5 +1,3 @@
-#!env python
-
 """Cross-validation and performance statistics module
 
 @author: Graham Poulter
@@ -11,7 +9,6 @@ Validator -- Perform cross-validation and output performance statistics
 
 from __future__ import division
 import sys
-import unittest
 import logging as log
 from random import randint, seed
 from heapq import heapreplace
@@ -40,13 +37,13 @@ class Validator:
         daniel=False,
         genedrug_articles=None ):
         """Initialise validator
-        @param meshdb: Mapping termid:term (FeatureMapping), for writing term names in report
-        @param featdb: docid:[termid] mapping
-        @param posids: Set of positive docids
-        @param negids: Set of negative docids
+        @param meshdb: Maping of term id to term name
+        @param featdb: Maping of doc id to list of term ids
+        @param posids: Set of positive doc ids
+        @param negids: Set of negative doc ids
         @param nfold: Number of folds in cross-validation.
         @param pseudocount, daniel: Passed to Scoring.getTermScores
-        @param genedrug_articles: Set of docids having gene-drug co-occurrences
+        @param genedrug_articles: Set of doc ids with gene-drug co-occurrences
         """
         self.meshdb = meshdb
         self.featdb = featdb
@@ -100,11 +97,11 @@ class Validator:
             ptrain = positives - ptest
             ntrain = negatives - ntest
             featdb = self.featdb
-            pfreqs = TermCounts( featdb[d] for d in ptrain )
-            nfreqs = TermCounts( featdb[d] for d in ntrain )
+            pfreqs = TermCounts(featdb[d] for d in ptrain)
+            nfreqs = TermCounts(featdb[d] for d in ntrain)
             termscores = getTermScores(pfreqs, nfreqs, self.pseudocount, self.daniel)
-            pscores.extend( scoreDocument(featdb[d], termscores) for d in ptest )
-            nscores.extend( scoreDocument(featdb[d], termscores) for d in ntest )
+            pscores.extend(scoreDocument(featdb[d], termscores) for d in ptest)
+            nscores.extend(scoreDocument(featdb[d], termscores) for d in ntest)
         return pscores, nscores
 
     @staticmethod
@@ -288,7 +285,7 @@ class Validator:
         T = TP+TN
         F = FP+FN
         TPR, FNR, TNR, FPR, PPV, NPV = 0, 0, 0, 0, 0, 0
-        accuracy, prevalence, fmeasure = 0, 0, 0
+        accuracy, prevalence, enrichment, fmeasure = 0, 0, 0, 0
         if TP+FN != 0:
             TPR = TP/(TP+FN) # TPR = TP/P = sensitivity = recall
             FNR = FN/(TP+FN) # FNR = FN/P = 1 - TP/P = 1-sensitivity = 1-recall
@@ -306,6 +303,8 @@ class Validator:
         precision = PPV
         if recall > 0 and precision > 0:
             fmeasure = 2*recall*precision/(recall+precision)
+        if prevalence > 0:
+            enrichment = precision / prevalence
 
         # Output score histograms
         self.plotHistograms(hist_img, pscores, nscores, threshold)
@@ -317,6 +316,7 @@ class Validator:
             ROC_area = ROC_area,
             accuracy = accuracy,
             prevalence = prevalence,
+            enrichment = enrichment,
             recall = recall,
             threshold = threshold,
             precision = precision,
@@ -329,26 +329,3 @@ class Validator:
             pr_vs_score_img = pr_vs_score_img.basename(),
             ), outputfile=file(mainfile, "w"))
         stylesheet.copy(prefix / "style.css")
-        
-class _ValidatorTest(unittest.TestCase):
-    def test(self):
-        val = Validator(
-            meshdb = { 1:"A", 2:"B", 3:"C", 4:"D", 5:"E", 6:"F" },
-            featdb = { 1:[1,2,3], 2:[2,3], 3:[1,3], 4:[4,6], 5:[4], 6:[3,4,5], 7:[4,5] },
-            posids = set([ 1, 2, 3 ]),
-            negids = set([ 4, 5, 6, 7]),
-            recall = 0.9,
-            nfold = 2,
-            pseudocount = 0.1,
-            daniel = False,
-            genedrug_articles = None,
-            )
-        seed(0)
-        self.assertEqual(
-            val.partition(set([1,2,3,4,5,6,7,8,9,10]),3) ,
-            [set([9,2,10,6]),set([8,1,7]),set([3,4,5])] )
-        results = val.validate()
-        val.report(results, path("/tmp/valid_"), path("templates/style.css"))
-
-if __name__ == "__main__":
-    unittest.main()

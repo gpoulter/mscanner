@@ -1,20 +1,20 @@
-#!env python
-
 """Handle Articles, processed files, features, feature occurrence counts
 
 @author: Graham Poulter
                                      
 
+chooseRandomLines() -- Get random lines from a file
+readPMIDFile() -- Get PMIDs reliably from a text file
+getArticles() -- Retrieve Articles from a DB, caching results in a Pickle
+
 Article -- Stores attributes of an article
 FileTracker -- Track processed files (to avoid re-parsing), with on-disk persistence
 FeatureMapping -- Mapping between string features and 16-bit feature IDs
 TermCounts -- Store number of occurrences of each feature, + total occurrences and documents
-getArticles() -- Retrieve Articles from a DB, caching results in a Pickle
 
 """
 
 import cPickle
-import unittest
 import logging as log
 from array import array
 from path import path
@@ -72,7 +72,7 @@ def getArticles(article_db_path, pmidlist_path):
         return cPickle.load(file( cache_path, "rb" ))
     pmids = readPMIDFile(pmidlist_path)
     artdb = dbshelve.open(article_db_path, 'r')
-    articles = [ artdb[p] for p in pmids ]
+    articles = [ artdb[str(p)] for p in pmids ]
     cPickle.dump(articles, file(cache_path,"wb"), protocol=2)
     artdb.close()
     return articles
@@ -284,68 +284,3 @@ class TermCounts(dict):
         for termid,count in self.iteritems():
             result[termid] = count - other.get(termid,0)
         return result
-
-class _FileTrackerTests(unittest.TestCase):
-    """Unit tests for the file tracker"""
-    def setUp(self):
-        self.home = path( '/tmp/test_filetracker' )
-        self.home.rmtree( ignore_errors=True )
-        self.home.mkdir()
-    def tearDown( self ):
-        self.home.rmtree( ignore_errors=True )
-    def test( self ):
-        t = FileTracker( self.home / 'test.txt' )
-        t.add( path( "hack/a.xml" ) )
-        t.add( path( "cough/b.xml" ) )
-        self.assertEqual( t.toprocess([ path("foo/a.xml"), path("blah/c.xml") ]), ["blah/c.xml"] )
-        t.dump()
-        del t
-        t = FileTracker( self.home / 'test.txt' )
-        self.assertEqual( t, set( [ 'a.xml', 'b.xml' ] ) )
-        
-class _FeatureMappingTests(unittest.TestCase):
-    def test(self):
-        fn = path( "/tmp/test_featuremapping" )
-        fm = FeatureMapping( fn )
-        self.assertEqual( fm.getids( ["A","B"] ), array("H",[0,1]) )
-        self.assertEqual( fm.getterms( [0,1] ), [ "A", "B" ] )
-        self.assertEqual( fm[0], "A" )
-        self.assertEqual( fm[1], "B" )
-        fm.dump()
-        fm.load()
-        fm.dump()
-        fm.load()
-        self.assertEqual( fm.term, ["A","B"] )
-        self.assertEqual( fm.termid, {"A":0,"B":1} )
-        try: fn.remove()
-        except os.error: pass
-        
-class _TermCountsTests(unittest.TestCase):
-    def test(self):
-        t = TermCounts()
-        t.add( [1,3] )
-        t.add( [2,3] )
-        self.assertEqual( t[1], 1 )
-        self.assertEqual( t[2], 1 )
-        self.assertEqual( t[3], 2 )
-        self.assertEqual( t.docs, 2 )
-        self.assertEqual( t.total, 4 )
-        TermCounts.dump( t, '/tmp/test_termcounts' )
-        t = TermCounts.load( '/tmp/test_termcounts' )
-        s = TermCounts()
-        s.add( [1,3] )
-        r = t.subtract( s )
-        self.assertEqual( r[1], 0 )
-        self.assertEqual( r[2], 1 )
-        self.assertEqual( r[3], 1 )
-        self.assertEqual( r.docs, 1 )
-        self.assertEqual( r.total, 2 )
-
-class _ArticleTests(unittest.TestCase):
-    def test(self):
-        # Test _makeBackup, _removeBackup, readPMIDFile, chooseRandomLines, getArticles
-        pass
-
-if __name__ == "__main__":
-    unittest.main()
-

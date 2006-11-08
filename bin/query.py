@@ -81,8 +81,6 @@ def do_query():
             a = artdb[str(pmid)]
             a.genedrug = gdfilter(a)
             if len(a.genedrug) > 0:
-
-
                 gdarticles.append(a)
         log.debug("Exporting database")
         dbexport.exportDefault(q.outputdb, gdarticles)

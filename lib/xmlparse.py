@@ -1,5 +1,3 @@
-#!env python
-
 """Convert MEDLINE XML text/files into Article objects
 
 @author: Graham Poulter
@@ -13,7 +11,6 @@ import cPickle
 import gzip
 import logging as log
 import pyRXPU
-import unittest
 from article import Article
 
 class ArticleParser:
@@ -46,11 +43,11 @@ class ArticleParser:
             else:
                 raise ValueError("Excludes is neither a filename nor set")
 
-    def __call__(self,text,check_id=None):
+    def __call__(self, text, check_id=None):
         """Call the L{parse} method"""
-        return self.parse(text,check_id)
+        return self.parse(text, check_id)
 
-    def parse(self,text,check_id=None):
+    def parse(self, text, check_id=None):
         """Yield articles from MEDLINE XML
 
         @type text: C{str}
@@ -66,10 +63,10 @@ class ArticleParser:
         @return: Article with pmid, title, abstract and meshterms fields
         set.
         """
-        parser = pyRXPU.Parser(Validate=0,ProcessDTD=0,TrustSDD=0)
-        NAME,ATTRS,CHILDREN,SPARE = range(0,4)
+        NAME, ATTRS, CHILDREN, SPARE = range(0,4)
+        parser = pyRXPU.Parser(Validate=0, ProcessDTD=0, TrustSDD=0)
         def parseCitation(root):
-            result = Article(pmid=0,title="",abstract="",meshterms=set())
+            result = Article(pmid=0, title="", abstract="", meshterms=set())
             for node1 in root[CHILDREN]:
                 if node1[NAME] == u'PMID':
                     result.pmid = int(node1[CHILDREN][0])
@@ -100,7 +97,7 @@ class ArticleParser:
         if root[NAME]==u'MedlineCitation':
             result=parseCitation(root)
             if check_id is not None:
-                if result.pmid!=check_id:
+                if result.pmid != check_id:
                     raise ValueError("Article PMID %s does not match check_id %s" % (result.pmid,check_id))
             yield result
         elif root[NAME]==u'PubmedArticle':
@@ -121,6 +118,10 @@ class ArticleParser:
         elif root[NAME] == u'MedlineCitationSet':
             for MedlineCitation in [n for n in root[CHILDREN] if n[NAME]=='MedlineCitation']:
                 yield parseCitation(MedlineCitation)
+        elif root[NAME] == u'PubmedArticleSet':
+            for PubmedArticle in [n for n in root[CHILDREN] if n[NAME]=='PubmedArticle']:
+                for MedlineCitation  in [n for n in  PubmedArticle[CHILDREN] if n[NAME]=='MedlineCitation']:
+                    yield parseCitation(MedlineCitation)
         else:
             raise ValueError("Could not find a valid PubMed citation")
 
@@ -139,91 +140,5 @@ class ArticleParser:
         else:
             text = file( filename, 'r' ).read()
         for article in self.parse( text ):
+            log.debug("Parsed article %d", article.pmid)
             yield article
-
-xmltext = u'''<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE MedlineCitationSet PUBLIC "-//NLM//DTD Medline Citation, 1st January 2006//EN"
-                                    "http://www.nlm.nih.gov/databases/dtd/nlmmedline_060101.dtd">
-<MedlineCitationSet>
-
-<MedlineCitation Owner="NLM" Status="MEDLINE">
-<PMID>1</PMID>
-<Article PubModel="Print">
-<ArticleTitle>T</ArticleTitle>
-<Abstract>
-<AbstractText>A</AbstractText>
-</Abstract>
-</Article>
-<MeshHeadingList>
-<MeshHeading>
-<DescriptorName MajorTopicYN="N">T1</DescriptorName>
-</MeshHeading>
-<MeshHeading>
-<Descriptor MajorTopicYN="Y">T2</Descriptor>
-</MeshHeading>
-<MeshHeading>
-<DescriptorName MajorTopicYN="N">T3</DescriptorName>
-<QualifierName MajorTopicYN="N">T4</QualifierName>
-<QualifierName MajorTopicYN="Y">T5</QualifierName>
-</MeshHeading>
-<MeshHeading>
-<Descriptor MajorTopicYN="N">T6</Descriptor>
-<SubHeading MajorTopicYN="N">T7</SubHeading>
-</MeshHeading>
-</MeshHeadingList>
-</MedlineCitation>
-
-<MedlineCitation Owner="NLM" Status="MEDLINE">
-<PMID>2</PMID>
-<Article PubModel="Print">
-<ArticleTitle>T</ArticleTitle>
-<Abstract>
-<AbstractText>A</AbstractText>
-</Abstract>
-</Article>
-<MeshHeadingList>
-<MeshHeading>
-<DescriptorName MajorTopicYN="N">T1</DescriptorName>
-</MeshHeading>
-<MeshHeading>
-<Descriptor MajorTopicYN="Y">T2</Descriptor>
-</MeshHeading>
-<MeshHeading>
-<DescriptorName MajorTopicYN="N">T3</DescriptorName>
-<QualifierName MajorTopicYN="N">T4</QualifierName>
-<QualifierName MajorTopicYN="Y">T5</QualifierName>
-</MeshHeading>
-<MeshHeading>
-<Descriptor MajorTopicYN="N">T6</Descriptor>
-<SubHeading MajorTopicYN="N">T7</SubHeading>
-</MeshHeading>
-</MeshHeadingList>
-</MedlineCitation>
-
-</MedlineCitationSet>
-'''
-
-class _ArticleParserTests(unittest.TestCase):
-    def art_equal( self, a, b):
-        self.assertEqual(a.pmid,b.pmid)
-        self.assertEqual(a.title,b.title)
-        self.assertEqual(a.abstract,b.abstract)
-        self.assertEqual(a.meshterms,b.meshterms)
-    def test( self ):
-        a1 = Article(1,"T","A",set(["T1","T2","T3","T4","T5","T6","T7"]))
-        a2 = Article(2,"T","A",set(["T1","T2","T3","T4","T5","T6","T7"]))
-        parser = ArticleParser()
-        result = list( parser.parse( xmltext ) )
-        self.art_equal(result[0],a1)
-        self.art_equal(result[1],a2)
-        synonyms = {"T1":"T2"}
-        exclude = set(["T3","T4"])
-        parser = ArticleParser( synonyms, exclude )
-        result = list( parser.parse( xmltext ) )
-        a1.meshterms.remove("T1")
-        a1.meshterms.remove("T3")
-        a1.meshterms.remove("T4")
-        self.art_equal(result[0],a1)
-
-if __name__ == "__main__":
-    unittest.main()

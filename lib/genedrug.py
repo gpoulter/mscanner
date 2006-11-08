@@ -1,12 +1,11 @@
-#!env python
-
 """Find associations of genes and drugs
 
 @author: Graham Poulter
                                    
 
 CachingGeneFinder -- Caches results of XMLRPC gene-finding queries
-CachingGeneDrugLister -- Caches results of gene-drug association for articles
+GeneDrugFilter -- Use a gene-finder and drug table to find associations
+CachingGeneDrugLister -- Find associations for articles, caching results
 getGeneDrugFilter() -- Return a caching gene-drug association lister
 
 """
@@ -14,6 +13,7 @@ getGeneDrugFilter() -- Return a caching gene-drug association lister
 import logging as log
 import os
 import re
+import unittest
 import xmlrpclib
 import dbshelve
 
@@ -30,7 +30,10 @@ class CachingGeneFinder:
         @param cache: Mapping of text to return values of
         L{findGenes}, or the file name of a persistent shelf
         containing such a mapping.
+
+        @var min_threshold: Minimum score for keeping results
         """
+        self.min_threshold = 0.1
         # Set up XMLRPC (possibly proxied)
         bionlp_uri="http://bionlp.stanford.edu/xmlrpc"
         proxy = os.environ.get("http_proxy", None)
@@ -91,7 +94,7 @@ class CachingGeneFinder:
         genes = self.geneFinder(text)
         result = []
         for (name,start,end,score) in genes:
-            if score >= 0.1: # throw away lowest scorers for efficiency
+            if score >= self.min_threshold: 
                 result.append((name,start,end,score))
             self.cache[key] = result
         return result
@@ -99,7 +102,7 @@ class CachingGeneFinder:
 class GeneDrugFilter:
     """Retrieve gene-drug associations for articles"""
 
-    def __init__(self,drugs,geneFinder,threshold=0.85):
+    def __init__(self, drugs, geneFinder, threshold=0.85):
         """Initialise gene-drug filter
 
         @type geneFinder: C{f(string)->[(string,number,number,float)]}
@@ -148,7 +151,7 @@ class GeneDrugFilter:
             result[PKID]=lownames
         return result
 
-    def listDrugs(self,strings):
+    def listDrugs(self, strings):
         """Return drugs found in each of a sequence of strings
 
         @type strings: C{[string]}
@@ -161,12 +164,13 @@ class GeneDrugFilter:
         sentences and drugs are replaced with a single space before
         matching.
         """
-        losepunct=re.compile(r'[0-9\s\!\@\#\$\%\^\&\*\(\){\}\[\]\-\:\;\"\'\?\/\.\,\<\>\`\~\-\_\=\+\\\|]+')
-        strings=[" "+losepunct.sub(' ',s.lower())+" " for s in strings] # need extra spaces for later
-        result=[dict() for s in strings]
-        for (PKID,names) in self.drugs.iteritems():
-            for (nidx,name) in enumerate(names):
-                for (idx,s) in enumerate(strings):
+        losepunct = re.compile(r'[0-9\s\!\@\#\$\%\^\&\*\(\){\}\[\]\-\:\;\"\'\?\/\.\,\<\>\`\~\-\_\=\+\\\|]+')
+        # lose punctuation, with extra spaces so that every word boundary is marked by a space
+        strings = [" "+losepunct.sub(' ',s.lower())+" " for s in strings] 
+        result = [dict() for s in strings]
+        for (PKID, names) in self.drugs.iteritems():
+            for (nidx, name) in enumerate(names):
+                for (idx, s) in enumerate(strings):
                     if len(name)>4: # short names cause spurious matches
                         if s.find(" "+name+" ") != -1: # drug name must stand alone
                             result[idx][PKID]=self.fulldrugs[PKID][nidx]
@@ -184,27 +188,27 @@ class GeneDrugFilter:
         text.
         """
         # Remove existing newlines
-        text=re.sub(r"\n",r" ",text)
+        text = re.sub(r"\n",r" ",text)
         # Break on ellipsis
-        text=re.sub(r"[.]{3}", r'&&&&&&&&&', text)
+        text = re.sub(r"[.]{3}", r'&&&&&&&&&', text)
         # Break on exclamation, question
-        text=re.sub(r'([!?]+\s+)', r'\1\n', text)
+        text = re.sub(r'([!?]+\s+)', r'\1\n', text)
         # Break on full-stops followed by space, but not on
-        # (title).(space) or .(space)(lowercase)
-        titles=['Rev','Mr','Dr','Miss','Mrs','Ms','Sr','Prof','Ph']
-        text=re.sub(r'('+'|'.join(titles)+r')[.]\s',r'\1&&& ',text)
-        text=re.sub(r'[.](\s+[a-z])',r'&&&\1',text)
-        text=re.sub(r'([.]\s+)',r'\1\n',text)
+        # Mr.(space) or .(space)(lowercase)
+        titles = ['Rev','Mr','Dr','Miss','Mrs','Ms','Sr','Prof','Ph']
+        text = re.sub(r'('+'|'.join(titles)+r')[.]\s',r'\1&&& ',text)
+        text = re.sub(r'[.](\s+[a-z])',r'&&&\1',text)
+        text = re.sub(r'([.]\s+)',r'\1\n',text)
         # Split using newline markers, replace "&&&" with "."
-        lines=[ re.sub(r'&&&',r'.',line) for line in text.split('\n') ]
-        sentences=[]
-        start_idx=0
+        lines = [ re.sub(r'&&&',r'.',line) for line in text.split('\n') ]
+        sentences = []
+        start_idx = 0
         for line in lines:
-            sentences.append((line,start_idx,start_idx+len(line)))
-            start_idx+=len(line)
+            sentences.append((line, start_idx, start_idx+len(line)))
+            start_idx += len(line)
         return sentences
 
-    def listGenes(self,text):
+    def listGenes(self, text):
         """List genes found in text
 
         @type text: C{string}
@@ -214,14 +218,14 @@ class GeneDrugFilter:
         @return: (gene name,start index,end index) for each
         gene/protein name found.
         """
-        genes=self.geneFinder(text)
-        result=[]
-        for (name,start,end,score) in genes:
+        genes = self.geneFinder(text)
+        result = []
+        for (name, start, end, score) in genes:
             if score > self.threshold:
-                result.append((name,start,end))
+                result.append((name, start, end))
         return result
 
-    def listGeneDrugs(self,text):
+    def listGeneDrugs(self, text):
         """Return gene-drug co-occurrences in a text
 
         Search for genes in the text, and also split the text into
@@ -239,7 +243,7 @@ class GeneDrugFilter:
         genes_found=self.listGenes(text)
         drugs_found=self.listDrugs(s[0] for s in sentences)
         result={}
-        for (idx,(sentence,sen_start,sen_end)) in enumerate(sentences):
+        for (idx, (sentence, sen_start, sen_end)) in enumerate(sentences):
             genes=set()
             # Add genes in this sentence
             for (gene,gene_start,gene_end) in genes_found:
@@ -254,7 +258,7 @@ class GeneDrugFilter:
                         result[name].update(genes)
         return result
 
-    def listGeneDrugsArticle(self,article):
+    def listGeneDrugsArticle(self, article):
         """Return cached results from L{GeneDrugFilter.listGeneDrugs}
 
         @type article: C{Article}
@@ -264,21 +268,25 @@ class GeneDrugFilter:
         @return: The L{listGeneDrugs} result for an article's title
         and abstract joined together.
         """
-        article.pmid=str(article.pmid)
+        article.pmid = str(article.pmid)
         # DO NOT CHANGE NEXT FOUR LINES - WILL DISRUPT GENEFINDER CACHE
-        text=article.title
-        if text[-1:]!=".":
-            text+=". "
-        text+=article.abstract
+        text = article.title
+        if text[-1:] != ".":
+            text += ". "
+        text += article.abstract
         log.debug("Querying genes for article %s", article.pmid)
         return self.listGeneDrugs(text)
 
 class CachingGeneDrugLister:
 
-    def __init__( self, cache, gdfilter):
+    def __init__(self, cache, gdfilter):
         """Caching proxy for gene-drug filtering
-        @param cache: A mapping from PMIDs to a drug:[genes] mapping, or the filename for a shelf containing one. 
-        @param gdfilter: Function which takes an article and returns a drug:[genes] mapping 
+
+        @param cache: A mapping from PMIDs to a drug:[genes] mapping,
+        or the filename for a shelf containing one.
+
+        @param gdfilter: Function which takes an article and returns a
+        drug:[genes] mapping
         """
         if isinstance(cache, basestring):
             self.cache = dbshelve.open(cache, 'c')
@@ -292,27 +300,27 @@ class CachingGeneDrugLister:
         if isinstance(self.cache, dbshelve.Shelf):
             self.cache.close()
 
-    def __call__(self,article):
+    def __call__(self, article):
         """Automatically calls L{listGeneDrugs}"""
         return self.listGeneDrugs(article)
 
-    def listGeneDrugs(self,article):
+    def listGeneDrugs(self, article):
         """Return gene-drug association for an article"""
         key = str(article.pmid)
         if key in self.cache:
             return self.cache[key]
         result = self.gdfilter(article)
-        log.debug("%s", str(result))
+        log.debug("%s: %s", str(article.pmid), str(result))
         self.cache[key]=result
         return result
 
-def getGeneDrugFilter( gdcache, drugpickle, gapscorecache ):
+def getGeneDrugFilter(gdcache, drugpickle, gapscorecache):
     """Convenience function to create a fully caching gene-drug filter"""
     from cPickle import load
     return CachingGeneDrugLister(
         gdcache,
         GeneDrugFilter(
-            load( file( drugpickle, "rb") ),
+            load(file(drugpickle, "rb")),
             CachingGeneFinder( gapscorecache )
         )
     )

@@ -1,16 +1,5 @@
 """Test data for genedrug_test.py"""
 
-sentence_text="One A. Dr. Smith. Two B. A question? An exclamation! One. lowercase. Just... an ellipsis."
-
-sentences_correct=[
-    ('One A. ', 0, 7),
-    ('Dr. Smith. ', 7, 18),
-    ('Two B. ', 18, 25),
-    ('A question? ', 25, 37),
-    ('An exclamation! ', 37, 53),
-    ('One. lowercase. ', 53, 69),
-    ('Just... an ellipsis.', 69, 89)]
-
 drugs_table="""PA10000\t17 beta-estradiol\t\t
 PA10007\talbumin human\t\tAlbuminar-25|Albuminar-5|Albutein 25%|Albutein 5%|Buminate 25%|Buminate 5%|Plasbumin-25|Plasbumin-5|
 PA10009\talefacept\t\tAmevive|

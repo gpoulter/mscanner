@@ -1,5 +1,3 @@
-#!env python
-
 """Manage Article and feature database
 
 @author: Graham Poulter
@@ -12,7 +10,6 @@ MedlineCache -- Parses and adds articles to the databases
 
 import os
 import struct
-import unittest
 import logging as log
 from bsddb import db
 from array import array
@@ -153,32 +150,32 @@ class MedlineCache:
         dbenv.set_lg_max( 512*1024*1024 ) # 512Mb log files
         dbenv.set_tx_max( 1 ) # 1 transaction at a time
         dbenv.set_cachesize( 0, 8*1024*1024 ) # 8Mb shared cache
-        dbenv.open( self.db_env_home, db.DB_INIT_MPOOL|db.DB_INIT_TXN|db.DB_CREATE|db.DB_RECOVER_FATAL )
+        dbenv.open(self.db_env_home, db.DB_INIT_MPOOL|db.DB_INIT_TXN|db.DB_CREATE)
         return dbenv
 
-    def putArticleList( self, articles, dbenv ):
+    def putArticleList(self, articles, dbenv):
         """Write a list of Article objects to the cache"""
         # Starting transaction
         log.info("Starting transaction to add articles")
         txn = dbenv.txn_begin()
         try:
-            artdb = dbshelve.open( self.article_db_path, dbenv=dbenv, txn=txn )
-            featdb = FeatureDatabase( self.feature_db_path, dbenv=dbenv, txn=txn )
+            artdb = dbshelve.open(self.article_db_path, dbenv=dbenv, txn=txn)
+            featdb = FeatureDatabase(self.feature_db_path, dbenv=dbenv, txn=txn)
             artlist = file( self.article_list_path, "a" )
             for art in articles:
                 # Refuse to add or overwrite duplicates
                 if not art.pmid in featdb:
-                    termids = self.meshdb.getids( art.meshterms )
+                    termids = self.meshdb.getids(art.meshterms)
                     artdb[str(art.pmid)] = art
-                    featdb.setitem( art.pmid, termids, txn )
+                    featdb.setitem(art.pmid, termids, txn)
                     artlist.write("%d\n" % art.pmid)
-                    self.termcounts.add( termids )
+                    self.termcounts.add(termids)
             artdb.close()
             featdb.close()
             artlist.close()
             txn.commit()
             self.meshdb.dump()
-            TermCounts.dump( self.termcounts, self.termcounts_path )
+            TermCounts.dump(self.termcounts, self.termcounts_path)
         except Exception, e:
             log.error( "Aborting Transaction: Error %s", e )
             txn.abort()
@@ -186,7 +183,7 @@ class MedlineCache:
         else:
             log.info( "Successfully committed transaction to add articles" )
             
-    def updateCacheFromDir( self, medlinedir, save_delay=5 ):
+    def updateCacheFromDir(self, medlinedir, save_delay=5):
         """Updates the cache given that medlinedir contains .xml.gz
         file to add to the cache and that we should save the inverse
         document after processing each savesteps files."""
@@ -206,51 +203,3 @@ class MedlineCache:
             tracker.dump()
             log.info( "Completed file %d out of %d (%s)", idx+1, len(toprocess), f.name )
         dbenv.close()
-
-class _FeatureDatabaseTests(unittest.TestCase):
-    def test( self ):
-        d = FeatureDatabase(value_type="H")
-        d.setitem( 1, array("H",[1,3]) )
-        d.setitem( 2, array("H",[2,3]) )
-        self.assertEqual( d.getitem(1), array("H",[1,3]) )
-        self.assertEqual( d.getitem(2), array("H",[2,3]) )
-        self.assertRaises( KeyError, d.getitem, 3 )
-        self.failUnless( 1 in d )
-        self.failUnless( 2 in d )
-        self.failIf( 3 in d )
-        self.assertEqual( d.keys(), [2,1] )
-        self.assertEqual( list( d.__iter__() ), [2,1] )
-        self.assertEqual( list( d.iteritems() ), [ (2,array("H",[2,3])), (1,array("H",[1,3])) ] )
-        self.assertEqual( len(d), 2 )
-        d.delitem(2)
-        self.failIf( 2 in d )
-
-class _MedlineCacheTests(unittest.TestCase):
-    def setUp( self ):
-        self.home = h = path( '/tmp/medline_test' )
-        h.rmtree( ignore_errors=True )
-        try: h.mkdir()
-        except os.error: pass
-    def tearDown( self ):
-        self.home.rmtree( ignore_errors=True )
-    def test( self ):
-        import xmlparse
-        h = self.home
-        m = MedlineCache( FeatureMapping(),
-                          xmlparse.ArticleParser(),
-                          h,
-                          h/"articles.db",
-                          h/"features.db",
-                          h/"termcounts.pickle",
-                          h/"processed.txt" )
-        (h/"test.xml").write_text( xmlparse.xmltext )
-        m.updateCacheFromDir( h, save_delay=1 )
-        (h/"pmids.xml").write_lines( [ "1", "2" ] )
-        from article import getArticles
-        a = getArticles( h/"articles.db", h/"pmids.xml" )
-        self.assertEqual( a[0].pmid, 1 )
-        self.assertEqual( a[1].pmid, 2 )
-        self.assertEqual( m.termcounts, {0: 2, 1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2} )
-
-if __name__ == "__main__":
-    unittest.main()

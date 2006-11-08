@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!env python
+#!/export/home/medscan/local/bin/python
 
 """CGI XML-RPC medscanner service
 
@@ -17,12 +18,12 @@ from datetime import datetime
 from xmlrpclib import Fault
 from DocXMLRPCServer import DocCGIXMLRPCRequestHandler
 
-mtree = False
 mtree = True
+mtree = False
 
 if mtree:
     source = path("/export/home/medscan/source")
-    output = path("/export/apps/medscan/htdocs/output")
+    output = path("/export/apps/medline/htdocs/output")
 else:
     source = path("/home/graham/data/mscanner/source")
     output = path("/srv/www/htdocs/mscanner/output")

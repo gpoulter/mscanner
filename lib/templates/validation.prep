@@ -271,7 +271,7 @@
       </tr>
       <tr>
         <th><b>Enrichment</b> <span class="footnote">(= precision/prevalence)</span></th>
-        <td>{{"%.5f"%(PPV/prevalence)}}</td>
+        <td>{{"%.5f"%enrichment}}</td>
       </tr>
       <tr>
         <th><b>F-Measure</b> <span class="footnote">(2*recall*precision/(recall+precision))</span></th>

@@ -6,12 +6,12 @@
 """
 
 from path import path
-import cPickle, sys, os, unittest, re
+import cPickle
+import sys
+import os
+import unittest
+import re
 from pprint import PrettyPrinter
-
-sys.path.insert(0,path(sys.argv[0]).dirname().abspath().parent / "lib")
-import genedrug
-from article import Article
 
 #http_proxy = "cache.uct.ac.za:8080"
 http_proxy = None

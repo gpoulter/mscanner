@@ -1,5 +1,3 @@
-#!env python
-
 """Calculate term and document scores, and print results
 
 @author: Graham Poulter
@@ -17,8 +15,6 @@ writeReport() -- Collate results of a query (calls all of above)
 """
 
 from __future__ import division
-import codecs
-import unittest
 from path import path
 import templates
 
@@ -90,16 +86,17 @@ def filterDocuments( docs, feature_scores, limit=10000, threshold=0.0 ):
     """
     results = list()
     ndocs = 0
-    results = [ (-100000,0) for i in range( limit ) ]
+    results = [ (-100000, 0) for i in range(limit) ]
     from heapq import heapreplace
     for docid, features in docs:
-        ndocs += 1
         score = scoreDocument(features,feature_scores)
         if score >= threshold:
+            ndocs += 1
             if score >= results[0][0]:
-                heapreplace( results, (score,docid) )
+                heapreplace(results, (score,docid))
     results.sort( reverse=True )
-    if ndocs < limit: del results[ndocs:]
+    if ndocs < limit:
+        del results[ndocs:]
     return results
 
 def writeTermScoresCSV(f, meshdb, scores, pfreqs, nfreqs):
@@ -191,57 +188,3 @@ def writeReport(
     if not (prefix / posfile.basename()).exists():
         posfile.copy(prefix / posfile.basename())
     stylesheet.copy(prefix / "style.css")
-
-class _ScoringTests(unittest.TestCase):
-
-    class Freqs(dict):
-        def __init__(self, docs, total, contents):
-            dict.__init__(self)
-            self.docs = docs
-            self.total = total
-            self.update( contents )
-        
-    def test_getTermScores(self):
-        pfreqs = self.Freqs( 2, 3, { 100:1, 200:2 } )
-        nfreqs = self.Freqs( 2, 3, { 100:2, 200:1 } )
-        termscores = getTermScores( pfreqs, nfreqs, pseudocount=0 )
-        self.assertEqual( termscores,
-                          {100: (-0.69314718055994529, 0.5, 1.0, 1, 2),
-                           200: (0.69314718055994529, 1.0, 0.5, 2, 1)}
-                          )
-
-    def test_filterDocuments(self):
-        docs = { 1:["A","C"], 2:["B","C","D"] }
-        feat_scores = { "A":(1,), "B":(10,), "C":(100,) }
-        self.assertEqual( scoreDocument( docs[1], feat_scores ), 101.0 )
-        self.assertEqual( scoreDocument( docs[2], feat_scores ), 110.0 )
-        self.assertEqual( filterDocuments( docs.iteritems(), feat_scores, 1 ), [ (110.0,2) ] )
-        self.assertEqual( filterDocuments( docs.iteritems(), feat_scores, 102.0 ), [ (110.0,2) ] )
-
-    def test_writeReport(self):
-        pfreqs = self.Freqs( 2, 3, { 1:1, 2:2 } )
-        nfreqs = self.Freqs( 2, 3, { 1:2, 2:1 } )
-        from article import Article
-        articles = {
-            "1111": Article(1111,"T","A",set(["A","B"])),
-            "2222": Article(2222,"T","A",set(["A","C"])),
-            "3333": Article(3333,"T","A",set(["B","C"])),
-            }
-        path("/tmp/positives.txt").write_text("2222\n3333\n")
-        termscores = getTermScores( pfreqs, nfreqs, pseudocount=0 )
-        writeReport(
-            scores = [ (1.0,1111), (2.0,2222), (3.5,3333) ],
-            meshdb = { 1:"A", 2:"B", 3:"C" },
-            termscores = termscores,
-            pfreq = pfreqs,
-            nfreq = nfreqs,
-            prefix = path("/tmp/result_"),
-            stylesheet = path("templates/style.css"),
-            pseudocount = 0,
-            limit = 3,
-            posfile = path("/tmp/positives.txt"),
-            articles = articles,
-            )
-
-if __name__ == "__main__":
-    unittest.main()

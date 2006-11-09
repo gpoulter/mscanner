@@ -20,7 +20,7 @@ import dbshelve
 class CachingGeneFinder:
     """Cache results of gene finding queries"""
 
-    def __init__(self,cache):
+    def __init__(self, cache):
         """Initialise cache
         
         Uses http://bionlp.stanford.edu/xmlrpc, function
@@ -43,9 +43,9 @@ class CachingGeneFinder:
             rpc_server = self.HTTPProxiedXMLRPC(bionlp_uri, proxy)
         self.geneFinder=rpc_server.find_gene_and_protein_names
         # Set up results cache
-        if isinstance( cache, basestring ):
-            self.cache = dbshelve.open( cache, 'c' )
-        elif isinstance( cache, dict ):
+        if isinstance(cache, basestring):
+            self.cache = dbshelve.open(cache, "c")
+        elif isinstance(cache, dict):
             self.cache = cache
         else:
             raise ValueError("Cache is neither a filename nor dictionary")
@@ -117,10 +117,10 @@ class GeneDrugFilter:
         @param threshold: Genes are only used if they score higher
         than this in the geneFinder output.
         """
-        self.fulldrugs=drugs
-        self.drugs=self.stripDrugs(drugs)
-        self.geneFinder=geneFinder
-        self.threshold=threshold
+        self.fulldrugs = drugs
+        self.drugs = self.stripDrugs(drugs)
+        self.geneFinder = geneFinder
+        self.threshold = threshold
 
     def __call__(self,article):
         """Automatically calls L{listGeneDrugsArticle}"""
@@ -128,52 +128,52 @@ class GeneDrugFilter:
 
     @staticmethod
     def stripDrugs(drugs):
-        """Return drug dictionary stripped down to lowercase characters
+        """Strip a drug dictionary down to lowercase characters and
+        create a regular expression out of it.
 
         @type drugs: C{{string:[string]}}
-        @param drugs: Mapping from PharmGKB accession number (like
-        PK12345) to drug aliases, where the first name in the list is
-        preferred.
 
-        @rtype: C{{string:[string]}}
-        @return: Same as input except drug names consist of lowercase
-        words separated by single space characters, all other
-        characters having been stripped.
+        @param drugs: Mapping from PharmGKB accession number (like
+        PK12345) to drug aliases (the first name in the list is the
+        preferred).
+
+        @rtype: C{{string:MatchObject}
+
+        @return: Mapping from PharmGKB accession number to a regular
+        expression which matches any of the drug names (lowercased,
+        non-alphabetics stripped).
         """
         result = {}
-        losepunct=re.compile(r'[0-9\s\!\@\#\$\%\^\&\*\(\){\}\[\]\-\:\;\"\'\?\/\.\,\<\>\`\~\-\_\=\+\\\|]+')
+        losepunct = re.compile(r'[0-9\s\!\@\#\$\%\^\&\*\(\)\{\}\[\]\-\:\;\"\'\?\/\.\,\<\>\`\~\-\_\=\+\\\|]+')
         for (PKID,names) in drugs.iteritems():
-            lownames=[]
+            lownames = []
             for name in names:
-                text=name.lower()
-                text=losepunct.sub(' ',text).strip()
-                lownames.append(text)
-            result[PKID]=lownames
+                lname = losepunct.sub(' ', name.lower()).strip()
+                lname = lname.replace(' ',r'\s+')
+                if lname not in lownames: # and len(lname)>3:
+                    lownames.append(lname)
+            result[PKID] = re.compile(r'\b(' + r'|'.join(lownames) + r')\b')
         return result
 
-    def listDrugs(self, strings):
-        """Return drugs found in each of a sequence of strings
+    def listDrugs(self, text):
+        """Return locations of drugs in text
 
-        @type strings: C{[string]}
-        @param strings: Strings to search for drugs.
+        @param text: Text to search for drugs.
 
-        @rtype: C{[{string:string}]}
-        @return: Mapping of PharmGKB ID to drug name for each string
+        @rtype: C{[(string,int,int,string)]}
+
+        @return: List of (matched text, start index, end index, PharmGKB ID)
         
         @note: Matching is approximate.  All non-alphabetics in both
-        sentences and drugs are replaced with a single space before
-        matching.
+        sentences and drugs are replaced with spaces before matching.
         """
-        losepunct = re.compile(r'[0-9\s\!\@\#\$\%\^\&\*\(\){\}\[\]\-\:\;\"\'\?\/\.\,\<\>\`\~\-\_\=\+\\\|]+')
+        losepunct = re.compile(r'[0-9\s\!\@\#\$\%\^\&\*\(\)\{\}\[\]\-\:\;\"\'\?\/\.\,\<\>\`\~\-\_\=\+\\\|]')
         # lose punctuation, with extra spaces so that every word boundary is marked by a space
-        strings = [" "+losepunct.sub(' ',s.lower())+" " for s in strings] 
-        result = [dict() for s in strings]
-        for (PKID, names) in self.drugs.iteritems():
-            for (nidx, name) in enumerate(names):
-                for (idx, s) in enumerate(strings):
-                    if len(name)>4: # short names cause spurious matches
-                        if s.find(" "+name+" ") != -1: # drug name must stand alone
-                            result[idx][PKID]=self.fulldrugs[PKID][nidx]
+        reptext = losepunct.sub(" ", text.lower())
+        result = []
+        for (PKID, regex) in self.drugs.iteritems():
+            for m in regex.finditer(reptext):
+                result.append((m.group(), m.start(), m.end(), PKID))
         return result
 
     @staticmethod
@@ -204,18 +204,19 @@ class GeneDrugFilter:
         sentences = []
         start_idx = 0
         for line in lines:
-            sentences.append((line, start_idx, start_idx+len(line)))
-            start_idx += len(line)
+            end_idx = start_idx+len(line)
+            sentences.append((line, start_idx, end_idx))
+            start_idx = end_idx
         return sentences
 
     def listGenes(self, text):
         """List genes found in text
 
-        @type text: C{string}
         @param text: Input text to search for genes.
 
         @rtype: C{[(string,number,number)]}
-        @return: (gene name,start index,end index) for each
+        
+        @return: (gene name, start index, end index) for each
         gene/protein name found.
         """
         genes = self.geneFinder(text)
@@ -239,37 +240,35 @@ class GeneDrugFilter:
         @return: Mapping from PharmGKB drug ID to genes co-occurring with
         the drug.
         """
-        sentences=self.listSentences(text)
-        genes_found=self.listGenes(text)
-        drugs_found=self.listDrugs(s[0] for s in sentences)
-        result={}
-        for (idx, (sentence, sen_start, sen_end)) in enumerate(sentences):
-            genes=set()
-            # Add genes in this sentence
-            for (gene,gene_start,gene_end) in genes_found:
-                if gene_start >= sen_start and gene_end <= sen_end:
-                    genes.add(gene)
-            # Add drugs in this sentence
-            if len(genes)!=0:
-                for name in drugs_found[idx].itervalues():
-                    if name not in result:
-                        result[name]=genes
+        sentences = self.listSentences(text)
+        allgenes = self.listGenes(text)
+        alldrugs = self.listDrugs(text)
+        for drug, dstart, dfinish, pkid  in alldrugs:
+            allgenes = [ (g,s,f) for g,s,f in allgenes if s > dfinish or f < dstart ]
+        result = {}
+        for sentence, s_start, s_finish in sentences:
+            genes = [ g for g,s,f in allgenes if s >= s_start and f <= s_finish ]
+            drugs = [ p for d,s,f,p in alldrugs if s >= s_start and f <= s_finish ]
+            for pkid in drugs:
+                if len(genes) > 0:
+                    if pkid not in result:
+                        result[pkid] = genes
                     else:
-                        result[name].update(genes)
+                        result[pkid].extend(genes)
         return result
 
     def listGeneDrugsArticle(self, article):
         """Return cached results from L{GeneDrugFilter.listGeneDrugs}
 
-        @type article: C{Article}
-        @param article: Article to cache result for.
+        @param article: Article object to cache result for.
 
         @rtype: C{string:set(string)}
+        
         @return: The L{listGeneDrugs} result for an article's title
         and abstract joined together.
         """
         article.pmid = str(article.pmid)
-        # DO NOT CHANGE NEXT FOUR LINES - WILL DISRUPT GENEFINDER CACHE
+        # DO NOT CHANGE NEXT FOUR LINES (DISRUPTS GENEFINDER CACHE)
         text = article.title
         if text[-1:] != ".":
             text += ". "

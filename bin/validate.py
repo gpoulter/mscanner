@@ -49,8 +49,17 @@ def do_validation():
         gdfilter = getGeneDrugFilter(gd.genedrug, gd.drugtable, gd.gapscore)
         for article in chain(pos_arts, neg_arts):
             gdresult = gdfilter(article)
+            article.genedrug = gdresult
             if len(gdresult) > 0:
                 genedrug_articles.add(article.pmid)
+        from dbexport import countGeneDrug
+        gdcount = countGeneDrug(pos_arts)
+        outf = file("/tmp/output.csv", "w")
+        outf.write("PMID,GENE,DRUG\n")
+        for (gene,drug),pmids in gdcount.iteritems():
+            for pmid in pmids:
+                outf.write("%s,%s,%s\n" % (pmid, gene, drug))
+        outf.close()
     # Initialist validator
     val = Validator(
         meshdb,

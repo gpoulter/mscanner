@@ -145,10 +145,10 @@ sys.path.insert( 0, base.lib )
 #dataset = "cur-vs-med"
 #dataset = "cur-vs-go4"
 #dataset = "full-vs-500k"
-#dataset = "full-vs-go4"
-dataset = "old-vs-go4"
+dataset = "full-vs-go4"
+#dataset = "old-vs-go4"
 #dataset = "old-vs-500k"
-dataset = "gdtest"
+#dataset = "gdtest"
 
 q.prefix = b.output / (dataset+"-result")
 v.prefix = b.output / (dataset+"-valid")

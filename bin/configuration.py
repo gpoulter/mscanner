@@ -141,14 +141,16 @@ sys.path.insert( 0, base.lib )
 #### Configure which data sets to ues
 
 #dataset = "aids-vs-500k"
+#dataset = "aidsbig-vs-500k"
 #dataset = "cur-vs-500k"
-#dataset = "cur-vs-med"
 #dataset = "cur-vs-go4"
+#dataset = "cur-vs-med"
 #dataset = "full-vs-500k"
-dataset = "full-vs-go4"
-#dataset = "old-vs-go4"
-#dataset = "old-vs-500k"
+#dataset = "full-vs-go4"
 #dataset = "gdtest"
+#dataset = "old-vs-30k"
+#dataset = "old-vs-500k"
+#dataset = "old-vs-go4"
 
 q.prefix = b.output / (dataset+"-result")
 v.prefix = b.output / (dataset+"-valid")
@@ -156,29 +158,35 @@ v.prefix = b.output / (dataset+"-valid")
 if dataset == "aids-vs-500k":
     v.posfile = b.corpora / "ncbi-aids-bioethics-Oct06-1k.txt"
     v.negfile = b.corpora / "medline-500k.txt"
-if dataset == "cur-vs-med":
-    v.posfile = b.corpora / "pharmgkb-Oct06.txt"
-    v.negfile = m.articlelist
+if dataset == "aidsbig-vs-500k":
+    v.posfile = b.corpora / "ncbi-aids-bioethics-Oct06.txt"
+    v.negfile = b.corpora / "medline-500k.txt"
 if dataset == "cur-vs-500k":
     v.posfile = b.corpora / "pharmgkb-Oct06.txt"
     v.negfile = b.corpora / "medline-500k.txt"
 if dataset == "cur-vs-go4":
     v.posfile = b.corpora / "pharmgkb-Oct06.txt"
     v.negfile = b.corpora / "geneontology-2004.txt"
+if dataset == "cur-vs-med":
+    v.posfile = b.corpora / "pharmgkb-Oct06.txt"
+    v.negfile = m.articlelist
 if dataset == "full-vs-500k":
     v.posfile = b.corpora / "pharmgkb-full-Jan06.txt"
     v.negfile = b.corpora / "medline-500k.txt"
 if dataset == "full-vs-go4":
     v.posfile = b.corpora / "pharmgkb-full-Jan06.txt"
     v.negfile = b.corpora / "geneontology-2004.txt"
-if dataset == "old-vs-go4":
-    v.posfile = b.corpora / "pharmgkb-2004.txt"
+if dataset == "gdtest":
+    v.posfile = b.corpora / "genedrug-small.txt"
     v.negfile = b.corpora / "geneontology-2004.txt"
+if dataset == "old-vs-30k":
+    v.posfile = b.corpora / "pharmgkb-2004.txt"
+    v.negfile = b.corpora / "medline-30k.txt"
 if dataset == "old-vs-500k":
     v.posfile = b.corpora / "pharmgkb-2004.txt"
     v.negfile = b.corpora / "medline-500k.txt"
-if dataset == "gdtest":
-    v.posfile = b.corpora / "genedrug-small.txt"
+if dataset == "old-vs-go4":
+    v.posfile = b.corpora / "pharmgkb-2004.txt"
     v.negfile = b.corpora / "geneontology-2004.txt"
 
 q.posfile = v.posfile

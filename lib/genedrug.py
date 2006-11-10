@@ -144,15 +144,17 @@ class GeneDrugFilter:
         non-alphabetics stripped).
         """
         result = {}
-        losepunct = re.compile(r'[0-9\s\!\@\#\$\%\^\&\*\(\)\{\}\[\]\-\:\;\"\'\?\/\.\,\<\>\`\~\-\_\=\+\\\|]+')
+        losechars = re.compile(r'[^a-z]+')
         for (PKID,names) in drugs.iteritems():
             lownames = []
             for name in names:
-                lname = losepunct.sub(' ', name.lower()).strip()
+                lname = losechars.sub(' ', name.lower()).strip()
                 lname = lname.replace(' ',r'\s+')
-                if lname not in lownames: # and len(lname)>3:
+                if lname not in lownames and len(lname) > 3:
                     lownames.append(lname)
-            result[PKID] = re.compile(r'\b(' + r'|'.join(lownames) + r')\b')
+            if len(lownames) > 0:
+                result[PKID] = re.compile(r'\b(' + r'|'.join(lownames) + r')\b')
+                #print result[PKID].pattern
         return result
 
     def listDrugs(self, text):
@@ -167,13 +169,12 @@ class GeneDrugFilter:
         @note: Matching is approximate.  All non-alphabetics in both
         sentences and drugs are replaced with spaces before matching.
         """
-        losepunct = re.compile(r'[0-9\s\!\@\#\$\%\^\&\*\(\)\{\}\[\]\-\:\;\"\'\?\/\.\,\<\>\`\~\-\_\=\+\\\|]')
         # lose punctuation, with extra spaces so that every word boundary is marked by a space
-        reptext = losepunct.sub(" ", text.lower())
+        reptext = re.sub(r'[^a-z]'," ", text.lower())
         result = []
-        for (PKID, regex) in self.drugs.iteritems():
+        for PKID, regex in self.drugs.iteritems():
             for m in regex.finditer(reptext):
-                result.append((m.group(), m.start(), m.end(), PKID))
+                result.append((text[m.start():m.end()], m.start(), m.end(), PKID))
         return result
 
     @staticmethod
@@ -233,28 +234,30 @@ class GeneDrugFilter:
         sentences to search for drugs in each sentence.  Then
         aggregate co-occurrences of genes and drugs in each sentence.
 
-        @type text: C{string}
         @param text: Text to parse, such as a title and abstract.
 
-        @rtype: C{{string:[string]}}
-        @return: Mapping from PharmGKB drug ID to genes co-occurring with
-        the drug.
+        @rtype: C{{string:set([string])}}
+
+        @return: Mapping from PharmGKB default drug name (obtained via
+        PharmGKB ID) to genes co-occurring with the drug.
         """
         sentences = self.listSentences(text)
         allgenes = self.listGenes(text)
         alldrugs = self.listDrugs(text)
+        # Filter out genes which overlap with a drug
         for drug, dstart, dfinish, pkid  in alldrugs:
-            allgenes = [ (g,s,f) for g,s,f in allgenes if s > dfinish or f < dstart ]
+            allgenes = [ (g,s,f) for g,s,f in allgenes if s >= dfinish or f < dstart ]
         result = {}
         for sentence, s_start, s_finish in sentences:
-            genes = [ g for g,s,f in allgenes if s >= s_start and f <= s_finish ]
+            genes = set([ g for g,s,f in allgenes if s >= s_start and f <= s_finish ])
             drugs = [ p for d,s,f,p in alldrugs if s >= s_start and f <= s_finish ]
             for pkid in drugs:
                 if len(genes) > 0:
-                    if pkid not in result:
-                        result[pkid] = genes
+                    dname = self.fulldrugs[pkid][0].strip()
+                    if dname not in result:
+                        result[dname] = genes
                     else:
-                        result[pkid].extend(genes)
+                        result[dname] |= genes
         return result
 
     def listGeneDrugsArticle(self, article):

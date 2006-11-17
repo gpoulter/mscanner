@@ -40,7 +40,7 @@ class CachingGeneFinder:
         if proxy is None:
             rpc_server = xmlrpclib.ServerProxy(bionlp_uri)
         else:
-            rpc_server = self.HTTPProxiedXMLRPC(bionlp_uri, proxy)
+            rpc_server = self.HTTPProxiedXMLRPC(bionlp_uri, proxy[len("http://"):])
         self.geneFinder=rpc_server.find_gene_and_protein_names
         # Set up results cache
         if isinstance(cache, basestring):

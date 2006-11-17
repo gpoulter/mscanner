@@ -147,9 +147,9 @@ class MedlineCache:
         try: self.db_env_home.mkdir()
         except os.error: pass
         dbenv = db.DBEnv()
-        dbenv.set_lg_max( 512*1024*1024 ) # 512Mb log files
-        dbenv.set_tx_max( 1 ) # 1 transaction at a time
-        dbenv.set_cachesize( 0, 8*1024*1024 ) # 8Mb shared cache
+        dbenv.set_lg_max(512*1024*1024) # 512Mb log files
+        dbenv.set_tx_max(1) # 1 transaction at a time
+        dbenv.set_cachesize(0, 8*1024*1024) # 8Mb shared cache
         dbenv.open(self.db_env_home, db.DB_INIT_MPOOL|db.DB_INIT_TXN|db.DB_CREATE)
         return dbenv
 

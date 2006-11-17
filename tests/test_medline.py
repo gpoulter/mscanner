@@ -1,8 +1,11 @@
 #!env python
 
+from medline import *
+import os
 from path import path
 import unittest
-from medline import *
+import warnings
+warnings.filterwarnings("ignore")
 
 class FeatureDatabaseTests(unittest.TestCase):
     """
@@ -30,12 +33,12 @@ class MedlineCacheTests(unittest.TestCase):
     Tests MedlineCache updateCacheFromDir (so also makeDBEnv, putArticleList)
     """
     def setUp( self ):
-        self.home = h = path( '/tmp/medline_test' )
-        h.rmtree( ignore_errors=True )
-        try: h.mkdir()
-        except os.error: pass
+        self.home = path(os.tempnam())
+        self.home.mkdir()
+
     def tearDown( self ):
-        self.home.rmtree( ignore_errors=True )
+        self.home.rmtree(ignore_errors=True)
+
     def test( self ):
         import test_xmlparse
         import xmlparse

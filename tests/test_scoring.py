@@ -1,8 +1,11 @@
 #!env python
 
+import os
 from path import path
-import unittest
 from scoring import *
+import unittest
+import warnings
+warnings.filterwarnings("ignore")
 
 class ScoringTests(unittest.TestCase):
     """Tests for scoring module functions
@@ -15,7 +18,14 @@ class ScoringTests(unittest.TestCase):
             dict.__init__(self)
             self.docs = docs
             self.total = total
-            self.update( contents )
+            self.update(contents)
+
+    def setUp(self):
+        self.prefix = path(os.tempnam())
+        self.prefix.mkdir()
+
+    def tearDown(self):
+        self.prefix.rmtree(ignore_errors=True)
         
     def test_getTermScores(self):
         pfreqs = self.Freqs( 2, 3, { 100:1, 200:2 } )
@@ -43,19 +53,19 @@ class ScoringTests(unittest.TestCase):
             "2222": Article(2222,"T","A",set(["A","C"])),
             "3333": Article(3333,"T","A",set(["B","C"])),
             }
-        path("/tmp/positives.txt").write_text("2222\n3333\n")
+        (self.prefix/"positives.txt").write_text("2222\n3333\n")
         termscores = getTermScores( pfreqs, nfreqs, pseudocount=0 )
         writeReport(
-            scores = [ (1.0,1111), (2.0,2222), (3.5,3333) ],
+            scores = [(1.0,1111), (2.0,2222), (3.5,3333)],
             meshdb = { 1:"A", 2:"B", 3:"C" },
             termscores = termscores,
             pfreq = pfreqs,
             nfreq = nfreqs,
-            prefix = path("/tmp/"),
+            prefix = self.prefix,
             stylesheet = path("../lib/templates/style.css"),
             pseudocount = 0,
             limit = 3,
-            posfile = path("/tmp/positives.txt"),
+            posfile = self.prefix/"positives.txt",
             articles = articles,
             )
 

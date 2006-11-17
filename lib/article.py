@@ -111,7 +111,7 @@ class Article:
     @ivar genedrug: List of detected gene-drug associations
     """
 
-    def __init__( self, pmid, title, abstract, meshterms, genedrug=None ):
+    def __init__(self, pmid, title, abstract, meshterms, genedrug=None):
         self.pmid = int(pmid)
         self.title = title
         self.abstract = abstract
@@ -123,7 +123,7 @@ class Article:
         import pprint
         pp = pprint.PrettyPrinter()
         astr = "Article(pmid=%d,\ntitle=%s,\nabstract=%s,\nmeshterms=%s)\n"
-        return astr % (self.pmid,repr(self.title),repr(self.abstract),pp.pformat(self.meshterms) )
+        return astr % (self.pmid, repr(self.title), repr(self.abstract), pp.pformat(self.meshterms))
 
 class FileTracker(set):
     """Class which tracks processed files.
@@ -131,31 +131,31 @@ class FileTracker(set):
     It accepts all paths, but membership is checked according to basename()
     """
 
-    def __init__( self, trackfile=None ):
+    def __init__( self, trackfile=None):
         """Initialise, specifying path to write the list of files"""
-        self.trackfile = path( trackfile )
+        self.trackfile = path(trackfile)
         self.load()
 
     def dump( self ):
         """Write the list of tracked files, one per line"""
         if self.trackfile == "None": return
-        proclist = list( self )
+        proclist = list(self)
         proclist.sort()
-        _makeBackup( self.trackfile )
-        file( self.trackfile, "w" ).write( "\n".join( proclist ) )
-        _removeBackup( self.trackfile )
+        _makeBackup(self.trackfile)
+        file(self.trackfile, "w").write("\n".join(proclist))
+        _removeBackup(self.trackfile)
 
-    def load( self ):
+    def load(self):
         """Read the list of files into the tracker"""
         self.clear()
         if self.trackfile.isfile():
             self.update( line.strip() for line in self.trackfile.lines() )
 
-    def add( self, fname ):
+    def add(self, fname):
         """Add a file to the tracker"""
-        set.add( self, fname.basename() )
+        set.add(self, fname.basename())
 
-    def toprocess( self, files ):
+    def toprocess(self, files):
         """Given a list of files return sorted list of those not in the tracker"""
         toprocess = [ f for f in files if f.basename() not in self ]
         toprocess.sort()

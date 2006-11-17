@@ -47,7 +47,8 @@ def do_validation():
         pos_arts = getArticles(m.articledb, v.posfile)
         neg_arts = getArticles(m.articledb, v.negfile)
         gdfilter = getGeneDrugFilter(gd.genedrug, gd.drugtable, gd.gapscore)
-        for article in chain(pos_arts, neg_arts):
+        #for article in chain(pos_arts, neg_arts):
+        for article in pos_arts:
             gdresult = gdfilter(article)
             article.genedrug = gdresult
             if len(gdresult) > 0:

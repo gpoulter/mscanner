@@ -125,7 +125,27 @@ class Validator:
         return centers, freqs
 
     @staticmethod
-    def plotHistogramsPYLAB(name,pdata,ndata,threshold):
+    def kernelPDF(values, npoints=512):
+        """Given values, return an approximate 1D probability density function (PDF)
+
+        @note: Uses SciPy, which uses Gaussian kernel
+
+        @param values: List of floats representing the sample
+
+        @param npoints: Number of equal-spaced points at which to estimate the PDF
+
+        @return: (xvals,yvals) pair with x-coordinates and
+        y-coordinates of the PDF y=f(x).
+        """
+        from scipy import stats
+        stats.kde(values)
+
+    @staticmethod
+    def plotPDFGnuplot(name, pdata, ndata, threshold):
+        pass
+        
+    @staticmethod
+    def plotHistogramsPylab(name, pdata, ndata, threshold):
         """Plot histograms of the positive and negative scores, with a
         vertical line marking the classifier threshold."""
         import pylab as p
@@ -146,7 +166,7 @@ class Validator:
         p.close()
 
     @staticmethod
-    def plotHistograms(name, pdata, ndata, threshold):
+    def plotHistogramsGnuplot(name, pdata, ndata, threshold):
         """Plot histograms of the positive and negative scores, with a
         vertical line marking the classifier threshold."""
         from Gnuplot import Gnuplot, Data
@@ -162,6 +182,9 @@ class Validator:
         g.plot(Data([threshold,threshold],[0,threshold_height],title="threshold",with='lines'),
                Data(pcen,pfreq,title='Positives',with='histeps'),
                Data(ncen,nfreq,title='Negatives',with='histeps'))
+
+    #plotHistograms = plotPDFGnuplot
+    plotHistograms = plotHistogramsGnuplot
         
     @staticmethod
     def plotCurves(roc, p_vs_r, pr_vs_score, pscores, nscores):
@@ -171,8 +194,7 @@ class Validator:
         threshold to maximise PPV (precision) subject to the F-Measure
         being at least 80% of the best F-Measure attained.
         """
-
-        # Calculate TPR (recall), FPR, PPV (precision), FM (F-measure)
+        # Initialisation
         pscores.sort()
         nscores.sort()
         P = len(pscores)
@@ -189,25 +211,36 @@ class Validator:
         maxPPV_TN = 0
         maxPPV_FP = 0
         ROC_area = 0
+        # Calculate stats for each choice of threshold
         for xi in xrange(P):
             threshold = pscores[xi]
             while (nscores[TN-1] < threshold) and (TN < N):
                 TN += 1
-            FN = xi+1      # xi+1 is # of positives we called negative
-            TP = P - FN    # TP+FN = P
-            FP = N - TN    # TN+FP = N
-            TPR[xi] = TP/P # TPR = TP/P
-            FPR[xi] = FP/N # FPR = FP/N = 1 - TN/N = 1 - specificity
+            # xi+1 is # of positives we called negative
+            FN = xi+1
+            # TP+FN = P
+            TP = P - FN
+            # TN+FP = N
+            FP = N - TN
+            # TPR = TP/P
+            TPR[xi] = TP/P
+            # FPR = FP/N = 1 - TN/N = 1 - specificity
+            FPR[xi] = FP/N 
             if xi > 0:
+                # Use trapezoidal rule to integrate ROC curve
                 ROC_area += 0.5*(TPR[xi]+TPR[xi-1])*(FPR[xi-1]-FPR[xi])
+            # PPV = TP/(TP+FP) = precision
+            PPV[xi] = 0
             if TP+FP > 0:
-                PPV[xi] = TP/(TP+FP) # PPV = TP/(TP+FP) = precision
+                PPV[xi] = TP/(TP+FP) 
+            # F-Measure = 2*recall*precision/(recall+precision)
+            FM[xi] = 0
             if PPV[xi] > 0 and TPR[xi] > 0:
-                FM[xi] = 2*TPR[xi]*PPV[xi]/(PPV[xi]+TPR[xi]) # PPV=2*recall*precision/(recall+precision)
-            else:
-                FM[xi] = 0
+                FM[xi] = 2*TPR[xi]*PPV[xi]/(PPV[xi]+TPR[xi])
+            # Track maximum F-Measure
             if FM[xi] > FM[maxFM_xi]:
                 maxFM_xi = xi
+            # Tune to maximise PPV subject to at least 90% of maximum F-Measure
             if PPV[xi] > PPV[maxPPV_xi] and FM[xi] > 0.9*FM[maxFM_xi]:
                 maxPPV_xi = xi
                 maxPPV_TP = TP
@@ -215,11 +248,9 @@ class Validator:
                 maxPPV_TN = TN
                 maxPPV_FP = FP
             #print "thresh = %g, TPR = %d/%d = %.1e, FPR = %d/%d = %.1e" % (threshold, TP, P, TP/P, FP, N, FP/N)
-            
         from Gnuplot import Gnuplot, Data
         g = Gnuplot(debug=1)
-
-        # ROC (TPR vs FPR)
+        # ROC curve (TPR vs FPR)
         g.ylabel("True Positive Rate (TPR)")
         g.xlabel("False Positive Rate (FPR)")
         g.title("ROC curve (TPR vs FPR)")
@@ -227,8 +258,7 @@ class Validator:
         g('set output "%s"' % roc)
         g.plot( Data( FPR, TPR, title="TPR", with="lines" ),
                 Data([FPR[maxPPV_xi],FPR[maxPPV_xi]],[0,1.0],title="threshold",with='lines') )
-
-        # Precision vs recall
+        # Precision vs recall graph
         g.ylabel("Precision")
         g.xlabel("Recall")
         g.title("Precision vs Recall")
@@ -236,8 +266,7 @@ class Validator:
         g('set output "%s"' % p_vs_r)
         g.plot( Data( TPR, PPV, title="Precision", with="lines" ),
                 Data([TPR[maxPPV_xi],TPR[maxPPV_xi]],[0,1.0],title="threshold",with='lines') )
-
-        # Precision, Recall, F-Measure vs threshold
+        # Precision, Recall, F-Measure vs threshold graph
         g.reset()
         g.ylabel('Precision, Recall, F-Measure')
         g.xlabel('Threshold Score')
@@ -248,7 +277,6 @@ class Validator:
                 Data( pscores, PPV, title="Precision", with="lines" ),
                 Data( pscores, FM, title="F-Measure", with="lines" ),
                 Data([pscores[maxPPV_xi],pscores[maxPPV_xi]],[0,1],title="threshold",with='lines') )
-
         # Return tuned results
         return pscores[maxPPV_xi], maxPPV_TP, maxPPV_FN, maxPPV_TN, maxPPV_FP, ROC_area
 

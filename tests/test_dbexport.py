@@ -1,12 +1,13 @@
 #!env python
 
-from path import path
-import unittest
-import sys
-import os
-
-import dbexport
 from article import Article
+import dbexport
+from path import path
+import os
+import sys
+import unittest
+import warnings
+warnings.filterwarnings("ignore")
 
 articles=[
     Article(
@@ -23,7 +24,7 @@ articles=[
     meshterms=["T1"],
     genedrug={'PKID1':["GENE2","GENE3"],'PKID2':["GENE3","GENE4"]}
     )
-    ]
+]
         
 class DbexportTests(unittest.TestCase):
     """Tests for dbexport module
@@ -31,8 +32,17 @@ class DbexportTests(unittest.TestCase):
     Tests: exportText
     Missing: exportSQlite, exportOracle*
     """
+    def setUp(self):
+        self.fn = path(os.tempnam())
+
+    def tearDown(self):
+        try:
+            self.fn.remove()
+        except:
+            pass
+        
     def test(self):
-        dbexport.exportText("/tmp/testdb.txt", articles)
+        dbexport.exportText(self.fn, articles)
         """
         dbname = ":memory:"
         self.con = sqlite.connect( self.dbname )

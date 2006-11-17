@@ -1,15 +1,14 @@
 #!env python
 
-"""
-
-"""
-
+from article import Article
+import genedrug
+import os
 import re
 from path import path
-import unittest
 from pprint import PrettyPrinter
-import genedrug
-from article import Article
+import unittest
+import warnings
+warnings.filterwarnings("ignore")
 
 pp = PrettyPrinter()
 
@@ -99,7 +98,7 @@ class GapScoreTests(unittest.TestCase):
     """
 
     def setUp(self):
-        self.filter = genedrug.GeneDrugFilter({},genedrug.CachingGeneFinder("/tmp/gapscore.db"))
+        self.filter = genedrug.GeneDrugFilter({},genedrug.CachingGeneFinder(path(os.tempnam())))
 
     def test_listGenes(self):
         genes = self.filter.listGenes(gap_gdtext)

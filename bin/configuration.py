@@ -16,6 +16,7 @@ These are the most useful options for users:
 
 import logging
 import sys
+import os
 from new import module
 from path import path
 
@@ -150,7 +151,7 @@ sys.path.insert( 0, base.lib )
 #dataset = "gdtest"
 #dataset = "old-vs-30k"
 #dataset = "old-vs-500k"
-#dataset = "old-vs-go4"
+dataset = "old-vs-go4"
 
 q.prefix = b.output / (dataset+"-result")
 v.prefix = b.output / (dataset+"-valid")

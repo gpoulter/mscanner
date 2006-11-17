@@ -1,15 +1,23 @@
 #!env python
 
+import os
 from path import path
+from random import seed
 import unittest
 from validation import Validator
-from random import seed
+import warnings
+warnings.filterwarnings("ignore")
 
 class ValidatorTest(unittest.TestCase):
     """
     Tests Validator: partition, validate, report
     Implicitly tests Validator: plot*, makeHistogram, articleIsPositive
     """
+    def setUp(self):
+        self.prefix = path(os.tempnam())
+        self.prefix.mkdir()
+    def tearDown(self):
+        self.prefix.rmtree(ignore_errors=True)
     def test(self):
         val = Validator(
             meshdb = { 1:"A", 2:"B", 3:"C", 4:"D", 5:"E", 6:"F" },
@@ -29,7 +37,7 @@ class ValidatorTest(unittest.TestCase):
         val.report(
             pscores,
             nscores,
-            path("/tmp"),
+            self.prefix,
             path("../lib/templates/style.css"))
 
 if __name__ == "__main__":

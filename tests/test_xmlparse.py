@@ -1,7 +1,8 @@
 #!env python
 
-import unittest
 from article import Article
+from path import path
+import unittest
 from xmlparse import ArticleParser
 
 class ArticleParserTests(unittest.TestCase):

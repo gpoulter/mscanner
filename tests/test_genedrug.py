@@ -2,15 +2,13 @@
 
 from article import Article
 import genedrug
-import os
 import re
 from path import path
-from pprint import PrettyPrinter
+import pprint 
+import tempfile
 import unittest
-import warnings
-warnings.filterwarnings("ignore")
 
-pp = PrettyPrinter()
+pp = pprint.PrettyPrinter()
 
 class GeneDrugFilterTests(unittest.TestCase):
     """Tests for GeneDrugFilter class
@@ -98,7 +96,12 @@ class GapScoreTests(unittest.TestCase):
     """
 
     def setUp(self):
-        self.filter = genedrug.GeneDrugFilter({},genedrug.CachingGeneFinder(path(os.tempnam())))
+        self.fn = path(tempfile.mktemp(prefix="gd-"))
+        self.filter = genedrug.GeneDrugFilter({},genedrug.CachingGeneFinder(self.fn))
+
+    def tearDown(self):
+        del self.filter
+        self.fn.remove()
 
     def test_listGenes(self):
         genes = self.filter.listGenes(gap_gdtext)

@@ -111,14 +111,6 @@ def exportOracleCon(conpath, articles):
     exportDatabase(cont, articles)
     con.close()
 
-def exportOracleCmd(conpath, articles):
-    """Like exportOracleCon but uses command-line utilities to import SQL"""
-    outfile = "/tmp/mscanner_out.txt"
-    exportText(outfile, articles)
-    from subprocess import call
-    # DUMMY look up correct command line
-    call("oraclecmd", conpath, outfile) 
-
 exportDefault = exportText
 
 schema="""

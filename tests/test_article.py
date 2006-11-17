@@ -1,20 +1,15 @@
 #!env python
 
 from article import *
-import os
 from path import path
+import tempfile
 import unittest
-import warnings
-warnings.filterwarnings("ignore")
 
 class TempFileTestCase(unittest.TestCase):
     def setUp(self):
-        self.fn = path(os.tempnam())
+        self.fn = path(tempfile.mktemp())
     def tearDown(self):
-        try:
-            self.fn.remove()
-        except:
-            pass
+        self.fn.remove()
 
 class FileTrackerTests(TempFileTestCase):
     """Test for FileTracker class

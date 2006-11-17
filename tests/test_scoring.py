@@ -1,11 +1,9 @@
 #!env python
 
-import os
 from path import path
 from scoring import *
+import tempfile
 import unittest
-import warnings
-warnings.filterwarnings("ignore")
 
 class ScoringTests(unittest.TestCase):
     """Tests for scoring module functions
@@ -21,8 +19,7 @@ class ScoringTests(unittest.TestCase):
             self.update(contents)
 
     def setUp(self):
-        self.prefix = path(os.tempnam())
-        self.prefix.mkdir()
+        self.prefix = path(tempfile.mkdtemp(prefix="scoring-"))
 
     def tearDown(self):
         self.prefix.rmtree(ignore_errors=True)

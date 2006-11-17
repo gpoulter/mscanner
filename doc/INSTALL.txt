@@ -1,0 +1,80 @@
+.. -*- mode: rst -*-
+
+================================
+MScanner: Extend a set citations
+================================
+
+:Author: Graham Poulter
+                                     
+
+MScanner takes a set of articles from MEDLINE, and trains a
+classifier to search MEDLINE for other articles similar that set.  
+
+Installation
+============
+
+Unzip the program, which extracts to the subdirectory ``mscanner``,
+and install all the dependencies
+
+Dependencies
+============
+
+`Python <http://www.python.org>`_
+ The Python programming language, version 2.4 or greater.
+
+`PyRXP <http://www.reportlab.org/pyrxp.html>`_
+ Extremely fast XML parser (one call to the RXP library, implemented
+ in C), used for parsing Medline citations from XML.  On Windows,
+ download the DLLs; on posix systems compile from source.
+
+`path module <http://www.jorendorff.com/articles/python/path/>`_
+ The Python "path" module provides convenient path manipulation
+ functions. Used everywhere.
+
+`Gnuplot-py <http://gnuplot-py.sourceforge.net/>`_
+ Gnuplot-py is used for plotting the graphs output during
+ validation. It in turn requires `Gnuplot <http://www.gnuplot.info/>`_
+ to be installed.
+
+`PySQLite <http://pysqlite.org/>`_ or `cx_Oracle <http://sourceforge.net/projects/cx-oracle/>`_
+ These packages are supported for exporting results to a database.  If
+ you don't install one of them, you can export as SQL text, or just
+ use the flat-file output that is produced by default.  PySQLite is
+ included in Python 2.5 and later.
+
+`Epydoc <http://epydoc.sourceforge.net/>`_
+ Generates API documentation for MScanner.
+
+`SciPy <http://www.scipy.org>`_
+ When available we use the SciPy stats.kde module to perform Kernel
+ Density Estimation (KDE) and draw a probability density function
+ instead of a histogram during validation. SciPy in turn requires
+ NumPy as well as ATLAS or LAPACK and BLAS.  No worries on Windows,
+ and Linux distributions should install the dependencies automagically.
+
+Input Data
+==========
+
+You will need to obtain the following data:
+
+Medline Citation Database
+ A directory containing .xml.gz files of Medline citation records.
+ Medline can be obtained by signing and faxing a memorandum of
+ understanding with the NLM and downloading via FTP.
+
+A list of PubMed IDs to query with
+ A text file with one PubMed ID per line.  The classifier is trained
+ with the query articles to retrieve new articles that are most
+ similar to the query as a whole.
+
+Table of drug names
+ Only necessary for gene-drug association.  This can be obtained from
+ a PharmGKB developter.  Look in ``HOME/utils/drugtable.py`` for the
+ format of the table, which is converted to a Python pickle file which
+ MScanner can use.
+
+MeSH Term Exclusion Files
+ Download MeSH from the NLM, and use ``HOME/utils/meshexcludes.py`` to
+ generate Python pickles containing terms to exclude during parsing.
+ The purpose is to reduce the size of the database by excluding
+ non-informative MeSH terms.

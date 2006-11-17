@@ -1,12 +1,10 @@
 #!env python
 
-import os
+import tempfile
 from path import path
 from random import seed
 import unittest
 from validation import Validator
-import warnings
-warnings.filterwarnings("ignore")
 
 class ValidatorTest(unittest.TestCase):
     """
@@ -14,10 +12,13 @@ class ValidatorTest(unittest.TestCase):
     Implicitly tests Validator: plot*, makeHistogram, articleIsPositive
     """
     def setUp(self):
-        self.prefix = path(os.tempnam())
-        self.prefix.mkdir()
+        self.prefix = path(tempfile.mkdtemp(prefix="valid-"))
+        print self.prefix
+
     def tearDown(self):
         self.prefix.rmtree(ignore_errors=True)
+        pass
+
     def test(self):
         val = Validator(
             meshdb = { 1:"A", 2:"B", 3:"C", 4:"D", 5:"E", 6:"F" },

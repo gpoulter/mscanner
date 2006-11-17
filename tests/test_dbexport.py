@@ -3,11 +3,9 @@
 from article import Article
 import dbexport
 from path import path
-import os
 import sys
+import tempfile
 import unittest
-import warnings
-warnings.filterwarnings("ignore")
 
 articles=[
     Article(
@@ -33,13 +31,10 @@ class DbexportTests(unittest.TestCase):
     Missing: exportSQlite, exportOracle*
     """
     def setUp(self):
-        self.fn = path(os.tempnam())
+        self.fn = path(tempfile.mktemp())
 
     def tearDown(self):
-        try:
-            self.fn.remove()
-        except:
-            pass
+        self.fn.remove()
         
     def test(self):
         dbexport.exportText(self.fn, articles)

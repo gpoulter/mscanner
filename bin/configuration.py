@@ -119,7 +119,7 @@ v.nfolds = 5
 ## Pseudocounts to use
 v.pseudocount = 0.01
 ## Whether to do a gene-drug co-occurrence filter
-v.genedrug = True
+v.genedrug = False
 ## Whether to use Daniel's 10^-8 pseudocounts
 v.daniel = False
 ## Prefix to use for report file

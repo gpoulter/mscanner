@@ -8,16 +8,17 @@ Validator -- Perform cross-validation and output performance statistics
 """
 
 from __future__ import division
-import sys
-import logging as log
-from random import randint, seed
+from article import TermCounts
+from Gnuplot import Gnuplot, Data
 from heapq import heapreplace
 from itertools import chain
+import logging as log
 from path import path
-
-from article import TermCounts
-from scoring import getTermScores, scoreDocument, writeTermScoresCSV, writeTermScoresHTML
+from random import randint, seed
 import templates
+import time
+from scoring import getTermScores, scoreDocument, writeTermScoresCSV, writeTermScoresHTML
+import sys
 
 class Validator:
     """Cross-validated performance statistics
@@ -53,6 +54,7 @@ class Validator:
         self.pseudocount = pseudocount
         self.daniel = daniel
         self.genedrug_articles = genedrug_articles
+        self.gnuplot = Gnuplot(debug=1)
 
     def articleIsPositive( self, docid, score, threshold ):
         """Classifies an article as positive or negative based on score threshold"""
@@ -130,7 +132,7 @@ class Validator:
 
         @note: Uses SciPy, which uses Gaussian kernel
 
-        @param values: List of floats representing the sample
+        @param values: Sorted list of floats representing the sample
 
         @param npoints: Number of equal-spaced points at which to estimate the PDF
 
@@ -138,56 +140,42 @@ class Validator:
         y-coordinates of the PDF y=f(x).
         """
         from scipy import stats
-        stats.kde(values)
+        import numpy as n
+        points = n.linspace(values[0], values[-1], npoints)
+        return points, stats.kde.gaussian_kde(n.array(values)).evaluate(points)
 
-    @staticmethod
-    def plotPDFGnuplot(name, pdata, ndata, threshold):
-        pass
+    def plotPDF(self, name, pdata, ndata, threshold):
+        """Plot PDFs for pos/neg scores, with line to mark threshold""" 
+        px, py = self.kernelPDF(pdata)
+        nx, ny = self.kernelPDF(ndata)
+        g = self.gnuplot
+        g.reset()
+        g.ylabel("Probability Density")
+        g.xlabel("Article score")
+        g.title("Score Densities")
+        g("set terminal png")
+        g("set output '%s'" % name)
+        threshold_height = max(chain(py, ny))
+        g.plot(Data([threshold, threshold], [0, threshold_height], title="threshold", with="lines"),
+               Data(px, py, title="Positives", with="lines"),
+               Data(nx, ny, title="Negatives", with="lines"))
         
-    @staticmethod
-    def plotHistogramsPylab(name, pdata, ndata, threshold):
-        """Plot histograms of the positive and negative scores, with a
-        vertical line marking the classifier threshold."""
-        import pylab as p
-        binCount=15
-        p_n,p_bins,p_patches=p.hist(pdata, bins=binCount, normed=1, alpha=1.0, facecolor='r')
-        y = p.normpdf(p_bins, p.mean(pdata), p.std(pdata))
-        l = p.plot(p_bins, y, 'r--', linewidth=1)
-        n_n,n_bins,n_patches=p.hist(ndata, bins=binCount, normed=1, alpha=0.5, facecolor='b')
-        y = p.normpdf(n_bins, p.mean(ndata), p.std(ndata))
-        l = p.plot(n_bins, y, 'b--', linewidth=1)
-        l = p.plot([threshold, threshold], [0, max(chain(p_n,n_n))], 'k', linewidth=3)
-        lcolors=(p_patches[0], n_patches[0])
-        p.xlabel('Article score')
-        p.ylabel('Probability density')
-        p.legend(lcolors,('Positive Set','Negative Set'))
-        p.title('Score Densities')
-        p.savefig(name)
-        p.close()
+    def plotHistograms(self, name, pdata, ndata, threshold):
+        """Plot histograms for pos/neg scores, with line to mark threshold""" 
+        px, py = self.makeHistogram(pdata)
+        nx, ny = self.makeHistogram(ndata)
+        g = self.gnuplot
+        g.ylabel("Probability Histogram")
+        g.xlabel("Article score")
+        g.title("Score Histograms")
+        g("set terminal png")
+        g("set output '%s'" % name)
+        threshold_height = max(chain(py, ny))
+        g.plot(Data([threshold, threshold], [0, threshold_height], title="threshold", with="lines"),
+               Data(px, py, title="Positives", with="histeps"),
+               Data(nx, ny, title="Negatives", with="histeps"))
 
-    @staticmethod
-    def plotHistogramsGnuplot(name, pdata, ndata, threshold):
-        """Plot histograms of the positive and negative scores, with a
-        vertical line marking the classifier threshold."""
-        from Gnuplot import Gnuplot, Data
-        g = Gnuplot(debug=1)
-        g.xlabel('Article score')
-        g.ylabel('Probability density')
-        g.title('Score Densities')
-        g('set terminal png')
-        g('set output "'+name+'"')
-        (pcen,pfreq) = Validator.makeHistogram(pdata)
-        (ncen,nfreq) = Validator.makeHistogram(ndata)
-        threshold_height = max( chain( pfreq, nfreq ) )
-        g.plot(Data([threshold,threshold],[0,threshold_height],title="threshold",with='lines'),
-               Data(pcen,pfreq,title='Positives',with='histeps'),
-               Data(ncen,nfreq,title='Negatives',with='histeps'))
-
-    #plotHistograms = plotPDFGnuplot
-    plotHistograms = plotHistogramsGnuplot
-        
-    @staticmethod
-    def plotCurves(roc, p_vs_r, pr_vs_score, pscores, nscores):
+    def plotCurves(self, roc, p_vs_r, pr_vs_score, pscores, nscores):
         """Plot curves for ROC, precision-recall, and stats vs threshold
 
         Returns threshold, TP, FN, TN, FP counts once it has tuned the
@@ -248,35 +236,36 @@ class Validator:
                 maxPPV_TN = TN
                 maxPPV_FP = FP
             #print "thresh = %g, TPR = %d/%d = %.1e, FPR = %d/%d = %.1e" % (threshold, TP, P, TP/P, FP, N, FP/N)
-        from Gnuplot import Gnuplot, Data
-        g = Gnuplot(debug=1)
-        # ROC curve (TPR vs FPR)
-        g.ylabel("True Positive Rate (TPR)")
-        g.xlabel("False Positive Rate (FPR)")
-        g.title("ROC curve (TPR vs FPR)")
-        g('set terminal png')
-        g('set output "%s"' % roc)
-        g.plot( Data( FPR, TPR, title="TPR", with="lines" ),
-                Data([FPR[maxPPV_xi],FPR[maxPPV_xi]],[0,1.0],title="threshold",with='lines') )
+        g = self.gnuplot
         # Precision vs recall graph
+        g.reset()
         g.ylabel("Precision")
         g.xlabel("Recall")
         g.title("Precision vs Recall")
-        g('set terminal png')
-        g('set output "%s"' % p_vs_r)
-        g.plot( Data( TPR, PPV, title="Precision", with="lines" ),
-                Data([TPR[maxPPV_xi],TPR[maxPPV_xi]],[0,1.0],title="threshold",with='lines') )
+        g("set terminal png")
+        g("set output '%s'" % p_vs_r)
+        g.plot(Data(TPR, PPV, title="Precision", with="lines"),
+               Data([TPR[maxPPV_xi], TPR[maxPPV_xi]], [0,1.0], title="threshold", with="lines"))
+        # ROC curve (TPR vs FPR)
+        g.reset()
+        g.ylabel("True Positive Rate (TPR)")
+        g.xlabel("False Positive Rate (FPR)")
+        g.title("ROC curve (TPR vs FPR)")
+        g("set terminal png")
+        g("set output '%s'" % roc)
+        g.plot(Data(FPR, TPR, title="TPR", with="lines"),
+               Data([FPR[maxPPV_xi], FPR[maxPPV_xi]], [0,1.0], title="threshold", with="lines"))
         # Precision, Recall, F-Measure vs threshold graph
         g.reset()
-        g.ylabel('Precision, Recall, F-Measure')
-        g.xlabel('Threshold Score')
-        g.title('Precision and Recall vs Threshold')
-        g('set terminal png')
-        g('set output "%s"' % pr_vs_score)
-        g.plot( Data( pscores, TPR, title="Recall", with="lines" ),
-                Data( pscores, PPV, title="Precision", with="lines" ),
-                Data( pscores, FM, title="F-Measure", with="lines" ),
-                Data([pscores[maxPPV_xi],pscores[maxPPV_xi]],[0,1],title="threshold",with='lines') )
+        g.ylabel("Precision, Recall, F-Measure")
+        g.xlabel("Threshold Score")
+        g.title("Precision and Recall vs Threshold")
+        g("set terminal png")
+        g("set output '%s'" % pr_vs_score)
+        g.plot(Data(pscores, TPR, title="Recall", with="lines"),
+               Data(pscores, PPV, title="Precision", with="lines"),
+               Data(pscores, FM, title="F-Measure", with="lines"),
+               Data([pscores[maxPPV_xi], pscores[maxPPV_xi]], [0,1], title="threshold", with="lines"))
         # Return tuned results
         return pscores[maxPPV_xi], maxPPV_TP, maxPPV_FN, maxPPV_TN, maxPPV_FP, ROC_area
 
@@ -296,8 +285,11 @@ class Validator:
         pr_vs_score_img = prefix/"prscore.png"
         mainfile = prefix/"index.html"
 
-        # Plot graphs and get tuned performancs
+        # Graphs and performance tuning
         threshold, TP, FN, TN, FP, ROC_area = self.plotCurves(roc_img, p_vs_r_img, pr_vs_score_img, pscores, nscores)
+        # Score histograms / pdf
+        #self.plotHistograms(hist_img, pscores, nscores, threshold)
+        self.plotPDF(hist_img, pscores, nscores, threshold)
 
         # Output term scores
         pfreqs = TermCounts(self.featdb[d] for d in self.pos)
@@ -333,9 +325,6 @@ class Validator:
             fmeasure = 2*recall*precision/(recall+precision)
         if prevalence > 0:
             enrichment = precision / prevalence
-
-        # Output score histograms
-        self.plotHistograms(hist_img, pscores, nscores, threshold)
 
         # Write main index file
         templates.validation.run(dict(

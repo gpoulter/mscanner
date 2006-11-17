@@ -2,11 +2,9 @@
 
 from bsddb import db
 from dbshelve import open
-import os
 from path import path
+import tempfile
 import unittest
-import warnings
-warnings.filterwarnings("ignore")
 
 class ShelfTests(unittest.TestCase):
     """Test for Shelf class
@@ -39,8 +37,7 @@ class ShelfTnxTests(ShelfTests):
     """
 
     def setUp(self):
-        self.envdir = path(os.tempnam())
-        self.envdir.mkdir()
+        self.envdir = path(tempfile.mkdtemp(prefix="dbshelve-"))
         self.env = db.DBEnv()
         self.env.open(self.envdir, db.DB_INIT_MPOOL|db.DB_INIT_TXN|db.DB_CREATE)
         self.db = open(self.envdir/'dbshelf.db', db.DB_CREATE|db.DB_AUTO_COMMIT, dbenv=self.env)

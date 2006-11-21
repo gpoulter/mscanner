@@ -216,13 +216,14 @@
       </p>
       <p class="para">
       Note that queries may take up to 20 minutes, and validation
-      time proportional to the number of articles being processed.  The output will be placed in
+      time proportional to the number of articles being processed.
+      The output will be placed in
       <a href="[:=g.outdir:]/[:=$_:]">[:=g.outdir:]/[:=$_:]</a>, 
       so you can save the link and come back later if you please.
       </p>
       <p class="para">
-      [:now = new Date();:]
-      It has been [:=(now.getTime()-g.started)/1000:] seconds since scanning started.
+      It has been [:=g.elapsed:] seconds since scanning started, and [:=g.progress:] 
+      steps out of [:=g.total:] have been completed.
       </p>
       </div>
       [:showBlock("status"):]

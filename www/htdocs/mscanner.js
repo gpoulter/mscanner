@@ -14,7 +14,7 @@ window.onload = function() {
       ["getStatus","listBatches","deleteBatch","query","validate"]);
    // Set up sliding help effects
    g.fx = new Object();
-   names = [
+   var names = [
       "positives_help",
       "pseudocount_help",
       "limit_help",
@@ -34,12 +34,12 @@ function doTemplate(destination, source, params) {
    $(destination).innerHTML = SXOOP.template.parse($(source).value, params);
 }
 
-/* Hide an element and all children */
+/* Hide an element */
 function hideBlock(block) {
    $(block).style.display = "none";
 }
 
-/* Unhide an element and all children *
+/* Unhide an element */
 function showBlock(block) {
    $(block).style.display = "block";
 }
@@ -69,12 +69,12 @@ function query() {
    threshold = parseFloat($("threshold").value);
    try {
       batchid = g.service.query(positives, pseudocount, limit, threshold);
+      g.batchid = batchid
+      setTimeout("getStatus()", 1000);
    } catch(e) {
       alert("Error: \n\n" + e.message);
       return;
    }
-   g.batchid = batchid
-   setTimeout("getStatus()", 1000);
 }
 
 /* Start validation, returning batch id */
@@ -85,12 +85,12 @@ function validate() {
    pseudocount = parseFloat($("pseudocount").value);
    try {
       batchid = g.service.validate(positives, negatives, nfold, pseudocount);
+      g.batchid = batchid
+      setTimeout("getStatus()", 1000);
    } catch(e) {
       alert("Error: \n\n" + e.message);
       return;
    }
-   g.batchid = batchid
-   setTimeout("getStatus()", 1000);
 }
 
 /* Print whether scanner is busy or done with this file.  If busy,
@@ -106,8 +106,10 @@ function getStatus() {
       return;
    }
    if (result.status == "busy") {
+      g.elapsed = result.elapsed;
+      g.progress = result.progress;
+      g.total = result.total;
       doTemplate("status", "t_busy", g.batchid);
-      g.started = result.started * 1000;
       setTimeout("getStatus()", 1000);
    }
    else if (result.status == "done") {

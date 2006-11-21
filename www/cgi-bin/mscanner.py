@@ -3,7 +3,7 @@
 
 """MScanner XML-RPC service
 
-MScanner queries medline with 
+MScanner queries medline with a corpus of citations.
 
 """
 
@@ -30,7 +30,7 @@ else:
     output = path("/srv/www/htdocs/mscanner/output")
     
 bin = source / "bin"
-pidfile = path("/var/run/mscanner.pid")
+pidfile = source.parent / "data" / "cache" / "mscanner.pid"
 lastlog = path("/tmp/mscanner-lastlog.txt")
 
 def check_batchid(batchid):
@@ -48,12 +48,12 @@ def readpid():
     """
     Get status from the pidfile of the MScanner spawned process
 
-    :return: PID, batch ID, start time, processed citations, total citations
+    :return: PID, progress, total, batch ID, start time
     """
     if not pidfile.isfile():
         return None, None, None, None, None
     lines = pidfile.lines()
-    return int(lines[0]), lines[1].strip(), float(lines[2]), int(lines[3]), int(lines[4]), int(lines[5])
+    return int(lines[0]), int(lines[1]), int(lines[2]), lines[3].strip(), float(lines[4])
 
 def generate_batch(positives):
     """
@@ -90,12 +90,14 @@ class MScannerService:
 
         - `batchid`: Echo of the batchid parameter.
 
-        - `status`: May be 'done', 'busy', 'free' or 'notfound'.  Done
-        indicates the batch is complete.  Busy indicates that it is in
-        progress.  Free is returned if an empty string is given and no
-        batch is in progress.  Notfound is returned if no batch with
-        the given ID exists.  The fields below are only returned if
-        the status is 'busy':
+        - `lastlog`: String with log contents (given if status is 'notfound')
+
+        - `status`: May be 'done', 'busy', 'free' or 'notfound'.
+        'done' indicates the batch is complete.  'busy' indicates that
+        it is in progress.  'free' is returned if an empty string is
+        given and no batch is in progress.  'notfound' indicates if no
+        batch with the given ID exists.  The fields below are only
+        returned if the status is 'busy':
 
         - `elapsed`: Float for seconds elapsed since start of the batch.
 
@@ -104,32 +106,42 @@ class MScannerService:
         - `progress`: Integer for number of citations scored so far.
 
         - `total`: Integer for number of citations to score.
+
         """
         if batchid != "":
             check_batchid(batchid)
-        pid, pidbatchid, started, processed, total = readpid()
+        pid, progress, total, dummy_batchid, started = readpid()
         idx = output / batchid / "index.html"
         if idx.isfile():
-            return dict(batchid=batchid, status="done")
+            # Batch is done
+            return dict(
+                batchid=batchid,
+                status="done"
+                )
         else:
             if pid is not None:
+                # Busy with this batch
                 return dict(
-                    batchid=pbatch,
+                    batchid=dummy_batchid,
                     status="busy",
-                    elapsed=float(None,
+                    elapsed=time.time()-started,
+                    progress=progress,
                     total=total,
                     )
             elif batchid == "":
+                # No pidfile, no batch = free time
                 return dict(
                     batchid=batchid,
                     status="free",
                     )
             else:
+                # Didn't find the batch
                 result = dict(
                     batchid=batchid,
                     status="notfound",
                     )
-                if lastlog.isfile(): result["lastlog"] = lastlog.text()
+                if lastlog.isfile():
+                    result["lastlog"] = lastlog.text()
                 return result
 
     def listBatches(self):
@@ -138,17 +150,17 @@ class MScannerService:
         :return: A list of batch IDs
         """
         result = []
-        if not pidfile.isfile():
-            for d in output.dirs():
-                try:
-                    check_batchid(d.basename())
-                    # Delete broken batches (nothing is running)
-                    if not (d / "index.html").isfile():
+        for d in output.dirs():
+            try:
+                check_batchid(d.basename())
+                # Delete broken batches (nothing is running)
+                if (d / "index.html").isfile():
+                    result.append(str(d.basename()))
+                else:
+                    if not pidfile.isfile():
                         d.rmtree()
-                    else:
-                        result.append(str(d.basename()))
-                except Fault:
-                    continue
+            except Fault:
+                continue
         return result
 
     def deleteBatch(self, batchid):

@@ -94,8 +94,8 @@ if __name__ == "__main__":
         c.pseudocount = float(sys.argv[2])
         c.limit = int(sys.argv[3])
         c.threshold = float(sys.argv[4])
-        c.prefix = (base.weboutput / batchid) + "/"
-        c.posfile = c.prefix / "positives.txt"
+        c.query_report = (c.weboutput / c.dataset) + "/"
+        c.posfile = c.query_report / "positives.txt"
     try:
         article.createStatusFile(c.statfile, c.dataset)
         do_query()

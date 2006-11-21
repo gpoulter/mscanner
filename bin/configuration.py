@@ -6,12 +6,6 @@
 Import this module to set up library paths and configure locations to
 files used by the scanner, as well as configuration options.
 
-These are the most useful options for users:
-
-* base.working
-* query.{limit, pseudocount, posfile, outputdb}
-* validation.{recall, nfolds, pseudocount, posfile, negfile}
-
 """
 
 import logging
@@ -130,6 +124,7 @@ valid_report = output / "validation"
 #dataset = "cur-vs-500k"
 #dataset = "cur-vs-go4"
 #dataset = "cur-vs-med"
+#dataset = "full-vs-100k"
 #dataset = "full-vs-500k"
 #dataset = "full-vs-go4"
 #dataset = "gdtest"

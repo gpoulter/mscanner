@@ -3,7 +3,7 @@
 
 """MScanner XML-RPC service
 
-MScanner queries medline with a corpus of citations.
+Query medline with a corpus of citations.
 
 """
 
@@ -25,9 +25,11 @@ mtree = False
 if mtree:
     source = path("/export/home/medscan/source")
     output = path("/export/apps/medline/htdocs/output")
+    python = path("/export/home/medscan/local64/bin/python")
 else:
     source = path("/home/graham/data/mscanner/source")
     output = path("/srv/www/htdocs/mscanner/output")
+    python = "python"
     
 bin = source / "bin"
 pidfile = source.parent / "data" / "cache" / "mscanner.pid"
@@ -103,9 +105,9 @@ class MScannerService:
 
         - `type`: Either 'query' or 'validation'. 
 
-        - `progress`: Integer for number of citations scored so far.
+        - `progress`: Integer for number of steps completed
 
-        - `total`: Integer for number of citations to score.
+        - `total`: Integer for total number of steps required
 
         """
         if batchid != "":
@@ -207,9 +209,14 @@ class MScannerService:
             raise Fault(2, "Threshold needs to be a number")
         # Run query
         batchid = generate_batch(positives)
+        try:
+            lastlog.remove()
+        except:
+            pass
         subprocess.Popen(
-            ["python", bin / "query.py", batchid, str(pseudocount), str(limit), str(threshold)],
+            [python, bin / "query.py", batchid, str(pseudocount), str(limit), str(threshold)],
             stdout=lastlog.open("w"), stderr=subprocess.STDOUT)
+        lastlog.chmod(0666)
         return batchid
 
     def validate(self, positives, negatives, nfolds, pseudocount):
@@ -243,9 +250,14 @@ class MScannerService:
             raise Fault(2, "Pseudocount is < 0.0 or > 1.0")
         # Run validation
         batchid = generate_batch(positives)
+        try:
+            lastlog.remove()
+        except:
+            pass
         subprocess.Popen(
-            ["python", bin / "validate.py", batchid, str(negatives), str(nfolds), str(pseudocount)],
+            [python, bin / "validate.py", batchid, str(negatives), str(nfolds), str(pseudocount)],
             stdout=lastlog.open("w"), stderr=subprocess.STDOUT)
+        lastlog.chmod(0666)
         return batchid
 
 class MedscanTests(unittest.TestCase):

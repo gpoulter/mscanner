@@ -19,6 +19,8 @@ import templates
 import time
 from scoring import getTermScores, scoreDocument, writeTermScoresCSV, writeTermScoresHTML
 import sys
+import warnings
+warnings.filterwarnings(action='ignore', category=FutureWarning)
 
 class Validator:
     """Cross-validated performance statistics
@@ -98,12 +100,11 @@ class Validator:
             log.debug("Carrying out fold number %d", fold)
             ptrain = positives - ptest
             ntrain = negatives - ntest
-            featdb = self.featdb
-            pfreqs = TermCounts(featdb[d] for d in ptrain)
-            nfreqs = TermCounts(featdb[d] for d in ntrain)
+            pfreqs = TermCounts(self.featdb[d] for d in ptrain)
+            nfreqs = TermCounts(self.featdb[d] for d in ntrain)
             termscores = getTermScores(pfreqs, nfreqs, self.pseudocount, self.daniel)
-            pscores.extend(scoreDocument(featdb[d], termscores) for d in ptest)
-            nscores.extend(scoreDocument(featdb[d], termscores) for d in ntest)
+            pscores.extend(scoreDocument(self.featdb[d], termscores) for d in ptest)
+            nscores.extend(scoreDocument(self.featdb[d], termscores) for d in ntest)
         return pscores, nscores
 
     @staticmethod
@@ -128,7 +129,7 @@ class Validator:
 
     @staticmethod
     def kernelPDF(values, npoints=512):
-        """Given values, return an approximate 1D probability density function (PDF)
+        """Given 1D values, return an approximate probability density function
 
         @note: Uses SciPy, which uses Gaussian kernel
 
@@ -136,13 +137,12 @@ class Validator:
 
         @param npoints: Number of equal-spaced points at which to estimate the PDF
 
-        @return: (xvals,yvals) pair with x-coordinates and
-        y-coordinates of the PDF y=f(x).
+        @return: (xvalues,yvalues) for y=f(x) of the pdf.
         """
         from scipy import stats
-        import numpy as n
-        points = n.linspace(values[0], values[-1], npoints)
-        return points, stats.kde.gaussian_kde(n.array(values)).evaluate(points)
+        import numpy
+        points = numpy.linspace(values[0], values[-1], npoints)
+        return points, stats.kde.gaussian_kde(numpy.array(values)).evaluate(points)
 
     def plotPDF(self, name, pdata, ndata, threshold):
         """Plot PDFs for pos/neg scores, with line to mark threshold""" 
@@ -178,9 +178,19 @@ class Validator:
     def plotCurves(self, roc, p_vs_r, pr_vs_score, pscores, nscores):
         """Plot curves for ROC, precision-recall, and stats vs threshold
 
-        Returns threshold, TP, FN, TN, FP counts once it has tuned the
-        threshold to maximise PPV (precision) subject to the F-Measure
-        being at least 80% of the best F-Measure attained.
+        @param roc: Path to output file for ROC curve
+
+        @param p_vs_r: Path to output file for precision-recall curve
+
+        @parav pr_vs_score: Path to output file for precision,recall vs threshold
+
+        @param pscores: Scores of positive articles
+
+        @param nscores: Scores of negative articles
+
+        @return: Threshold, TP, FN, TN, FP, such that threshold is
+        tuned to maximise precision subject to the F-Measure being at
+        least 80% of the best F-Measure attained.
         """
         # Initialisation
         pscores.sort()
@@ -193,18 +203,18 @@ class Validator:
         FM  = [ 0 for xi in xrange(P) ] # F-measure
         TN  = 1                         # True negatives
         maxFM_xi = 0                    # Maximum of F-measure
-        maxPPV_xi = 0                   
-        maxPPV_TP = 0
-        maxPPV_FN = 0
-        maxPPV_TN = 0
-        maxPPV_FP = 0
+        best_xi = 0
+        best_TP = 0
+        best_FN = 0
+        best_TN = 0
+        best_FP = 0
         ROC_area = 0
         # Calculate stats for each choice of threshold
         for xi in xrange(P):
             threshold = pscores[xi]
             while (nscores[TN-1] < threshold) and (TN < N):
                 TN += 1
-            # xi+1 is # of positives we called negative
+            # xi+1 is how many positives we called negative
             FN = xi+1
             # TP+FN = P
             TP = P - FN
@@ -229,12 +239,8 @@ class Validator:
             if FM[xi] > FM[maxFM_xi]:
                 maxFM_xi = xi
             # Tune to maximise PPV subject to at least 90% of maximum F-Measure
-            if PPV[xi] > PPV[maxPPV_xi] and FM[xi] > 0.9*FM[maxFM_xi]:
-                maxPPV_xi = xi
-                maxPPV_TP = TP
-                maxPPV_FN = FN
-                maxPPV_TN = TN
-                maxPPV_FP = FP
+            if PPV[xi] > PPV[best_xi] and FM[xi] > 0.9*FM[maxFM_xi]:
+                best_xi, best_TP, best_FN, best_TN, best_FP = xi, TP, FN, TN, FP
             #print "thresh = %g, TPR = %d/%d = %.1e, FPR = %d/%d = %.1e" % (threshold, TP, P, TP/P, FP, N, FP/N)
         g = self.gnuplot
         # Precision vs recall graph
@@ -245,7 +251,7 @@ class Validator:
         g("set terminal png")
         g("set output '%s'" % p_vs_r)
         g.plot(Data(TPR, PPV, title="Precision", with="lines"),
-               Data([TPR[maxPPV_xi], TPR[maxPPV_xi]], [0,1.0], title="threshold", with="lines"))
+               Data([TPR[best_xi], TPR[best_xi]], [0,1.0], title="threshold", with="lines"))
         # ROC curve (TPR vs FPR)
         g.reset()
         g.ylabel("True Positive Rate (TPR)")
@@ -254,7 +260,7 @@ class Validator:
         g("set terminal png")
         g("set output '%s'" % roc)
         g.plot(Data(FPR, TPR, title="TPR", with="lines"),
-               Data([FPR[maxPPV_xi], FPR[maxPPV_xi]], [0,1.0], title="threshold", with="lines"))
+               Data([FPR[best_xi], FPR[best_xi]], [0,1.0], title="threshold", with="lines"))
         # Precision, Recall, F-Measure vs threshold graph
         g.reset()
         g.ylabel("Precision, Recall, F-Measure")
@@ -265,16 +271,35 @@ class Validator:
         g.plot(Data(pscores, TPR, title="Recall", with="lines"),
                Data(pscores, PPV, title="Precision", with="lines"),
                Data(pscores, FM, title="F-Measure", with="lines"),
-               Data([pscores[maxPPV_xi], pscores[maxPPV_xi]], [0,1], title="threshold", with="lines"))
+               Data([pscores[best_xi], pscores[best_xi]], [0,1], title="threshold", with="lines"))
         # Return tuned results
-        return pscores[maxPPV_xi], maxPPV_TP, maxPPV_FN, maxPPV_TN, maxPPV_FP, ROC_area
+        return pscores[best_xi], best_TP, best_FN, best_TN, best_FP, ROC_area
+
+    def publicationGraphs(self, pscores, nscores, prefix):
+        """Draws graphs for publication
+
+        @param pscores: Scores of positive articles
+
+        @param nscores: Scores of negative articles
+
+        @param prefix: Directory for validation report validation report
+        """
+        hist_img = prefix/"histogram_pub.png"
+        roc_img = prefix/"roc_pub.png"
+        p_vs_r_img = prefix/"prcurve_pub.png"
+        threshold, TP, FN, TN, FP, ROC_area = self.plotCurves(roc_img, p_vs_r_img, pr_vs_score_img, pscores, nscores)
+        self.plotPDF(hist_img, pscores, nscores, threshold)
 
     def report(self, pscores, nscores, prefix, stylesheet):
         """Write a full validation report
 
-        @param resuls: (TP,TN,FP,FN,threshold,pscores,nscores) from self.validate()
-        @param prefix: Prefix for output files of validation report
-        @param stylesheet: Path to CSS stylesheet
+        @param pscores: Scores of positive articles
+
+        @param nscores: Scores of negative articles
+
+        @param prefix: Directory for validation report validation report
+
+        @param stylesheet: Path to CSS stylesheet for the report templates
         """
         # Set up output files
         terms_csv = prefix/"termscores.csv"
@@ -287,9 +312,7 @@ class Validator:
 
         # Graphs and performance tuning
         threshold, TP, FN, TN, FP, ROC_area = self.plotCurves(roc_img, p_vs_r_img, pr_vs_score_img, pscores, nscores)
-        # Score histograms / pdf
-        #self.plotHistograms(hist_img, pscores, nscores, threshold)
-        self.plotPDF(hist_img, pscores, nscores, threshold)
+        self.plotHistograms(hist_img, pscores, nscores, threshold)
 
         # Output term scores
         pfreqs = TermCounts(self.featdb[d] for d in self.pos)

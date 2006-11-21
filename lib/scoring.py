@@ -17,8 +17,9 @@ writeReport() -- Collate results of a query (calls all of above)
 from __future__ import division
 from path import path
 import templates
+import article
 
-def getTermScores( positive, negative, pseudocount=0.1, daniel=False ):
+def getTermScores(positive, negative, pseudocount=0.1, daniel=False):
     """Return log-likelihood support scores for MeSH terms.
 
     @param positive: TermCounts instance for positive articles. 
@@ -65,7 +66,7 @@ def getTermScores( positive, negative, pseudocount=0.1, daniel=False ):
         makeScore(termid,pcount,ncount)
     return score
 
-def scoreDocument( features, feature_scores ):
+def scoreDocument(features, feature_scores):
     """Return document score given a feature list and feature scores
     @param features: List of feature IDs
     @param feature_scores: Mapping of feature ID to score
@@ -76,7 +77,7 @@ def scoreDocument( features, feature_scores ):
             score += feature_scores[f][0]
     return score
 
-def filterDocuments( docs, feature_scores, limit=10000, threshold=0.0 ):
+def filterDocuments(docs, feature_scores, limit=10000, threshold=0.0, statfile=None):
     """Return scores for documents given features and feature scores
     @param docs: Iteratable over (doc ID, feature ID list) pairs
     @param feature_scores: Mapping from feature ID to score
@@ -88,12 +89,16 @@ def filterDocuments( docs, feature_scores, limit=10000, threshold=0.0 ):
     ndocs = 0
     results = [ (-100000, 0) for i in range(limit) ]
     from heapq import heapreplace
-    for docid, features in docs:
+    for idx, (docid, features) in enumerate(docs):
+        if statfile is not None and idx % 100000 == 0:
+            article.updateStatusFile(statfile, idx)
         score = scoreDocument(features,feature_scores)
         if score >= threshold:
             ndocs += 1
             if score >= results[0][0]:
                 heapreplace(results, (score,docid))
+    if statfile is not None:
+        article.updateStatusFile(statfile, None)
     results.sort( reverse=True )
     if ndocs < limit:
         del results[ndocs:]

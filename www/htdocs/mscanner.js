@@ -1,4 +1,4 @@
-// Store all global variables in "g"
+/* Store all global variables in global object "g" */
 var g = new Object();
 
 /* Things to do as soon as the HTML is loaded */
@@ -6,7 +6,7 @@ window.onload = function() {
    g.outdir = "output";
    g.batchid = "";
    // Set up jsolait XML-RPC
-   jsolait.baseURI = "/htdocs/script/jsolait";
+   //jsolait.baseURI = "/htdocs/script/jsolait";
    g.xmlrpc = imprt("xmlrpc");
    g.service = new g.xmlrpc.ServiceProxy(
       "http://jonbn.med.uct.ac.za/cgi-bin/mscanner.py",
@@ -29,15 +29,17 @@ window.onload = function() {
    listBatches();
 }
 
-// SXOOP templating of destination.innerHTML using source.value  
+/* SXOOP templating of destination.innerHTML using source.value */
 function doTemplate(destination, source, params) {
    $(destination).innerHTML = SXOOP.template.parse($(source).value, params);
 }
 
+/* Hide an element and all children */
 function hideBlock(block) {
    $(block).style.display = "none";
 }
 
+/* Unhide an element and all children *
 function showBlock(block) {
    $(block).style.display = "block";
 }

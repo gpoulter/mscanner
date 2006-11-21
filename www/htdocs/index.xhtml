@@ -7,6 +7,7 @@
   <title>MScanner: Medline Scanner Web Interface</title>
 
   <link rel="stylesheet" type="text/css" href="mscanner.css"/>
+  <link rel="shortcut icon" href="/mscanner/favicon.png" type="image/x-icon"/>
 
   <script type="text/javascript" src="script/jsolait/jsolait.js"> </script>  
   <script type="text/javascript" src="script/jsolait/lib/urllib.js"> </script>  
@@ -30,18 +31,19 @@
 
     <div class="box" id="intro">
       <p class="para">
-        This is a web frontend for MScanner, the Medline Scanner.  It
-        extends a set of input articles by finding other article in
-        MEDLINE most similar to the query set.
+        This is a web frontend for MScanner, the Medline Scanner,
+        which queries Medline using a set of article IDs instead of
+        text.  The result is articles which are not part of the query,
+        yet are most similar to the set of query articles as a whole.
       </p>
       <p class="para">
         MScanner compares the frequencies of MeSH terms in the query
-        corpus to the rest of Medline, and assigns each term a score.
-        The score of an article is the sum of the scores of its terms,
-        and the MScanner returns up to a limited number articles,
-        which score higher than a chosen threshold.  You can use
-        cross-validation to get some idea of MScanner's performance on
-        a particular query set.
+        corpus to that of the rest of Medline, and assigns each term a
+        score, and the score of an article is the sum of the scores of
+        its terms.  You can specify a result limit, and a score
+        threshold.  Cross-validation can helps choose an optimal score
+        threshold and gives some indication of performance on this
+        query data.
       </p>
     </div>
 

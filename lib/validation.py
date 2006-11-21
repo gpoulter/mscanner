@@ -8,7 +8,6 @@ Validator -- Perform cross-validation and output performance statistics
 """
 
 from __future__ import division
-from article import TermCounts
 from Gnuplot import Gnuplot, Data
 from heapq import heapreplace
 from itertools import chain
@@ -17,10 +16,12 @@ from path import path
 from random import randint, seed
 import templates
 import time
-from scoring import getTermScores, scoreDocument, writeTermScoresCSV, writeTermScoresHTML
 import sys
 import warnings
 warnings.filterwarnings(action='ignore', category=FutureWarning)
+
+from article import updateStatusFile, TermCounts
+import scoring
 
 class Validator:
     """Cross-validated performance statistics
@@ -88,7 +89,7 @@ class Validator:
             size = size - 1                  # virtual deletion
         return tests
 
-    def validate(self):
+    def validate(self, statfile=None):
         """Perform n-fold validation and return the raw performance measures"""
         positives = self.pos
         negatives = self.neg
@@ -98,13 +99,15 @@ class Validator:
         pscores, nscores, threshold = [],[],0
         for fold, (ptest, ntest) in enumerate(zip(ptests, ntests)):
             log.debug("Carrying out fold number %d", fold)
+            if statfile is not None:
+                updateStatusFile(statfile, fold+1, self.nfold)
             ptrain = positives - ptest
             ntrain = negatives - ntest
             pfreqs = TermCounts(self.featdb[d] for d in ptrain)
             nfreqs = TermCounts(self.featdb[d] for d in ntrain)
-            termscores = getTermScores(pfreqs, nfreqs, self.pseudocount, self.daniel)
-            pscores.extend(scoreDocument(self.featdb[d], termscores) for d in ptest)
-            nscores.extend(scoreDocument(self.featdb[d], termscores) for d in ntest)
+            termscores = scoring.getTermScores(pfreqs, nfreqs, self.pseudocount, self.daniel)
+            pscores.extend(scoring.scoreDocument(self.featdb[d], termscores) for d in ptest)
+            nscores.extend(scoring.scoreDocument(self.featdb[d], termscores) for d in ntest)
         return pscores, nscores
 
     @staticmethod
@@ -317,9 +320,9 @@ class Validator:
         # Output term scores
         pfreqs = TermCounts(self.featdb[d] for d in self.pos)
         nfreqs = TermCounts(self.featdb[d] for d in self.neg)
-        termscores = getTermScores( pfreqs, nfreqs, self.pseudocount, self.daniel)
-        writeTermScoresCSV(file(terms_csv,"w"), self.meshdb, termscores, pfreqs, nfreqs)
-        writeTermScoresHTML(file(terms_html,"w"), self.meshdb, termscores, pfreqs, nfreqs, self.pseudocount)
+        termscores = scoring.getTermScores( pfreqs, nfreqs, self.pseudocount, self.daniel)
+        scoring.writeTermScoresCSV(file(terms_csv,"w"), self.meshdb, termscores, pfreqs, nfreqs)
+        scoring.writeTermScoresHTML(file(terms_html,"w"), self.meshdb, termscores, pfreqs, nfreqs, self.pseudocount)
 
         # Calculate performance measures
         P = TP+FN

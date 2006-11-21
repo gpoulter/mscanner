@@ -1,22 +1,23 @@
 #!env python
-#!/export/home/medscan/local/bin/python
+#!/export/home/medscan/local64/bin/python
 
-"""CGI XML-RPC medscanner service
+"""MScanner XML-RPC service
 
-Note that the script expects to be executed from its directory.
+MScanner queries medline with 
 
 """
 
-import os
-import re
-import sys
-import subprocess
-import unittest
-import time
-from path import path
+__docformat__ = "restructuredtext en"
 from datetime import datetime
-from xmlrpclib import Fault
 from DocXMLRPCServer import DocCGIXMLRPCRequestHandler
+import os
+from path import path
+import re
+import subprocess
+import sys
+import time
+import unittest
+from xmlrpclib import Fault
 
 mtree = True
 mtree = False
@@ -33,22 +34,42 @@ pidfile = path("/var/run/mscanner.pid")
 lastlog = path("/tmp/mscanner-lastlog.txt")
 
 def check_batchid(batchid):
-    """Batch IDs must be of YYYYmmdd-HHMMSS form"""
+    """
+    Check that a given string is of the YYYYmmdd-HHMMSS form
+
+    :param batchid: String for to check
+
+    :raise Fault(2): Batch ID is invalid
+    """
     if not re.match(r"^\d{8}-\d{6}$", batchid):
         raise Fault(2, "Invalid batch id %s" % batchid)
 
 def readpid():
-    """Return pid, batchid, start_time from pidfile"""
+    """
+    Get status from the pidfile of the MScanner spawned process
+
+    :return: PID, batch ID, start time, processed citations, total citations
+    """
     if not pidfile.isfile():
-        return None, None, None
+        return None, None, None, None, None
     lines = pidfile.lines()
-    return int(lines[0]), lines[1].strip(), float(lines[2])
+    return int(lines[0]), lines[1].strip(), float(lines[2]), int(lines[3]), int(lines[4]), int(lines[5])
 
 def generate_batch(positives):
+    """
+    Creates a batch directory and returns the batch ID
+
+    :param positives: Text to be written to positives.txt
+
+    :raise Fault(2): Directory for the batch already exists
+
+    :return: The new batch id
+    """
     # Create batch dir
     batchid = datetime.now().strftime("%Y%m%d-%H%M%S")
     bdir = output / batchid
-    if bdir.exists(): raise Fault(2, "Output for %s already exists" % batchid)
+    if bdir.exists():
+        raise Fault(2, "Output for %s already exists" % batchid)
     bdir.mkdir()
     # Output positive PMIDs (catch errors in script)
     (bdir / "positives.txt").write_text(positives)
@@ -57,45 +78,85 @@ def generate_batch(positives):
 class MScannerService:
 
     def getStatus(self, batchid):
-        """Returns a dict which has at least the status element, which may
-        be 'done', 'busy', 'free', or 'notfound'.  All except 'free' (only
-        returned when batchid is empty string) send back a batchid
-        element.  'busy' includes a started element in seconds since
-        epoch.
         """
-        if batchid != "": check_batchid(batchid)
-        pid, pbatch, started = readpid()
+        Returns a mapping with various optional status keys
+
+        :param batchid: A batch ID or an empty string
+
+        :return: A key:value mapping
+
+        Mapping Pairs
+        =============
+
+        - `batchid`: Echo of the batchid parameter.
+
+        - `status`: May be 'done', 'busy', 'free' or 'notfound'.  Done
+        indicates the batch is complete.  Busy indicates that it is in
+        progress.  Free is returned if an empty string is given and no
+        batch is in progress.  Notfound is returned if no batch with
+        the given ID exists.  The fields below are only returned if
+        the status is 'busy':
+
+        - `elapsed`: Float for seconds elapsed since start of the batch.
+
+        - `type`: Either 'query' or 'validation'. 
+
+        - `progress`: Integer for number of citations scored so far.
+
+        - `total`: Integer for number of citations to score.
+        """
+        if batchid != "":
+            check_batchid(batchid)
+        pid, pidbatchid, started, processed, total = readpid()
         idx = output / batchid / "index.html"
         if idx.isfile():
             return dict(batchid=batchid, status="done")
         else:
             if pid is not None:
-                return dict(batchid=pbatch, status="busy", started=started)
+                return dict(
+                    batchid=pbatch,
+                    status="busy",
+                    elapsed=float(None,
+                    total=total,
+                    )
             elif batchid == "":
-                return dict(status="free")
+                return dict(
+                    batchid=batchid,
+                    status="free",
+                    )
             else:
-                result = dict(batchid=batchid, status="notfound")
+                result = dict(
+                    batchid=batchid,
+                    status="notfound",
+                    )
                 if lastlog.isfile(): result["lastlog"] = lastlog.text()
                 return result
 
     def listBatches(self):
-        """Return list of batch IDs whose results are available"""
+        """Get IDs of completed batches
+
+        :return: A list of batch IDs
+        """
         result = []
         if not pidfile.isfile():
             for d in output.dirs():
                 try:
                     check_batchid(d.basename())
+                    # Delete broken batches (nothing is running)
+                    if not (d / "index.html").isfile():
+                        d.rmtree()
+                    else:
+                        result.append(str(d.basename()))
                 except Fault:
                     continue
-                if not (d / "index.html").isfile():
-                    d.rmtree()
-                else:
-                    result.append(str(d.basename()))
         return result
 
     def deleteBatch(self, batchid):
-        """Delete output corresponding to given batchid.  Fault 2 if
-        directory does not exist.
+        """Delete a batch
+
+        :param batchid: ID of the batch to delete
+
+        :raise Fault(3): Batch ID is invalid
         """
         check_batchid(batchid)
         todel = output / batchid
@@ -104,7 +165,27 @@ class MScannerService:
         todel.rmtree(todel)
 
     def query(self, positives, pseudocount, limit, threshold):
-        """Begin query process, returning batchid"""
+        """Query Medline with a corpus of citations
+
+        :param positives: Text of newline-delimited PubMed IDs
+
+        :param pseudocount: Float with the Bayesian pseudocount vlaue
+        to use (betwen 0.0 and 1.0)
+
+        :param limit: Maximum number of results to return (between 1
+        and 10000).
+
+        :param threshold: Score threshold for results (may result in
+        fewer results than specified in limit).
+
+        :raise Fault(2): One or more parameters are invalid
+
+        :raise Fault(3): The scanner service is busy
+
+        :return: Batch ID for the query
+        """
+        if pidfile.isfile():
+            raise Fault(3, "Scanner is busy")
         # Validate numeric arguments
         if not isinstance(limit, int) or limit < 1 or limit > 10000:
             raise Fault(2, "Limit is < 1 or > 10000")
@@ -120,7 +201,27 @@ class MScannerService:
         return batchid
 
     def validate(self, positives, negatives, nfolds, pseudocount):
-        """Begin validation process, returning batchid"""
+        """Validate query corpus for performance statistics and tuning
+
+        :param positives: Text of newline-delimited PubMed IDs
+
+        :param negatives: Integer for the number of random PubMed IDs
+        to use as a negative corpus (between 10 and 500000).
+        
+        :param nfolds: Number of validation folds to use (between 2
+        and 10).
+
+        :param pseudocount: Float with the Bayesian pseudocount vlaue
+        to use (betwen 0.0 and 1.0)
+
+        :raise Fault(2): One or more parameters are invalid
+
+        :raise Fault(3): If the scanner service is busy
+
+        :return: Batch ID for the validation task
+        """
+        if pidfile.isfile():
+            raise Fault(3, "Scanner is busy")
         # Validate numeric arguments
         if not isinstance(negatives,int) or negatives < 10 or negatives > 500000:
             raise Fault(2, "Negatives count is < 10 or > 500000") 
@@ -162,8 +263,8 @@ class MedscanTests(unittest.TestCase):
 if __name__ == "__main__":
     #unittest.main()
     handler= DocCGIXMLRPCRequestHandler()
-    handler.set_server_title("WebTwain")
-    handler.set_server_name("WebTwain - scan documents over the web")
-    handler.set_server_documentation("This is an automatically generated description of the scanner's XML-RPC interface")
+    handler.set_server_title("MScanner")
+    handler.set_server_name("MScanner: Query medline using a corpus of citations")
+    handler.set_server_documentation(__doc__)
     handler.register_instance(MScannerService())
     handler.handle_request()

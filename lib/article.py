@@ -3,9 +3,13 @@
 @author: Graham Poulter
                                      
 
+createStatusFile() -- Start a status file
+createStatusFile() -- Update progress in a status file
 chooseRandomLines() -- Get random lines from a file
 readPMIDFile() -- Get PMIDs reliably from a text file
 getArticles() -- Retrieve Articles from a DB, caching results in a Pickle
+makeBackup() -- Create a .recovery file
+removeBackup() -- Remove a .recovery file
 
 Article -- Stores attributes of an article
 FileTracker -- Track processed files (to avoid re-parsing), with on-disk persistence
@@ -14,11 +18,31 @@ TermCounts -- Store number of occurrences of each feature, + total occurrences a
 
 """
 
-import cPickle
-import logging as log
 from array import array
-from path import path
+import cPickle
 import dbshelve
+import logging as log
+import os
+from path import path
+import time
+
+def createStatusFile(statfile, dataset, total=0):
+    """Create a file containing PID, 0, 0, dataset, str(time.time())"""
+    if statfile.exists():
+        raise RuntimeError("MedScanner instance is already running")
+    statfile.write_text("%d\n%d\n%d\n%s\n%s\n" % (os.getpid(), 0, 0, dataset, str(time.time())))
+
+def updateStatusFile(statfile, progress, total=None):
+    """Update the 0, 0 lines with progress and (optional) total.  If
+    progress is None, set to total."""
+    lines = statfile.lines()
+    if total is not None:
+        lines[2] = str(total)
+    if progress is not None:
+        lines[1] = str(progress)
+    else:
+        lines[1] = lines[2]
+    statfile.write_lines(lines)
 
 def chooseRandomLines(infile_path, outfile_path, N):
     """Choose N random lines from infile_path and print them to outfile_path"""
@@ -77,7 +101,7 @@ def getArticles(article_db_path, pmidlist_path):
     artdb.close()
     return articles
 
-def _makeBackup(filepath):
+def makeBackup(filepath):
     """Make a .recovery backup of a file.
 
     Raise RuntimeError if the backup already exists.
@@ -89,7 +113,7 @@ def _makeBackup(filepath):
     if filepath.exists():
         filepath.rename( oldfile )
 
-def _removeBackup(filepath):
+def removeBackup(filepath):
     """Remove the .recovery backup of a file.
 
     Raise RuntimeError if the backup does not exist.
@@ -141,9 +165,9 @@ class FileTracker(set):
         if self.trackfile == "None": return
         proclist = list(self)
         proclist.sort()
-        _makeBackup(self.trackfile)
+        makeBackup(self.trackfile)
         file(self.trackfile, "w").write("\n".join(proclist))
-        _removeBackup(self.trackfile)
+        removeBackup(self.trackfile)
 
     def load(self):
         """Read the list of files into the tracker"""
@@ -193,12 +217,12 @@ class FeatureMapping:
     def dump( self ):
         """Write the term mapping to disk"""
         if self.termfile == "None": return
-        _makeBackup( self.termfile )
+        makeBackup( self.termfile )
         f = file( self.termfile, "w" )
         for term in self.term:
             f.write(term+"\n")
         f.close()
-        _removeBackup( self.termfile )
+        removeBackup( self.termfile )
 
     def __getitem__( self, feature_id ):
         """Return feature string given feature ID"""
@@ -261,9 +285,9 @@ class TermCounts(dict):
         temporary backup"""
         filepath = path(filepath)
         if filepath == "None": return
-        _makeBackup( filepath )
+        makeBackup( filepath )
         cPickle.dump( instance, file( filepath, "wb" ), protocol=2 )
-        _removeBackup( filepath )
+        removeBackup( filepath )
 
     def add( self, features ):
         """Adds the terms from an article to the term counts"""

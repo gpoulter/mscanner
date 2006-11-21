@@ -17,7 +17,7 @@ One argument: Load Article objects from a Pickle and add to database
 import cPickle
 import logging as log
 import sys
-from configuration import update as u, medline as m
+import configuration as c
 from xmlparse import ArticleParser
 from medline import MedlineCache
 from article import FeatureMapping
@@ -29,24 +29,24 @@ if len(sys.argv)>1:
         sys.exit(0)
 
 # Initialise database
-parser = ArticleParser(u.mesh_synonyms, u.mesh_excludes)
-meshdb = FeatureMapping(m.meshdb)
+parser = ArticleParser(c.mesh_synonyms, c.mesh_excludes)
+meshdb = FeatureMapping(c.meshdb)
 med = MedlineCache(
         meshdb,
         parser,
-        m.db_home,
-        m.articledb,
-        m.featuredb,
-        m.articlelist,
-        m.termcounts,
-        m.processed,
+        c.db_home,
+        c.articledb,
+        c.featuredb,
+        c.articlelist,
+        c.termcounts,
+        c.processed,
         )
     
 # Load Articles from a Pickle
 if len(sys.argv) == 2:
     print "Loading articles from " + sys.argv[1]
-    articles = cPickle.load( file( sys.argv[1], "rb" ) )
-    exclude = cPickle.load( file( u.mesh_excludes, "rb" ) )
+    articles = cPickle.load(file(sys.argv[1], "rb"))
+    exclude = cPickle.load(file(c.mesh_excludes, "rb"))
     for article in articles:
         article.meshterms -= exclude
     dbenv = med.makeDBEnv()
@@ -55,5 +55,5 @@ if len(sys.argv) == 2:
 
 # Parse articles from XML directory
 else:
-    log.info("Starting update from %s" % u.medline.relpath())
-    med.updateCacheFromDir(u.medline, u.save_delay)
+    log.info("Starting update from %s" % c.medline.relpath())
+    med.updateCacheFromDir(c.medline, c.save_delay)

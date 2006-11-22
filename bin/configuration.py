@@ -124,13 +124,14 @@ valid_report = output / "validation"
 #dataset = "cur-vs-500k"
 #dataset = "cur-vs-go4"
 #dataset = "cur-vs-med"
+dataset = daniel-vs-500k
 #dataset = "full-vs-100k"
 #dataset = "full-vs-500k"
 #dataset = "full-vs-go4"
 #dataset = "gdtest"
 #dataset = "old-vs-30k"
 #dataset = "old-vs-500k"
-dataset = "old-vs-go4"
+#dataset = "old-vs-go4"
 
 query_report = output / (dataset+"-query")
 valid_report = output / (dataset+"-valid")
@@ -147,6 +148,9 @@ if dataset == "cur-vs-500k":
 if dataset == "cur-vs-go4":
     posfile = corpora / "pharmgkb-Oct06.txt"
     negfile = corpora / "geneontology-2004.txt"
+if dataset == "daniel-vs-500k":
+    posfile = corpora / "daniel-small.txt"
+    negfile = corpora / "medline-500k.txt"
 if dataset == "cur-vs-med":
     posfile = corpora / "pharmgkb-Oct06.txt"
     negfile = articlelist

@@ -59,7 +59,7 @@ class FeatureDatabase:
 
     def getitem(self, key, txn=None):
         """Return an array object of values for a given key"""
-        values_packed = self.db.get(struct.pack("i",key), txn=txn)
+        values_packed = self.db.get(struct.pack("i",int(key)), txn=txn)
         if values_packed is None:
             raise KeyError("Record %d not found in feature database" % key)
         return array(self.value_type, values_packed)
@@ -71,17 +71,17 @@ class FeatureDatabase:
         """Associate integer key with an array object of values"""
         if not isinstance( values, array ):
             raise TypeError("values must be an array('%s')" % self.value_type)
-        self.db.put(struct.pack("i",key), values.tostring(), txn=txn)
+        self.db.put(struct.pack("i",int(key)), values.tostring(), txn=txn)
         
     def delitem(self, key, txn=None ):
         """Delete a given key from the database"""
-        self.db.delete(struct.pack("i",key), txn=txn)
+        self.db.delete(struct.pack("i",int(key)), txn=txn)
 
     def __len__(self):
         return len(self.db)
 
     def __contains__(self, key):
-        return self.db.has_key(struct.pack("i",key))
+        return self.db.has_key(struct.pack("i",int(key)))
 
     def keys(self):
         return [ k for k in self ]

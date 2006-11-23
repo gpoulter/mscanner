@@ -132,6 +132,7 @@ class Article:
     @ivar title: Title of the article
     @ivar abstract: Abstract of the article
     @ivar journal: ISO abbreviated journal name
+    @ivar issn: ISSN code for the journal
     @ivar year: Year of publication
     @ivar meshterms: Set of Mesh terms associated with article.
     @ivar authors: Set of (initials,lastname) pairs of article authors
@@ -143,6 +144,7 @@ class Article:
                  title="",
                  abstract="",
                  journal="",
+                 issn="",
                  year=0,
                  meshterms=None,
                  authors=None,
@@ -151,6 +153,7 @@ class Article:
         self.title = title
         self.abstract = abstract
         self.journal = journal
+        self.issn = issn
         self.year = year 
         self.meshterms = meshterms
         if meshterms is None: self.meshterms = set()
@@ -162,11 +165,12 @@ class Article:
     def __repr__(self):
         import pprint
         pp = pprint.PrettyPrinter()
-        astr = "Article(pmid=%d,\ntitle=%s,\nabstract=%s,\njournal=%s\nyear=%s\nmeshterms=%s\nauthors=%s\nchemicals=%s)\n"
+        astr = "Article(pmid=%d,\ntitle=%s,\nabstract=%s,\njournal=%s\nissn=%s\nyear=%s\nmeshterms=%s\nauthors=%s\nchemicals=%s)\n"
         return astr % (self.pmid,
                        repr(self.title),
                        repr(self.abstract),
                        repr(self.journal),
+                       repr(self.issn),
                        repr(self.year),
                        pp.pformat(self.meshterms),
                        pp.pformat(self.authors),

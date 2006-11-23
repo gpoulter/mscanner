@@ -86,6 +86,8 @@ class ArticleParser:
                             result.abstract = getChild(node2, 'AbstractText')[CHILDREN][0]
                         if node2[NAME] == 'Journal':
                             for node3 in node2[CHILDREN]:
+                                if node3[NAME] == 'ISSN':
+                                    result.issn = node3[CHILDREN][0]
                                 if node3[NAME] == 'ISOAbbreviation':
                                     result.journal = node3[CHILDREN][0]
                                 if node3[NAME] == 'JournalIssue':

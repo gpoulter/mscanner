@@ -129,31 +129,45 @@ class Article:
     """A simple wrapper for parsed Medline articles
 
     @ivar pmid: Integer PubMed ID or MEDLINE UI of the article.
-    @ivar title: Title of the article.
+    @ivar title: Title of the article
     @ivar abstract: Abstract of the article
+    @ivar journal: ISO abbreviated journal name
+    @ivar year: Year of publication
     @ivar meshterms: Set of Mesh terms associated with article.
     @ivar authors: Set of (initials,lastname) pairs of article authors
     @ivar chemicals: Set of chemicals associated with article
-    @ivar genedrug: Optional list of gene-drug associations
     """
 
-    def __init__(self, pmid, title, abstract, meshterms, authors=None, chemicals=None, genedrug=None):
+    def __init__(self,
+                 pmid=0,
+                 title="",
+                 abstract="",
+                 journal="",
+                 year=0,
+                 meshterms=None,
+                 authors=None,
+                 chemicals=None):
         self.pmid = int(pmid)
         self.title = title
         self.abstract = abstract
+        self.journal = journal
+        self.year = year 
         self.meshterms = meshterms
+        if meshterms is None: self.meshterms = set()
         self.authors = authors
+        if authors is None: self.authors = set()
         self.chemicals = chemicals
-        if genedrug is not None:
-            self.genedrug = genedrug
+        if chemicals is None: self.chemicals = set()
 
     def __repr__(self):
         import pprint
         pp = pprint.PrettyPrinter()
-        astr = "Article(pmid=%d,\ntitle=%s,\nabstract=%s,\nmeshterms=%s\nauthors=%s\nchemicals=%s)\n"
+        astr = "Article(pmid=%d,\ntitle=%s,\nabstract=%s,\njournal=%s\nyear=%s\nmeshterms=%s\nauthors=%s\nchemicals=%s)\n"
         return astr % (self.pmid,
                        repr(self.title),
                        repr(self.abstract),
+                       repr(self.journal),
+                       repr(self.year),
                        pp.pformat(self.meshterms),
                        pp.pformat(self.authors),
                        pp.pformat(self.chemicals),)

@@ -31,7 +31,7 @@ from validation import Validator
 def do_validation():
     # Read training data
     meshdb = FeatureMapping(c.meshdb)
-    featdb = FeatureDatabase(c.featuredb, 'r')
+    featdb = FeatureDatabase(c.featuredb, 'r', dbname="meshterms")
     positives = set(readPMIDFile(c.posfile, featdb))
     negatives = set(readPMIDFile(c.negfile, featdb))
     # Remove positives found in the negative set

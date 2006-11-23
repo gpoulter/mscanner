@@ -14,12 +14,16 @@ class ArticleParserTests(unittest.TestCase):
         self.assertEqual(a.pmid,b.pmid)
         self.assertEqual(a.title,b.title)
         self.assertEqual(a.abstract,b.abstract)
+        self.assertEqual(a.journal,b.journal)
+        self.assertEqual(a.year,b.year)
         self.assertEqual(a.meshterms,b.meshterms)
         self.assertEqual(a.authors,b.authors)
         self.assertEqual(a.chemicals,b.chemicals)
     def test(self):
-        a1 = Article(1,"T","A",set(["T1","T2","T3","T4","T5","T6","T7"]),set([("F1","L1"),("F2","L2")]),set())
-        a2 = Article(2,"T","A",set(["T1","T2","T3","T4","T5","T6","T7"]),set(),set(["C1","C2"]))
+        a1 = Article(1,"T1","A1","Mol. Biol. Rep.",1999,
+                     set(["T1","T2","T3","T4","T5","T6","T7"]),set([("F1","L1"),("F2","L2")]),set())
+        a2 = Article(2,"T2","A2","",0,
+                     set(["T1","T2","T3","T4","T5","T6","T7"]),set(),set(["C1","C2"]))
         parser = ArticleParser()
         result = list(parser.parse(xmltext))
         print result
@@ -42,9 +46,22 @@ xmltext = u'''<?xml version="1.0" encoding="UTF-8"?>
 <MedlineCitation Owner="NLM" Status="MEDLINE">
 <PMID>1</PMID>
 <Article PubModel="Print">
-<ArticleTitle>T</ArticleTitle>
+<Journal>
+<ISSN IssnType="Print">0301-4851</ISSN>
+<JournalIssue CitedMedium="Print">
+<Volume>26</Volume>
+<Issue>3</Issue>
+<PubDate>
+<Year>1999</Year>
+<Month>Aug</Month>
+</PubDate>
+</JournalIssue>
+<Title>Molecular biology reports. </Title>
+<ISOAbbreviation>Mol. Biol. Rep.</ISOAbbreviation>
+</Journal>
+<ArticleTitle>T1</ArticleTitle>
 <Abstract>
-<AbstractText>A</AbstractText>
+<AbstractText>A1</AbstractText>
 </Abstract>
 <AuthorList CompleteYN="Y">
 <Author ValidYN="Y">
@@ -81,9 +98,9 @@ xmltext = u'''<?xml version="1.0" encoding="UTF-8"?>
 <MedlineCitation Owner="NLM" Status="MEDLINE">
 <PMID>2</PMID>
 <Article PubModel="Print">
-<ArticleTitle>T</ArticleTitle>
+<ArticleTitle>T2</ArticleTitle>
 <Abstract>
-<AbstractText>A</AbstractText>
+<AbstractText>A2</AbstractText>
 </Abstract>
 </Article>
 <ChemicalList>

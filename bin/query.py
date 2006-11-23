@@ -36,7 +36,7 @@ def do_query():
     # Perform query
     log.debug("Opening databases")
     meshdb = article.FeatureMapping(c.meshdb)
-    featdb = FeatureDatabase(c.featuredb, 'r')
+    featdb = FeatureDatabase(c.featuredb, 'r', dbname="meshterms")
     article.updateStatusFile(c.statfile, 0, len(featdb))
     artdb = dbshelve.open(c.articledb, 'r')
     posids = set(article.readPMIDFile(c.posfile, featdb))

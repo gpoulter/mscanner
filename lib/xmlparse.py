@@ -74,7 +74,7 @@ class ArticleParser:
         def parseCitation(root):
             if root[NAME] != 'MedlineCitation':
                 raise ValueError("Attempted to parse non-MedlineCitation object")
-            result = Article(pmid=0, title="", abstract="", meshterms=set(), authors=set(), chemicals=set())
+            result = Article()
             for node1 in root[CHILDREN]:
                 if node1[NAME] == 'PMID':
                     result.pmid = int(node1[CHILDREN][0])
@@ -84,6 +84,16 @@ class ArticleParser:
                             result.title = node2[CHILDREN][0]
                         if node2[NAME] == 'Abstract':
                             result.abstract = getChild(node2, 'AbstractText')[CHILDREN][0]
+                        if node2[NAME] == 'Journal':
+                            for node3 in node2[CHILDREN]:
+                                if node3[NAME] == 'ISOAbbreviation':
+                                    result.journal = node3[CHILDREN][0]
+                                if node3[NAME] == 'JournalIssue':
+                                    PubDate = getChild(node3, 'PubDate')
+                                    if PubDate is None: continue
+                                    Year = getChild(PubDate, 'Year')
+                                    if Year is None: continue
+                                    result.year = int(Year[CHILDREN][0])
                         if node2[NAME] == 'AuthorList':
                             for Author in getChildren(node2, ['Author']):
                                 lastname = getChild(Author, 'LastName')

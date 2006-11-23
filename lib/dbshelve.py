@@ -13,7 +13,7 @@ from path import path
 from bsddb import db
 from UserDict import DictMixin
 
-def open(filename, flags='c', mode=0660, dbenv=None, dbname=None, txn=None):
+def open(filename, flags='c', mode=0660, dbenv=None, txn=None, dbname=None):
     """Open a shelf with Berkeley DB backend
 
     flag is one of 'r','rw','w','c','n'.  Optionally specify flags

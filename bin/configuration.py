@@ -124,14 +124,14 @@ valid_report = output / "validation"
 #dataset = "cur-vs-500k"
 #dataset = "cur-vs-go4"
 #dataset = "cur-vs-med"
-dataset = "daniel-vs-500k"
+#dataset = "daniel-vs-500k"
 #dataset = "full-vs-100k"
 #dataset = "full-vs-500k"
 #dataset = "full-vs-go4"
 #dataset = "gdtest"
 #dataset = "old-vs-30k"
 #dataset = "old-vs-500k"
-#dataset = "old-vs-go4"
+dataset = "old-vs-go4"
 
 query_report = output / (dataset+"-query")
 valid_report = output / (dataset+"-valid")

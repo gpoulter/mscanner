@@ -21,7 +21,7 @@ from article import Article, FileTracker, FeatureMapping, TermCounts
 class FeatureDatabase:
     """Persistent mapping from integer key to array objects of numerical values"""
     
-    def __init__(self, filename=None, flags='c', mode=0660, dbenv=None, txn=None, value_type='H'):
+    def __init__(self, filename=None, flags='c', mode=0660, dbenv=None, txn=None, dbname=None, value_type='H'):
         """Initialise database
 
         @param filename: Database file
@@ -31,8 +31,6 @@ class FeatureDatabase:
         @param txn: Optional database transaction
         @param value_type: Typecode for packing/unpacking of value structs, typically 'H' or 'i'
         """
-        self.db = db.DB(dbenv)
-        self.value_type = value_type
         if isinstance(flags, basestring):
             if flags == 'r':
                 flags = db.DB_RDONLY
@@ -46,7 +44,9 @@ class FeatureDatabase:
                 flags = db.DB_TRUNCATE | db.DB_CREATE
             else:
                 raise db.DBError("Flag %s is not in 'r', 'rw', 'w', 'c' or 'n'"  % str(flags))
-        self.db.open(filename, None, db.DB_HASH, flags, mode, txn=txn)
+        self.db = db.DB(dbenv)
+        self.value_type = value_type
+        self.db.open(filename, dbname, db.DB_HASH, flags, mode, txn=txn)
 
     def __del__(self):
         if hasattr(self,"db"):
@@ -144,8 +144,8 @@ class MedlineCache:
 
     def makeDBEnv(self):
         """Initialise DB environment for transactions"""
-        try: self.db_env_home.mkdir()
-        except os.error: pass
+        if not self.db_env_home.isdir():
+            self.db_env_home.mkdir()
         dbenv = db.DBEnv()
         dbenv.set_lg_max(512*1024*1024) # 512Mb log files
         dbenv.set_tx_max(1) # 1 transaction at a time
@@ -161,7 +161,7 @@ class MedlineCache:
         try:
             artdb = dbshelve.open(self.article_db_path, dbenv=dbenv, txn=txn)
             #artdb = dbshelve.open(self.article_db_path)
-            featdb = FeatureDatabase(self.feature_db_path, dbenv=dbenv, txn=txn)
+            featdb = FeatureDatabase(self.feature_db_path, dbenv=dbenv, txn=txn, dbname="meshterms")
             artlist = file(self.article_list_path, "a")
             for art in articles:
                 # Refuse to add or overwrite duplicates

@@ -39,7 +39,7 @@ class Validator:
         nfold,
         pseudocount=0.1,
         daniel=False,
-        genedrug_articles=None ):
+        genedrug_articles=None):
         """Initialise validator
         @param meshdb: Maping of term id to term name
         @param featdb: Maping of doc id to list of term ids
@@ -59,7 +59,7 @@ class Validator:
         self.genedrug_articles = genedrug_articles
         self.gnuplot = Gnuplot(debug=1)
 
-    def articleIsPositive( self, docid, score, threshold ):
+    def articleIsPositive(self, docid, score, threshold):
         """Classifies an article as positive or negative based on score threshold"""
         if self.genedrug_articles is None or docid in self.genedrug_articles:
             return score >= threshold
@@ -93,7 +93,7 @@ class Validator:
         """Perform n-fold validation and return the raw performance measures"""
         positives = self.pos
         negatives = self.neg
-        log.info( "%d pos and %d neg articles", len(positives), len(negatives) )
+        log.info("%d pos and %d neg articles", len(positives), len(negatives))
         ptests = self.partition(positives, self.nfold)
         ntests = self.partition(negatives, self.nfold)
         pscores, nscores, threshold = [],[],0
@@ -320,7 +320,7 @@ class Validator:
         # Output term scores
         pfreqs = TermCounts(self.featdb[d] for d in self.pos)
         nfreqs = TermCounts(self.featdb[d] for d in self.neg)
-        termscores = scoring.getTermScores( pfreqs, nfreqs, self.pseudocount, self.daniel)
+        termscores = scoring.getTermScores(pfreqs, nfreqs, self.pseudocount, self.daniel)
         scoring.writeTermScoresCSV(file(terms_csv,"w"), self.meshdb, termscores, pfreqs, nfreqs)
         scoring.writeTermScoresHTML(file(terms_html,"w"), self.meshdb, termscores, pfreqs, nfreqs, self.pseudocount)
 

@@ -93,7 +93,7 @@ posfile = None
 ## Integer for maximum number of results (may be fewer due to threshold)
 limit = 10000
 ## Float for minimum score threshold
-threshold = 0
+threshold = 10
 ## Per-term pseudocount to use
 pseudocount = 0.01
 ## Prefix for result report files
@@ -124,7 +124,7 @@ valid_report = output / "validation"
 #dataset = "cur-vs-500k"
 #dataset = "cur-vs-go4"
 #dataset = "cur-vs-med"
-dataset = daniel-vs-500k
+dataset = "daniel-vs-500k"
 #dataset = "full-vs-100k"
 #dataset = "full-vs-500k"
 #dataset = "full-vs-go4"

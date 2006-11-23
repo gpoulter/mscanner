@@ -16,7 +16,7 @@ from article import Article
 class ArticleParser:
     """Parse XML into article objects, optionally filtering MeSH terms"""
 
-    def __init__( self, synonyms=None, exclude=None ):
+    def __init__(self, synonyms=None, exclude=None):
         """Initialise parser
         
         @param synonyms: Name of a pickle mapping each MeSH term to a
@@ -29,16 +29,16 @@ class ArticleParser:
         self.exclude = set()
         self.excludes_done = set()
         if synonyms is not None:
-            if isinstance( synonyms, basestring ):
-                self.synonyms = cPickle.load( file( synonyms, "rb" ) )
-            elif isinstance( synonyms, dict ):
+            if isinstance(synonyms, basestring):
+                self.synonyms = cPickle.load(file(synonyms, "rb"))
+            elif isinstance(synonyms, dict):
                 self.synonyms = synonyms
             else:
                 raise ValueError("Synonyms is neither a filename nor dictionary")
         if exclude is not None:
-            if isinstance( exclude, basestring ):
-                self.exclude = cPickle.load( file( exclude, "rb" ) )
-            elif isinstance( exclude, set ):
+            if isinstance(exclude, basestring):
+                self.exclude = cPickle.load(file(exclude, "rb"))
+            elif isinstance(exclude, set):
                 self.exclude = exclude
             else:
                 raise ValueError("Excludes is neither a filename nor set")
@@ -66,7 +66,7 @@ class ArticleParser:
         NAME, ATTRS, CHILDREN, SPARE = range(0,4)
         parser = pyRXPU.Parser(Validate=0, ProcessDTD=0, TrustSDD=0)
         def parseCitation(root):
-            result = Article(pmid=0, title="", abstract="", meshterms=set())
+            result = Article(pmid=0, title="", abstract="", meshterms=set(), chemicals=set())
             for node1 in root[CHILDREN]:
                 if node1[NAME] == u'PMID':
                     result.pmid = int(node1[CHILDREN][0])
@@ -92,6 +92,11 @@ class ArticleParser:
                                 if term not in self.excludes_done:
                                     #self.log.debug("Detected exclude: %s",term)
                                     self.excludes_done.add(term)
+                if node1[NAME]==u'ChemicalList':
+                    for Chemical in [n for n in node1[CHILDREN] if n[NAME] == 'Chemical']:
+                        for NameOfSubstance in [n for n in Chemical[CHILDREN] if n[NAME] == 'NameOfSubstance']:
+                            name = NameOfSubstance[CHILDREN][0]
+                            result.chemicals.add(name)
             return result
         root=parser.parse(text)
         if root[NAME]==u'MedlineCitation':
@@ -125,7 +130,7 @@ class ArticleParser:
         else:
             raise ValueError("Could not find a valid PubMed citation")
 
-    def parseFile( self, filename ):
+    def parseFile(self, filename):
         """Return articles from an XML files
 
         @type filename: C{str}
@@ -134,11 +139,11 @@ class ArticleParser:
         @rtype: C{(Article)}
         @return: Parsed L{Article}'s
         """
-        log.debug( "Parsing XML file %s", filename.name )
-        if filename.endswith( ".gz" ):
-            text = gzip.open( filename, 'r' ).read()
+        log.debug("Parsing XML file %s", filename.name)
+        if filename.endswith(".gz"):
+            text = gzip.open(filename, 'r').read()
         else:
-            text = file( filename, 'r' ).read()
-        for article in self.parse( text ):
-            log.debug("Parsed article %d", article.pmid)
+            text = file(filename, 'r').read()
+        for article in self.parse(text):
+            #log.debug("Parsed article %d", article.pmid)
             yield article

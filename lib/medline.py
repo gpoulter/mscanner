@@ -31,7 +31,7 @@ class FeatureDatabase:
         @param txn: Optional database transaction
         @param value_type: Typecode for packing/unpacking of value structs, typically 'H' or 'i'
         """
-        self.db = db.DB( dbenv )
+        self.db = db.DB(dbenv)
         self.value_type = value_type
         if isinstance(flags, basestring):
             if flags == 'r':
@@ -46,7 +46,7 @@ class FeatureDatabase:
                 flags = db.DB_TRUNCATE | db.DB_CREATE
             else:
                 raise db.DBError("Flag %s is not in 'r', 'rw', 'w', 'c' or 'n'"  % str(flags))
-        self.db.open( filename, None, db.DB_HASH, flags, mode, txn=txn )
+        self.db.open(filename, None, db.DB_HASH, flags, mode, txn=txn)
 
     def __del__(self):
         if hasattr(self,"db"):
@@ -67,13 +67,13 @@ class FeatureDatabase:
     def __getitem__(self, key):
         return self.getitem(key)
 
-    def setitem(self, key, values, txn=None ):
+    def setitem(self, key, values, txn=None):
         """Associate integer key with an array object of values"""
-        if not isinstance( values, array ):
+        if not isinstance(values, array):
             raise TypeError("values must be an array('%s')" % self.value_type)
         self.db.put(struct.pack("i",int(key)), values.tostring(), txn=txn)
         
-    def delitem(self, key, txn=None ):
+    def delitem(self, key, txn=None):
         """Delete a given key from the database"""
         self.db.delete(struct.pack("i",int(key)), txn=txn)
 
@@ -86,7 +86,7 @@ class FeatureDatabase:
     def keys(self):
         return [ k for k in self ]
 
-    def __iter__( self ):
+    def __iter__(self):
         cur = self.db.cursor()
         rec = cur.first(dlen=0, doff=0)
         while rec is not None:
@@ -94,7 +94,7 @@ class FeatureDatabase:
             rec = cur.next(dlen=0, doff=0)
         cur.close()
 
-    def iteritems( self ):
+    def iteritems(self):
         cur = self.db.cursor()
         rec = cur.first()
         while rec is not None:
@@ -120,7 +120,7 @@ class MedlineCache:
         feature_db_path,
         article_list_path,
         termcounts_path,
-        processed_path ):
+        processed_path):
         """Initialse a cache of the results of parsing medline.
 
         @param meshdb: A FeatureMapping object for MeSH terms <-> 16-bit IDs
@@ -140,9 +140,9 @@ class MedlineCache:
         self.article_list_path = article_list_path
         self.termcounts_path = termcounts_path
         self.processed_path = processed_path
-        self.termcounts = TermCounts.load( termcounts_path )
+        self.termcounts = TermCounts.load(termcounts_path)
 
-    def makeDBEnv( self ):
+    def makeDBEnv(self):
         """Initialise DB environment for transactions"""
         try: self.db_env_home.mkdir()
         except os.error: pass
@@ -160,8 +160,9 @@ class MedlineCache:
         txn = dbenv.txn_begin()
         try:
             artdb = dbshelve.open(self.article_db_path, dbenv=dbenv, txn=txn)
+            #artdb = dbshelve.open(self.article_db_path)
             featdb = FeatureDatabase(self.feature_db_path, dbenv=dbenv, txn=txn)
-            artlist = file( self.article_list_path, "a" )
+            artlist = file(self.article_list_path, "a")
             for art in articles:
                 # Refuse to add or overwrite duplicates
                 if not art.pmid in featdb:
@@ -177,29 +178,30 @@ class MedlineCache:
             self.meshdb.dump()
             TermCounts.dump(self.termcounts, self.termcounts_path)
         except Exception, e:
-            log.error( "Aborting Transaction: Error %s", e )
+            log.error("Aborting Transaction: Error %s", e)
             txn.abort()
             raise
         else:
-            log.info( "Successfully committed transaction to add articles" )
+            log.info("Successfully committed transaction to add articles")
             
     def updateCacheFromDir(self, medlinedir, save_delay=5):
         """Updates the cache given that medlinedir contains .xml.gz
         file to add to the cache and that we should save the inverse
         document after processing each savesteps files."""
         import time
-        filenames = medlinedir.files( "*.xml" ) + medlinedir.files( "*.xml.gz" )
-        tracker = FileTracker( self.processed_path )
-        toprocess = tracker.toprocess( filenames )
+        filenames = medlinedir.files("*.xml") + medlinedir.files("*.xml.gz")
+        tracker = FileTracker(self.processed_path)
+        toprocess = tracker.toprocess(filenames)
         dbenv = self.makeDBEnv()
-        for idx, f in enumerate( toprocess ):
-            log.info( "Adding to cache: file %d out of %d (%s)", idx+1, len(toprocess), f.name )
+        for idx, f in enumerate(toprocess):
+            log.info("Adding to cache: file %d out of %d (%s)", idx+1, len(toprocess), f.name)
             for t in xrange(save_delay):
-                log.debug( "Saving in %d seconds...", save_delay-t )
+                log.debug("Saving in %d seconds...", save_delay-t)
                 time.sleep(1)
-            articles = list( self.parser.parseFile( f ) )
-            self.putArticleList( articles, dbenv )
+            articles = list(self.parser.parseFile(f))
+            log.debug("Parsed %d articles", len(articles))
+            self.putArticleList(articles, dbenv)
             tracker.add(f)
             tracker.dump()
-            log.info( "Completed file %d out of %d (%s)", idx+1, len(toprocess), f.name )
+            log.info("Completed file %d out of %d (%s)", idx+1, len(toprocess), f.name)
         dbenv.close()

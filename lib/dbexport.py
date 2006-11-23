@@ -55,8 +55,8 @@ def exportDatabase(con, articles):
         for genes in art.genedrug.values():
             genelist.update(genes)
         druglist = art.genedrug.keys()
-        cur.execute( 'INSERT INTO cbs(pmid,title,abs,genes,drugs,coes,evid_loc) VALUES (?,?,?,?,?,?,?)',
-                    ( str(art.pmid), art.title, art.abstract, " ".join(genelist), " ".join(druglist), None, None ) )
+        cur.execute('INSERT INTO cbs(pmid,title,abs,genes,drugs,coes,evid_loc) VALUES (?,?,?,?,?,?,?)',
+                    (str(art.pmid), art.title, art.abstract, " ".join(genelist), " ".join(druglist), None, None))
     con.commit()
 
 def exportText(outfile, articles):
@@ -70,14 +70,14 @@ def exportText(outfile, articles):
         def cursor(self):
             return self
         def executescript(self, sql):
-            self.out.write( sql )
+            self.out.write(sql)
         def execute(self, sql, sub):
             sql = sql.replace("?", "%s") + ";\n"
             sub = list(sub)
             for i,s in enumerate(sub):
                 if s is None:
                     sub[i] = "NULL"
-                elif isinstance( s, str ):
+                elif isinstance(s, str):
                     sub[i] = '"' + str(s) + '"'
             self.executescript(sql % tuple(sub))
         def executemany(self, sql, subs):
@@ -94,7 +94,7 @@ def exportSQLite(outfile, articles):
     pmid, title, abstract and genedrug fields.
     """
     from pysqlite2 import dbapi2 as sqlite
-    log.info( "Exporting pharmdemo database to %s", outfile.name )
+    log.info("Exporting pharmdemo database to %s", outfile.name)
     if outfile.isfile():
         outfile.remove()
     con = sqlite.connect(outfile)
@@ -130,7 +130,7 @@ create table cbs (
 -- contains gene-drug pairs, and the number of articles containing
 -- both in their abstract.
 
-create table genedrug ( 
+create table genedrug (
   id number(10,0) primary key, 
   gene varchar2(100), 
   drug varchar2(100),

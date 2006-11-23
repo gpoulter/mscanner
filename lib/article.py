@@ -93,7 +93,7 @@ def getArticles(article_db_path, pmidlist_path):
     """
     cache_path = path(pmidlist_path + ".pickle")
     if cache_path.isfile():
-        return cPickle.load(file( cache_path, "rb" ))
+        return cPickle.load(file(cache_path, "rb"))
     pmids = readPMIDFile(pmidlist_path)
     artdb = dbshelve.open(article_db_path, 'r')
     articles = [ artdb[str(p)] for p in pmids ]
@@ -111,7 +111,7 @@ def makeBackup(filepath):
     if oldfile.exists():
         raise RuntimeError("Recovery required: %s exists" % oldfile)
     if filepath.exists():
-        filepath.rename( oldfile )
+        filepath.rename(oldfile)
 
 def removeBackup(filepath):
     """Remove the .recovery backup of a file.
@@ -131,23 +131,29 @@ class Article:
     @ivar pmid: Integer PubMed ID or MEDLINE UI of the article.
     @ivar title: Title of the article.
     @ivar abstract: Abstract of the article
-    @ivar meshterms: List or set of Mesh terms associated with article.
-    @ivar genedrug: List of detected gene-drug associations
+    @ivar meshterms: Set of Mesh terms associated with article.
+    @ivar chemicals: Set of chemicals associated with article
+    @ivar genedrug: Optional list of gene-drug associations
     """
 
-    def __init__(self, pmid, title, abstract, meshterms, genedrug=None):
+    def __init__(self, pmid, title, abstract, meshterms, chemicals=None, genedrug=None):
         self.pmid = int(pmid)
         self.title = title
         self.abstract = abstract
         self.meshterms = meshterms
+        self.chemicals = chemicals
         if genedrug is not None:
             self.genedrug = genedrug
 
-    def __repr__( self ):
+    def __repr__(self):
         import pprint
         pp = pprint.PrettyPrinter()
-        astr = "Article(pmid=%d,\ntitle=%s,\nabstract=%s,\nmeshterms=%s)\n"
-        return astr % (self.pmid, repr(self.title), repr(self.abstract), pp.pformat(self.meshterms))
+        astr = "Article(pmid=%d,\ntitle=%s,\nabstract=%s,\nmeshterms=%s\nchemicals=%s)\n"
+        return astr % (self.pmid,
+                       repr(self.title),
+                       repr(self.abstract),
+                       pp.pformat(self.meshterms),
+                       pp.pformat(self.chemicals),)
 
 class FileTracker(set):
     """Class which tracks processed files.
@@ -155,12 +161,12 @@ class FileTracker(set):
     It accepts all paths, but membership is checked according to basename()
     """
 
-    def __init__( self, trackfile=None):
+    def __init__(self, trackfile=None):
         """Initialise, specifying path to write the list of files"""
         self.trackfile = path(trackfile)
         self.load()
 
-    def dump( self ):
+    def dump(self):
         """Write the list of tracked files, one per line"""
         if self.trackfile == "None": return
         proclist = list(self)
@@ -173,7 +179,7 @@ class FileTracker(set):
         """Read the list of files into the tracker"""
         self.clear()
         if self.trackfile.isfile():
-            self.update( line.strip() for line in self.trackfile.lines() )
+            self.update(line.strip() for line in self.trackfile.lines())
 
     def add(self, fname):
         """Add a file to the tracker"""
@@ -193,50 +199,50 @@ class FeatureMapping:
     @ivar term: A list mapping ID to string
     """
 
-    def __init__( self, termfile = None ):
+    def __init__(self, termfile = None):
         """Initialise the database
         @param termfile: Path to text file with list of terms
         """
-        self.termfile = path( termfile )
+        self.termfile = path(termfile)
         self.termid = {}
         self.term = []
         self.load()
 
-    def load( self ):
+    def load(self):
         """Load the term mapping from disk"""
         self.termid = {}
         self.term = []
         if not self.termfile.exists(): return
-        f = file( self.termfile, "r" )
+        f = file(self.termfile, "r")
         for term in f:
             term = term.strip()
-            self.termid[term] = len( self.term )
+            self.termid[term] = len(self.term)
             self.term.append(term)
         f.close()
 
-    def dump( self ):
+    def dump(self):
         """Write the term mapping to disk"""
         if self.termfile == "None": return
-        makeBackup( self.termfile )
-        f = file( self.termfile, "w" )
+        makeBackup(self.termfile)
+        f = file(self.termfile, "w")
         for term in self.term:
             f.write(term+"\n")
         f.close()
-        removeBackup( self.termfile )
+        removeBackup(self.termfile)
 
-    def __getitem__( self, feature_id ):
+    def __getitem__(self, feature_id):
         """Return feature string given feature ID"""
         return self.term[feature_id]
 
-    def __len__( self ):
+    def __len__(self):
         """Return number of distinct features"""
         return len(self.term)
 
-    def getterms( self, term_ids ):
+    def getterms(self, term_ids):
         """Return feature strings given feature ids"""
         return [ self.term[tid] for tid in term_ids ]
 
-    def getids( self, terms ):
+    def getids(self, terms):
         """Get term IDs corresponding to the given list of terms.
         @return: array('H') of term IDs
         @note: Dynamically creates new term IDs as necessary.
@@ -244,10 +250,10 @@ class FeatureMapping:
         result = []
         for term in terms:
             if term not in self.termid:
-                tid = len( self.term )
-                self.term.append( term )
+                tid = len(self.term)
+                self.term.append(term)
                 self.termid[term] = tid
-            result.append( self.termid[term] )
+            result.append(self.termid[term])
         return array("H",result)
 
 class TermCounts(dict):
@@ -258,48 +264,48 @@ class TermCounts(dict):
     """
     __slots__ = [ "docs", "total" ]
 
-    def __init__( self, items=None ):
+    def __init__(self, items=None):
         """Initialise the term counter to zero.
         @note: If items is a list of features vectors, add those
         feature vectors to this instance.
         """
-        dict.__init__( self )
+        dict.__init__(self)
         self.docs = 0
         self.total = 0
         if items is not None:
             for features in items:
-                self.add( features )         
+                self.add(features)         
 
     @staticmethod
-    def load( filepath ):
+    def load(filepath):
         """Return TermCounts instance, either loaded from pickle or
         freshly instantiated""" 
         if path(filepath).exists():
-            return cPickle.load( file( filepath, "rb" ) )
+            return cPickle.load(file(filepath, "rb"))
         else:
             return TermCounts()
 
     @staticmethod
-    def dump( instance, filepath ):
+    def dump(instance, filepath):
         """Write a pickle of a TermCounts instance to disk, keeping
         temporary backup"""
         filepath = path(filepath)
         if filepath == "None": return
-        makeBackup( filepath )
-        cPickle.dump( instance, file( filepath, "wb" ), protocol=2 )
-        removeBackup( filepath )
+        makeBackup(filepath)
+        cPickle.dump(instance, file(filepath, "wb"), protocol=2)
+        removeBackup(filepath)
 
-    def add( self, features ):
+    def add(self, features):
         """Adds the terms from an article to the term counts"""
         self.docs += 1
-        self.total += len( features )
+        self.total += len(features)
         for f in features:
             if f not in self:
                 self[f] = 1
             else:
                 self[f] += 1
 
-    def subtract( self, other ):
+    def subtract(self, other):
         """Return a TermCounts instance representing the article from
         this one less the articles from other."""
         result = TermCounts()

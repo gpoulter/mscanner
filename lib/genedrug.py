@@ -71,7 +71,7 @@ class CachingGeneFinder:
         return xmlrpclib.ServerProxy(url,transport=ProxyTransport(proxy))
 
     def __del__(self):
-        if isinstance( self.cache, dbshelve.Shelf):
+        if isinstance(self.cache, dbshelve.Shelf):
             self.cache.close()
 
     def __call__(self,text):
@@ -323,6 +323,4 @@ def getGeneDrugFilter(gdcache, drugpickle, gapscorecache):
         gdcache,
         GeneDrugFilter(
             load(file(drugpickle, "rb")),
-            CachingGeneFinder( gapscorecache )
-        )
-    )
+            CachingGeneFinder(gapscorecache)))

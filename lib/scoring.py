@@ -58,11 +58,11 @@ def getTermScores(positive, negative, pseudocount=0.1, daniel=False):
         score[termid] = (math.log(pfreq/nfreq),pfreq,nfreq,pcount,ncount)
     for (termid,pcount) in positive.iteritems():
         if termid in score: continue
-        ncount = negative.get( termid, 0 )
+        ncount = negative.get(termid, 0)
         makeScore(termid,pcount,ncount)
     for (termid,ncount) in negative.iteritems():
         if termid in score: continue
-        pcount = positive.get( termid, 0 )
+        pcount = positive.get(termid, 0)
         makeScore(termid,pcount,ncount)
     return score
 
@@ -99,7 +99,7 @@ def filterDocuments(docs, feature_scores, limit=10000, threshold=0.0, statfile=N
                 heapreplace(results, (score,docid))
     if statfile is not None:
         article.updateStatusFile(statfile, None)
-    results.sort( reverse=True )
+    results.sort(reverse=True)
     if ndocs < limit:
         del results[ndocs:]
     return results
@@ -108,7 +108,7 @@ def writeTermScoresCSV(f, meshdb, scores, pfreqs, nfreqs):
     """Write term scores to CSV file"""
     LINE = "%.3f,%.2e,%.2e,%d,%d,%d,%s\n"
     f.write("score,numerator,denominator,positives,negatives,termid,term\n")
-    for termid, s in sorted( scores.iteritems(), key=lambda x:x[1][0], reverse=True ):
+    for termid, s in sorted(scores.iteritems(), key=lambda x:x[1][0], reverse=True):
         f.write(LINE % (s[0],s[1],s[2],s[3],s[4],termid,meshdb[termid]))
 
 def writeTermScoresHTML(f, meshdb, scores, pfreqs, nfreqs, pseudocount):
@@ -124,7 +124,7 @@ def writeTermScoresHTML(f, meshdb, scores, pfreqs, nfreqs, pseudocount):
         nterms = len(nfreqs),
         scores = scores,
         meshdb = meshdb
-        ),
+       ),
         outputfile=f)
 
 def writeReport(
@@ -139,7 +139,7 @@ def writeReport(
     limit,
     posfile,
     articles=None,
-    ):
+   ):
     """Write a report using the results of the classifier
     @param scores: List of (score,docid) pairs, in decreasing order of score
     @param meshdb: termid:term mapping (FeatureMapping instance)
@@ -165,7 +165,7 @@ def writeReport(
     # Result scores
     f = file(res_txt,'w')
     for score, pmid in scores:
-        f.write( "%-13d%.5f\n" % ( pmid, score ) )
+        f.write("%-13d%.5f\n" % (pmid, score))
     # Citations for input articles
     import article
     posids = list(article.readPMIDFile(posfile))

@@ -15,9 +15,10 @@ class ArticleParserTests(unittest.TestCase):
         self.assertEqual(a.title,b.title)
         self.assertEqual(a.abstract,b.abstract)
         self.assertEqual(a.meshterms,b.meshterms)
+        self.assertEqual(a.chemicals,b.chemicals)
     def test( self ):
-        a1 = Article(1,"T","A",set(["T1","T2","T3","T4","T5","T6","T7"]))
-        a2 = Article(2,"T","A",set(["T1","T2","T3","T4","T5","T6","T7"]))
+        a1 = Article(1,"T","A",set(["T1","T2","T3","T4","T5","T6","T7"]),set([]))
+        a2 = Article(2,"T","A",set(["T1","T2","T3","T4","T5","T6","T7"]),set(["C1","C2"]))
         parser = ArticleParser()
         result = list( parser.parse( xmltext ) )
         self.art_equal(result[0],a1)
@@ -71,6 +72,16 @@ xmltext = u'''<?xml version="1.0" encoding="UTF-8"?>
 <AbstractText>A</AbstractText>
 </Abstract>
 </Article>
+<ChemicalList>
+<Chemical>
+<RegistryNumber>0</RegistryNumber>
+<NameOfSubstance>C1</NameOfSubstance>
+</Chemical>
+<Chemical>
+<RegistryNumber>0</RegistryNumber>
+<NameOfSubstance>C2</NameOfSubstance>
+</Chemical>
+</ChemicalList>
 <MeshHeadingList>
 <MeshHeading>
 <DescriptorName MajorTopicYN="N">T1</DescriptorName>

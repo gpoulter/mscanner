@@ -9,8 +9,8 @@ window.onload = function() {
    //jsolait.baseURI = "/htdocs/script/jsolait";
    g.xmlrpc = imprt("xmlrpc");
    g.service = new g.xmlrpc.ServiceProxy(
-      "http://jonbn.med.uct.ac.za/cgi-bin/mscanner.py",
-      //"http://medline.stanford.edu/cgi-bin/mscanner.py",
+      //"http://jonbn.med.uct.ac.za/cgi-bin/mscanner.py",
+      "http://medline.stanford.edu/cgi-bin/mscanner.py",
       ["getStatus","listBatches","deleteBatch","query","validate"]);
    // Set up sliding help effects
    g.fx = new Object();

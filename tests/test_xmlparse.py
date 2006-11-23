@@ -10,23 +10,25 @@ class ArticleParserTests(unittest.TestCase):
     Tests ArticleParser parse
     Not Testing: parseFile
     """
-    def art_equal( self, a, b):
+    def art_equal(self, a, b):
         self.assertEqual(a.pmid,b.pmid)
         self.assertEqual(a.title,b.title)
         self.assertEqual(a.abstract,b.abstract)
         self.assertEqual(a.meshterms,b.meshterms)
+        self.assertEqual(a.authors,b.authors)
         self.assertEqual(a.chemicals,b.chemicals)
-    def test( self ):
-        a1 = Article(1,"T","A",set(["T1","T2","T3","T4","T5","T6","T7"]),set([]))
-        a2 = Article(2,"T","A",set(["T1","T2","T3","T4","T5","T6","T7"]),set(["C1","C2"]))
+    def test(self):
+        a1 = Article(1,"T","A",set(["T1","T2","T3","T4","T5","T6","T7"]),set([("F1","L1"),("F2","L2")]),set())
+        a2 = Article(2,"T","A",set(["T1","T2","T3","T4","T5","T6","T7"]),set(),set(["C1","C2"]))
         parser = ArticleParser()
-        result = list( parser.parse( xmltext ) )
+        result = list(parser.parse(xmltext))
+        print result
         self.art_equal(result[0],a1)
         self.art_equal(result[1],a2)
         synonyms = {"T1":"T2"}
         exclude = set(["T3","T4"])
-        parser = ArticleParser( synonyms, exclude )
-        result = list( parser.parse( xmltext ) )
+        parser = ArticleParser(synonyms, exclude)
+        result = list(parser.parse(xmltext))
         a1.meshterms.remove("T1")
         a1.meshterms.remove("T3")
         a1.meshterms.remove("T4")
@@ -44,6 +46,18 @@ xmltext = u'''<?xml version="1.0" encoding="UTF-8"?>
 <Abstract>
 <AbstractText>A</AbstractText>
 </Abstract>
+<AuthorList CompleteYN="Y">
+<Author ValidYN="Y">
+<LastName>L1</LastName>
+<ForeName>T J</ForeName>
+<Initials>F1</Initials>
+</Author>
+<Author ValidYN="Y">
+<LastName>L2</LastName>
+<ForeName>A J</ForeName>
+<Initials>F2</Initials>
+</Author>
+</AuthorList>
 </Article>
 <MeshHeadingList>
 <MeshHeading>

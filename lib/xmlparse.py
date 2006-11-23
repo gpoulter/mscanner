@@ -65,24 +65,37 @@ class ArticleParser:
         """
         NAME, ATTRS, CHILDREN, SPARE = range(0,4)
         parser = pyRXPU.Parser(Validate=0, ProcessDTD=0, TrustSDD=0)
+        def getChildren(root, names):
+            return (n for n in root[CHILDREN] if n[NAME] in names)
+        def getChild(root, name):
+            for n in root[CHILDREN]:
+                if n[NAME] == name:
+                    return n
         def parseCitation(root):
-            result = Article(pmid=0, title="", abstract="", meshterms=set(), chemicals=set())
+            if root[NAME] != 'MedlineCitation':
+                raise ValueError("Attempted to parse non-MedlineCitation object")
+            result = Article(pmid=0, title="", abstract="", meshterms=set(), authors=set(), chemicals=set())
             for node1 in root[CHILDREN]:
-                if node1[NAME] == u'PMID':
+                if node1[NAME] == 'PMID':
                     result.pmid = int(node1[CHILDREN][0])
-                if node1[NAME] == u'Article':
+                if node1[NAME] == 'Article':
                     for node2 in node1[CHILDREN]:
-                        if node2[NAME] == u'ArticleTitle':
-                            result.title=node2[CHILDREN][0]
-                        if node2[NAME] == u'Abstract':
-                            for node3 in node2[CHILDREN]:
-                                if node3[NAME] == u'AbstractText':
-                                    result.abstract = node3[CHILDREN][0]
-                if node1[NAME]==u'MeshHeadingList':
-                    for MeshHeading in [n for n in node1[CHILDREN] if n[NAME] == 'MeshHeading']:
-                        for termnode in [n for n in MeshHeading[CHILDREN] if n[NAME] in \
-                        [u'DescriptorName',u'Descriptor',u'QualifierName',u'SubHeading'] ]:
-                            term = termnode[CHILDREN][0]
+                        if node2[NAME] == 'ArticleTitle':
+                            result.title = node2[CHILDREN][0]
+                        if node2[NAME] == 'Abstract':
+                            result.abstract = getChild(node2, 'AbstractText')[CHILDREN][0]
+                        if node2[NAME] == 'AuthorList':
+                            for Author in getChildren(node2, ['Author']):
+                                lastname = getChild(Author, 'LastName')
+                                if lastname is None: continue
+                                initials = getChild(Author, 'Initials')
+                                if initials is None: continue
+                                result.authors.add((initials[CHILDREN][0],lastname[CHILDREN][0]))
+                if node1[NAME] == 'MeshHeadingList':
+                    for MeshHeading in getChildren(node1, 'MeshHeading'):
+                        for Descriptor in getChildren(
+                            MeshHeading, ['DescriptorName', 'Descriptor', 'QualifierName', 'SubHeading']):
+                            term = Descriptor[CHILDREN][0]
                             if term in self.synonyms:
                                 log.debug("Detected synonym: %s --> %s",term,self.synonyms[term])
                                 term = self.synonyms[term]
@@ -92,41 +105,42 @@ class ArticleParser:
                                 if term not in self.excludes_done:
                                     #self.log.debug("Detected exclude: %s",term)
                                     self.excludes_done.add(term)
-                if node1[NAME]==u'ChemicalList':
-                    for Chemical in [n for n in node1[CHILDREN] if n[NAME] == 'Chemical']:
-                        for NameOfSubstance in [n for n in Chemical[CHILDREN] if n[NAME] == 'NameOfSubstance']:
-                            name = NameOfSubstance[CHILDREN][0]
-                            result.chemicals.add(name)
+                if node1[NAME] == 'ChemicalList':
+                    for Chemical in getChildren(node1, ['Chemical']):
+                        name = getChild(Chemical, 'NameOfSubstance')[CHILDREN][0]
+                        result.chemicals.add(name)
             return result
-        root=parser.parse(text)
-        if root[NAME]==u'MedlineCitation':
-            result=parseCitation(root)
+        root = parser.parse(text)
+        if root[NAME] == 'MedlineCitation' and root[ATTRS]['Status'] == 'MEDLINE':
+            result = parseCitation(root)
             if check_id is not None:
                 if result.pmid != check_id:
                     raise ValueError("Article PMID %s does not match check_id %s" % (result.pmid,check_id))
             yield result
-        elif root[NAME]==u'PubmedArticle':
+        elif root[NAME] == 'PubmedArticle':
             for node1 in root[CHILDREN]:
-                if node1[NAME]==u'MedlineCitation':
-                    result=parseCitation(node1)
+                if node1[NAME] == 'MedlineCitation' and node1[ATTRS]['Status'] == 'MEDLINE':
+                    result = parseCitation(node1)
                 if check_id is not None:
-                    if node1[NAME] == u'PubmedData':
+                    if node1[NAME] == 'PubmedData':
                         matched = False
-                        ArticleIdList=[n for n in node1[CHILDREN] if n[NAME]=='ArticleIdList' ][0]
-                        for ArticleId in [n for n in ArticleIdList[CHILDREN] if n[NAME]=='ArticleId']:
-                            if ArticleId[CHILDREN][0]==check_id:
-                                result.pmid=check_id
-                                matched=True
-                        if matched==False:
+                        ArticleIdList = getChild(node1, 'ArticleIdList')
+                        for ArticleId in getChildren(ArticleIdList, ['ArticleId']):
+                            if ArticleId[CHILDREN][0] == check_id:
+                                result.pmid = check_id
+                                matched = True
+                        if matched == False:
                             raise ValueError("Article IDs do not match check_id %s" % (check_id,))
             yield result
-        elif root[NAME] == u'MedlineCitationSet':
-            for MedlineCitation in [n for n in root[CHILDREN] if n[NAME]=='MedlineCitation']:
-                yield parseCitation(MedlineCitation)
-        elif root[NAME] == u'PubmedArticleSet':
-            for PubmedArticle in [n for n in root[CHILDREN] if n[NAME]=='PubmedArticle']:
-                for MedlineCitation  in [n for n in  PubmedArticle[CHILDREN] if n[NAME]=='MedlineCitation']:
+        elif root[NAME] == 'MedlineCitationSet':
+            for MedlineCitation in getChildren(root, ['MedlineCitation']):
+                if MedlineCitation[ATTRS]['Status'] == 'MEDLINE':
                     yield parseCitation(MedlineCitation)
+        elif root[NAME] == 'PubmedArticleSet':
+            for PubmedArticle in getChildren(root, ['PubmedArticle']):
+                for MedlineCitation in getChildren(PubmedArticle, ['MedlineCitation']):
+                    if MedlineCitation[ATTRS]['Status'] == 'MEDLINE':
+                        yield parseCitation(MedlineCitation)
         else:
             raise ValueError("Could not find a valid PubMed citation")
 

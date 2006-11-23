@@ -132,15 +132,17 @@ class Article:
     @ivar title: Title of the article.
     @ivar abstract: Abstract of the article
     @ivar meshterms: Set of Mesh terms associated with article.
+    @ivar authors: Set of (initials,lastname) pairs of article authors
     @ivar chemicals: Set of chemicals associated with article
     @ivar genedrug: Optional list of gene-drug associations
     """
 
-    def __init__(self, pmid, title, abstract, meshterms, chemicals=None, genedrug=None):
+    def __init__(self, pmid, title, abstract, meshterms, authors=None, chemicals=None, genedrug=None):
         self.pmid = int(pmid)
         self.title = title
         self.abstract = abstract
         self.meshterms = meshterms
+        self.authors = authors
         self.chemicals = chemicals
         if genedrug is not None:
             self.genedrug = genedrug
@@ -148,11 +150,12 @@ class Article:
     def __repr__(self):
         import pprint
         pp = pprint.PrettyPrinter()
-        astr = "Article(pmid=%d,\ntitle=%s,\nabstract=%s,\nmeshterms=%s\nchemicals=%s)\n"
+        astr = "Article(pmid=%d,\ntitle=%s,\nabstract=%s,\nmeshterms=%s\nauthors=%s\nchemicals=%s)\n"
         return astr % (self.pmid,
                        repr(self.title),
                        repr(self.abstract),
                        pp.pformat(self.meshterms),
+                       pp.pformat(self.authors),
                        pp.pformat(self.chemicals),)
 
 class FileTracker(set):

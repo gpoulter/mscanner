@@ -2,17 +2,11 @@
 
 """Query the MEDLINE database with a set of positive articles
 
+CGI script may call with batchid, pseudocount, result limit and score
+threshold as arguments.
+
 @author: Graham Poulter
                                    
-
-Usage: ./query.py
-
-Query the MEDLINE database by training a classifier on
-configuration.query.posfile, and output results to configured
-locations.
-
-CGI script may call this with batchid, pseudocount and limit as
-arguments.
 
 """
 
@@ -28,22 +22,25 @@ import configuration as c
 import dbshelve
 import dbexport
 import article
-from genedrug import getGeneDrugFilter
-from medline import FeatureDatabase
-from scoring import getTermScores, filterDocuments, writeReport
+import genedrug
+import medline
+import scoring
 
 def do_query():
     # Perform query
     log.debug("Opening databases")
-    meshdb = article.FeatureMapping(c.meshdb)
-    featdb = FeatureDatabase(c.featuredb, 'r', dbname="meshterms")
-    article.updateStatusFile(c.statfile, 0, len(featdb))
+    log.debug("Peforming query for dataset %s", c.dataset)
+    statfile = article.StatusFile(c.statfile, c.dataset)
+    featmap = article.FeatureMapping(c.featuremap)
+    featdb = medline.FeatureDatabase(c.featuredb, 'r', dbname=c.featureset)
+    statfile.update(0, len(featdb))
     artdb = dbshelve.open(c.articledb, 'r')
     posids = set(article.readPMIDFile(c.posfile, featdb))
-    pos_counts = article.TermCounts(featdb[d] for d in posids)
-    bg_counts = article.TermCounts.load(c.termcounts)
+    pos_counts = article.TermCounts(items=(featdb[d] for d in posids))
+    bg_counts = article.TermCounts(c.termcounts)
     neg_counts = bg_counts.subtract(pos_counts)
-    term_scores = getTermScores(pos_counts, neg_counts, c.pseudocount)
+    term_scores = scoring.getTermScores(pos_counts, neg_counts, c.pseudocount,
+                                        featmap=featmap, exclude=c.exclude_feats)
     # Load pickled results
     pickle = c.query_report / "results.pickle"
     if pickle.isfile():
@@ -55,14 +52,15 @@ def do_query():
         if not c.query_report.exists():
             c.query_report.makedirs()
         log.info("Recalculating results, to store in %s", pickle)
-        results = filterDocuments(((k,v) for k,v in featdb.iteritems() if k not in posids),
-                                  term_scores, c.limit, c.threshold, c.statfile)
+        results = scoring.filterDocuments(
+            ((k,v) for k,v in featdb.iteritems() if k not in posids),
+            term_scores, c.limit, c.threshold, statfile)
         cPickle.dump(results, file(pickle,"wb"), protocol=2)
     # Write result report
     log.debug("Writing report")
-    writeReport(
+    scoring.writeReport(
         scores = results,
-        meshdb = meshdb,
+        featmap = featmap,
         termscores = term_scores,
         pfreq = pos_counts,
         nfreq = neg_counts,
@@ -76,7 +74,7 @@ def do_query():
     # Database export
     if c.outputdb is not None:
         log.debug("Getting gene-drug associations on results")
-        gdfilter = getGeneDrugFilter(c.genedrug, c.drugtable, c.gapscore)
+        gdfilter = genedrug.getGeneDrugFilter(c.genedrug, c.drugtable, c.gapscore)
         gdarticles = []
         for pmid in chain((a for s,a in results),posids):
             a = artdb[str(pmid)]
@@ -96,8 +94,4 @@ if __name__ == "__main__":
         c.threshold = float(sys.argv[4])
         c.query_report = (c.weboutput / c.dataset) + "/"
         c.posfile = c.query_report / "positives.txt"
-    try:
-        article.createStatusFile(c.statfile, c.dataset)
-        do_query()
-    finally:
-        c.statfile.remove()
+    do_query()

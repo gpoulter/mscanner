@@ -20,7 +20,7 @@ import sys
 import warnings
 warnings.filterwarnings(action='ignore', category=FutureWarning)
 
-from article import updateStatusFile, TermCounts
+import article
 import scoring
 
 class Validator:
@@ -32,24 +32,26 @@ class Validator:
 
     def __init__(
         self,
-        meshdb,
+        featmap,
         featdb,
         posids,
         negids,
         nfold,
         pseudocount=0.1,
         daniel=False,
-        genedrug_articles=None):
+        genedrug_articles=None,
+        exclude_feats=None
+        ):
         """Initialise validator
-        @param meshdb: Maping of term id to term name
-        @param featdb: Maping of doc id to list of term ids
+        @param featmap: Maping of feature id to (feature string, feature type)
+        @param featdb: Mapping of doc id to list of feature ids
         @param posids: Set of positive doc ids
         @param negids: Set of negative doc ids
         @param nfold: Number of folds in cross-validation.
         @param pseudocount, daniel: Passed to Scoring.getTermScores
         @param genedrug_articles: Set of doc ids with gene-drug co-occurrences
         """
-        self.meshdb = meshdb
+        self.featmap = featmap
         self.featdb = featdb
         self.pos = posids
         self.neg = negids
@@ -57,6 +59,7 @@ class Validator:
         self.pseudocount = pseudocount
         self.daniel = daniel
         self.genedrug_articles = genedrug_articles
+        self.exclude_feats = exclude_feats
         self.gnuplot = Gnuplot(debug=1)
 
     def articleIsPositive(self, docid, score, threshold):
@@ -100,12 +103,13 @@ class Validator:
         for fold, (ptest, ntest) in enumerate(zip(ptests, ntests)):
             log.debug("Carrying out fold number %d", fold)
             if statfile is not None:
-                updateStatusFile(statfile, fold+1, self.nfold)
+                statfile.update(fold+1, self.nfold)
             ptrain = positives - ptest
             ntrain = negatives - ntest
-            pfreqs = TermCounts(self.featdb[d] for d in ptrain)
-            nfreqs = TermCounts(self.featdb[d] for d in ntrain)
-            termscores = scoring.getTermScores(pfreqs, nfreqs, self.pseudocount, self.daniel)
+            pfreqs = article.TermCounts(items=(self.featdb[d] for d in ptrain))
+            nfreqs = article.TermCounts(items=(self.featdb[d] for d in ntrain))
+            termscores = scoring.getTermScores(pfreqs, nfreqs, self.pseudocount, self.daniel,
+                                               self.featmap, self.exclude_feats)
             pscores.extend(scoring.scoreDocument(self.featdb[d], termscores) for d in ptest)
             nscores.extend(scoring.scoreDocument(self.featdb[d], termscores) for d in ntest)
         return pscores, nscores
@@ -118,7 +122,7 @@ class Validator:
         big = max(data)
         npoints = len(data)
         bin_width = min(npoints, (big-small)/20)
-        centers = [ 0.0 for x in range(0,int((big+1e-5-small)/bin_width)) ]
+        centers = [ 0.0 for x in range(0,int((big+(1e-3-small))/bin_width)) ]
         if len(centers) == 0:
             return [0], [0]
         for i in range(len(centers)):
@@ -135,11 +139,8 @@ class Validator:
         """Given 1D values, return an approximate probability density function
 
         @note: Uses SciPy, which uses Gaussian kernel
-
         @param values: Sorted list of floats representing the sample
-
         @param npoints: Number of equal-spaced points at which to estimate the PDF
-
         @return: (xvalues,yvalues) for y=f(x) of the pdf.
         """
         from scipy import stats
@@ -318,11 +319,12 @@ class Validator:
         self.plotHistograms(hist_img, pscores, nscores, threshold)
 
         # Output term scores
-        pfreqs = TermCounts(self.featdb[d] for d in self.pos)
-        nfreqs = TermCounts(self.featdb[d] for d in self.neg)
-        termscores = scoring.getTermScores(pfreqs, nfreqs, self.pseudocount, self.daniel)
-        scoring.writeTermScoresCSV(file(terms_csv,"w"), self.meshdb, termscores, pfreqs, nfreqs)
-        scoring.writeTermScoresHTML(file(terms_html,"w"), self.meshdb, termscores, pfreqs, nfreqs, self.pseudocount)
+        pfreqs = article.TermCounts(items=(self.featdb[d] for d in self.pos))
+        nfreqs = article.TermCounts(items=(self.featdb[d] for d in self.neg))
+        termscores = scoring.getTermScores(pfreqs, nfreqs, self.pseudocount, self.daniel,
+                                           self.featmap, self.exclude_feats)
+        scoring.writeTermScoresCSV(file(terms_csv,"w"), self.featmap, termscores, pfreqs, nfreqs)
+        scoring.writeTermScoresHTML(file(terms_html,"w"), self.featmap, termscores, pfreqs, nfreqs, self.pseudocount)
 
         # Calculate performance measures
         P = TP+FN
@@ -352,7 +354,7 @@ class Validator:
         if prevalence > 0:
             enrichment = precision / prevalence
 
-        # Write main index file
+        # Write main index file for validation output
         templates.validation.run(dict(
             TP=TP, TN=TN, FP=FP, FN=FN, P=P, N=N, A=A, T=T, F=F,
             TPR=TPR, FNR=FNR, TNR=TNR, FPR=FPR, PPV=PPV, NPV=NPV,

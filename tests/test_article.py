@@ -33,16 +33,16 @@ class FeatureMappingTests(TempFileTestCase):
     """
     def test(self):
         fm = FeatureMapping(self.fn)
-        self.assertEqual(fm.getids(["A","B"]), array("H",[0,1]))
-        self.assertEqual(fm.getterms([0,1]), ["A", "B"])
-        self.assertEqual(fm[0], "A")
-        self.assertEqual(fm[1], "B")
+        self.assertEqual(fm.getFeatureIds(["A","B"]), [0,1])
+        self.assertEqual(fm.getFeatureIds(["A","C"],"T"), [2,3])
+        self.assertEqual(fm.getFeatures([0,1,2,3]), [("A",None), ("B",None),("A","T"),("C","T")])
+        self.assertEqual(fm[1], ("B",None))
         fm.dump()
         fm.load()
         fm.dump()
         fm.load()
-        self.assertEqual(fm.term, ["A","B"])
-        self.assertEqual(fm.termid, {"A":0,"B":1})
+        self.assertEqual(fm.feats, [("A",None),("B",None),("A","T"),("C","T")])
+        self.assertEqual(fm.feat2id, {None:{"A":0,"B":1}, "T":{"A":2,"C":3}})
         
 class TermCountsTests(TempFileTestCase):
     """Test for TermCounts class
@@ -50,7 +50,7 @@ class TermCountsTests(TempFileTestCase):
     Tests: add, __get__, dump, load, subtract
     """
     def test(self):
-        t = TermCounts()
+        t = TermCounts(self.fn)
         t.add([1,3])
         t.add([2,3])
         self.assertEqual(t[1], 1)
@@ -58,8 +58,9 @@ class TermCountsTests(TempFileTestCase):
         self.assertEqual(t[3], 2)
         self.assertEqual(t.docs, 2)
         self.assertEqual(t.total, 4)
-        TermCounts.dump(t, self.fn)
-        t = TermCounts.load(self.fn)
+        t.dump()
+        del t
+        t = TermCounts(self.fn)
         s = TermCounts()
         s.add([1,3])
         r = t.subtract(s)

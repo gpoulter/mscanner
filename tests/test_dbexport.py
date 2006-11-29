@@ -13,16 +13,17 @@ articles=[
     title="TITLE1",
     abstract="ABSTRACT1",
     meshterms=["T1"],
-    genedrug={'PKID1':["GENE1","GENE2"],'PKID2':["GENE2","GENE3"]}
     ),
     Article(
     pmid=2000,
     title="TITLE2",
     abstract="ABSTRACT2",
     meshterms=["T1"],
-    genedrug={'PKID1':["GENE2","GENE3"],'PKID2':["GENE3","GENE4"]}
     )
 ]
+
+articles[0].genedrug={'PKID1':["GENE1","GENE2"],'PKID2':["GENE2","GENE3"]}
+articles[1].genedrug={'PKID1':["GENE2","GENE3"],'PKID2':["GENE3","GENE4"]}
         
 class DbexportTests(unittest.TestCase):
     """Tests for dbexport module

@@ -40,7 +40,7 @@
           <th>Total number of occurrences</th><td>{{poccurs}}</td><td>{{noccurs}}</td>
         </tr>
         <tr>
-          <th>Terms per document</th><td>{{"%.3f" % (poccurs/pdocs)}}</td><td>{{"%.3f" % (noccurs/ndocs)}}</td>
+          <th>Terms per document</th><td>{{"%.3f" % pfreq}}</td><td>{{"%.3f" % nfreq}}</td>
         </tr>
       </tbody>
     </table>
@@ -55,13 +55,13 @@
 
       <thead>
         <tr>
-          <th>Term ID</th><th>Term</th><th>Pos / Neg</th><th>Calculation</th><th>Score</th>
+          <th>Term ID</th><th>Term</th><th>Type</th><th>Pos / Neg</th><th>Calculation</th><th>Score</th>
         </tr>
       </thead>
 
-      <!-- score = (0=score,1=numerator,2=denominator,3=pcount,4=ncount) -->
+      <!-- score = (0=score,1=numerator,2=denominator,3=pcount,4=ncount,5=termid,6=feature,7=type) -->
       <tbody>
-        {{for termid, score in sorted( scores.iteritems(), key=lambda x:x[1][0], reverse=True )}}<tr><td>{{termid}}</td><td>{{meshdb[termid]}}</td><td>{{score[3]}}/{{score[4]}}</td><td>ln({{"%.2e"%score[1]}}/{{"%.2e"%score[2]}})</td><td>{{"%.2f"%score[0]}}</td></tr>
+        {{for s in scores}}<tr><td>{{s[5]}}</td><td>{{s[6].encode("ascii","xmlcharrefreplace")}}</td><td>{{s[7]}}</td><td>{{s[3]}}/{{s[4]}}</td><td>ln({{"%.2e"%s[1]}}/{{"%.2e"%s[2]}})</td><td>{{"%.2f"%s[0]}}</td></tr>
       {{endfor}}</tbody>
       
     </table>

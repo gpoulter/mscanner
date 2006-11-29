@@ -102,9 +102,9 @@ class ArticleParser:
                                 if lastname is None: continue
                                 initials = getChild(Author, 'Initials')
                                 if initials is None: continue
-                                result.authors.add((initials[CHILDREN][0],lastname[CHILDREN][0]))
+                                result.authors.append((initials[CHILDREN][0],lastname[CHILDREN][0]))
                 if node1[NAME] == 'MeshHeadingList':
-                    for MeshHeading in getChildren(node1, 'MeshHeading'):
+                    for MeshHeading in getChildren(node1, ['MeshHeading']):
                         for Descriptor in getChildren(
                             MeshHeading, ['DescriptorName', 'Descriptor', 'QualifierName', 'SubHeading']):
                             term = Descriptor[CHILDREN][0]

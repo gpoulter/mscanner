@@ -7,6 +7,7 @@ def suite():
         "test_article",
         "test_dbexport",
         "test_dbshelve",
+        "test_featuredb",
         "test_genedrug",
         "test_medline",
         "test_scoring",

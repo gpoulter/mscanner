@@ -16,10 +16,11 @@ writeReport() -- Collate results of a query (calls all of above)
 
 from __future__ import division
 from path import path
+from codecs import open
 import templates
 import article
 
-def getTermScores(positive, negative, pseudocount=0.1, daniel=False):
+def getTermScores(positive, negative, pseudocount=0.01, daniel=False, featmap=None, exclude=None):
     """Return log-likelihood support scores for MeSH terms.
 
     @param positive: TermCounts instance for positive articles. 
@@ -34,6 +35,10 @@ def getTermScores(positive, negative, pseudocount=0.1, daniel=False):
     @param daniel: If true, use the JAMIA paper's smoothing heuristic
     of 10^-8 for terms found in positive but not negative (and visa
     versa), which greatly exaggerates scores for such terms.
+
+    @param featmap: Mapping from feature ID to (feature string, feature type)
+
+    @param exclude: List of feature types to exclude from scoring
 
     @rtype: C{{termid:(float,float,float,int,int)}}
 
@@ -55,7 +60,8 @@ def getTermScores(positive, negative, pseudocount=0.1, daniel=False):
         else:
             pfreq = (pcount+pseudocount) / (positive.docs+2*pseudocount)
             nfreq = (ncount+pseudocount) / (negative.docs+2*pseudocount)
-        score[termid] = (math.log(pfreq/nfreq),pfreq,nfreq,pcount,ncount)
+        if exclude is None or featmap[termid][1] not in exclude:
+            score[termid] = (math.log(pfreq/nfreq),pfreq,nfreq,pcount,ncount)
     for (termid,pcount) in positive.iteritems():
         if termid in score: continue
         ncount = negative.get(termid, 0)
@@ -79,10 +85,17 @@ def scoreDocument(features, feature_scores):
 
 def filterDocuments(docs, feature_scores, limit=10000, threshold=0.0, statfile=None):
     """Return scores for documents given features and feature scores
+
     @param docs: Iteratable over (doc ID, feature ID list) pairs
+
     @param feature_scores: Mapping from feature ID to score
+
     @param limit: Maximum number of results to return.
+
     @param threshold: Cutoff score for including an article in the results
+
+    @param statfile: Name of file to post status updates
+
     @return: List of (score,docid) pairs
     """
     results = list()
@@ -91,30 +104,38 @@ def filterDocuments(docs, feature_scores, limit=10000, threshold=0.0, statfile=N
     from heapq import heapreplace
     for idx, (docid, features) in enumerate(docs):
         if statfile is not None and idx % 100000 == 0:
-            article.updateStatusFile(statfile, idx)
-        score = scoreDocument(features,feature_scores)
+            statfile.update(idx)
+        score = scoreDocument(features, feature_scores)
         if score >= threshold:
             ndocs += 1
             if score >= results[0][0]:
                 heapreplace(results, (score,docid))
     if statfile is not None:
-        article.updateStatusFile(statfile, None)
+        statfile.update(None)
     results.sort(reverse=True)
     if ndocs < limit:
         del results[ndocs:]
     return results
 
-def writeTermScoresCSV(f, meshdb, scores, pfreqs, nfreqs):
+def writeTermScoresCSV(f, featmap, scores, pfreqs, nfreqs):
     """Write term scores to CSV file"""
-    LINE = "%.3f,%.2e,%.2e,%d,%d,%d,%s\n"
-    f.write("score,numerator,denominator,positives,negatives,termid,term\n")
+    LINE = u"%.3f,%.2e,%.2e,%d,%d,%d,%s,%s\n"
+    f.write(u"score,numerator,denominator,positives,negatives,termid,term,type\n")
     for termid, s in sorted(scores.iteritems(), key=lambda x:x[1][0], reverse=True):
-        f.write(LINE % (s[0],s[1],s[2],s[3],s[4],termid,meshdb[termid]))
+            f.write(LINE % (s[0],s[1],s[2],s[3],s[4],termid,featmap[termid][0],featmap[termid][1]))
 
-def writeTermScoresHTML(f, meshdb, scores, pfreqs, nfreqs, pseudocount):
+def writeTermScoresHTML(f, featmap, scores, pfreqs, nfreqs, pseudocount):
     """Write term scores to HTML file"""
+    pfreq, nfreq = 0, 0
+    if pfreqs.docs:
+        pfreq = len(pfreqs)/pfreqs.docs
+    if nfreqs.docs:
+        nfreq = len(nfreqs)/nfreqs.docs
+    scorelines = []
+    for termid, s in sorted(scores.iteritems(), key=lambda x:x[1][0], reverse=True):
+        scorelines.append((s[0],s[1],s[2],s[3],s[4],termid,featmap[termid][0],featmap[termid][1]))
     templates.termscore.run(dict(
-        numterms = len(meshdb),
+        numterms = len(featmap),
         pseudocount = pseudocount,
         pdocs = pfreqs.docs,
         ndocs = nfreqs.docs,
@@ -122,14 +143,14 @@ def writeTermScoresHTML(f, meshdb, scores, pfreqs, nfreqs, pseudocount):
         noccurs = nfreqs.total,
         pterms = len(pfreqs),
         nterms = len(nfreqs),
-        scores = scores,
-        meshdb = meshdb
-       ),
-        outputfile=f)
+        pfreq = pfreq,
+        nfreq = nfreq,
+        scores = scorelines
+       ), outputfile=f)
 
 def writeReport(
     scores,
-    meshdb,
+    featmap,
     termscores,
     pfreq,
     nfreq,
@@ -142,7 +163,7 @@ def writeReport(
    ):
     """Write a report using the results of the classifier
     @param scores: List of (score,docid) pairs, in decreasing order of score
-    @param meshdb: termid:term mapping (FeatureMapping instance)
+    @param featmap: termid:term mapping (FeatureMapping instance)
     @param termscores: termid:(score,...) mapping
     @param pfreq: termid:count mappings for positives 
     @param nfreq: termid:count mappings for negatives
@@ -160,8 +181,8 @@ def writeReport(
     result_html= prefix/"result_citations.html"
     index_html = prefix/"index.html"
     # Term scores
-    writeTermScoresCSV(file(terms_csv,'w'), meshdb, termscores, pfreq, nfreq)
-    writeTermScoresHTML(file(terms_html,'w'), meshdb, termscores, pfreq, nfreq, pseudocount)
+    writeTermScoresCSV(open(terms_csv,'w','utf-8'), featmap, termscores, pfreq, nfreq)
+    writeTermScoresHTML(open(terms_html,'w','ascii','xmlcharrefreplace'), featmap, termscores, pfreq, nfreq, pseudocount)
     # Result scores
     f = file(res_txt,'w')
     for score, pmid in scores:

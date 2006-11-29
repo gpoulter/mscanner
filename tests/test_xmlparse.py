@@ -22,9 +22,9 @@ class ArticleParserTests(unittest.TestCase):
         self.assertEqual(a.chemicals,b.chemicals)
     def test(self):
         a1 = Article(1,"T1","A1","Mol. Biol. Rep.","0301-4851",1999,
-                     set(["T1","T2","T3","T4","T5","T6","T7"]),set([("F1","L1"),("F2","L2")]),set())
+                     set(["T1","T2","T3","T4","T5","T6","T7"]),[("F1","L1"),("F2","L2")],set())
         a2 = Article(2,"T2","A2","","",0,
-                     set(["T1","T2","T3","T4","T5","T6","T7"]),set(),set(["C1","C2"]))
+                     set(["T1","T2","T3","T4","T5","T6","T7"]),[],set(["C1","C2"]))
         parser = ArticleParser()
         result = list(parser.parse(xmltext))
         print result

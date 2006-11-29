@@ -3,14 +3,13 @@
 @author: Graham Poulter
                                      
 
-createStatusFile() -- Start a status file
-createStatusFile() -- Update progress in a status file
 chooseRandomLines() -- Get random lines from a file
 readPMIDFile() -- Get PMIDs reliably from a text file
 getArticles() -- Retrieve Articles from a DB, caching results in a Pickle
 makeBackup() -- Create a .recovery file
 removeBackup() -- Remove a .recovery file
 
+StatusFile -- One way posting of program status to a file
 Article -- Stores attributes of an article
 FileTracker -- Track processed files (to avoid re-parsing), with on-disk persistence
 FeatureMapping -- Mapping between string features and 16-bit feature IDs
@@ -21,67 +20,11 @@ TermCounts -- Store number of occurrences of each feature, + total occurrences a
 from array import array
 import cPickle
 import dbshelve
+from itertools import izip
 import logging as log
 import os
 from path import path
 import time
-
-def createStatusFile(statfile, dataset, total=0):
-    """Create a file containing PID, 0, 0, dataset, str(time.time())"""
-    if statfile.exists():
-        raise RuntimeError("MedScanner instance is already running")
-    statfile.write_text("%d\n%d\n%d\n%s\n%s\n" % (os.getpid(), 0, 0, dataset, str(time.time())))
-
-def updateStatusFile(statfile, progress, total=None):
-    """Update the 0, 0 lines with progress and (optional) total.  If
-    progress is None, set to total."""
-    lines = statfile.lines()
-    if total is not None:
-        lines[2] = str(total)
-    if progress is not None:
-        lines[1] = str(progress)
-    else:
-        lines[1] = lines[2]
-    statfile.write_lines(lines)
-
-def chooseRandomLines(infile_path, outfile_path, N):
-    """Choose N random lines from infile_path and print them to outfile_path"""
-    from random import randint
-    lines = file(infile_path,"r").readlines()
-    size = len(lines)
-    outfile = file(outfile_path,"w")
-    if N > size:
-        raise ValueError("N > length of file")
-    i = 0
-    while i < N:
-        i += 1
-        r = randint(0,size-1)
-        outfile.write(lines[r])
-        lines[r] = lines[size-1]
-        size = size - 1
-
-def readPMIDFile(filename, allpmids=None):
-    """Read PubMed IDs one per line from filename.
-
-    File format ignores blank lines and lines starting with #, and only
-    parses the line up to the first whitespace character.
-
-    If allpmids is provided, we only return those PMID integers that
-    satisfy 'pmid in allpmids'.
-    """
-    if not isinstance(filename,path) or not filename.exists():
-        raise ValueError("File %s does not exist" % filename)
-    count = 0
-    for line in file(filename,"r"):
-        if line.strip() != "" and not line.startswith("#"):
-            pmid = int(line.split()[0])
-            if allpmids is None or pmid in allpmids:
-                yield pmid
-                count += 1
-            else:
-                log.warn("Failed to find PMID %d in allpmids" % pmid)
-    if count == 0:
-        raise RuntimeError("Did not succeed in reading any PMIDs from %s" % filename)
 
 def getArticles(article_db_path, pmidlist_path):
     """Return list of Article's, given the path to an article database
@@ -125,6 +68,87 @@ def removeBackup(filepath):
     if oldfile.exists():
         oldfile.remove()
 
+def chooseRandomLines(infile_path, outfile_path, N):
+    """Choose N random lines from infile_path and print them to outfile_path"""
+    from random import randint
+    lines = file(infile_path,"r").readlines()
+    size = len(lines)
+    outfile = file(outfile_path,"w")
+    if N > size:
+        raise ValueError("N > length of file")
+    i = 0
+    while i < N:
+        i += 1
+        r = randint(0,size-1)
+        outfile.write(lines[r])
+        lines[r] = lines[size-1]
+        size = size - 1
+
+def readPMIDFile(filename, allpmids=None):
+    """Read PubMed IDs one per line from filename.
+
+    File format ignores blank lines and lines starting with #, and only
+    parses the line up to the first whitespace character.
+
+    If allpmids is provided, we only return those PMID integers that
+    satisfy 'pmid in allpmids'.
+    """
+    if not isinstance(filename,path) or not filename.exists():
+        raise ValueError("File %s does not exist" % filename)
+    count = 0
+    for line in file(filename,"r"):
+        if line.strip() != "" and not line.startswith("#"):
+            pmid = int(line.split()[0])
+            if allpmids is None or pmid in allpmids:
+                yield pmid
+                count += 1
+            else:
+                log.warn("Failed to find PMID %d in allpmids" % pmid)
+    if count == 0:
+        raise RuntimeError("Did not succeed in reading any PMIDs from %s" % filename)
+
+class StatusFile:
+    """Class to manage a status file, for one way posting of program
+    status to listeners."""
+
+    def __init__(self, filename, dataset, total=0):
+        """Create status file with PID, progress, total, dataset and start time"""
+        self.filename = filename
+        self.dataset = dataset
+        self.progress = 0
+        self.total = total
+        self.start = time.time()
+        if self.filename.exists():
+            raise RuntimeError("Status file already exists")
+        self.write()
+
+    def __del__(self):
+        """Remove status file on deletion"""
+        self.filename.remove()
+
+    def __str__(self):
+        """Return status file contents"""
+        return "%d\n%d\n%d\n%s\n%s\n" % (
+            os.getpid(),
+            self.progress,
+            self.total,
+            self.dataset,
+            str(self.start))
+
+    def write(self):
+        """Write status file to disk"""
+        self.filename.write_text(str(self))
+
+    def update(self, progress, total=None):
+        """Update progress of status file.  If progress is None, set to total."""
+        if total is not None:
+            self.total = total
+        if progress is None:
+            self.progress = self.total
+        else:
+            self.progress = progress
+        self.write()
+
 class Article:
     """A simple wrapper for parsed Medline articles
 
@@ -138,7 +162,6 @@ class Article:
     @ivar authors: Set of (initials,lastname) pairs of article authors
     @ivar chemicals: Set of chemicals associated with article
     """
-
     def __init__(self,
                  pmid=0,
                  title="",
@@ -156,11 +179,14 @@ class Article:
         self.issn = issn
         self.year = year 
         self.meshterms = meshterms
-        if meshterms is None: self.meshterms = set()
+        if meshterms is None:
+            self.meshterms = set()
         self.authors = authors
-        if authors is None: self.authors = set()
+        if authors is None:
+            self.authors = list()
         self.chemicals = chemicals
-        if chemicals is None: self.chemicals = set()
+        if chemicals is None:
+            self.chemicals = set()
 
     def __repr__(self):
         import pprint
@@ -184,23 +210,17 @@ class FileTracker(set):
 
     def __init__(self, trackfile=None):
         """Initialise, specifying path to write the list of files"""
-        self.trackfile = path(trackfile)
-        self.load()
+        self.trackfile = trackfile
+        if isinstance(trackfile,path) and trackfile.isfile():
+            self.update(trackfile.lines(retain=False))
 
     def dump(self):
         """Write the list of tracked files, one per line"""
-        if self.trackfile == "None": return
-        proclist = list(self)
-        proclist.sort()
+        if self.trackfile is None:
+            return
         makeBackup(self.trackfile)
-        file(self.trackfile, "w").write("\n".join(proclist))
+        self.trackfile.write_lines(sorted(self))
         removeBackup(self.trackfile)
-
-    def load(self):
-        """Read the list of files into the tracker"""
-        self.clear()
-        if self.trackfile.isfile():
-            self.update(line.strip() for line in self.trackfile.lines())
 
     def add(self, fname):
         """Add a file to the tracker"""
@@ -208,116 +228,139 @@ class FileTracker(set):
 
     def toprocess(self, files):
         """Given a list of files return sorted list of those not in the tracker"""
-        toprocess = [ f for f in files if f.basename() not in self ]
-        toprocess.sort()
-        return toprocess
+        return sorted(f for f in files if f.basename() not in self)
 
 class FeatureMapping:
-    """Curates a database of encountered term features, providing
-    methods to map between terms and 16-bit integer IDs.
+    """Curates a database of string features, providing methods to map
+    between a feature string and an integer feature ID.
 
-    @ivar termid: A dict mapping string to ID
-    @ivar term: A list mapping ID to string
+    @note: The type of a feature could be 'mesh', 'issn', 'year', or
+     'author'.  A given feature string could have more than one type.
+
+    @ivar feats: List mapping ID to (feature string, feature type)
+    @ivar feat2id: {type:{feature:id}} mapping
     """
 
-    def __init__(self, termfile = None):
+    def __init__(self, featfile=None):
         """Initialise the database
-        @param termfile: Path to text file with list of terms
+
+        @param featfile: Path to text file with list of terms
         """
-        self.termfile = path(termfile)
-        self.termid = {}
-        self.term = []
+        self.featfile = featfile
+        self.feats = []
+        self.feat2id = {}
         self.load()
 
     def load(self):
         """Load the term mapping from disk"""
-        self.termid = {}
-        self.term = []
-        if not self.termfile.exists(): return
-        f = file(self.termfile, "r")
-        for term in f:
-            term = term.strip()
-            self.termid[term] = len(self.term)
-            self.term.append(term)
+        self.feats = []
+        self.types = []
+        self.feat2id = {}
+        if not isinstance(self.featfile,path) or not self.featfile.exists():
+            return
+        f = file(self.featfile, "r")
+        for fid, pair in enumerate(f):
+            pair = pair.strip().decode("utf-8").split("\t")
+            if len(pair) == 1:
+                pair.append(None)
+            feat, ftype = pair
+            self.feats.append((feat,ftype))
+            if ftype not in self.feat2id:
+                self.feat2id[ftype] = {feat:fid}
+            else:
+                self.feat2id[ftype][feat] = fid
         f.close()
 
     def dump(self):
-        """Write the term mapping to disk"""
-        if self.termfile == "None": return
-        makeBackup(self.termfile)
-        f = file(self.termfile, "w")
-        for term in self.term:
-            f.write(term+"\n")
+        """Write the feature mapping to disk"""
+        if self.featfile is None:
+            return
+        makeBackup(self.featfile)
+        f = self.featfile.open("wb",)
+        for feat, ftype in self.feats:
+            f.write(feat.encode("utf-8"))
+            if ftype is not None:
+                f.write("\t"+ftype)
+            f.write("\n")
         f.close()
-        removeBackup(self.termfile)
+        removeBackup(self.featfile)
 
-    def __getitem__(self, feature_id):
+    def __getitem__(self, featid):
         """Return feature string given feature ID"""
-        return self.term[feature_id]
+        return self.feats[featid]
 
     def __len__(self):
         """Return number of distinct features"""
-        return len(self.term)
+        return len(self.feats)
 
-    def getterms(self, term_ids):
-        """Return feature strings given feature ids"""
-        return [ self.term[tid] for tid in term_ids ]
+    def getFeatures(self, featids):
+        """Return (string,type) for features given feature id list"""
+        return [ self.feats[fid] for fid in featids ]
 
-    def getids(self, terms):
-        """Get term IDs corresponding to the given list of terms.
-        @return: array('H') of term IDs
-        @note: Dynamically creates new term IDs as necessary.
+    def getFeatureIds(self, feats, ftype=None):
+        """Get term IDs corresponding to the given list of
+        terms. Dynamically creates new features IDs as necessary.
+
+        @param feats: List of features strings to convert
+
+        @param ftype: Type of the features being added
+        
+        @return: List of feature IDs
         """
         result = []
-        for term in terms:
-            if term not in self.termid:
-                tid = len(self.term)
-                self.term.append(term)
-                self.termid[term] = tid
-            result.append(self.termid[term])
-        return array("H",result)
+        if ftype not in self.feat2id:
+            self.feat2id[ftype] = {}
+        fdict = self.feat2id[ftype]
+        for feat in feats:
+            if feat not in fdict:
+                featid = len(self.feats)
+                self.feats.append((feat,ftype))
+                fdict[feat] = featid
+            result.append(fdict[feat])
+        return result
 
 class TermCounts(dict):
     """Mapping from feature ID's to number of occurrences.
 
     @ivar docs: Number of documents processed
     @ivar total: Total occurrences (== sum of values)
+    @ivar filename: File to store feature counts (may be None)
     """
-    __slots__ = [ "docs", "total" ]
 
-    def __init__(self, items=None):
-        """Initialise the term counter to zero.
-        @note: If items is a list of features vectors, add those
-        feature vectors to this instance.
-        """
-        dict.__init__(self)
-        self.docs = 0
-        self.total = 0
-        if items is not None:
-            for features in items:
-                self.add(features)         
-
-    @staticmethod
-    def load(filepath):
-        """Return TermCounts instance, either loaded from pickle or
-        freshly instantiated""" 
-        if path(filepath).exists():
-            return cPickle.load(file(filepath, "rb"))
+    def __new__(cls, filename=None, items=None):
+        """For loading the counts from a pickle instead"""
+        if isinstance(filename,path) and filename.exists():
+            return cPickle.load(file(filename, "rb"))
         else:
-            return TermCounts()
+            return super(TermCounts, cls).__new__(cls, filename)
 
-    @staticmethod
-    def dump(instance, filepath):
+    def __init__(self, filename=None, items=None):
+        """Initialise the term counter to zero.
+
+        @param filename: Optional path object to a pickle with the
+        instance.
+        @param items: Optional list of items, each of which is given
+        to the add method.
+        """
+        if not (isinstance(filename,path) and filename.exists()):
+            self.docs = 0
+            self.total = 0
+        if items is not None:
+            for item in items:
+                self.add(item)
+        self.filename = filename
+
+    def dump(self):
         """Write a pickle of a TermCounts instance to disk, keeping
         temporary backup"""
-        filepath = path(filepath)
-        if filepath == "None": return
-        makeBackup(filepath)
-        cPickle.dump(instance, file(filepath, "wb"), protocol=2)
-        removeBackup(filepath)
+        if self.filename is None:
+            return
+        makeBackup(self.filename)
+        cPickle.dump(self, file(self.filename, "wb"), protocol=2)
+        removeBackup(self.filename)
 
     def add(self, features):
-        """Adds the terms from an article to the term counts"""
+        """Add a list of features to cumulative feature frequencies"""
         self.docs += 1
         self.total += len(features)
         for f in features:
@@ -335,3 +378,4 @@ class TermCounts(dict):
         for termid,count in self.iteritems():
             result[termid] = count - other.get(termid,0)
         return result
+        

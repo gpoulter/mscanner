@@ -54,7 +54,7 @@ class ScoringTests(unittest.TestCase):
         termscores = getTermScores( pfreqs, nfreqs, pseudocount=0 )
         writeReport(
             scores = [(1.0,1111), (2.0,2222), (3.5,3333)],
-            meshdb = { 1:"A", 2:"B", 3:"C" },
+            featmap = { 1:("A","T"), 2:("B","T"), 3:("C","Q") },
             termscores = termscores,
             pfreq = pfreqs,
             nfreq = nfreqs,

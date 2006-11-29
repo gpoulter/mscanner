@@ -59,12 +59,16 @@ articledb = cache / "articles.db"
 articlelist = cache / "articles.txt"
 ## Path to DB of term features for each article
 featuredb = cache / "features.db"
-## Path to to find MeSH term mapping database
-meshdb = cache / "meshdb.txt"
+## Logical database to use withing featuredb
+featureset = "meshterms" # "allfeats", "meshterms"
+## Path to feature<->ID mapping
+featuremap = cache / "featuremap.txt"
 ## Path to term counts pickle
 termcounts = cache / "termcounts.pickle"
 ## Path to list files already processed
 processed = cache / "processed.txt"
+## Whether to use transactions while updating
+use_transactions = False
 
 #### GENEDRUG CONFIGURATION
 
@@ -100,6 +104,8 @@ pseudocount = 0.01
 query_report = output / "results"
 ## Path to database output
 outputdb = None
+## Types of features to exclude
+exclude_feats = None # ["issn"]
 
 #### VALIDATOR CONFIGURATION (for validate.py)
 
@@ -172,3 +178,5 @@ if dataset == "old-vs-500k":
 if dataset == "old-vs-go4":
     posfile = corpora / "pharmgkb-2004.txt"
     negfile = corpora / "geneontology-2004.txt"
+
+#posfile = corpora / "genedrug-small.txt"

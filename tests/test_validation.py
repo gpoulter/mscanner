@@ -21,10 +21,10 @@ class ValidatorTest(unittest.TestCase):
 
     def test(self):
         val = Validator(
-            meshdb = { 1:"A", 2:"B", 3:"C", 4:"D", 5:"E", 6:"F" },
-            featdb = { 1:[1,2,3], 2:[2,3], 3:[1,3], 4:[4,6], 5:[4], 6:[3,4,5], 7:[4,5] },
-            posids = set([ 1, 2, 3 ]),
-            negids = set([ 4, 5, 6, 7]),
+            featmap = {1:("A","mesh"), 2:("B","year"), 3:("C","mesh"), 4:("D","year"), 5:("E","mesh"), 6:("F","mesh")},
+            featdb = {1:[1,2,3], 2:[2,3], 3:[1,3], 4:[4,6], 5:[4], 6:[3,4,5], 7:[4,5]},
+            posids = set([1, 2, 3]),
+            negids = set([4, 5, 6, 7]),
             nfold = 2,
             pseudocount = 0.1,
             daniel = False,

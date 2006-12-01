@@ -10,32 +10,33 @@ and pseudocount as parameters.
 
 """
 
+#Builtin
 import cPickle
 from itertools import chain
 import logging as log
 import os
-from path import path
+import random
 import sys
 import time
-
+#Local
+from path import path
+import numpy
+#MScanner
 import configuration as c
 import article
+import dbexport
 import genedrug
 import medline
 import validation
 
 def do_validation():
-    # Read training data
+    import article
     statfile = article.StatusFile(c.statfile, c.dataset, c.nfolds)
     featmap = article.FeatureMapping(c.featuremap)
-    featdb = medline.FeatureDatabase(c.featuredb, 'r', dbname=c.featureset)
+    featdb = medline.FeatureDatabase(c.featuredb, 'r')
     positives = set(article.readPMIDFile(c.posfile, featdb))
-    negatives = set(article.readPMIDFile(c.negfile, featdb))
-    # Remove positives found in the negative set
-    log.debug("Removing negatives found in positives") 
-    for x in positives:
-        if x in negatives:
-            negatives.remove(x)
+    negatives = numpy.array([x for x in article.readPMIDFile(c.negfile, featdb) if x not in positives], dtype=numpy.int32)
+    positives = numpy.array(list(positives), dtype=numpy.int32)
     # Get which document ids have gene-drug assocations
     genedrug_articles = None
     if c.dogenedrug:
@@ -43,21 +44,13 @@ def do_validation():
         genedrug_articles = set()
         pos_arts = article.getArticles(c.articledb, c.posfile)
         neg_arts = article.getArticles(c.articledb, c.negfile)
-        gdfilter = validation.getGeneDrugFilter(c.genedrug, c.drugtable, c.gapscore)
-        #for article in chain(pos_arts, neg_arts):
-        for art in pos_arts:
+        gdfilter = genedrug.getGeneDrugFilter(c.genedrug, c.drugtable, c.gapscore)
+        for article in chain(pos_arts, neg_arts):
             gdresult = gdfilter(art)
             art.genedrug = gdresult
             if len(gdresult) > 0:
                 genedrug_articles.add(art.pmid)
-        from dbexport import countGeneDrug
-        gdcount = countGeneDrug(pos_arts)
-        outf = file("/tmp/output.csv", "w")
-        outf.write("PMID,GENE,DRUG\n")
-        for (gene,drug),pmids in gdcount.iteritems():
-            for pmid in pmids:
-                outf.write("%s,%s,%s\n" % (pmid, gene, drug))
-        outf.close()
+        dbexport.writeGeneDrugCountsCSV(dbexport.countGeneDrug(pos_arts))
     val = validation.Validator(
         featmap,
         featdb,
@@ -67,8 +60,7 @@ def do_validation():
         c.pseudocount,
         c.dodaniel,
         genedrug_articles,
-        c.exclude_feats,
-        )
+        c.exclude_feats,)
     # Load pickled results
     pickle = c.valid_report / "results.pickle"
     if pickle.isfile():
@@ -95,5 +87,5 @@ if __name__ == "__main__":
         c.valid_report = c.weboutput / c.dataset
         c.posfile = c.valid_report / "positives.txt"
         c.negfile = c.valid_report / "negatives.txt"
-        article.chooseRandomLines(c.articlelist, c.negfile, numnegs)
+        c.negfile.write_lines(random.sample(c.articlelist.lines(), numnegs))
     do_validation()

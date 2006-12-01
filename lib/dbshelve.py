@@ -60,11 +60,11 @@ class Shelf(DictMixin):
         self.db.close()
 
     def __len__(self):
-        return len(self.db)
+        return self.db.stat()["ndata"]
 
     def __getitem__(self, key):
         v = self.db.get(key, txn=self.txn)
-        if v is None: raise KeyError("Key %s not in database" % str(key))
+        if v is None: raise KeyError("Key %s not in database" % repr(key))
         return cPickle.loads(v)
 
     def __setitem__(self, key, value):

@@ -4,6 +4,7 @@
                                    
 
 countGeneDrug() -- Turn per-article associations into global associations
+writeGeneDrugCountsCSV() -- Record global gene-drug associations for checking
 exportDatabase() -- Export articles to a database connection
 exportText() -- Export articles to SQL text
 exportSQLite() -- Export articles to an SQLite database
@@ -12,6 +13,24 @@ schema -- The schema of the pharmdemo database
 """
 
 import logging as log
+import csv
+import codecs
+
+class ucsvwriter:
+    """A CSV writer taking unicode objects, writing to a stream in utf-8"""
+    def __init__(self, f, dialect=csv.excel, **kwds):
+        self.writer = codecs.getwriter(f, dialect=dialect, **kwds)
+        self.dialect = dialect
+    def writerow(self, row):
+        self.writer.writerow([s.encode("utf-8") for s in row])
+    def writerows(self, rows):
+        for row in rows:
+            self.writerow(row)
+
+def ucsvreader(f, dialect=csv.excel, **kwds):
+    """A CSV reader for a stream in utf-8, returning unicode objects"""
+    for line in csv.reader(f, dialect=dialect, **kwds):
+        return unicode(line, "utf-8")
 
 def countGeneDrug(articles):
     """Return global gene-drug associations given per-article associations
@@ -29,6 +48,14 @@ def countGeneDrug(articles):
                     gdcounter[(gene,drug)] = []
                 gdcounter[(gene,drug)].append(art.pmid)
     return gdcounter
+
+def writeGeneDrugCountsCSV(fname, gdcounts):
+    """Write association of PubMed IDs to gene-drug occurrences to a CSV file"""
+    outf = ucsvwriter(file("/tmp/output.csv", "wb"))
+    outf.writerow("PMID,GENE,DRUG\n")
+    for (gene,drug),pmids in gdcount.iteritems():
+        for pmid in pmids:
+            outf.writerow("%s,%s,%s\n" % (pmid, gene, drug))
 
 def exportDatabase(con, articles):
     """Export articles to database

@@ -10,6 +10,11 @@ import unittest
 
 pp = pprint.PrettyPrinter()
 
+class ParseDrugsTest(unittest.TestCase):
+
+    def test_parseDrugs(self):
+        assert genedrug.parseDrugs(drugs_text) == parsed_drugs_correct
+
 class GeneDrugFilterTests(unittest.TestCase):
     """Tests for GeneDrugFilter class
 
@@ -46,6 +51,34 @@ class GeneDrugFilterTests(unittest.TestCase):
         gd = self.filter.listGeneDrugs(gdtext)
         #print "GENEDRUG: " + pp.pformat(gd)
         self.assertEqual(gd, genedrug_correct)
+
+drugs_text = """PA10000\t17 beta-estradiol\t\t
+PA10007\talbumin human\t\tAlbuminar-25|Albuminar-5|Albutein 25%|Albutein 5%|Buminate 25%|Buminate 5%|Plasbumin-25|Plasbumin-5|
+PA10009\talefacept\t\tAmevive|
+PA1001\t1-methyl-4-phenylpyridinium (MPP+)\t\t
+PA10010\talemtuzumab\t\tCampath|
+PA10011\talfacalcidol\t\tOne-Alpha|
+PA10012\talteplase, recombinant\t\tActivase|Activase rt-PA|Cathflo Activase|"""
+
+parsed_drugs_correct = {
+    'PA10000': ['17 beta-estradiol'],
+    'PA10007': ['albumin human',
+                'Albuminar-25',
+                'Albuminar-5',
+                'Albutein 25%',
+                'Albutein 5%',
+                'Buminate 25%',
+                'Buminate 5%',
+                'Plasbumin-25',
+                'Plasbumin-5'],
+    'PA10009': ['alefacept', 'Amevive'],
+    'PA1001': ['1-methyl-4-phenylpyridinium (MPP+)'],
+    'PA10010': ['alemtuzumab', 'Campath'],
+    'PA10011': ['alfacalcidol', 'One-Alpha'],
+    'PA10012': ['alteplase, recombinant',
+                'Activase',
+                'Activase rt-PA',
+                'Cathflo Activase']}
 
 drugs = {
     "D1": ["Abc", "abc2", "abcd", "qirt"],

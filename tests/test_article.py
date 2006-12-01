@@ -1,6 +1,7 @@
 #!env python
 
 from article import *
+import numpy
 from path import path
 import tempfile
 import unittest
@@ -33,50 +34,27 @@ class FeatureMappingTests(TempFileTestCase):
     """
     def test(self):
         fm = FeatureMapping(self.fn)
-        self.assertEqual(fm.getFeatureIds(["A","B"]), [0,1])
-        self.assertEqual(fm.getFeatureIds(["A","C"],"T"), [2,3])
-        self.assertEqual(fm.getFeatures([0,1,2,3]), [("A",None), ("B",None),("A","T"),("C","T")])
-        self.assertEqual(fm[1], ("B",None))
+        self.assertEqual(fm.getFeatureIds(["A","B"],"Q"), [0,1], True)
+        self.assertEqual(fm.getFeatureIds(["A","C"],"T"), [2,3], True)
+        self.assertEqual(fm.getFeatures([0,1,2,3]), [("A","Q"), ("B","Q"),("A","T"),("C","T")])
+        self.assertEqual(fm[1], ("B","Q"))
+        self.assert_(numpy.all(fm.freqs == [1,1,1,1]))
         fm.dump()
         fm.load()
         fm.dump()
         fm.load()
-        self.assertEqual(fm.feats, [("A",None),("B",None),("A","T"),("C","T")])
-        self.assertEqual(fm.feat2id, {None:{"A":0,"B":1}, "T":{"A":2,"C":3}})
+        self.assertEqual(fm.feats, [("A","Q"),("B","Q"),("A","T"),("C","T")])
+        self.assertEqual(fm.feat2id, {"Q":{"A":0,"B":1}, "T":{"A":2,"C":3}})
         
-class TermCountsTests(TempFileTestCase):
-    """Test for TermCounts class
-
-    Tests: add, __get__, dump, load, subtract
-    """
-    def test(self):
-        t = TermCounts(self.fn)
-        t.add([1,3])
-        t.add([2,3])
-        self.assertEqual(t[1], 1)
-        self.assertEqual(t[2], 1)
-        self.assertEqual(t[3], 2)
-        self.assertEqual(t.docs, 2)
-        self.assertEqual(t.total, 4)
-        t.dump()
-        del t
-        t = TermCounts(self.fn)
-        s = TermCounts()
-        s.add([1,3])
-        r = t.subtract(s)
-        self.assertEqual(r[1], 0)
-        self.assertEqual(r[2], 1)
-        self.assertEqual(r[3], 1)
-        self.assertEqual(r.docs, 1)
-        self.assertEqual(r.total, 2)
-
 class ArticleTests(unittest.TestCase):
     """Tests for article module functions
 
-    Tests: chooseRandomLines, readPMIDFile, getArticles
+    Tests: countFeatures, readPMIDFile, getArticles
     """
     def test(self):
-        pass
+        featdb = {1:[1,2], 2:[2,3], 3:[3,4]}
+        counts = countFeatures(5,featdb,[1,2,3])
+        self.assert_(numpy.all(counts == [0,1,2,2,1]))
 
 if __name__ == "__main__":
     unittest.main()

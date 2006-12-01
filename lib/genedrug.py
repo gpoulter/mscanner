@@ -3,6 +3,7 @@
 @author: Graham Poulter
                                    
 
+parseDrugs() -- Parse text version of PharmGKB drug table
 CachingGeneFinder -- Caches results of XMLRPC gene-finding queries
 GeneDrugFilter -- Use a gene-finder and drug table to find associations
 CachingGeneDrugLister -- Find associations for articles, caching results
@@ -16,6 +17,56 @@ import re
 import unittest
 import xmlrpclib
 import dbshelve
+
+def parseDrugs(text):
+    """Return a drug dictionary from specially formatted table
+
+    @see: Format of the drug table is described in README.html
+
+    @raise ValueError: On incorrect formatting.
+
+    @type text: C{string}
+    @param text: Drug table to load.
+
+    @rtype: C{{string:[string]}}
+
+    @note: The specified file should map PharmGKB Accession ID's to drug names.  They are
+    used to scan abstracts for occurrences of drugs.  One drug is
+    described per line, and each line is to be formatted as follows:
+    
+    The drug's PharmGKB Accession ID
+    [tab]
+    The drug's main name in PharmGKB (might be comma-separated names)
+    [tab]
+    A list of the drug's generic names (if any), each terminated by '|'
+    [tab]
+    A list of the drug's trade names (if any), each terminated by '|'
+
+    @return: Mapping from PharmGKB ID to aliases for the drug.  The
+    first alias is the preferred drug name.
+    """
+    drugs = {}
+    lines = text.split('\n')
+    mainsplit = re.compile(r"\A(\w+)\t([^\t]+)\t([^\t]*)\t(.*)\Z")
+    subsplit = re.compile(r"\|")
+    for line in lines:
+        if line=="":
+            continue
+        # Check tab count in lines
+        if line.count('\t') != 3:
+            raise ValueError, "Drug lines must have three tabs (see README). Bad line was '"+line+"'"
+        # Check splitting line into components
+        (PKID,main,trade,generic) = mainsplit.match(line).groups()
+        if trade != "" and trade[-1:] != "|":
+            raise ValueError, "Drugs must terminate in '|' (see README). Bad line was '"+line+"'"
+        if generic != "" and generic[-1:] != "|":
+            raise ValueError, "Drugs must terminate in '|' (see README). Bad line was '"+line+"'"
+        # Get names from each component and slurp into a list
+        trades = subsplit.split(trade[:-1])
+        generics = subsplit.split(generic[:-1])
+        drugs[PKID] = [ name for name in [main]+trades+generics if name != "" ]
+    return drugs
+
 
 class CachingGeneFinder:
     """Cache results of gene finding queries"""
@@ -316,11 +367,9 @@ class CachingGeneDrugLister:
         self.cache[key]=result
         return result
 
-def getGeneDrugFilter(gdcache, drugpickle, gapscorecache):
+def getGeneDrugFilter(gdcache, drugtable, gapscorecache):
     """Convenience function to create a fully caching gene-drug filter"""
-    from cPickle import load
     return CachingGeneDrugLister(
-        gdcache,
-        GeneDrugFilter(
-            load(file(drugpickle, "rb")),
-            CachingGeneFinder(gapscorecache)))
+        gdcache, GeneDrugFilter(
+        parseDrugs(file(drugpickle, "rb").read()),
+        CachingGeneFinder(gapscorecache)))

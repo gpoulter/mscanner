@@ -23,32 +23,28 @@ class MedlineCacheTests(unittest.TestCase):
         pmids = h/"pmids.txt"
         artdb = h/"articles.db"
         featdb = h/"features.db"
-        fmap = FeatureMapping()
+        fmap = FeatureMapping(h/"featuremap.txt")
         m = MedlineCache(fmap,
                          xmlparse.ArticleParser(),
                          h,
                          artdb,
                          featdb,
                          h/"articles.txt",
-                         h/"termcounts.pickle",
                          h/"processed.txt",
                          use_transactions=True,)
         xml.write_text(test_xmlparse.xmltext)
         m.updateCacheFromDir(h, save_delay=1)
-        pmids.write_lines([ "1", "2" ])
+        pmids.write_lines(["1", "2"])
         from article import getArticles
         a = getArticles(artdb, pmids)
         self.assertEqual(a[0].pmid, 1)
         self.assertEqual(a[1].pmid, 2)
-        self.assertEqual(
-            m.termcounts,
-            {0: 2, 1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 1, 8: 1, 9: 1})
+        self.assertEqual(fmap.freqs, [3, 3, 3, 3, 3, 3, 3, 2])
         self.assertEqual(
             fmap.feats,
-            [(u'T6', 'mesh'), (u'T7', 'mesh'), (u'T4', 'mesh'),
-             (u'T5', 'mesh'), (u'T2', 'mesh'), (u'T3', 'mesh'),
-             (u'T1', 'mesh'), (u'0301-4851', 'issn'), (u'C2', 'mesh'),
-             (u'C1', 'mesh')])
-
+            [(u'T1', 'mesh'), (u'T2', 'mesh'), (u'T3', 'mesh'),
+             (u'T6', 'mesh'), (u'Q4', 'qual'), (u'Q5', 'qual'),
+             (u'Q7', 'qual'), (u'0301-4851', 'issn')])
+            
 if __name__ == "__main__":
     unittest.main()

@@ -19,13 +19,24 @@ from path import path
 from codecs import open
 import templates
 import article
+import numpy
 
-def getTermScores(positive, negative, pseudocount=0.01, daniel=False, featmap=None, exclude=None):
-    """Return log-likelihood support scores for MeSH terms.
+def getTermScores(
+    positive,
+    negative,
+    pdocs,
+    ndocs,
+    pseudocount=0.01,
+    daniel=False,
+    featmap=None,
+    exclude=None):
+    """Return feature support scores based on relative frequency in positives vs negatives
 
-    @param positive: TermCounts instance for positive articles. 
+    @param positive: Frequencies of features in positive documents. 
+    @param negative: Frequencies of features in negatives documents
 
-    @param negative: TermCounts instance for negative articles. 
+    @param pdocs: Number of positive documents
+    @param ndocs: Number of negative documents
 
     @param pseudocount: Pseudocount for each term, e.g. if 0.1, we
     pretend that each term has an additional 0.1 occurrences across
@@ -46,49 +57,36 @@ def getTermScores(positive, negative, pseudocount=0.01, daniel=False, featmap=No
     positive, negative corpus, and count in positive, negative corpus)
     """
     import math
-    score = dict()
     def makeScore(termid,pcount,ncount):
         if daniel:
+            pfreq, nfreq = 1e-8, 1e-8
             if pcount > 0:
-                pfreq = pcount / positive.docs
-            else:
-                pfreq = 1e-8
+                pfreq = pcount / pdocs
             if ncount > 0:
-                nfreq = ncount / negative.docs
-            else:
-                nfreq = 1e-8
+                nfreq = ncount / ndocs
         else:
-            pfreq = (pcount+pseudocount) / (positive.docs+2*pseudocount)
-            nfreq = (ncount+pseudocount) / (negative.docs+2*pseudocount)
-        if exclude is None or featmap[termid][1] not in exclude:
-            score[termid] = (math.log(pfreq/nfreq),pfreq,nfreq,pcount,ncount)
-    for (termid,pcount) in positive.iteritems():
-        if termid in score: continue
-        ncount = negative.get(termid, 0)
-        makeScore(termid,pcount,ncount)
-    for (termid,ncount) in negative.iteritems():
-        if termid in score: continue
-        pcount = positive.get(termid, 0)
-        makeScore(termid,pcount,ncount)
-    return score
+            pfreq = (pcount+pseudocount) / (pdocs+2*pseudocount)
+            nfreq = (ncount+pseudocount) / (ndocs+2*pseudocount)
+        feature_type = featmap[termid][1]
+        if exclude is None or feature_type not in exclude:
+            return [math.log(pfreq/nfreq), pfreq, nfreq, pcount, ncount]
+        else:
+            return [0, 0, 0, 0, 0]
+    return numpy.array([makeScore(termid,pcount,negative[termid]) for termid, pcount in enumerate(positive)])
 
-def scoreDocument(features, feature_scores):
+def scoreDocument(features, featscores):
     """Return document score given a feature list and feature scores
-    @param features: List of feature IDs
-    @param feature_scores: Mapping of feature ID to score
+    @param features: Array of feature IDs
+    @param featscores: Array of (score,pfreq,nfreq,pcount,ncount) for feature IDs
     """
-    score = 0.0
-    for f in features:
-        if f in feature_scores: 
-            score += feature_scores[f][0]
-    return score
+    return numpy.sum(featscores[:,0][features])
 
-def filterDocuments(docs, feature_scores, limit=10000, threshold=0.0, statfile=None):
+def filterDocuments(docs, featscores, limit=10000, threshold=0.0, statfile=None):
     """Return scores for documents given features and feature scores
 
     @param docs: Iteratable over (doc ID, feature ID list) pairs
 
-    @param feature_scores: Mapping from feature ID to score
+    @param featscores: Mapping from feature ID to score
 
     @param limit: Maximum number of results to return.
 
@@ -105,7 +103,7 @@ def filterDocuments(docs, feature_scores, limit=10000, threshold=0.0, statfile=N
     for idx, (docid, features) in enumerate(docs):
         if statfile is not None and idx % 100000 == 0:
             statfile.update(idx)
-        score = scoreDocument(features, feature_scores)
+        score = scoreDocument(features, featscores)
         if score >= threshold:
             ndocs += 1
             if score >= results[0][0]:
@@ -117,32 +115,36 @@ def filterDocuments(docs, feature_scores, limit=10000, threshold=0.0, statfile=N
         del results[ndocs:]
     return results
 
-def writeTermScoresCSV(f, featmap, scores, pfreqs, nfreqs):
+def writeTermScoresCSV(f, featmap, featscores):
     """Write term scores to CSV file"""
-    LINE = u"%.3f,%.2e,%.2e,%d,%d,%d,%s,%s\n"
     f.write(u"score,numerator,denominator,positives,negatives,termid,term,type\n")
-    for termid, s in sorted(scores.iteritems(), key=lambda x:x[1][0], reverse=True):
-            f.write(LINE % (s[0],s[1],s[2],s[3],s[4],termid,featmap[termid][0],featmap[termid][1]))
+    for s in sorted(
+        [ (s[0],s[1],s[2],s[3],s[4],termid,featmap[termid][0],featmap[termid][1])
+          for termid, s in enumerate(featscores) if s[3] != 0 or s[4] != 0 ],
+        key=lambda x:x[0], reverse=True):
+        f.write(u'%.3f,%.2e,%.2e,%d,%d,%d,"%s",%s\n' % s)
 
-def writeTermScoresHTML(f, featmap, scores, pfreqs, nfreqs, pseudocount):
+def writeTermScoresHTML(f, featmap, featscores, pdocs, ndocs, pseudocount):
     """Write term scores to HTML file"""
-    pfreq, nfreq = 0, 0
-    if pfreqs.docs:
-        pfreq = len(pfreqs)/pfreqs.docs
-    if nfreqs.docs:
-        nfreq = len(nfreqs)/nfreqs.docs
-    scorelines = []
-    for termid, s in sorted(scores.iteritems(), key=lambda x:x[1][0], reverse=True):
-        scorelines.append((s[0],s[1],s[2],s[3],s[4],termid,featmap[termid][0],featmap[termid][1]))
+    pfreq, nfreq = 0.0, 0.0
+    pfreqs, nfreqs = featscores[:,3], featscores[:,4]
+    if pdocs:
+        pfreq = numpy.sum(pfreqs)/pdocs
+    if ndocs:
+        nfreq = numpy.sum(nfreqs)/ndocs
+    scorelines = sorted(
+        [(s[0],s[1],s[2],s[3],s[4],termid,featmap[termid][0],featmap[termid][1])
+         for termid, s in enumerate(featscores)],# if s[3] != 0 or s[4] != 0],
+        key=lambda x:x[0], reverse=True)
     templates.termscore.run(dict(
         numterms = len(featmap),
         pseudocount = pseudocount,
-        pdocs = pfreqs.docs,
-        ndocs = nfreqs.docs,
-        poccurs = pfreqs.total,
-        noccurs = nfreqs.total,
-        pterms = len(pfreqs),
-        nterms = len(nfreqs),
+        pdocs = pdocs,
+        ndocs = ndocs,
+        poccurs = int(numpy.sum(pfreqs)),
+        noccurs = int(numpy.sum(nfreqs)),
+        pterms = len(numpy.nonzero(pfreqs)[0]),
+        nterms = len(numpy.nonzero(nfreqs)[0]),
         pfreq = pfreq,
         nfreq = nfreq,
         scores = scorelines
@@ -151,9 +153,9 @@ def writeTermScoresHTML(f, featmap, scores, pfreqs, nfreqs, pseudocount):
 def writeReport(
     scores,
     featmap,
+    pdocs,
+    ndocs,
     termscores,
-    pfreq,
-    nfreq,
     prefix,
     stylesheet,
     pseudocount,
@@ -164,9 +166,9 @@ def writeReport(
     """Write a report using the results of the classifier
     @param scores: List of (score,docid) pairs, in decreasing order of score
     @param featmap: termid:term mapping (FeatureMapping instance)
-    @param termscores: termid:(score,...) mapping
-    @param pfreq: termid:count mappings for positives 
-    @param nfreq: termid:count mappings for negatives
+    @param pdocs: Number of positive documents
+    @param ndocs: Number of negative documents
+    @param termscores: termid:(score,numerator,denominator,pfreq,nfreq) mapping
     @param prefix: Directory in which to place output
     @param stylesheet: Path to CSS stylesheet
     @param pseudocount: From @{getTermScores}
@@ -181,15 +183,16 @@ def writeReport(
     result_html= prefix/"result_citations.html"
     index_html = prefix/"index.html"
     # Term scores
-    writeTermScoresCSV(open(terms_csv,'w','utf-8'), featmap, termscores, pfreq, nfreq)
-    writeTermScoresHTML(open(terms_html,'w','ascii','xmlcharrefreplace'), featmap, termscores, pfreq, nfreq, pseudocount)
+    writeTermScoresCSV(open(terms_csv,'w','utf-8'), featmap, termscores)
+    writeTermScoresHTML(open(terms_html,'w','ascii','xmlcharrefreplace'),
+                        featmap, termscores, pdocs, ndocs, pseudocount)
     # Result scores
     f = file(res_txt,'w')
     for score, pmid in scores:
-        f.write("%-13d%.5f\n" % (pmid, score))
+        f.write("%-13s%.5f\n" % (pmid, score))
     # Citations for input articles
     import article
-    posids = list(article.readPMIDFile(posfile))
+    posids = list(article.readPMIDFile(posfile, articles))
     templates.citations.run(
         dict(mode="input", scores=[(0,p) for p in posids], articles=articles),
         outputfile=file(input_html, "w"))

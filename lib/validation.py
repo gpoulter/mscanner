@@ -7,21 +7,24 @@ Validator -- Perform cross-validation and output performance statistics
 
 """
 
+#Standard
 from __future__ import division
-from Gnuplot import Gnuplot, Data
-from heapq import heapreplace
-from itertools import chain
+from itertools import chain, izip
+from codecs import open
 import logging as log
-from path import path
-from random import randint, seed
-import templates
+import random
 import time
 import sys
 import warnings
 warnings.filterwarnings(action='ignore', category=FutureWarning)
-
+#Local
+from Gnuplot import Gnuplot, Data
+import numpy
+from path import path
+#MScanner
 import article
 import scoring
+import templates
 
 class Validator:
     """Cross-validated performance statistics
@@ -45,11 +48,12 @@ class Validator:
         """Initialise validator
         @param featmap: Maping of feature id to (feature string, feature type)
         @param featdb: Mapping of doc id to list of feature ids
-        @param posids: Set of positive doc ids
-        @param negids: Set of negative doc ids
+        @param posids: Array of positive doc ids
+        @param negids: Array of negative doc ids
         @param nfold: Number of folds in cross-validation.
         @param pseudocount, daniel: Passed to Scoring.getTermScores
         @param genedrug_articles: Set of doc ids with gene-drug co-occurrences
+        @param exclude_feats: Feature types to exclude for scoring purposes
         """
         self.featmap = featmap
         self.featdb = featdb
@@ -69,89 +73,55 @@ class Validator:
         else:
             return False
 
-    @staticmethod
-    def partition(items, nfold):
-        """Partitions indeces into data items for cross-validation
-
-        @param items: Set of objects to be partitioned
-        @param nfold: Number of partitions to use
-        @return: List of sets, each set being length len(items)/nfold
-        """
-        tests = [ set() for n in range(nfold) ]
-        ct = 0                  # current test
-        available = list(items) # items to assign
-        N = len(available)      # number of items
-        i = 0                   # current iteration
-        size = N                # number of items left
-        while i < N:
-            r = randint(0,size-1)            # choose a random item
-            tests[ct].add(available[r])      # add item to current set
-            available[r] = available[size-1] # over write with last item
-            i += 1                           # next iteration
-            ct = (ct+1) % len(tests)         # next test
-            size = size - 1                  # virtual deletion
-        return tests
-
     def validate(self, statfile=None):
         """Perform n-fold validation and return the raw performance measures"""
-        positives = self.pos
-        negatives = self.neg
-        log.info("%d pos and %d neg articles", len(positives), len(negatives))
-        ptests = self.partition(positives, self.nfold)
-        ntests = self.partition(negatives, self.nfold)
-        pscores, nscores, threshold = [],[],0
-        for fold, (ptest, ntest) in enumerate(zip(ptests, ntests)):
+        def partitionSizes(nitems, nparts):
+            """Returns start indeces and lengths of partitions"""
+            base, rem = divmod(nitems, nparts)
+            sizes = base * numpy.ones(nparts, dtype=numpy.int32)
+            sizes[:rem] += 1
+            starts = numpy.zeros(nparts, dtype=numpy.int32)
+            starts[1:] = numpy.cumsum(sizes[:-1])
+            return starts, sizes
+        def moveToFront(data, start, size):
+            """Swaps a portion of data to the front of the array"""
+            data[:size], data[start:start+size] = data[start:start+size], data[:size]
+        log.info("%d pos and %d neg articles", len(self.pos), len(self.neg))
+        random.shuffle(self.pos)
+        random.shuffle(self.neg)
+        pstarts, psizes = partitionSizes(len(self.pos), self.nfold)
+        nstarts, nsizes = partitionSizes(len(self.neg), self.nfold)
+        pscores = numpy.zeros_like(self.pos)
+        nscores = numpy.zeros_like(self.neg)
+        for fold, (pstart,psize,nstart,nsize) in enumerate(zip(pstarts,psizes,nstarts,nsizes)):
             log.debug("Carrying out fold number %d", fold)
             if statfile is not None:
                 statfile.update(fold+1, self.nfold)
-            ptrain = positives - ptest
-            ntrain = negatives - ntest
-            pfreqs = article.TermCounts(items=(self.featdb[d] for d in ptrain))
-            nfreqs = article.TermCounts(items=(self.featdb[d] for d in ntrain))
-            termscores = scoring.getTermScores(pfreqs, nfreqs, self.pseudocount, self.daniel,
-                                               self.featmap, self.exclude_feats)
-            pscores.extend(scoring.scoreDocument(self.featdb[d], termscores) for d in ptest)
-            nscores.extend(scoring.scoreDocument(self.featdb[d], termscores) for d in ntest)
+            moveToFront(self.pos, pstart, psize)
+            moveToFront(self.neg, nstart, nsize)
+            pfreqs = article.countFeatures(len(self.featmap), self.featdb, self.pos[psize:])
+            nfreqs = article.countFeatures(len(self.featmap), self.featdb, self.neg[nsize:])
+            termscores = scoring.getTermScores(
+                pfreqs, nfreqs, len(self.pos)-psize, len(self.neg)-nsize,
+                self.pseudocount, self.daniel, self.featmap, self.exclude_feats)
+            pscores[pstart:pstart+psize] = [scoring.scoreDocument(self.featdb[d], termscores) for d in self.pos[:psize]]
+            nscores[nstart:nstart+nsize] = [scoring.scoreDocument(self.featdb[d], termscores) for d in self.neg[:nsize]]
         return pscores, nscores
-
-    @staticmethod
-    def makeHistogram(data):
-        """Returns a tuple (centers,freqs) of normalised frequencies
-        at centers, given data points in data and a set bin width."""
-        small = min(data)
-        big = max(data)
-        npoints = len(data)
-        bin_width = min(npoints, (big-small)/20)
-        centers = [ 0.0 for x in range(0,int((big+(1e-3-small))/bin_width)) ]
-        if len(centers) == 0:
-            return [0], [0]
-        for i in range(len(centers)):
-            centers[i] = small+bin_width*(2*i+1)/2
-        freqs = [ 0.0 for x in centers ]
-        for x in data:
-            pos = int((x-small)//bin_width)
-            if pos == len(freqs): pos = len(freqs)-1
-            freqs[pos] += 1/npoints
-        return centers, freqs
-
-    @staticmethod
-    def kernelPDF(values, npoints=512):
-        """Given 1D values, return an approximate probability density function
-
-        @note: Uses SciPy, which uses Gaussian kernel
-        @param values: Sorted list of floats representing the sample
-        @param npoints: Number of equal-spaced points at which to estimate the PDF
-        @return: (xvalues,yvalues) for y=f(x) of the pdf.
-        """
-        from scipy import stats
-        import numpy
-        points = numpy.linspace(values[0], values[-1], npoints)
-        return points, stats.kde.gaussian_kde(numpy.array(values)).evaluate(points)
 
     def plotPDF(self, name, pdata, ndata, threshold):
         """Plot PDFs for pos/neg scores, with line to mark threshold""" 
-        px, py = self.kernelPDF(pdata)
-        nx, ny = self.kernelPDF(ndata)
+        def kernelPDF(values, npoints=512):
+            """Given 1D values, return an approximate probability density function
+            @param values: Sorted list of floats representing the sample
+            @param npoints: Number of equal-spaced points at which to estimate the PDF
+            @return: (xvalues,yvalues) for y=f(x) of the pdf.
+            """
+            from scipy import stats
+            import numpy
+            points = numpy.linspace(values[0], values[-1], npoints)
+            return points, stats.kde.gaussian_kde(numpy.array(values)).evaluate(points)
+        px, py = kernelPDF(pdata)
+        nx, ny = kernelPDF(ndata)
         g = self.gnuplot
         g.reset()
         g.ylabel("Probability Density")
@@ -166,11 +136,11 @@ class Validator:
         
     def plotHistograms(self, name, pdata, ndata, threshold):
         """Plot histograms for pos/neg scores, with line to mark threshold""" 
-        px, py = self.makeHistogram(pdata)
-        nx, ny = self.makeHistogram(ndata)
+        py, px = numpy.histogram(pdata)
+        ny, nx = numpy.histogram(ndata)
         g = self.gnuplot
-        g.ylabel("Probability Histogram")
-        g.xlabel("Article score")
+        g.ylabel("Number of articles")
+        g.xlabel("Score of article")
         g.title("Score Histograms")
         g("set terminal png")
         g("set output '%s'" % name)
@@ -313,19 +283,20 @@ class Validator:
         p_vs_r_img = prefix/"prcurve.png"
         pr_vs_score_img = prefix/"prscore.png"
         mainfile = prefix/"index.html"
-
         # Graphs and performance tuning
         threshold, TP, FN, TN, FP, ROC_area = self.plotCurves(roc_img, p_vs_r_img, pr_vs_score_img, pscores, nscores)
         self.plotHistograms(hist_img, pscores, nscores, threshold)
-
         # Output term scores
-        pfreqs = article.TermCounts(items=(self.featdb[d] for d in self.pos))
-        nfreqs = article.TermCounts(items=(self.featdb[d] for d in self.neg))
-        termscores = scoring.getTermScores(pfreqs, nfreqs, self.pseudocount, self.daniel,
-                                           self.featmap, self.exclude_feats)
-        scoring.writeTermScoresCSV(file(terms_csv,"w"), self.featmap, termscores, pfreqs, nfreqs)
-        scoring.writeTermScoresHTML(file(terms_html,"w"), self.featmap, termscores, pfreqs, nfreqs, self.pseudocount)
-
+        pfreqs = article.countFeatures(len(self.featmap), self.featdb, self.pos)
+        nfreqs = article.countFeatures(len(self.featmap), self.featdb, self.neg)
+        pdocs = len(self.pos)
+        ndocs = len(self.neg)
+        termscores = scoring.getTermScores(
+            pfreqs, nfreqs, pdocs, ndocs, self.pseudocount, self.daniel, self.featmap, self.exclude_feats)
+        scoring.writeTermScoresCSV(
+            open(terms_csv,"wb","utf-8"), self.featmap, termscores)
+        scoring.writeTermScoresHTML(
+            open(terms_html,"w","ascii","xmlcharrefreplace"), self.featmap, termscores, pdocs, ndocs, self.pseudocount)
         # Calculate performance measures
         P = TP+FN
         N = TN+FP
@@ -353,7 +324,6 @@ class Validator:
             fmeasure = 2*recall*precision/(recall+precision)
         if prevalence > 0:
             enrichment = precision / prevalence
-
         # Write main index file for validation output
         templates.validation.run(dict(
             TP=TP, TN=TN, FP=FP, FN=FN, P=P, N=N, A=A, T=T, F=F,

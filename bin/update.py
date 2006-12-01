@@ -30,27 +30,21 @@ if len(sys.argv)>1:
         sys.exit(0)
 
 # Initialise database
-parser = xmlparse.ArticleParser(c.mesh_synonyms, c.mesh_excludes)
-featmap = article.FeatureMapping(c.featuremap)
 medcache = medline.MedlineCache(
-        featmap,
-        parser,
+        article.FeatureMapping(c.featuremap),
+        xmlparse.ArticleParser(),
         c.db_home,
         c.articledb,
         c.featuredb,
         c.articlelist,
-        c.termcounts,
         c.processed,
         c.use_transactions,
         )
     
-# Load Articles from a Pickle
+# Load articles from a pickle
 if len(sys.argv) == 2:
     print "Loading articles from " + sys.argv[1]
     articles = cPickle.load(file(sys.argv[1], "rb"))
-    exclude = cPickle.load(file(c.mesh_excludes, "rb"))
-    for article in articles:
-        article.meshterms -= exclude
     dbenv = medcache.makeDBEnv()
     medcache.putArticleList(articles, dbenv)
     dbenv.close()

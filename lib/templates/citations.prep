@@ -68,6 +68,14 @@ Citations for the output results
       <h3 class="title">
         {{art.title.encode("ascii","xmlcharrefreplace")}}
       </h3>
+      {{if hasattr(art, "authors")}}
+      <p class="authors">
+        {{for initials, lastname in art.authors}}
+        {{initials+" "+lastname.encode("ascii","xmlcharrefreplace")+","}}
+        {{endfor}}
+        {{"("+str(art.year)+") (issn:"+art.issn+")"}}
+      </p>
+      {{endif}}
       <p class="abstract">
         {{art.abstract.encode("ascii","xmlcharrefreplace")}}
       </p>

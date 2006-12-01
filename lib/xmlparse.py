@@ -16,33 +16,6 @@ from article import Article
 class ArticleParser:
     """Parse XML into article objects, optionally filtering MeSH terms"""
 
-    def __init__(self, synonyms=None, exclude=None):
-        """Initialise parser
-        
-        @param synonyms: Name of a pickle mapping each MeSH term to a
-        set of its synonyms.
-
-        @param exclude: Name of a pickle containing a set of MeSH
-        terms to exclude from articles while parsing.
-        """
-        self.synonyms = {}
-        self.exclude = set()
-        self.excludes_done = set()
-        if synonyms is not None:
-            if isinstance(synonyms, basestring):
-                self.synonyms = cPickle.load(file(synonyms, "rb"))
-            elif isinstance(synonyms, dict):
-                self.synonyms = synonyms
-            else:
-                raise ValueError("Synonyms is neither a filename nor dictionary")
-        if exclude is not None:
-            if isinstance(exclude, basestring):
-                self.exclude = cPickle.load(file(exclude, "rb"))
-            elif isinstance(exclude, set):
-                self.exclude = exclude
-            else:
-                raise ValueError("Excludes is neither a filename nor set")
-
     def __call__(self, text, check_id=None):
         """Call the L{parse} method"""
         return self.parse(text, check_id)
@@ -105,22 +78,18 @@ class ArticleParser:
                                 result.authors.append((initials[CHILDREN][0],lastname[CHILDREN][0]))
                 if node1[NAME] == 'MeshHeadingList':
                     for MeshHeading in getChildren(node1, ['MeshHeading']):
-                        for Descriptor in getChildren(
-                            MeshHeading, ['DescriptorName', 'Descriptor', 'QualifierName', 'SubHeading']):
-                            term = Descriptor[CHILDREN][0]
-                            if term in self.synonyms:
-                                log.debug("Detected synonym: %s --> %s",term,self.synonyms[term])
-                                term = self.synonyms[term]
-                            if term not in self.exclude:
-                                result.meshterms.add(term)
-                            else:
-                                if term not in self.excludes_done:
-                                    #self.log.debug("Detected exclude: %s",term)
-                                    self.excludes_done.add(term)
+                        DescriptorName = getChild(MeshHeading, 'DescriptorName')[CHILDREN][0]
+                        qualifiers = []
+                        for Qualifier in getChildren(MeshHeading, ['QualifierName']):
+                            qualifiers.append(Qualifier[CHILDREN][0])
+                        result.meshterms.append(tuple([DescriptorName]+qualifiers))
                 if node1[NAME] == 'ChemicalList':
                     for Chemical in getChildren(node1, ['Chemical']):
                         name = getChild(Chemical, 'NameOfSubstance')[CHILDREN][0]
-                        result.chemicals.add(name)
+                        regnum = getChild(Chemical, 'RegistryNumber')
+                        if regnum is not None:
+                            regnum = regnum[CHILDREN][0]
+                        result.chemicals.append((name,regnum))
             return result
         root = parser.parse(text)
         if root[NAME] == 'MedlineCitation' and root[ATTRS]['Status'] == 'MEDLINE':

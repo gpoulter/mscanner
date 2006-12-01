@@ -1,5 +1,5 @@
 #!env python
-#!/export/home/medscan/local64/bin/python
+#!/export/home/medscan/local32/bin/python
 
 """MScanner XML-RPC service
 

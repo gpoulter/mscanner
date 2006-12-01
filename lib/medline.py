@@ -13,15 +13,12 @@ from path import path
 
 import dbshelve
 from featuredb import FeatureDatabase
-from article import Article, FileTracker, FeatureMapping, TermCounts
+from article import Article, FileTracker, FeatureMapping
 
 class MedlineCache:
     """Manages the database of medline abstracts.  Function is to
     update the cache with new articles, and retrieve articles from the
     cache.
-
-    @note: Other instance variables are parameters to __init__
-    @ivar termcounts: Mapping from term ID to number of occurrences
     """
 
     def __init__(
@@ -32,7 +29,6 @@ class MedlineCache:
         article_db,
         feature_db,
         article_list,
-        termcounts_path,
         processed_path,
         use_transactions=True):
         """Initialse a cache of the results of parsing medline.
@@ -43,7 +39,6 @@ class MedlineCache:
         @param article_db: Path to article database
         @param feature_db: Path to feature database
         @param article_list: Path to list of article PMIDs
-        @param termcounts_path: Path to the TermCounts pickle
         @param processed_path: Path to list of processed files
         @param use_transactions: If false, disable transaction engine
         """
@@ -53,7 +48,6 @@ class MedlineCache:
         self.article_db = article_db
         self.feature_db = feature_db
         self.article_list = article_list
-        self.termcounts = TermCounts(termcounts_path)
         self.processed_path = processed_path
         self.use_transactions = use_transactions
         self.recover = False
@@ -86,47 +80,40 @@ class MedlineCache:
             txn = dbenv.txn_begin()
         try:
             artdb = dbshelve.open(self.article_db, dbenv=dbenv, txn=txn)
-            meshfeatdb = FeatureDatabase(self.feature_db, dbenv=dbenv, txn=txn, dbname="meshterms")
+            meshfeatdb = FeatureDatabase(self.feature_db, dbenv=dbenv, txn=txn)
             feats = self.featmap.getFeatureIds
             pmidlist = []
             for art in articles:
                 # Refuse to add duplicates
                 if not art.pmid in meshfeatdb:
-                    # Add to list of PMIDs
-                    pmidlist.append(str(art.pmid))
-                    # Store articles
+                    # Store article, adding it to list of documents
                     artdb[str(art.pmid)] = art
-                    # Store features
-                    featids = feats(art.meshterms, "mesh")
-                    if hasattr(art,"chemicals") and art.chemicals:
-                        # Many chemicals overlap with MeSH terms, so we combine the feature sets
-                        featids.extend(f for f in feats(art.chemicals,"mesh") if f not in featids)
-                    if hasattr(art,"issn") and art.issn:
-                        # Also classify by journal
-                        featids.extend(feats([art.issn], "issn"))
+                    pmidlist.append(str(art.pmid))
+                    # Get MeSH headings and qualifiers from article
+                    headings = list()
+                    quals = list()
+                    for term in art.meshterms:
+                        headings.append(term[0])
+                        if(len(term)>1):
+                            quals.extend(term[1:])
+                    # Add features for MeSH, qualifiers and journal ISSN
+                    featids = []
+                    featids.extend(feats(headings, "mesh", True))
+                    featids.extend(feats(quals, "qual", True))
+                    if art.issn:
+                        featids.extend(feats([art.issn], "issn", True))
                     meshfeatdb.setitem(art.pmid, featids, txn)
-                    # Update total term counts
-                    self.termcounts.add(featids)
-                    # don't want to bias against new/old articles
-                    # if hasattr(art,"year") and art.year:
-                    #     featids.extend(feats([str(art.year)], "year"))
-                    # Too many authors in PubMed -> screws up scores (Joe Blow worth 8 points...)
-                    # if hasattr(art,"authors") and art.authors:
-                    #     austrings = [a[0]+" "+a[1] for a in art.authors]
-                    #     featids.extend(feats(austrings, "author"))
-                    # allfeatdb.setitem(art.pmid, featids, txn)
             artdb.close()
             meshfeatdb.close()
             self.article_list.write_lines(pmidlist, append=True)
             self.featmap.dump()
-            self.termcounts.dump()
             if txn is not None:
                 txn.commit()
         except Exception, e:
+            raise
             if txn is not None:
                 log.error("Aborting Transaction: Error %s", e)
                 txn.abort()
-            raise
         else:
             if txn is not None:
                 log.info("Committed transaction")

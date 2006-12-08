@@ -13,10 +13,11 @@
   <script type="text/javascript" src="script/jsolait/lib/urllib.js"> </script>  
   <script type="text/javascript" src="script/jsolait/lib/xml.js"> </script>  
   <script type="text/javascript" src="script/jsolait/lib/xmlrpc.js"> </script>  
+
   <script type="text/javascript" src="script/moo/prototype.lite.js"> </script>
   <script type="text/javascript" src="script/moo/moo.fx.js"> </script>
   <script type="text/javascript" src="script/moo/moo.fx.pack.js"> </script>
-  <script type="text/javascript" src="script/sxoop/sxoop_template.js"> </script>
+  <script type="text/javascript" src="script/graft/graft.js"> </script>
   <script type="text/javascript" src="mscanner.js"> </script>
 
 </head>
@@ -193,74 +194,7 @@
 
   </div>
 
-  <div id="templates" style="display: none;">
-       
-    <textarea id="t_deleted" style="display:none" rows="0" cols="0">
-      <![CDATA[
-      <h2 class="heading">Batch Deleted</h2>
-      <div class="body">
-      <p class="para">
-      Batch ID [:=$_:] has been deleted.
-      </p>
-      </div>
-      [:showBlock("status"):]
-      ]]>
-    </textarea>
-
-    <textarea id="t_busy" style="display:none" rows="0" cols="0">
-      <![CDATA[
-      <h2 class="heading">Busy Scanning...</h2>
-      <div class="body">
-      <p class="para">
-      Batch ID [:=$_:] is still running.
-      </p>
-      <p class="para">
-      Note that queries may take up to 20 minutes, and validation
-      time proportional to the number of articles being processed.
-      The output will be placed in
-      <a href="[:=g.outdir:]/[:=$_:]">[:=g.outdir:]/[:=$_:]</a>, 
-      so you can save the link and come back later if you please.
-      </p>
-      <p class="para">
-      It has been [:=g.elapsed:] seconds since scanning started, and [:=g.progress:] 
-      steps out of [:=g.total:] have been completed.
-      </p>
-      </div>
-      [:showBlock("status"):]
-      ]]>
-    </textarea>
-
-    <textarea id="t_done" style="display:none" rows="0" cols="0">
-      <![CDATA[
-      <h2 class="heading">Scanning Complete!</h2>
-      <div class="body">
-      <p class="para">
-      Results are available for batch ID
-      <a href="[:=g.outdir:]/[:=$_:]/index.html"><b>[:=$_:]</b></a>.
-      </p>
-      </div>
-      [:showBlock("status"):]
-      ]]>
-    </textarea>
-    
-    <textarea id="t_batches" style="display:none" rows="0" cols="0">
-      <![CDATA[
-      [:if ($_.length == 0) { hideBlock("batches"); } else { :]
-      <h2 class="heading">Results</h2>
-      <div class="body">
-      [:for (var x = 0; x < $_.length; x++) { //> :]
-      [:batch = $_[x]:]
-      <p class="item">
-      <button class="delete" onclick="deleteBatch('[:=batch:]');listBatches();">Delete</button>
-      <a href="[:=g.outdir:]/[:=batch:]/index.html"><b>[:=batchIdToDate(batch):]</b></a>
-      </p>
-      [:showBlock("batches");:]
-      [:} }:]
-      </div>
-      ]]>
-    </textarea>
-
-    <textarea id="example_pmids" style="display:none" rows="0" cols="0">9549641
+  <textarea id="example_pmids" style="display:none" rows="0" cols="0">9549641
 11809184
 12069159
 9744524
@@ -743,16 +677,6 @@
 99301892
 99308324
 </textarea>
-
-    <script type="text/javascript">
-      //doTemplate('status','t_deleted',"TESTING");
-      //doTemplate('status','t_busy',"TESTING");
-      //doTemplate('status','t_done',"TESTING");
-      //doTemplate('batches','t_batches',["T1","T2"]);
-      //showBlock("batches");
-    </script>
-
-  </div>
   
 </body>
   

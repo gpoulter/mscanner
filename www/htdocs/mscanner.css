@@ -1,14 +1,23 @@
 /* COLOR SCHEME */
 
-html { background: url(background-blue.gif) #C2D7EE; /* stripey blue */ }
-#heading { background-color: #FFFFFF; /* white */ }
-#content { background-color: #F6F9FE; /* off-white */ }
-.box {  background-color: #C2D7EE; /* light blue */ }
-.box > .heading {  background-color: #0773DF; /* dark blue */ }
-.group > .heading { background-color: #A3C2E2; /* middle blue */ }
-.group .item { background-color: #FFFFFF; /* white */ }
-#batches .item { background-color: #FFFFFF; /* white */ }
-#form button.action { color: #0000FF; /* blue */ }
+html {
+    background: url(background-blue.gif) #C2D7EE; /* stripey blue */ }
+#heading {
+    background-color: #FFFFFF; /* white */ }
+#content {
+    background-color: #F6F9FE; /* off-white */ }
+.box {
+    background-color: #C2D7EE; /* light blue */ }
+.box > .heading {
+    background-color: #0773DF; /* dark blue */ }
+.group > .heading {
+    background-color: #A3C2E2; /* middle blue */ }
+.group .item {
+    background-color: #FFFFFF; /* white */ }
+#batches .item {
+    background-color: #FFFFFF; /* white */ }
+#form button.action {
+    color: #0000FF; /* blue */ }
 
 /* GENERAL CLASSES */
 

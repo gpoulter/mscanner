@@ -1,4 +1,4 @@
-#!env python
+#!/usr/bin/python
 #!/export/home/medscan/local32/bin/python
 
 """MScanner XML-RPC service
@@ -27,9 +27,10 @@ if mtree:
     output = path("/export/apps/medline/htdocs/output")
     python = path("/export/home/medscan/local64/bin/python")
 else:
-    source = path("/home/graham/data/mscanner/source")
-    output = path("/srv/www/htdocs/mscanner/output")
-    python = "python"
+    #source = path("/home/graham/data/mscanner/source")
+    source = path("C:/Documents and Settings/Graham/My Documents/data/mscanner/source")
+    output = path("C:/cygwin/srv/www/htdocs/mscanner/output")
+    python = "C:/Python24/python.exe"
     
 bin = source / "bin"
 pidfile = source.parent / "data" / "cache" / "mscanner.pid"
@@ -87,8 +88,8 @@ class MScannerService:
 
         :return: A key:value mapping
 
-        Mapping Pairs
-        =============
+        Result Keys
+        ===========
 
         - `batchid`: Echo of the batchid parameter.
 

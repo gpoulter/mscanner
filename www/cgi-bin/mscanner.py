@@ -75,7 +75,7 @@ def generate_batch(positives):
         raise Fault(2, "Output for %s already exists" % batchid)
     bdir.mkdir()
     # Output positive PMIDs (catch errors in script)
-    (bdir / "positives.txt").write_text(positives)
+    (bdir / "positives.txt").write_lines([str(p) for p in positives])
     return batchid
 
 class MScannerService:
@@ -182,7 +182,7 @@ class MScannerService:
     def query(self, positives, pseudocount, limit, threshold):
         """Query Medline with a corpus of citations
 
-        :param positives: Text of newline-delimited PubMed IDs
+        :param positives: List of integer PubMed IDs
 
         :param pseudocount: Float with the Bayesian pseudocount vlaue
         to use (betwen 0.0 and 1.0)
@@ -202,6 +202,11 @@ class MScannerService:
         if pidfile.isfile():
             raise Fault(3, "Scanner is busy")
         # Validate numeric arguments
+        if not isinstance(positives, list):
+            raise Fault(2, "Positives should be a list")
+        for p in positives:
+            if not isinstance(p, int):
+                raise Fault(2, "Positives should be a list of integers")
         if not isinstance(limit, int) or limit < 1 or limit > 10000:
             raise Fault(2, "Limit is < 1 or > 10000")
         if not isinstance(pseudocount, float) or pseudocount < 0.0 or pseudocount > 1.0:
@@ -223,7 +228,7 @@ class MScannerService:
     def validate(self, positives, negatives, nfolds, pseudocount):
         """Validate query corpus for performance statistics and tuning
 
-        :param positives: Text of newline-delimited PubMed IDs
+        :param positives: List of integer PubMed IDs
 
         :param negatives: Integer for the number of random PubMed IDs
         to use as a negative corpus (between 10 and 500000).
@@ -243,7 +248,12 @@ class MScannerService:
         if pidfile.isfile():
             raise Fault(3, "Scanner is busy")
         # Validate numeric arguments
-        if not isinstance(negatives,int) or negatives < 10 or negatives > 500000:
+        if not isinstance(positives, list):
+            raise Fault(2, "Positives should be a list")
+        for p in positives:
+            if not isinstance(p, int):
+                raise Fault(2, "Positives should be a list of integers")
+        if not isinstance(negatives, int) or negatives < 10 or negatives > 500000:
             raise Fault(2, "Negatives count is < 10 or > 500000") 
         if not isinstance(nfolds, int) or nfolds < 2 or nfolds > 10:
             raise Fault(2, "Number of folds is < 2 or > 10")

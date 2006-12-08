@@ -67,8 +67,7 @@ function deleteBatch(batchid) {
 
 /* Start a query, returning batch id */
 function query() {
-   //alert($("positives"));
-   var positives = $("positives").value;
+   var positives = parsePMIDs($("positives").value);
    var pseudocount = parseFloat($("pseudocount").value);
    var limit = parseInt($("limit").value);
    var threshold = parseFloat($("threshold").value);
@@ -83,7 +82,7 @@ function query() {
 
 /* Start validation, returning batch id */
 function validate() {
-   var positives = $("positives").value;
+   var positives = parsePMIDs($("positives").value);
    var negatives = parseInt($("negatives").value);
    var nfold = parseInt($("nfold").value);
    var pseudocount = parseFloat($("pseudocount").value);
@@ -197,7 +196,7 @@ function listBatches() {
    }
 }
 
-/* Convert YYYYmmdd-HHMMSS -> YYYY/mm/dd HH:MM:SS */
+/* Convert 'YYYYmmdd-HHMMSS' to 'YYYY/mm/dd HH:MM:SS' */
 function batchIdToDate(batchid) {
    var b = batchid;
    return "".concat(b.substr(0,4),"/",b.substr(4,2),"/",b.substr(6,2)," ",
@@ -206,5 +205,16 @@ function batchIdToDate(batchid) {
 
 /* Convert a string of newline-separated PubMed IDs into a list of integers */
 function parsePMIDs(pmidstr) {
-   
+   try {
+      spmids = pmidstr.split("\n");
+      ipmids = [];
+      for(var i = 0; i < spmids.length; i++) {
+         ipmids.push(parseInt(spmids[i]));
+      }
+      return ipmids;
+   }
+   catch(e) {
+      alert("Error in PMID list: " + e);
+      return null;
+   }
 }

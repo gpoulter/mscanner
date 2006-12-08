@@ -216,6 +216,7 @@ class Validator:
             if PPV[xi] > PPV[best_xi] and FM[xi] > 0.9*FM[maxFM_xi]:
                 best_xi, best_TP, best_FN, best_TN, best_FP = xi, TP, FN, TN, FP
             #print "thresh = %g, TPR = %d/%d = %.1e, FPR = %d/%d = %.1e" % (threshold, TP, P, TP/P, FP, N, FP/N)
+        ROC_area += (1-FPR[-1])
         g = self.gnuplot
         # Precision vs recall graph
         g.reset()

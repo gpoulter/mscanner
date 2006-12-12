@@ -91,8 +91,8 @@ class Validator:
         random.shuffle(self.neg)
         pstarts, psizes = partitionSizes(len(self.pos), self.nfold)
         nstarts, nsizes = partitionSizes(len(self.neg), self.nfold)
-        pscores = numpy.zeros_like(self.pos)
-        nscores = numpy.zeros_like(self.neg)
+        pscores = numpy.zeros(len(self.pos), dtype=numpy.float32)
+        nscores = numpy.zeros(len(self.neg), dtype=numpy.float32)
         for fold, (pstart,psize,nstart,nsize) in enumerate(zip(pstarts,psizes,nstarts,nsizes)):
             log.debug("Carrying out fold number %d", fold)
             if statfile is not None:
@@ -119,7 +119,8 @@ class Validator:
             from scipy import stats
             import numpy
             points = numpy.linspace(values[0], values[-1], npoints)
-            return points, stats.kde.gaussian_kde(numpy.array(values)).evaluate(points)
+            density = stats.kde.gaussian_kde(numpy.array(values)).evaluate(points)
+            return points, density
         px, py = kernelPDF(pdata)
         nx, ny = kernelPDF(ndata)
         g = self.gnuplot
@@ -216,7 +217,7 @@ class Validator:
             if PPV[xi] > PPV[best_xi] and FM[xi] > 0.9*FM[maxFM_xi]:
                 best_xi, best_TP, best_FN, best_TN, best_FP = xi, TP, FN, TN, FP
             #print "thresh = %g, TPR = %d/%d = %.1e, FPR = %d/%d = %.1e" % (threshold, TP, P, TP/P, FP, N, FP/N)
-        ROC_area += (1-FPR[-1])
+        ROC_area += (1-max(FPR))
         g = self.gnuplot
         # Precision vs recall graph
         g.reset()
@@ -225,7 +226,7 @@ class Validator:
         g.title("Precision vs Recall")
         g("set terminal png")
         g("set output '%s'" % p_vs_r)
-        g.plot(Data(TPR, PPV, title="Precision", with="lines"),
+        g.plot(Data(TPR, PPV, title="Precision", with="lines", smooth="csplines"),
                Data([TPR[best_xi], TPR[best_xi]], [0,1.0], title="threshold", with="lines"))
         # ROC curve (TPR vs FPR)
         g.reset()
@@ -286,7 +287,8 @@ class Validator:
         mainfile = prefix/"index.html"
         # Graphs and performance tuning
         threshold, TP, FN, TN, FP, ROC_area = self.plotCurves(roc_img, p_vs_r_img, pr_vs_score_img, pscores, nscores)
-        self.plotHistograms(hist_img, pscores, nscores, threshold)
+        self.plotPDF(hist_img, pscores, nscores, threshold)
+        #self.plotHistograms(hist_img, pscores, nscores, threshold)
         # Output term scores
         pfreqs = article.countFeatures(len(self.featmap), self.featdb, self.pos)
         nfreqs = article.countFeatures(len(self.featmap), self.featdb, self.neg)
@@ -296,8 +298,8 @@ class Validator:
             pfreqs, nfreqs, pdocs, ndocs, self.pseudocount, self.daniel, self.featmap, self.exclude_feats)
         scoring.writeTermScoresCSV(
             open(terms_csv,"wb","utf-8"), self.featmap, termscores)
-        scoring.writeTermScoresHTML(
-            open(terms_html,"w","ascii","xmlcharrefreplace"), self.featmap, termscores, pdocs, ndocs, self.pseudocount)
+        #scoring.writeTermScoresHTML(
+        #    open(terms_html,"w","ascii","xmlcharrefreplace"), self.featmap, termscores, pdocs, ndocs, self.pseudocount)
         # Calculate performance measures
         P = TP+FN
         N = TN+FP

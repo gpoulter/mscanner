@@ -9,8 +9,8 @@ window.onload = function() {
    //jsolait.baseURI = "/htdocs/script/jsolait";
    g.xmlrpc = imprt("xmlrpc");
    g.service = new g.xmlrpc.ServiceProxy(
-      "http://jonbn.med.uct.ac.za/cgi-bin/mscanner.py",
-      //"http://medline.stanford.edu/cgi-bin/mscanner.py",
+      //"http://jonbn.med.uct.ac.za/cgi-bin/mscanner.py",
+      "http://medline.stanford.edu/cgi-bin/mscanner.py",
       ["getStatus","listBatches","deleteBatch","query","validate"]);
    // Set up sliding help effects
    g.fx = new Object();
@@ -27,6 +27,7 @@ window.onload = function() {
       g.fx[names[i]].hide();
    }
    listBatches();
+   getStatus();
 }
 
 /* Hide an element */
@@ -113,17 +114,17 @@ function getStatus() {
       graft($("status"),[
          'div.body',
          ['p.para',
-          "Batch ID " + g.batchid + " is still running."
+          "Batch ID " + g.batchid + " is busy running."
          ],
          ['p.para',
-          "Note that queries may take up to 20 minutes, and validation "+
-          "time proportional to the number of articles being processed. "+
-          "The output will be placed in ",
+          "Note that queries may take up to and hour, and validation takes "+
+          "time proportional to the number of articles involved. "+
+          "However, the output will be placed in ",
           ['a',
            {href: g.outdir + "/" + g.batchid + "/index.html"},
            g.batchid
           ],
-          " so you can save the link and come back later if you please."
+          " which you can bookmark and come back to later for the results."
          ],
          ['p.para',
           "It has been " + result.elapsed + " seconds since scanning started, and "+
@@ -132,7 +133,7 @@ function getStatus() {
       ])
       $("status").innerHTML = $("status").innerHTML
       showBlock("status");
-      setTimeout("getStatus()", 1000);
+      setTimeout("getStatus()", 4000);
    }
    else if (result.status == "done") {
       $("status").innerHTML = ""
@@ -199,8 +200,12 @@ function listBatches() {
 /* Convert 'YYYYmmdd-HHMMSS' to 'YYYY/mm/dd HH:MM:SS' */
 function batchIdToDate(batchid) {
    var b = batchid;
-   return "".concat(b.substr(0,4),"/",b.substr(4,2),"/",b.substr(6,2)," ",
-                    b.substr(9,2),":",b.substr(11,2),":",b.substr(13,2));
+   if (b.substr(0,3) == "200") {
+      return "".concat(b.substr(0,4),"/",b.substr(4,2),"/",b.substr(6,2)," ",
+                       b.substr(9,2),":",b.substr(11,2),":",b.substr(13,2));
+   } else {
+      return batchid;
+   }
 }
 
 /* Convert a string of newline-separated PubMed IDs into a list of integers */

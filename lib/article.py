@@ -43,7 +43,7 @@ def readPMIDFile(filename, allpmids=None):
     File format ignores blank lines and lines starting with #, and only
     parses the line up to the first whitespace character.
 
-    If allpmids is provided, we only return those PMID integers that
+    If allpmids is provided, we only return those PMID strings that
     satisfy 'pmid in allpmids'.
     """
     if not isinstance(filename,path) or not filename.exists():
@@ -113,13 +113,16 @@ class StatusFile:
         self.progress = 0
         self.total = total
         self.start = time.time()
+        if self.filename is None:
+            raise  RuntimeError("No status file given")
         if self.filename.exists():
-            raise RuntimeError("Status file already exists")
+            raise RuntimeError("Status file %s already exists" % str(filename))
         self.write()
 
     def __del__(self):
         """Remove status file on deletion"""
-        self.filename.remove()
+        if self.filename.isfile():
+            self.filename.remove()
 
     def __str__(self):
         """Return status file contents"""

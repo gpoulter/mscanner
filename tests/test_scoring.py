@@ -14,8 +14,10 @@ class ScoringTests(unittest.TestCase):
     """
     def setUp(self):
         self.prefix = path(tempfile.mkdtemp(prefix="scoring-"))
+        print self.prefix
 
     def tearDown(self):
+        return
         self.prefix.rmtree(ignore_errors=True)
         
     def test_getTermScores(self):
@@ -59,6 +61,7 @@ class ScoringTests(unittest.TestCase):
             stylesheet = path("../lib/templates/style.css"),
             pseudocount = 0.1,
             limit = 3,
+            threshold = 0.0,
             posfile = self.prefix/"positives.txt",
             articles = articles,
             )

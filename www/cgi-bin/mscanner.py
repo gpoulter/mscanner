@@ -1,5 +1,5 @@
-#!/usr/bin/python
 #!/export/home/medscan/local32/bin/python
+#!/usr/bin/python
 
 """MScanner XML-RPC service
 
@@ -20,14 +20,12 @@ import unittest
 from xmlrpclib import Fault
 
 mtree = True
-mtree = False
 
 if mtree:
     source = path("/export/home/medscan/source")
     output = path("/export/apps/medline/htdocs/output")
-    python = path("/export/home/medscan/local64/bin/python")
+    python = path("/export/home/medscan/local32/bin/python")
 else:
-    #source = path("/home/graham/data/mscanner/source")
     source = path("C:/Documents and Settings/Graham/My Documents/data/mscanner/source")
     output = path("C:/cygwin/srv/www/htdocs/mscanner/output")
     python = "C:/Python24/python.exe"
@@ -44,7 +42,7 @@ def check_batchid(batchid):
 
     :raise Fault(2): Batch ID is invalid
     """
-    if not re.match(r"^\d{8}-\d{6}$", batchid):
+    if not re.match(r"^[A-Za-z0-9-]+$", batchid):
         raise Fault(2, "Invalid batch id %s" % batchid)
 
 def readpid():
@@ -273,7 +271,7 @@ class MScannerService:
 
 class MedscanTests(unittest.TestCase):
     def test(self):
-        s = MScannerSice()
+        s = MScannerService()
         #self.assertEqual(listBatches(), [])
         self.assertRaises(Fault, s.deleteBatch, "noexist")
         self.assertRaises(Fault, s.deleteBatch, "11223344-112233")

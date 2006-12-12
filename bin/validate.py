@@ -77,6 +77,7 @@ def do_validation():
     # Output performance statistics
     log.debug("Writing performance statistics")
     val.report(results[0], results[1], c.valid_report, c.stylesheet)
+    del statfile
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:

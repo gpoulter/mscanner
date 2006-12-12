@@ -72,6 +72,7 @@ def do_query():
         stylesheet = c.stylesheet,
         pseudocount = c.pseudocount,
         limit = c.limit,
+        threshold = c.threshold,
         posfile = c.posfile,
         articles = artdb,
         )
@@ -89,6 +90,7 @@ def do_query():
         dbexport.exportDefault(c.outputdb, gdarticles)
     featdb.close()
     artdb.close()
+    del statfile
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:

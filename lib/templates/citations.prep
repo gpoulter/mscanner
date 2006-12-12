@@ -71,9 +71,9 @@ Citations for the output results
       {{if hasattr(art, "authors")}}
       <p class="authors">
         {{for initials, lastname in art.authors}}
-        {{initials+" "+lastname.encode("ascii","xmlcharrefreplace")+","}}
+        {{initials.encode("ascii","xmlcharrefreplace")+" "+lastname.encode("ascii","xmlcharrefreplace")+","}}
         {{endfor}}
-        {{"("+str(art.year)+") (issn:"+art.issn+")"}}
+        ({{str(art.year)}}) (issn:<a href="http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?CMD=search&amp;DB=journals&amp;term={{art.issn}}">{{art.issn}})</a>
       </p>
       {{endif}}
       <p class="abstract">
@@ -83,6 +83,8 @@ Citations for the output results
     </div>
     <!--{{endfor}}-->
   </div>
+
+</div>
 
 </body>
 

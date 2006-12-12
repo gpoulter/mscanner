@@ -86,7 +86,7 @@ posfile = None
 ## Integer for maximum number of results (may be fewer due to threshold)
 limit = 10000
 ## Float for minimum score threshold
-threshold = 10
+threshold = 20
 ## Per-term pseudocount to use
 pseudocount = 0.001
 ## Prefix for result report files
@@ -135,7 +135,7 @@ def choose_dataset():
 
     if dataset == "aids-vs-500k":
         posfile = corpora / "aids-bioethics-Oct06-1k.txt"
-        negfile = corpora / "medline06-200k.txt"
+        negfile = corpora / "medline06-500k.txt"
     if dataset == "aidsbig-vs-500k":
         posfile = corpora / "aids-bioethics-Oct06.txt"
         negfile = corpora / "medline06-500k.txt"

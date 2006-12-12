@@ -67,8 +67,7 @@ def getTermScores(
         else:
             pfreq = (pcount+pseudocount) / (pdocs+2*pseudocount)
             nfreq = (ncount+pseudocount) / (ndocs+2*pseudocount)
-        feature_type = featmap[termid][1]
-        if exclude is None or feature_type not in exclude:
+        if exclude is None or featmap[termid][1] not in exclude:
             return [math.log(pfreq/nfreq), pfreq, nfreq, pcount, ncount]
         else:
             return [0, 0, 0, 0, 0]
@@ -161,6 +160,7 @@ def writeReport(
     stylesheet,
     pseudocount,
     limit,
+    threshold,
     posfile,
     articles=None,
    ):
@@ -172,8 +172,9 @@ def writeReport(
     @param termscores: termid:(score,numerator,denominator,pfreq,nfreq) mapping
     @param prefix: Directory in which to place output
     @param stylesheet: Path to CSS stylesheet
-    @param pseudocount: From @{getTermScores}
-    @param limit: From @{filterDocuments}
+    @param pseudocount: Pseudocount for each term
+    @param limit: Maximum number of results to return.
+    @param threshold: Cutoff score for including an article in the results
     @param posfile: Path to positive docids
     @param articles: Mapping from str(pmid) to Article object
     """
@@ -205,6 +206,7 @@ def writeReport(
     templates.results.run(dict(
         pseudocount = pseudocount,
         limit = limit,
+        threshold = threshold,
         num_results = len(scores),
         lowest_score = scores[-1][0],
         posfile = posfile.basename(),

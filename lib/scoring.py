@@ -132,6 +132,7 @@ def writeTermScoresHTML(f, featmap, featscores, pdocs, ndocs, pseudocount):
         pfreq = numpy.sum(pfreqs)/pdocs
     if ndocs:
         nfreq = numpy.sum(nfreqs)/ndocs
+    # 0=score, 1=numerator, 2=denominator, 3=pcount, 4=ncount, 5=termid, 6=termname, 7=termtype
     scorelines = sorted(
         [(s[0],s[1],s[2],s[3],s[4],termid,featmap[termid][0],featmap[termid][1])
          for termid, s in enumerate(featscores)],# if s[3] != 0 or s[4] != 0],

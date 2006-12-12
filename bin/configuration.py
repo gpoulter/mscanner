@@ -68,7 +68,7 @@ use_transactions = False
 ## Path to compressed MEDLINE 
 medline = working / "medline"
 ## Number of files to process between saving
-save_delay = 1
+save_delay = 5
 
 #### GENEDRUG CONFIGURATION
 
@@ -88,7 +88,7 @@ limit = 10000
 ## Float for minimum score threshold
 threshold = 10
 ## Per-term pseudocount to use
-pseudocount = 0.01
+pseudocount = 0.001
 ## Prefix for result report files
 query_report = output / "results"
 ## Path to database output
@@ -113,59 +113,41 @@ valid_report = output / "validation"
 
 #### DATA SET CONFIGURATION
 
-#dataset = "aids-vs-500k"
-#dataset = "aidsbig-vs-500k"
-#dataset = "cur-vs-500k"
-#dataset = "cur-vs-go4"
-#dataset = "cur-vs-med"
-#dataset = "daniel-vs-500k"
-#dataset = "full-vs-100k"
-#dataset = "full-vs-500k"
-#dataset = "full-vs-go4"
-#dataset = "gdtest"
-#dataset = "old-vs-30k"
-#dataset = "old-vs-500k"
-dataset = "old-vs-go4"
+def choose_dataset():
+    global posfile, negfile, query_report, valid_report
+    query_report = output / (dataset+"-query")
+    valid_report = output / (dataset+"-valid")
+    if dataset == "gdsmall-vs-med06":
+        posfile = corpora / "genedrug-small.txt"
+        negfile = articlelist
+    if dataset == "pg04-vs-30k":
+        posfile = corpora / "pharmgkb-2004.txt"
+        negfile = corpora / "medline06-30k.txt"
+    if dataset == "pg04-vs-go4":
+        posfile = corpora / "pharmgkb-2004.txt"
+        negfile = corpora / "geneontology-2004.txt"
+    if dataset == "pg06-vs-med06":
+        posfile = corpora / "pharmgkb-Oct06.txt"
+        negfile = articlelist
+    if dataset == "pg06-vs-go4":
+        posfile = corpora / "pharmgkb-Oct06.txt"
+        negfile = corpora / "geneontology-2004.txt"
 
-query_report = output / (dataset+"-query")
-valid_report = output / (dataset+"-valid")
-
-if dataset == "aids-vs-500k":
-    posfile = corpora / "ncbi-aids-bioethics-Oct06-1k.txt"
-    negfile = corpora / "medline-500k.txt"
-if dataset == "aidsbig-vs-500k":
-    posfile = corpora / "ncbi-aids-bioethics-Oct06.txt"
-    negfile = corpora / "medline-500k.txt"
-if dataset == "cur-vs-500k":
-    posfile = corpora / "pharmgkb-Oct06.txt"
-    negfile = corpora / "medline-500k.txt"
-if dataset == "cur-vs-go4":
-    posfile = corpora / "pharmgkb-Oct06.txt"
-    negfile = corpora / "geneontology-2004.txt"
-if dataset == "daniel-vs-500k":
-    posfile = corpora / "daniel-small.txt"
-    negfile = corpora / "medline-500k.txt"
-if dataset == "cur-vs-med":
-    posfile = corpora / "pharmgkb-Oct06.txt"
-    negfile = articlelist
-if dataset == "full-vs-500k":
-    posfile = corpora / "pharmgkb-full-Jan06.txt"
-    negfile = corpora / "medline-500k.txt"
-if dataset == "full-vs-go4":
-    posfile = corpora / "pharmgkb-full-Jan06.txt"
-    negfile = corpora / "geneontology-2004.txt"
-if dataset == "gdtest":
-    posfile = corpora / "genedrug-small.txt"
-    negfile = corpora / "geneontology-2004.txt"
-if dataset == "old-vs-30k":
-    posfile = corpora / "pharmgkb-2004.txt"
-    negfile = corpora / "medline-30k.txt"
-if dataset == "old-vs-500k":
-    posfile = corpora / "pharmgkb-2004.txt"
-    negfile = corpora / "medline-500k.txt"
-if dataset == "old-vs-go4":
-    posfile = corpora / "pharmgkb-2004.txt"
-    negfile = corpora / "geneontology-2004.txt"
-
-#posfile = corpora / "genedrug-small.txt"
-#negfile = articlelist
+    if dataset == "aids-vs-500k":
+        posfile = corpora / "aids-bioethics-Oct06-1k.txt"
+        negfile = corpora / "medline06-200k.txt"
+    if dataset == "aidsbig-vs-500k":
+        posfile = corpora / "aids-bioethics-Oct06.txt"
+        negfile = corpora / "medline06-500k.txt"
+    if dataset == "pg04-vs-500k":
+        posfile = corpora / "pharmgkb-2004.txt"
+        negfile = corpora / "medline06-500k.txt"
+    if dataset == "pg06-vs-500k":
+        posfile = corpora / "pharmgkb-Oct06.txt"
+        negfile = corpora / "medline06-500k.txt"
+    if dataset == "pgdan-vs-500k":
+        posfile = corpora / "pharmgkb-daniel.txt"
+        negfile = corpora / "medline06-500k.txt"
+    if dataset == "spleen-vs-500k":
+        posfile = corpora / "daniel-spleen.txt"
+        negfile = corpora / "medline06-500k.txt"

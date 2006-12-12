@@ -91,7 +91,12 @@ def do_query():
     artdb.close()
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
+    if len(sys.argv) == 1:
+        raise ValueError("Please give dataset code")
+    elif len(sys.argv) == 2:
+        c.dataset = sys.argv[1]
+        c.choose_dataset()
+    elif len(sys.argv) > 2:
         c.dataset = sys.argv[1]
         c.pseudocount = float(sys.argv[2])
         c.limit = int(sys.argv[3])

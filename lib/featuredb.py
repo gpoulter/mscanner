@@ -6,11 +6,12 @@
 
 from bsddb import db
 import numpy
+import logging as log
 
 class FeatureDatabase:
     """Persistent mapping from integer key to array objects of numerical values"""
     
-    def __init__(self, filename=None, flags='c', mode=0660, dbenv=None, txn=None, dbname=None):
+    def __init__(self, filename=None, flags='c', mode=0660, dbenv=None, txn=None, dbname=None, ftype=numpy.uint16):
         """Initialise database
 
         @param filename: Database file
@@ -18,7 +19,10 @@ class FeatureDatabase:
         @param mode: Numeric file permissions
         @param dbenv: Optional database environment
         @param txn: Optional database transaction
+        @param dbname: Logical database name
+        @param ftype: Numpy numeric feature type
         """
+        self.ftype = ftype
         if isinstance(flags, basestring):
             if flags == 'r':
                 flags = db.DB_RDONLY
@@ -49,15 +53,19 @@ class FeatureDatabase:
         buf = self.db.get(str(key), txn=txn)
         if buf is None:
             raise KeyError("Record %d not found in feature database" % key)
-        return numpy.frombuffer(buf, numpy.int32)
+        return numpy.fromstring(buf, self.ftype)
 
     def setitem(self, key, values, txn=None):
         """Associate integer key with an ndarray object of values"""
         if not isinstance(values, numpy.ndarray):
-            values = numpy.array(values, numpy.int32)
-        if values.dtype != numpy.int32:
-            raise ValueError("Data value type mismatch")
-        self.db.put(str(key), values.tostring(), txn=txn)
+            values = numpy.array(values, self.ftype)
+        if values.dtype != self.ftype:
+            raise ValueError("data value type mismatch: tried to place " + values.dtype + " for key " + str(key))
+        try:
+            self.db.put(str(key), values.tostring(), txn=txn)
+        except ValueError, e:
+            log.error("featuredb: Failed to place " + str(key) + " : " +  str(values))
+            raise
         
     def delitem(self, key, txn=None):
         """Delete a given key from the database"""
@@ -92,7 +100,7 @@ class FeatureDatabase:
         cur = self.db.cursor()
         rec = cur.first()
         while rec is not None:
-            yield rec[0], numpy.frombuffer(rec[1],numpy.int32)
+            yield rec[0], numpy.fromstring(rec[1],self.ftype)
             rec = cur.next()
         cur.close()
 

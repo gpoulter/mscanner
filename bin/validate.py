@@ -79,7 +79,12 @@ def do_validation():
     val.report(results[0], results[1], c.valid_report, c.stylesheet)
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
+    if len(sys.argv) == 1:
+        raise ValueError("Please give dataset code")
+    elif len(sys.argv) == 2:
+        c.dataset = sys.argv[1]
+        c.choose_dataset()
+    elif len(sys.argv) > 2:
         c.dataset = sys.argv[1]
         numnegs = int(sys.argv[2])
         c.nfolds = int(sys.argv[3])

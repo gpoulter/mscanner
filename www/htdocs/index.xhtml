@@ -32,19 +32,19 @@
 
     <div class="box" id="intro">
       <p class="para">
-        This is a web frontend for MScanner, the Medline Scanner,
-        which queries Medline using a set of article IDs instead of
-        text.  The result is articles which are not part of the query,
-        yet are most similar to the set of query articles as a whole.
+        MScanner takes a list of input articles, and returns other
+        articles from Medline which are most closely related to the
+        list as a whole, as determined by their Medical Subject
+        Heading and journal composition.  This method uses a whole
+        corpus of articles, unlike the NCBI related articles feature
+        which uses only a single article as input.
       </p>
       <p class="para">
-        MScanner compares the frequencies of MeSH terms in the query
-        corpus to that of the rest of Medline, and assigns each term a
-        score, and the score of an article is the sum of the scores of
-        its terms.  You can specify a result limit, and a score
-        threshold.  Cross-validation can helps choose an optimal score
-        threshold and gives some indication of performance on this
-        query data.
+        To keep your result set reasonable, you can specify a limit on
+        the number of results, and a score threshold.  The
+        cross-validation helps you choose an optimal score threshold,
+        and gives some indication of how well MScanner will perform on
+        your data.
       </p>
     </div>
 

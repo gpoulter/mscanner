@@ -287,8 +287,8 @@ class Validator:
         mainfile = prefix/"index.html"
         # Graphs and performance tuning
         threshold, TP, FN, TN, FP, ROC_area = self.plotCurves(roc_img, p_vs_r_img, pr_vs_score_img, pscores, nscores)
-        self.plotPDF(hist_img, pscores, nscores, threshold)
         #self.plotHistograms(hist_img, pscores, nscores, threshold)
+        self.plotPDF(hist_img, pscores, nscores, threshold)
         # Output term scores
         pfreqs = article.countFeatures(len(self.featmap), self.featdb, self.pos)
         nfreqs = article.countFeatures(len(self.featmap), self.featdb, self.neg)

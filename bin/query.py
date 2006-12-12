@@ -37,7 +37,8 @@ def do_query():
     featdb = medline.FeatureDatabase(c.featuredb, 'r')
     statfile.update(0, len(featdb))
     artdb = dbshelve.open(c.articledb, 'r')
-    posids = list(article.readPMIDFile(c.posfile, featdb))
+    posids = set(article.readPMIDFile(c.posfile, featdb)) # set of int
+    print posids
     pfreqs = article.countFeatures(len(featmap), featdb, posids)
     nfreqs = featmap.featureCounts() - pfreqs
     pdocs = len(posids)
@@ -56,8 +57,8 @@ def do_query():
         if not c.query_report.exists():
             c.query_report.makedirs()
         log.info("Recalculating results, to store in %s", pickle)
-        results = scoring.filterDocuments(
-            ((k,v) for k,v in featdb.iteritems() if k not in posids),
+        queryids = ((k,v) for k,v in featdb.iteritems() if int(k) not in posids)
+        results = scoring.filterDocuments(queryids,         
             termscores, c.limit, c.threshold, statfile)
         cPickle.dump(results, file(pickle,"wb"), protocol=2)
     # Write result report

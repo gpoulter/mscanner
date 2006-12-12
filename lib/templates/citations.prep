@@ -57,11 +57,11 @@ Citations for the output results
   -->
 
   <div class="box">
-    <!--{{for score, pmid in scores}}-->
+    <!--{{for idx, (score, pmid) in enumerate(scores)}}-->
     <div class="citation">
       <h2 class="heading">
-        PubMed ID <a href="{{ncbi}}{{pmid}}">{{pmid}}</a>
-        {{if mode == "output"}}, Score {{"%.5f"%score}}{{endif}}
+        {{if mode == "output"}}Rank: {{"%d"%idx}},{{endif}} PubMed ID: <a href="{{ncbi}}{{pmid}}">{{pmid}}</a>
+        {{if mode == "output"}}, Score: {{"%.5f"%score}}{{endif}}
       </h2>
       <!--{{if articles is not None}}-->
       <!--{{script}}art = articles[str(pmid)]{{endscript}}-->

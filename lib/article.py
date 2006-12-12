@@ -40,11 +40,13 @@ def countFeatures(nfeats, featdb, docids):
 def readPMIDFile(filename, allpmids=None):
     """Read PubMed IDs one per line from filename.
 
+    @return: Iteration of integer Pubmed IDs. 
+
     File format ignores blank lines and lines starting with #, and only
     parses the line up to the first whitespace character.
 
-    If allpmids is provided, we only return those PMID strings that
-    satisfy 'pmid in allpmids'.
+    If allpmids is provided, we only return those PMID ints that
+    satisfy 'str(pmid) in allpmids'.
     """
     if not isinstance(filename,path) or not filename.exists():
         raise ValueError("File %s does not exist" % filename)

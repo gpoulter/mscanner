@@ -34,8 +34,8 @@ class FeatureMappingTests(TempFileTestCase):
     """
     def test(self):
         fm = FeatureMapping(self.fn)
-        self.assertEqual(fm.getFeatureIds(["A","B"],"Q"), [0,1], True)
-        self.assertEqual(fm.getFeatureIds(["A","C"],"T"), [2,3], True)
+        self.assertEqual(fm.getFeatureIds(["A","B"],"Q",True), [0,1])
+        self.assertEqual(fm.getFeatureIds(["A","C"],"T",True), [2,3])
         self.assertEqual(fm.getFeatures([0,1,2,3]), [("A","Q"), ("B","Q"),("A","T"),("C","T")])
         self.assertEqual(fm[1], ("B","Q"))
         self.assert_(numpy.all(fm.freqs == [1,1,1,1]))

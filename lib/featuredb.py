@@ -56,11 +56,15 @@ class FeatureDatabase:
         return numpy.fromstring(buf, self.ftype)
 
     def setitem(self, key, values, txn=None):
-        """Associate integer key with an ndarray object of values"""
+        """Associate integer key with an ndarray object of values
+
+        If given a list instead of an ndarray, convert to array of
+        self.ftype, and make sure values are unique.
+        """
         if not isinstance(values, numpy.ndarray):
-            values = numpy.array(values, self.ftype)
+            values = numpy.unique(numpy.array(values, self.ftype))
         if values.dtype != self.ftype:
-            raise ValueError("data value type mismatch: tried to place " + values.dtype + " for key " + str(key))
+            raise ValueError("data value type mismatch: tried to place " + str(values.dtype) + " for key " + str(key))
         try:
             self.db.put(str(key), values.tostring(), txn=txn)
         except ValueError, e:

@@ -153,7 +153,8 @@ function getStatus() {
              " which you can bookmark and come back to later for the results."
             ],
             ['p.para',
-             "It has been " + result.elapsed + " seconds since scanning started, and "+
+             "It has been " + Math.floor(result.elapsed/60) + " minutes and " + 
+             Math.floor(result.elapsed % 60) + " seconds since scanning started, and "+
              result.progress + " steps out of " + result.total + " have been completed."
             ]
          ])

@@ -39,7 +39,7 @@ class MedlineCacheTests(unittest.TestCase):
         a = getArticles(artdb, pmids)
         self.assertEqual(a[0].pmid, 1)
         self.assertEqual(a[1].pmid, 2)
-        self.assertEqual(fmap.freqs, [3, 3, 3, 3, 3, 3, 3, 2])
+        self.assertEqual(fmap.freqs, [2, 2, 2, 2, 2, 2, 2, 1])
         self.assertEqual(
             fmap.feats,
             [(u'T1', 'mesh'), (u'T2', 'mesh'), (u'T3', 'mesh'),

@@ -51,6 +51,7 @@
     <h2 class="heading">Related Files</h2>
 
     <table>
+      {{if terms_html is not None}}
       <tr>
         <th>
           Term scores (HTML)
@@ -58,6 +59,7 @@
         </th>
         <td><a href="{{terms_html}}">{{terms_html}}</a></td>
       </tr>
+      {{endif}}
       <tr>
         <th>
           Term scores (CSV)

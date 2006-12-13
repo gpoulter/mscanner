@@ -298,8 +298,8 @@ class Validator:
             pfreqs, nfreqs, pdocs, ndocs, self.pseudocount, self.daniel, self.featmap, self.exclude_feats)
         scoring.writeTermScoresCSV(
             open(terms_csv,"wb","utf-8"), self.featmap, termscores)
-        scoring.writeTermScoresHTML(
-            open(terms_html,"w","ascii","xmlcharrefreplace"), self.featmap, termscores, pdocs, ndocs, self.pseudocount)
+        #scoring.writeTermScoresHTML(
+        #    open(terms_html,"w","ascii","xmlcharrefreplace"), self.featmap, termscores, pdocs, ndocs, self.pseudocount)
         # Calculate performance measures
         P = TP+FN
         N = TN+FP
@@ -340,7 +340,7 @@ class Validator:
             precision = precision,
             fmeasure = fmeasure,
             terms_csv = terms_csv.basename(),
-            terms_html = terms_html.basename(),
+            terms_html = None, #terms_html.basename(),
             hist_img = hist_img.basename(),
             roc_img = roc_img.basename(),
             p_vs_r_img = p_vs_r_img.basename(),

@@ -10,7 +10,7 @@ class FeatureDatabaseTests(unittest.TestCase):
     """
     def test( self ):
         d = FeatureDatabase()
-        d.setitem(1, [1,3])
+        d.setitem(1, [1,3,1]) #eliminate duplicate features
         d.setitem(2, [2,3])
         self.assert_(all(d.getitem(1) == array([1,3])))
         self.assert_(all(d.getitem(2) == array([2,3])))

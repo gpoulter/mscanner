@@ -97,7 +97,7 @@ class MedlineCache:
                         if(len(term)>1):
                             quals.extend(term[1:])
                     # Add features for MeSH, qualifiers and journal ISSN
-                    featids = []
+                    featids = list()
                     featids.extend(feats(headings, "mesh", True))
                     featids.extend(feats(quals, "qual", True))
                     if art.issn:

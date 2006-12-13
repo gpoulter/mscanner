@@ -201,7 +201,7 @@ class FeatureMapping:
     def load(self):
         """Load featur mapping mapping from file
 
-        @note: file format is 'feature#
+        @note: file format is '%(feature)\t%(type)\t%(count)\n'
         """
         self.feats = []
         self.types = []
@@ -257,15 +257,22 @@ class FeatureMapping:
         if ftype not in self.feat2id:
             self.feat2id[ftype] = {}
         fdict = self.feat2id[ftype]
-        for feat in features:
-            if feat not in fdict:
-                featid = len(self.feats)
-                self.feats.append((feat,ftype))
-                self.freqs.append(1)
-                fdict[feat] = featid
-            result.append(fdict[feat])
-            if count:
-                self.freqs[fdict[feat]] += 1
+        if count:
+            for feat in features:
+                if feat not in fdict:
+                    featid = len(self.feats)
+                    self.feats.append((feat,ftype))
+                    self.freqs.append(1)
+                    fdict[feat] = featid
+                else:
+                    self.freqs[fdict[feat]] += 1
+                result.append(fdict[feat])
+        else:
+            for feat in features:
+                if feat not in fdict:
+                    raise ValueError("Unknown feature in read-only feature mapping: " + feat)
+                else:
+                    result.append(fdict[feat])
         return result
 
 class Article:

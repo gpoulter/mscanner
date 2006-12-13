@@ -87,6 +87,7 @@
         </th>
         <td><a href="{{terms_csv}}">{{terms_csv}}</a></td>
       </tr>
+      {{if terms_html is not None}}
       <tr>
         <th>
           MeSH scores (HTML)
@@ -94,6 +95,7 @@
         </th>
         <td><a href="{{terms_html}}">{{terms_html}}</a></td>
       </tr>
+     {{endif}}
       <tr>
         <th>
           Result scores (TXT)

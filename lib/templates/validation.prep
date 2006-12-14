@@ -80,6 +80,14 @@
           <button onclick="show('roc_area_help')">?</button>
         </th>
         <td>{{"%.5f"%ROC_area}}</td>
+      </tr>
+      <tr>
+        <th>
+          Area under PR curve
+          <button onclick="show('pr_area_help')">?</button>
+        </th>
+        <td>{{"%.5f"%PR_area}}</td>
+      </tr>
     </table>
 
     <div class="help" id="terms_help">
@@ -111,6 +119,14 @@
       performance.  The closer to 1.0, the better the classifier.  A
       classifier which randomly assigned scores would have a linear
       ROC curve, with an area of 0.5.
+    </div>
+
+    <div class="help" id="pr_area_help">
+      The area under the PR (Precision-Recall) curve is a global
+      measure of classifier performance.  The closer to 1.0, the
+      better the classifier.  The PR curve is a function of sizes of
+      the positive and negative test sets, an gets worse for larger
+      negative sets.
     </div>
 
   </div>

@@ -1,5 +1,5 @@
-#!/export/home/medscan/local32/bin/python
 #!/usr/bin/python
+#!/export/home/medscan/local32/bin/python
 
 """MScanner XML-RPC service
 
@@ -19,7 +19,7 @@ import time
 import unittest
 from xmlrpclib import Fault
 
-mtree = True
+mtree = False
 
 if mtree:
     source = path("/export/home/medscan/source")

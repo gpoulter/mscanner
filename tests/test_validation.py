@@ -16,7 +16,7 @@ class ValidatorTest(unittest.TestCase):
         print self.prefix
 
     def tearDown(self):
-        self.prefix.rmtree(ignore_errors=True)
+        #self.prefix.rmtree(ignore_errors=True)
         pass
 
     def test(self):

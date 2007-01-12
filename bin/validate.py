@@ -36,9 +36,7 @@ def do_validation():
         featmap = article.FeatureMapping(c.featuremap)
         featdb = medline.FeatureDatabase(c.featuredb, 'r')
         positives = set(article.readPMIDFile(c.posfile, featdb))
-        print "READING NEGATIVES"
         negatives = [x for x in article.readPMIDFile(c.negfile, featdb) if x not in positives]
-        print "READING NEGATIVES DONE"
         negatives = numpy.array(negatives, dtype=numpy.int32)
         positives = numpy.array(list(positives), dtype=numpy.int32)
         # Get which document ids have gene-drug assocations
@@ -62,6 +60,8 @@ def do_validation():
             negatives,
             c.nfolds,
             c.pseudocount,
+            c.fm_tradeoff,
+            c.dataset,
             c.dodaniel,
             genedrug_articles,
             c.exclude_feats,)

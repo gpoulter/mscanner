@@ -74,6 +74,7 @@ def do_query():
             pseudocount = c.pseudocount,
             limit = c.limit,
             threshold = c.threshold,
+            dataset = c.dataset,
             posfile = c.posfile,
             articles = artdb,
             )

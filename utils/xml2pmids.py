@@ -1,3 +1,5 @@
+#!python
+
 import sys
 sys.path.insert(0,"../../source/lib")
 import xmlparse
@@ -8,7 +10,7 @@ filename = path( sys.argv[1] )
 take = int(sys.argv[2])
 
 outtxt = file( filename + ".txt", "w" )
-parser = xmlparse.ArticleParser( "meshsynonyms.pickle", "meshexcludes.pickle"  )
+parser = xmlparse.ArticleParser()
 articles = []
 for i,x in enumerate( parser.parseFile( filename ) ):
     outtxt.write( "%d\n" % x.pmid )

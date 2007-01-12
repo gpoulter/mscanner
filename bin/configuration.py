@@ -106,6 +106,8 @@ posfile = None
 negfile = None
 ## Validation folds to use
 nfolds = 5
+## Proportion of maximum F-Measure to trade for precision
+fm_tradeoff = 0.0
 ## Whether to do a gene-drug co-occurrence filter
 dogenedrug = False
 ## Whether to use Daniel's 10^-8 pseudocounts
@@ -129,6 +131,10 @@ def choose_query(dataset_name):
         posfile = corpora / "daniel-spleen.txt"
     if dataset == "mscanner":
         posfile = "mscanner-bibliography.txt"
+    if dataset == "gdsmall":
+        posfile = "genedrug-small.txt"
+    if not isinstance(posfile, path):
+        posfile = corpora / posfile
     
 def choose_validation(dataset_name):
     global dataset, posfile, negfile, valid_report

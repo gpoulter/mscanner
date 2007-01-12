@@ -4,7 +4,7 @@
 
 <head>
 
-  <title>MedScanner Performance Statistics</title>
+  <title>MScanner validation results for {{dataset}}</title>
 
   <link rel="stylesheet" type="text/css" href="style.css"/>
 
@@ -42,7 +42,7 @@
 
 <body>
 
-<h1 id="heading">Medline Scanner Performance Statistics</h1>
+<h1 id="heading">MScanner validation results for {{dataset}}</h1>
 
 <div id="content">
 
@@ -51,15 +51,6 @@
     <h2 class="heading">Related Files</h2>
 
     <table>
-      {{if terms_html is not None}}
-      <tr>
-        <th>
-          Term scores (HTML)
-          <button onclick="show('terms_help')">?</button>
-        </th>
-        <td><a href="{{terms_html}}">{{terms_html}}</a></td>
-      </tr>
-      {{endif}}
       <tr>
         <th>
           Term scores (CSV)
@@ -90,11 +81,6 @@
       </tr>
     </table>
 
-    <div class="help" id="terms_help">
-      HTML display of MeSH term scores. This file can be very large
-      (2Mb).
-    </div>
-    
     <div class="help" id="csv_help">
       A CSV table (which Excel can import) with the calculation of
       each MeSH term's score.  The score of a MeSH term is the natural
@@ -102,7 +88,7 @@
       positive documents to frequency of the term in the rest of
       Medline.  Each article has a number of MeSH terms associated
       with it, and the score for an article is the sum of the scores
-      of its MeSH terms.  This file is more compact than the HTML
+      of its MeSH terms.
       below.
     </div>
     
@@ -129,6 +115,39 @@
       negative sets.
     </div>
 
+  </div>
+
+  <div class="box">
+    <h2 class="heading">Feature Statistics</h2>
+    <table id="summary">
+      <thead>
+        <tr>
+          <th>Quantity</th><th>Positives</th><th>Negatives </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th>Number of documents</th>
+          <td>{{pdocs}}</td>
+          <td>{{ndocs}}</td>
+        </tr>
+        <tr>
+          <th>Number of distinct features</th>
+          <td>{{feature_stats.pos_distinct_feats}}</td>
+          <td>{{feature_stats.neg_distinct_feats}}</td>
+        </tr>
+        <tr>
+          <th>Total feature occurrences</th>
+          <td>{{feature_stats.pos_occurrences}}</td>
+          <td>{{feature_stats.neg_occurrences}}</td>
+        </tr>
+        <tr>
+          <th>Terms per document</th>
+          <td>{{"%.3f" % feature_stats.feats_per_pos}}</td>
+          <td>{{"%.3f" % feature_stats.feats_per_neg}}</td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 
   <div class="box">

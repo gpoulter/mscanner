@@ -8,9 +8,9 @@ window.onload = function() {
    // Set up jsolait XML-RPC
    //jsolait.baseURI = "/htdocs/script/jsolait";
    g.xmlrpc = imprt("xmlrpc");
-   //var service = "http://jonbn.med.uct.ac.za/cgi-bin/mscanner.py"
+   var service = "http://jonbn.med.uct.ac.za/cgi-bin/mscanner.py"
    //var service = "http://mscanner.stanford.edu/cgi-bin/mscanner.py"
-   var service = "http://medline.stanford.edu/cgi-bin/mscanner.py"
+   //var service = "http://medline.stanford.edu/cgi-bin/mscanner.py"
    var methods = ["getStatus","listBatches","deleteBatch","query","validate"]
    g.service = new g.xmlrpc.ServiceProxy(service, methods);
    // Set up sliding help effects

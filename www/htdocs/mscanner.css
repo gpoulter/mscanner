@@ -22,48 +22,52 @@ html {
 /* GENERAL CLASSES */
 
 html, body, div, p {
-  display: block;
-  padding: 0;
-  margin: 0;
+    display: block;
+    padding: 0;
+    margin: 0;
+}
+
+.hidden {
+    display: none;
 }
 
 .para {
-  padding: 0.5em;
+    padding: 0.5em;
 }
 
 .heading {
-  width: auto;
-  text-align: center;
-  margin: 0;
+    width: auto;
+    text-align: center;
+    margin: 0;
 }
 
 /* BODY */
 
 #heading {
-  margin: 0;
-  padding: 0.5em;
-  text-align: center;
-  border-bottom-style: ridge;
+    margin: 0;
+    padding: 0.5em;
+    text-align: center;
+    border-bottom-style: ridge;
 }
 
 #content {
-  padding: 1ex;
-  max-width: 40em;
-  margin: 1em auto 1em auto;
-  border-style: outset;
-  -moz-border-radius: 15px;
+    padding: 1ex;
+    max-width: 40em;
+    margin: 1em auto 1em auto;
+    border-style: outset;
+    -moz-border-radius: 15px;
 }
 
 .box {
-  border-style: solid;
-  -moz-border-radius: 10px;
-  margin: 1ex;
+    border-style: solid;
+    -moz-border-radius: 10px;
+    margin: 1ex;
 }
 
 .box > .heading {
-  padding-left: 1em;
-  margin: 0 0 1ex 0;
-  border-style: none none solid none;
+    padding-left: 1em;
+    margin: 0 0 1ex 0;
+    border-style: none none solid none;
 }
 
 .box > .body {}
@@ -75,52 +79,52 @@ html, body, div, p {
 #form > .body > .group {}
 
 .group > .heading {
-  padding: 0.2ex;
-  margin: 0;
-  border-bottom-style: solid;
-  border-top-style: solid;
+    padding: 0.2ex;
+    margin: 0;
+    border-bottom-style: solid;
+    border-top-style: solid;
 }
 
 .group > .body {
-  padding: 1ex;
+    padding: 1ex;
 }
 
 #form button.help {
-  visibility: visible;
-  float: right;
+    visibility: visible;
+    float: right;
 }
 
 #form button.action {
-  font-weight: bold;
-  border-style: outset;
+    font-weight: bold;
+    border-style: outset;
 }
 
 #form .item {
-  clear: both;
-  padding: 0.2ex;
-  border-style: solid;
-  margin: 0.5ex;
+    clear: both;
+    padding: 0.2ex;
+    border-style: solid;
+    margin: 0.5ex;
 }
 
 #form .label {
-  font-weight: bold;
-  padding-right: 2em;
+    font-weight: bold;
+    padding-right: 2em;
 }
 
 #form .field {
-  vertical-align: top;
+    vertical-align: top;
 }
 
 #form .help {
-  visibility: hidden;
+    visibility: hidden;
 }
 
 #batches .item {
-  padding: 0.2ex 0.2ex 0.2ex 1em;
-  border-style: solid;
-  margin: 0.5ex;
+    padding: 0.2ex 0.2ex 0.2ex 1em;
+    border-style: solid;
+    margin: 0.5ex;
 }
 
 #batches button.delete {
-  float: right;
+    float: right;
 }

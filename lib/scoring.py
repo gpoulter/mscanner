@@ -16,7 +16,7 @@ writeReport() -- Collate results of a query (calls all of above)
 
 from __future__ import division
 from path import path
-from codecs import open
+import codecs
 import templates
 import article
 import numpy
@@ -114,41 +114,32 @@ def filterDocuments(docs, featscores, limit=10000, threshold=0.0, statfile=None)
         del results[ndocs:]
     return results
 
-def writeTermScoresCSV(f, featmap, featscores):
-    """Write term scores to CSV file"""
-    f.write(u"score,numerator,denominator,positives,negatives,termid,term,type\n")
+def writeFeatureScoresCSV(f, featmap, featscores):
+    """Write features scores to CSV file"""
+    f.write(u"score,numerator,denominator,positives,negatives,termid,type,term\n")
     for s in sorted(
-        [ (s[0],s[1],s[2],s[3],s[4],termid,featmap[termid][0],featmap[termid][1])
+        [ (s[0],s[1],s[2],s[3],s[4],termid,featmap[termid][1],featmap[termid][0])
           for termid, s in enumerate(featscores) if s[3] != 0 or s[4] != 0 ],
         key=lambda x:x[0], reverse=True):
-        f.write(u'%.3f,%.2e,%.2e,%d,%d,%d,"%s",%s\n' % s)
+        f.write(u'%.3f,%.2e,%.2e,%d,%d,%d,%s,"%s"\n' % s)
 
-def writeTermScoresHTML(f, featmap, featscores, pdocs, ndocs, pseudocount):
+def featureStatistics(featmap, featscores, pdocs, ndocs):
     """Write term scores to HTML file"""
-    pfreq, nfreq = 0.0, 0.0
     pfreqs, nfreqs = featscores[:,3], featscores[:,4]
+    class r:
+        pass
+    r.pos_occurrences = int(numpy.sum(pfreqs)) # feature occurrences in positives
+    r.neg_occurrences = int(numpy.sum(nfreqs)) # feature occurrences in negatives
+    r.feats_per_pos = 0.0
     if pdocs:
-        pfreq = numpy.sum(pfreqs)/pdocs
+        r.feats_per_pos = r.pos_occurrences / pdocs # features per positive article
+    r.feats_per_neg = 0.0
     if ndocs:
-        nfreq = numpy.sum(nfreqs)/ndocs
-    # 0=score, 1=numerator, 2=denominator, 3=pcount, 4=ncount, 5=termid, 6=termname, 7=termtype
-    scorelines = sorted(
-        [(s[0],s[1],s[2],s[3],s[4],termid,featmap[termid][0],featmap[termid][1])
-         for termid, s in enumerate(featscores)],# if s[3] != 0 or s[4] != 0],
-        key=lambda x:x[0], reverse=True)
-    templates.termscore.run(dict(
-        numterms = len(featmap),
-        pseudocount = pseudocount,
-        pdocs = pdocs,
-        ndocs = ndocs,
-        poccurs = int(numpy.sum(pfreqs)),
-        noccurs = int(numpy.sum(nfreqs)),
-        pterms = len(numpy.nonzero(pfreqs)[0]),
-        nterms = len(numpy.nonzero(nfreqs)[0]),
-        pfreq = pfreq,
-        nfreq = nfreq,
-        scores = scorelines
-       ), outputfile=f)
+        r.feats_per_neg = r.neg_occurrences / ndocs # features per negative article
+    r.distinct_feats = len(featmap) # distinct features
+    r.pos_distinct_feats = len(numpy.nonzero(pfreqs)[0]) # distinct features in positives
+    r.neg_distinct_feats = len(numpy.nonzero(nfreqs)[0]) # distinct features in negatives
+    return r
 
 def writeReport(
     scores,
@@ -161,6 +152,7 @@ def writeReport(
     pseudocount,
     limit,
     threshold,
+    dataset,
     posfile,
     articles=None,
    ):
@@ -175,23 +167,22 @@ def writeReport(
     @param pseudocount: Pseudocount for each term
     @param limit: Maximum number of results to return.
     @param threshold: Cutoff score for including an article in the results
+    @param dataset: Title of the dataset being processed
     @param posfile: Path to positive docids
     @param articles: Mapping from str(pmid) to Article object
     """
     terms_csv = prefix/"termscores.csv"
-    terms_html = prefix/"termscores.html"
     res_txt = prefix/"resultscores.txt"
     input_html = prefix/"input_citations.html"
     result_html= prefix/"result_citations.html"
     index_html = prefix/"index.html"
-    # Term scores
-    writeTermScoresCSV(open(terms_csv,'w','utf-8'), featmap, termscores)
-    writeTermScoresHTML(open(terms_html,'w','ascii','xmlcharrefreplace'),
-                        featmap, termscores, pdocs, ndocs, pseudocount)
-    # Result scores
+    # Get stats on feature scores, and write score table to CSV file
+    feature_stats = featureStatistics(featmap, termscores, pdocs, ndocs)
+    writeFeatureScoresCSV(codecs.open(terms_csv,"wb","utf-8"), featmap, termscores)
+    # Write result scores to file
     f = file(res_txt,'w')
     for score, pmid in scores:
-        f.write("%-13s%.5f\n" % (pmid, score))
+        f.write("%-9s\t%.5f\n" % (pmid, score))
     # Citations for input articles
     import article
     posids = list(article.readPMIDFile(posfile, articles))
@@ -209,9 +200,12 @@ def writeReport(
         threshold = threshold,
         num_results = len(scores),
         lowest_score = scores[-1][0],
+        pdocs = pdocs,
+        ndocs = ndocs,
+        dataset = dataset,
         posfile = posfile.basename(),
+        feature_stats = feature_stats,
         terms_csv = terms_csv.basename(),
-        terms_html = terms_html.basename(),
         res_txt = res_txt.basename(),
         input_html = input_html.basename(),
         result_html = result_html.basename(),

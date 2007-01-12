@@ -12,7 +12,7 @@ from __future__ import division
 import warnings
 warnings.simplefilter('ignore', FutureWarning)
 from itertools import chain, izip
-from codecs import open
+import codecs
 import cPickle
 import logging as log
 import random
@@ -29,9 +29,6 @@ import templates
 
 class Validator:
     """Cross-validated performance statistics
-
-    Trains on 90% of positives and negatives, and use the other 10%
-    for testing.
     """
 
     def __init__(
@@ -42,6 +39,8 @@ class Validator:
         negids,
         nfold,
         pseudocount=0.1,
+        fm_tradeoff=0.0,
+        dataset="",
         daniel=False,
         genedrug_articles=None,
         exclude_feats=None
@@ -51,8 +50,10 @@ class Validator:
         @param featdb: Mapping of doc id to list of feature ids
         @param posids: Array of positive doc ids
         @param negids: Array of negative doc ids
-        @param nfold: Number of folds in cross-validation.
-        @param pseudocount, daniel: Passed to Scoring.getTermScores
+        @param nfold: Number of folds in cross-validation
+        @param pseudocount, daniel: Parameters for scoring.getTermScores
+        @param dataset: Title of the dataset being processed
+        @param fm_tradeoff: Proportion of maximum F-Measure to trade in favour of precision
         @param genedrug_articles: Set of doc ids with gene-drug co-occurrences
         @param exclude_feats: Feature types to exclude for scoring purposes
         """
@@ -62,6 +63,8 @@ class Validator:
         self.neg = negids
         self.nfold = nfold
         self.pseudocount = pseudocount
+        self.fm_tradeoff = fm_tradeoff
+        self.dataset = dataset
         self.daniel = daniel
         self.genedrug_articles = genedrug_articles
         self.exclude_feats = exclude_feats
@@ -151,13 +154,15 @@ class Validator:
                Data(nx, ny, title="Negatives", with="histeps"))
 
     @staticmethod
-    def performanceStats(pscores, nscores):
+    def performanceStats(pscores, nscores, fm_tradeoff):
         """Derive arrays for TPR, FPR, PPV and FM over positive score
         points, and find peak performance
 
         @param pscores: Scores of positive articles
 
         @param nscores: Scores of negative articles
+
+        @param fm_tradeoff: Proportion of maximum F-Measure to trade for increase precision.
 
         @note: Threshold is tuned to maximise precision subject to the
         F-Measure being at least 80% of the best F-Measure attained.
@@ -174,7 +179,7 @@ class Validator:
         FM  = [ 0 for xi in xrange(P) ] # F-measure
         TN  = 1                         # True negatives
         maxFM_xi = 0                    # Maximum of F-measure
-        best_xi, best_TP, best_FN, best_TN, best_FP = 0, 0, 0, 0, 0
+        best_xi, best_TP, best_FN, best_TN, best_FP = 0, P, 0, N, 0
         ROC_area, PR_area = 0, 0
         # Calculate stats for each choice of threshold
         for xi in xrange(P):
@@ -208,7 +213,7 @@ class Validator:
             if FM[xi] > FM[maxFM_xi]:
                 maxFM_xi = xi
             # Tune to maximise PPV subject to at least 90% of maximum F-Measure
-            if PPV[xi] > PPV[best_xi] and FM[xi] > 0.9*FM[maxFM_xi]:
+            if PPV[xi] > PPV[best_xi] and FM[xi] >= FM[maxFM_xi]*(1-fm_tradeoff):
                 best_xi, best_TP, best_FN, best_TN, best_FP = xi, TP, FN, TN, FP
             #print "thresh = %g, TPR = %d/%d = %.1e, FPR = %d/%d = %.1e" % (threshold, TP, P, TP/P, FP, N, FP/N)
         ROC_area += (1-max(FPR))
@@ -274,33 +279,30 @@ class Validator:
         @param stylesheet: Path to CSS stylesheet for the report templates
         """
         # Output files
-        terms_csv = prefix / "termscores.csv"
-        terms_html = prefix / "termscores.html"
-        hist_img = prefix / "histogram.png"
-        roc_img = prefix / "roc.png"
-        p_vs_r_img = prefix / "prcurve.png"
-        pr_vs_score_img = prefix / "prscore.png"
-        mainfile = prefix / "index.html"
-        graph_pickle = prefix / "graphs.pickle"
+        terms_csv = "termscores.csv"
+        hist_img = "histogram.png"
+        roc_img = "roc.png"
+        p_vs_r_img = "prcurve.png"
+        pr_vs_score_img = "prscore.png"
+        mainfile = "index.html"
+        graph_pickle = "graphs.pickle"
         # Performance tuning, save arrays for graphing
-        aTPR, aFPR, aPPV, aFM, ROC_area, PR_area, thresh_idx, threshold, TP, FN, TN, FP  = self.performanceStats(pscores, nscores)
+        aTPR, aFPR, aPPV, aFM, ROC_area, PR_area, thresh_idx, threshold, TP, FN, TN, FP  = self.performanceStats(pscores, nscores, self.fm_tradeoff)
         cPickle.dump(dict(TPR=aTPR,FPR=aFPR,PPV=aPPV,FM=aFM), file(graph_pickle, "wb"))
         #self.plotHistograms(hist_img, pscores, nscores, threshold)
-        self.plotPDF(hist_img, pscores, nscores, threshold)
-        self.plotROC(roc_img, aTPR, aFPR, thresh_idx)
-        self.plotPR(p_vs_r_img, aTPR, aPPV, thresh_idx)
-        self.plotPRF(pr_vs_score_img, pscores, aTPR, aPPV, aFM, threshold)
-        # Write term scores
+        self.plotPDF(prefix/hist_img, pscores, nscores, threshold)
+        self.plotROC(prefix/roc_img, aTPR, aFPR, thresh_idx)
+        self.plotPR(prefix/p_vs_r_img, aTPR, aPPV, thresh_idx)
+        self.plotPRF(prefix/pr_vs_score_img, pscores, aTPR, aPPV, aFM, threshold)
+        # Calculate and write feature scores to CSV
         pfreqs = article.countFeatures(len(self.featmap), self.featdb, self.pos)
         nfreqs = article.countFeatures(len(self.featmap), self.featdb, self.neg)
-        pdocs = len(self.pos)
-        ndocs = len(self.neg)
+        pdocs, ndocs = len(self.pos), len(self.neg)
         termscores = scoring.getTermScores(
-            pfreqs, nfreqs, pdocs, ndocs, self.pseudocount, self.daniel, self.featmap, self.exclude_feats)
-        scoring.writeTermScoresCSV(
-            open(terms_csv,"wb","utf-8"), self.featmap, termscores)
-        #scoring.writeTermScoresHTML(
-        #    open(terms_html,"w","ascii","xmlcharrefreplace"), self.featmap, termscores, pdocs, ndocs, self.pseudocount)
+            pfreqs, nfreqs, pdocs, ndocs, self.pseudocount, 
+            self.daniel, self.featmap, self.exclude_feats)
+        scoring.writeFeatureScoresCSV(codecs.open(prefix/terms_csv,"wb","utf-8"), self.featmap, termscores)
+        feature_stats = scoring.featureStatistics(self.featmap, termscores, pdocs, ndocs)
         # Calculate performance measures
         P = TP+FN
         N = TN+FP
@@ -329,23 +331,8 @@ class Validator:
         if prevalence > 0:
             enrichment = precision / prevalence
         # Write main index file for validation output
-        templates.validation.run(dict(
-            TP=TP, TN=TN, FP=FP, FN=FN, P=P, N=N, A=A, T=T, F=F,
-            TPR=TPR, FNR=FNR, TNR=TNR, FPR=FPR, PPV=PPV, NPV=NPV,
-            ROC_area = ROC_area,
-            PR_area = PR_area,
-            accuracy = accuracy,
-            prevalence = prevalence,
-            enrichment = enrichment,
-            recall = recall,
-            threshold = threshold,
-            precision = precision,
-            fmeasure = fmeasure,
-            terms_csv = terms_csv.basename(),
-            terms_html = None, #terms_html.basename(),
-            hist_img = hist_img.basename(),
-            roc_img = roc_img.basename(),
-            p_vs_r_img = p_vs_r_img.basename(),
-            pr_vs_score_img = pr_vs_score_img.basename(),
-            ), outputfile=file(mainfile, "w"))
-        stylesheet.copy(prefix / "style.css")
+        dataset = self.dataset
+        nfold = self.nfold
+        templates.validation.run(locals(), outputfile=file(prefix/mainfile, "w"))
+        stylesheet.copy(prefix / "style.css")        
+

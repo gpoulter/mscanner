@@ -1,3 +1,5 @@
+#!python
+
 import random
 from path import path
 import sys

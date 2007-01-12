@@ -2,7 +2,7 @@
 
 """Fetch current literature annotations from PharmGKB
 
-Usage: python fetch-pharmgkb-pmids.py
+Usage: python fetch-pharmgkb.py
 
 Prints a list of PubMed IDs retrieved from the PharmGKB web service.
 """

@@ -19,7 +19,7 @@ import time
 import unittest
 from xmlrpclib import Fault
 
-mtree = False
+mtree = True
 
 if mtree:
     source = path("/export/home/medscan/source")

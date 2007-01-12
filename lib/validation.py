@@ -215,7 +215,7 @@ class Validator:
         # Return tuned results
         return TPR, FPR, PPV, FM, ROC_area, PR_area, best_xi, pscores[best_xi], best_TP, best_FN, best_TN, best_FP
 
-    def plotROC(self, roc, FPR, TPR, thresh_idx):
+    def plotROC(self, roc, TPR, FPR, thresh_idx):
         """ROC curve (TPR vs FPR)
 
         @param roc: Path to output file for ROC curve

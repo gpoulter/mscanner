@@ -98,8 +98,7 @@ if __name__ == "__main__":
     if len(sys.argv) == 1:
         raise ValueError("Please give dataset code")
     elif len(sys.argv) == 2:
-        c.dataset = sys.argv[1]
-        c.choose_dataset()
+        c.choose_query(sys.argv[1])
     elif len(sys.argv) > 2:
         c.dataset = sys.argv[1]
         c.pseudocount = float(sys.argv[2])

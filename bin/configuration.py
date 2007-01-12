@@ -94,7 +94,9 @@ query_report = output / "results"
 ## Path to database output
 outputdb = None
 ## Types of features to exclude
-exclude_feats = None # ["mesh","qual","issn"]
+exclude_feats = None
+#exclude_feats = ["mesh","qual","issn"]
+#exclude_feats = ["issn"]
 
 #### VALIDATOR CONFIGURATION (for validate.py)
 
@@ -113,41 +115,77 @@ valid_report = output / "validation"
 
 #### DATA SET CONFIGURATION
 
-def choose_dataset():
-    global posfile, negfile, query_report, valid_report
+def choose_query(dataset_name):
+    global dataset, posfile, query_report
+    dataset = dataset_name
     query_report = output / (dataset+"-query")
-    valid_report = output / (dataset+"-valid")
-    if dataset == "gdsmall-vs-med06":
-        posfile = corpora / "genedrug-small.txt"
-        negfile = articlelist
-    if dataset == "pg04-vs-30k":
+    if dataset == "pg04":
         posfile = corpora / "pharmgkb-2004.txt"
-        negfile = corpora / "medline06-30k.txt"
-    if dataset == "pg04-vs-go4":
-        posfile = corpora / "pharmgkb-2004.txt"
-        negfile = corpora / "geneontology-2004.txt"
-    if dataset == "pg06-vs-med06":
+    if dataset == "pg06":
         posfile = corpora / "pharmgkb-Oct06.txt"
-        negfile = articlelist
-    if dataset == "pg06-vs-go4":
-        posfile = corpora / "pharmgkb-Oct06.txt"
-        negfile = corpora / "geneontology-2004.txt"
-
-    if dataset == "aids-vs-500k":
-        posfile = corpora / "aids-bioethics-Oct06-1k.txt"
-        negfile = corpora / "medline06-500k.txt"
-    if dataset == "aidsbig-vs-500k":
+    if dataset == "aidsbig":
         posfile = corpora / "aids-bioethics-Oct06.txt"
-        negfile = corpora / "medline06-500k.txt"
-    if dataset == "pg04-vs-500k":
-        posfile = corpora / "pharmgkb-2004.txt"
-        negfile = corpora / "medline06-500k.txt"
+    if dataset == "radiology":
+        posfile = corpora / "daniel-spleen.txt"
+    if dataset == "mscanner":
+        posfile = "mscanner-bibliography.txt"
+    
+def choose_validation(dataset_name):
+    global dataset, posfile, negfile, valid_report
+    global exclude_feats, dodaniel
+    dataset = dataset_name
+    valid_report = output / (dataset+"-valid")
+    # Comparing to daniel's old method
+    if dataset == "pg04-vs-30k":
+        posfile = "pharmgkb-2004.txt"
+        negfile = "medline06-30k.txt"
+    if dataset == "pg04-vs-30k-dan":
+        posfile = "pharmgkb-2004.txt"
+        negfile = "medline06-30k.txt"
+        exclude_feats = ["issn"]
+        dodaniel = True
+    if dataset == "pg06-vs-500k-dan":
+        posfile = "pharmgkb-Oct06.txt"
+        negfile = "medline06-500k.txt"
+        exclude_feats = ["issn"]
+        dodaniel = True
+    if dataset == "pg06-vs-500k-noissn":
+        posfile = "pharmgkb-Oct06.txt"
+        negfile = "medline06-500k.txt"
+        exclude_feats = ["issn"]
+    # Primary results
+    if dataset == "aids-vs-500k":
+        posfile = "aids-bioethics-Oct06.txt"
+        negfile = "medline06-500k.txt"
     if dataset == "pg06-vs-500k":
-        posfile = corpora / "pharmgkb-Oct06.txt"
-        negfile = corpora / "medline06-500k.txt"
+        posfile = "pharmgkb-Oct06.txt"
+        negfile = "medline06-500k.txt"
+    if dataset == "radiology-vs-500k":
+        posfile = "daniel-radiology.txt"
+        negfile = "medline06-500k.txt"
+    # Other experiments
+    if dataset == "mscanner-vs-30k":
+        posfile = "mscanner-bibliography.txt"
+        negfile = "medline06-30k.txt"
+    if dataset == "pg06-vs-med06":
+        posfile = "pharmgkb-Oct06.txt"
+        negfile = articlelist
+    if dataset == "gdsmall-vs-med06":
+        posfile = "genedrug-small.txt"
+        negfile = articlelist
+    if dataset == "aids1k-vs-500k":
+        posfile = "aids-bioethics-Oct06-1k.txt"
+        negfile = "medline06-500k.txt"
+    if dataset == "pg04-vs-go4":
+        posfile = "pharmgkb-2004.txt"
+        negfile = "geneontology-2004.txt"
+    if dataset == "pg04-vs-500k":
+        posfile = "pharmgkb-2004.txt"
+        negfile = "medline06-500k.txt"
     if dataset == "pgdan-vs-500k":
         posfile = corpora / "pharmgkb-daniel.txt"
-        negfile = corpora / "medline06-500k.txt"
-    if dataset == "spleen-vs-500k":
-        posfile = corpora / "daniel-spleen.txt"
-        negfile = corpora / "medline06-500k.txt"
+        negfile = "medline06-500k.txt"
+    if not isinstance(posfile, path):
+        posfile = corpora / posfile
+    if not isinstance(negfile, path):
+        negfile = corpora / negfile

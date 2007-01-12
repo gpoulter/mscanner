@@ -35,9 +35,9 @@
         MScanner takes a list of input articles, and returns other
         articles from Medline which are most closely related to the
         list as a whole, as determined by their Medical Subject
-        Heading and journal composition.  This method uses a whole
-        corpus of articles, unlike the NCBI related articles feature
-        which uses only a single article as input.
+        Heading and journal composition.  The method is unrelated to
+        the NCBI related articles feature for neighbours of a single
+        article.
       </p>
       <p class="para">
         To keep your result set reasonable, you can specify a limit on
@@ -85,10 +85,9 @@
               <button class="help" onclick="g.fx['pseudocount_help'].toggle()">help</button>
               <b class="label">Pseudocount</b>
               <select class="field" id="pseudocount">
-                <option value="0.001">0.001</option>
-                <option value="0.01" selected="selected">0.01</option>
+                <option value="0.001" selected="selected">0.001</option>
+                <option value="0.01">0.01</option>
                 <option value="0.1">0.1</option>
-                <option value="0.5">0.5</option>
               </select>
             </p>
             <p class="help" id="pseudocount_help">
@@ -131,9 +130,10 @@
               Articles are only included in results if they score
               greater than this threshold.  For a high threshold,
               there may be fewer results returned than the result
-              limit.  Use cross-validation to tell you what a good
-              choice of threshold would be to achieve high precision
-              in your results.
+              limit.  Use cross-validation to decide on a good choice
+              of threshold.  The cross-validation will choose a a
+              threshold that primarily optimised for precision rather
+              than recall.
             </p>
 
             <button class="action" onclick="query()">Perform a query</button>

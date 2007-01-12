@@ -36,7 +36,9 @@ def do_validation():
         featmap = article.FeatureMapping(c.featuremap)
         featdb = medline.FeatureDatabase(c.featuredb, 'r')
         positives = set(article.readPMIDFile(c.posfile, featdb))
+        print "READING NEGATIVES"
         negatives = [x for x in article.readPMIDFile(c.negfile, featdb) if x not in positives]
+        print "READING NEGATIVES DONE"
         negatives = numpy.array(negatives, dtype=numpy.int32)
         positives = numpy.array(list(positives), dtype=numpy.int32)
         # Get which document ids have gene-drug assocations
@@ -86,8 +88,7 @@ if __name__ == "__main__":
     if len(sys.argv) == 1:
         raise ValueError("Please give dataset code")
     elif len(sys.argv) == 2:
-        c.dataset = sys.argv[1]
-        c.choose_dataset()
+        c.choose_validation(sys.argv[1])
     elif len(sys.argv) > 2:
         c.dataset = sys.argv[1]
         numnegs = int(sys.argv[2])

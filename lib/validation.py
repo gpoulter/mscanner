@@ -79,6 +79,13 @@ class Validator:
             return False
 
     def validate(self, statfile=None):
+        """Carry out validation.  0 folds is taken to mean leave-out-one validation"""
+        if self.nfold == 0:
+            return self.leave_out_one_validate(statfile)
+        else:
+            return self.cross_validate(statfile)
+
+    def cross_validate(self, statfile=None):
         """Perform n-fold validation and return the raw performance measures"""
         def partitionSizes(nitems, nparts):
             """Returns start indeces and lengths of partitions"""
@@ -126,14 +133,16 @@ class Validator:
             if idx % ((pdocs+ndocs)/20) == 0:
                 statfile.update(idx, pdocs+ndocs)
             for f in self.featdb[pdoc]:
-                if self.featmap[int(f)][1] not in self.exclude_feats:
+                if self.exclude_feats is None or self.featmap[int(f)][1] not in self.exclude_feats:
                     pscores[idx] += math.log(((pcounts[f]-1+ps)/(pdocs-1+2*ps))/((ncounts[f]+ps)/(ndocs+2*ps)))
+                    #pscores[idx] += math.log(((pcounts[f]+ps)/(pdocs+2*ps))/((ncounts[f]+ps)/(ndocs+2*ps)))
         for idx, ndoc in enumerate(self.neg):
             if (pdocs+idx) % ((pdocs+ndocs)/20) == 0:
                 statfile.update(pdocs+idx, pdocs+ndocs)
             for f in self.featdb[ndoc]:
-                if self.featmap[int(f)][1] not in self.exclude_feats:
+                if self.exclude_feats is None or self.featmap[int(f)][1] not in self.exclude_feats:
                     nscores[idx] += math.log(((pcounts[f]+ps)/(pdocs+2*ps))/((ncounts[f]-1+ps)/(ndocs-1+2*ps)))
+                    #nscores[idx] += math.log(((pcounts[f]+ps)/(pdocs+2*ps))/((ncounts[f]+ps)/(ndocs+2*ps)))
         return pscores, nscores
 
     def plotPDF(self, fname, pdata, ndata, threshold):

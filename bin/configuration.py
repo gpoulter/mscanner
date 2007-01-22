@@ -99,7 +99,7 @@ query_report = output / "results"
 ## Path to database output
 outputdb = None
 ## Types of features to exclude
-exclude_feats = []
+exclude_feats = None
 #exclude_feats = ["mesh","qual","issn"]
 #exclude_feats = ["issn"]
 
@@ -110,7 +110,7 @@ posfile = None
 ## Negative set
 negfile = None
 ## Validation folds to use
-nfolds = 5
+nfolds = 0
 ## 0<Alpha<1.  Alpha=0.5 maximises standard F-Measure.
 fm_tradeoff = 0.5
 ## Whether to do a gene-drug co-occurrence filter
@@ -127,13 +127,13 @@ def choose_query(dataset_name):
     dataset = dataset_name
     query_report = output / (dataset+"-query")
     if dataset == "pg04":
-        posfile = corpora / "pharmgkb-2004.txt"
+        posfile = "pharmgkb-2004.txt"
     if dataset == "pg06":
-        posfile = corpora / "pharmgkb-Oct06.txt"
-    if dataset == "aidsbig":
-        posfile = corpora / "aids-bioethics-Oct06.txt"
+        posfile = "pharmgkb-Oct06.txt"
+    if dataset == "aids":
+        posfile = "aids-bioethics-Oct06.txt"
     if dataset == "radiology":
-        posfile = corpora / "daniel-spleen.txt"
+        posfile = "daniel-radiology.txt"
     if dataset == "mscanner":
         posfile = "mscanner-bibliography.txt"
     if dataset == "gdsmall":
@@ -174,10 +174,13 @@ def choose_validation(dataset_name):
     if dataset == "radiology-vs-500k":
         posfile = "daniel-radiology.txt"
         negfile = "medline06-500k.txt"
+    if dataset == "random10k-vs-500k":
+        posfile = "random10k-06.txt"
+        negfile = "medline06-500k.txt"
     # Other experiments
-    if dataset == "mscanner-vs-30k":
+    if dataset == "mscanner-vs-500k":
         posfile = "mscanner-bibliography.txt"
-        negfile = "medline06-30k.txt"
+        negfile = "medline06-500k.txt"
     if dataset == "pg06-vs-med06":
         posfile = "pharmgkb-Oct06.txt"
         negfile = articlelist

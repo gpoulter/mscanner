@@ -75,8 +75,7 @@ def do_validation():
                 c.valid_report.makedirs()
             # Recalculate results
             log.info("Recalculating results, to store in %s", pickle)
-            #pscores, nscores = val.validate(statfile)
-            pscores, nscores = val.leave_out_one_validate(statfile)
+            pscores, nscores = val.validate(statfile)
             cPickle.dump((pscores,nscores), file(pickle,"wb"), protocol=2)
         # Output performance statistics
         log.debug("Writing performance statistics")

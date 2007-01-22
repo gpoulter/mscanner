@@ -14,10 +14,11 @@ One argument: Load Article objects from a Pickle and add to database
 
 """
 
+# Builtin modules
 import cPickle
 import logging as log
 import sys
-
+# Custom modules
 import configuration as c
 import article
 import medline
@@ -40,16 +41,22 @@ medcache = medline.MedlineCache(
         c.processed,
         c.use_transactions,
         )
-    
-# Load articles from a pickle
-if len(sys.argv) == 2:
-    print "Loading articles from " + sys.argv[1]
-    articles = cPickle.load(file(sys.argv[1], "rb"))
-    dbenv = medcache.makeDBEnv()
-    medcache.putArticleList(articles, dbenv)
-    dbenv.close()
 
-# Parse articles from XML directory
-else:
-    log.info("Starting update from %s" % c.medline.relpath())
-    medcache.updateCacheFromDir(c.medline, c.save_delay)
+statfile = article.StatusFile(c.statfile, "UPDATING DATABASE")
+try: 
+    # Load articles from a pickle
+    if len(sys.argv) == 2:
+        print "Loading articles from " + sys.argv[1]
+        articles = cPickle.load(file(sys.argv[1], "rb"))
+        dbenv = medcache.makeDBEnv()
+        medcache.putArticleList(articles, dbenv)
+        dbenv.close()
+    # Parse articles from XML directory
+    else:
+        log.info("Starting update from %s" % c.medline.relpath())
+        medcache.updateCacheFromDir(c.medline, c.save_delay)
+finally:
+    del statfile
+    article.runMailer(c.smtp_server, c.mailer)
+    
+        

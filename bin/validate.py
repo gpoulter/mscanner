@@ -3,7 +3,7 @@
 """Calculate performance statistics
 
 CGI script may provide batchid, number of negatives, number of folds,
-and pseudocount as parameters.
+ pseudocount, and alpha as parameters.
 
 @author: Graham Poulter
                                    
@@ -30,7 +30,6 @@ import medline
 import validation
 
 def do_validation():
-    import article
     statfile = article.StatusFile(c.statfile, c.dataset, c.nfolds)
     try:
         featmap = article.FeatureMapping(c.featuremap)
@@ -47,7 +46,7 @@ def do_validation():
             pos_arts = article.getArticles(c.articledb, c.posfile)
             neg_arts = article.getArticles(c.articledb, c.negfile)
             gdfilter = genedrug.getGeneDrugFilter(c.genedrug, c.drugtable, c.gapscore)
-            for article in chain(pos_arts, neg_arts):
+            for art in chain(pos_arts, neg_arts):
                 gdresult = gdfilter(art)
                 art.genedrug = gdresult
                 if len(gdresult) > 0:
@@ -69,20 +68,22 @@ def do_validation():
         pickle = c.valid_report / "results.pickle"
         if pickle.isfile():
             log.info("Using cached results from %s", pickle)
-            results = cPickle.load(file(pickle, "rb"))
+            pscores, nscores = cPickle.load(file(pickle, "rb"))
         else:
             # Create directory if necessary
             if not c.valid_report.exists():
                 c.valid_report.makedirs()
             # Recalculate results
             log.info("Recalculating results, to store in %s", pickle)
-            results = val.validate(statfile)
-            cPickle.dump(results, file(pickle,"wb"), protocol=2)
+            #pscores, nscores = val.validate(statfile)
+            pscores, nscores = val.leave_out_one_validate(statfile)
+            cPickle.dump((pscores,nscores), file(pickle,"wb"), protocol=2)
         # Output performance statistics
         log.debug("Writing performance statistics")
-        val.report(results[0], results[1], c.valid_report, c.stylesheet)
+        val.report(pscores, nscores, c.valid_report, c.stylesheet)
     finally:
         del statfile
+        article.runMailer(c.smtp_server, c.mailer)
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
@@ -94,6 +95,7 @@ if __name__ == "__main__":
         numnegs = int(sys.argv[2])
         c.nfolds = int(sys.argv[3])
         c.pseudocount = float(sys.argv[4])
+        c.fm_tradeoff = float(sys.argv[5])
         c.valid_report = c.weboutput / c.dataset
         c.posfile = c.valid_report / "positives.txt"
         c.negfile = c.valid_report / "negatives.txt"

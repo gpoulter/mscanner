@@ -60,6 +60,20 @@
       </tr>
       <tr>
         <th>
+          Pseudocount
+          <button onclick="show('pseudocount_help')">?</button>
+        </th>
+        <td>{{"%f"%pseudocount}}</td>
+      </tr>
+      <tr>
+        <th>
+          F-Measure tradeoff
+          <button onclick="show('tradeoff_help')">?</button>
+        </th>
+        <td>{{"%f"%fm_tradeoff}}</td>
+      </tr>
+      <tr>
+        <th>
           Tuned threshold
           <button onclick="show('threshold_help')">?</button>
         </th>
@@ -90,6 +104,21 @@
       with it, and the score for an article is the sum of the scores
       of its MeSH terms.
       below.
+    </div>
+    
+    <div class="help" id="pseudocount_help">
+      Added to the number of occurrences of every term, to avoid divide
+      by zero on terms which don't occur anywhere in a set of articles.
+    </div>
+    
+    <div class="help" id="tradeoff_help">
+      The F-Measure Tradeoff is the alpha in the equation
+      FM=1/(alpha/P+(1-alpha)/R) which balances recall (R) and
+      precision (P).  For alpha=0.5, the harmonic mean of recall and
+      precision is maximised (standard F-Measure), while for
+      0.5&lt;alpha&lt;1.0 the precision is weighted more highly.  By
+      maximising the alpha-tuned F-Measure some recall can be traded
+      for precision.
     </div>
     
     <div class="help" id="threshold_help">
@@ -299,11 +328,11 @@
 
     <table>
       <tr>
-        <th><b>Recall</b> <span class="footnote">(= TPR = sensitivity = TP/P)</span></th>
+        <th><b>Recall</b> <span class="footnote">(= &rho; = TPR = sensitivity = TP/P)</span></th>
         <td>{{"%.5f"%TPR}}</td>
       </tr>
       <tr>
-        <th><b>Precision</b> <span class="footnote">(= PPV = TP/(TP+FP))</span></th>
+        <th><b>Precision</b> <span class="footnote">(= &pi; = PPV = TP/(TP+FP))</span></th>
         <td>{{"%.5f"%PPV}}</td>
       </tr>
       <tr>
@@ -311,8 +340,16 @@
         <td>{{"%.5f"%enrichment}}</td>
       </tr>
       <tr>
-        <th><b>F-Measure</b> <span class="footnote">(2*recall*precision/(recall+precision))</span></th>
+        <th><b>F-Measure</b> <span class="footnote">(2*&rho;*&pi;/(&rho;+&pi;))</span></th>
         <td>{{"%.5f"%fmeasure}}</td>
+      </tr>
+      <tr>
+        <th><b>Weighted F-Measure</b> <span class="footnote">(1/(&alpha;/&pi;+(1-&alpha;)/&rho;))</span></th>
+        <td>{{"%.5f"%fmeasure_alpha}}</td>
+      </tr>
+      <tr>
+        <th><b>Maximum F-Measure</b></th>
+        <td>{{"%.5f"%fmeasure_max}}</td>
       </tr>
     </table>
 
@@ -322,7 +359,9 @@
         <li>Precision = Proportion of those classified positive which actually were positive</li>
         <li>Enrichment = Precision over prevalence.  This is how many
             times the precision is enriched over a classifier which calls everything positive.</li>
-        <li>F-Measure = Combined performance measure of recall and precision</li>
+        <li>F-Measure = Harmonic mean of recall and precision</li>
+        <li>Weighted F-Measure = Parameter &alpha; weights precision or recall more highly</li>
+        <li>Maximum F-Measure = Maximum possible F-Measure (achieved for &alpha;=0.5)</li>
       </ul>
     </div>
 

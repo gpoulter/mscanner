@@ -62,6 +62,36 @@ def readPMIDFile(filename, allpmids=None):
     if count == 0:
         raise RuntimeError("Did not succeed in reading any PMIDs from %s" % filename)
 
+def runMailer(smtp_server, mailer):
+    """Read e-mail addresses from mail file and send them a
+    message saying MScanner is available.
+
+    @param mailer: Path object to file of e-mail addresses
+    """
+    if not mailer.isfile():
+        return
+    import smtplib
+    import logging
+    server = smtplib.SMTP(smtp_server)
+    server.set_debuglevel(0)
+    fromaddr = "nobody@mscanner.stanford.edu"
+    for email in mailer.lines(retain=False):
+        logging.debug("Sending availability alert to %s", email)
+        msg = "From: %s\r\nTo: %s\r\n\r\n" % (fromaddr, email)
+        msg += """
+Someone - probably you - requested that an alert be sent when MScanner
+(http://mscanner.stanford.edu) becomes available.
+
+MScanner is available for query and validation operations
+-at the time of sending this e-mail.
+"""
+        try:
+            server.sendmail(fromaddr, email, msg)
+        except Exception:
+            logging.debug("Failed to send to %s", email)
+    server.quit()
+    mailer.remove()
+
 def getArticles(article_db_path, pmidlist_path):
     """Return list of Article's, given the path to an article database
     and the path to a file with a list of pubmed IDs.
@@ -227,7 +257,7 @@ class FeatureMapping:
         removeBackup(self.featfile)
 
     def __getitem__(self, featid):
-        """Return feature string given feature ID"""
+        """Return (feature string, feature type) given feature ID"""
         return self.feats[featid]
 
     def __len__(self):

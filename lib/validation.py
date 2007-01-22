@@ -15,6 +15,7 @@ from itertools import chain, izip
 import codecs
 import cPickle
 import logging as log
+import math
 import random
 import time
 import sys
@@ -39,11 +40,11 @@ class Validator:
         negids,
         nfold,
         pseudocount=0.1,
-        fm_tradeoff=0.0,
+        fm_tradeoff=0.5,
         dataset="",
         daniel=False,
         genedrug_articles=None,
-        exclude_feats=None
+        exclude_feats=[]
         ):
         """Initialise validator
         @param featmap: Maping of feature id to (feature string, feature type)
@@ -53,7 +54,7 @@ class Validator:
         @param nfold: Number of folds in cross-validation
         @param pseudocount, daniel: Parameters for scoring.getTermScores
         @param dataset: Title of the dataset being processed
-        @param fm_tradeoff: Proportion of maximum F-Measure to trade in favour of precision
+        @param fm_tradeoff: Alpha parameter for balancing recall and precision
         @param genedrug_articles: Set of doc ids with gene-drug co-occurrences
         @param exclude_feats: Feature types to exclude for scoring purposes
         """
@@ -103,13 +104,36 @@ class Validator:
                 statfile.update(fold+1, self.nfold)
             moveToFront(self.pos, pstart, psize)
             moveToFront(self.neg, nstart, nsize)
-            pfreqs = article.countFeatures(len(self.featmap), self.featdb, self.pos[psize:])
-            nfreqs = article.countFeatures(len(self.featmap), self.featdb, self.neg[nsize:])
+            pcounts = article.countFeatures(len(self.featmap), self.featdb, self.pos[psize:])
+            ncounts = article.countFeatures(len(self.featmap), self.featdb, self.neg[nsize:])
             termscores = scoring.getTermScores(
-                pfreqs, nfreqs, len(self.pos)-psize, len(self.neg)-nsize,
+                pcounts, ncounts, len(self.pos)-psize, len(self.neg)-nsize,
                 self.pseudocount, self.daniel, self.featmap, self.exclude_feats)
             pscores[pstart:pstart+psize] = [scoring.scoreDocument(self.featdb[d], termscores) for d in self.pos[:psize]]
             nscores[nstart:nstart+nsize] = [scoring.scoreDocument(self.featdb[d], termscores) for d in self.neg[:nsize]]
+        return pscores, nscores
+
+    def leave_out_one_validate(self, statfile=None):
+        """Carries out leave-out-one validation, returning the resulting scores"""
+        pcounts = article.countFeatures(len(self.featmap), self.featdb, self.pos)
+        ncounts = article.countFeatures(len(self.featmap), self.featdb, self.neg)
+        pscores = numpy.zeros(len(self.pos), dtype=numpy.float32)
+        nscores = numpy.zeros(len(self.neg), dtype=numpy.float32)
+        pdocs = len(self.pos)
+        ndocs = len(self.neg)
+        ps = self.pseudocount
+        for idx, pdoc in enumerate(self.pos):
+            if idx % ((pdocs+ndocs)/20) == 0:
+                statfile.update(idx, pdocs+ndocs)
+            for f in self.featdb[pdoc]:
+                if self.featmap[int(f)][1] not in self.exclude_feats:
+                    pscores[idx] += math.log(((pcounts[f]-1+ps)/(pdocs-1+2*ps))/((ncounts[f]+ps)/(ndocs+2*ps)))
+        for idx, ndoc in enumerate(self.neg):
+            if (pdocs+idx) % ((pdocs+ndocs)/20) == 0:
+                statfile.update(pdocs+idx, pdocs+ndocs)
+            for f in self.featdb[ndoc]:
+                if self.featmap[int(f)][1] not in self.exclude_feats:
+                    nscores[idx] += math.log(((pcounts[f]+ps)/(pdocs+2*ps))/((ncounts[f]-1+ps)/(ndocs-1+2*ps)))
         return pscores, nscores
 
     def plotPDF(self, fname, pdata, ndata, threshold):
@@ -154,7 +178,7 @@ class Validator:
                Data(nx, ny, title="Negatives", with="histeps"))
 
     @staticmethod
-    def performanceStats(pscores, nscores, fm_tradeoff):
+    def performanceStats(pscores, nscores, fm_tradeoff=0.5):
         """Derive arrays for TPR, FPR, PPV and FM over positive score
         points, and find peak performance
 
@@ -162,10 +186,9 @@ class Validator:
 
         @param nscores: Scores of negative articles
 
-        @param fm_tradeoff: Proportion of maximum F-Measure to trade for increase precision.
-
-        @note: Threshold is tuned to maximise precision subject to the
-        F-Measure being at least 80% of the best F-Measure attained.
+        @param fm_tradeoff: Alpha parameter to balance recall and
+        precision in FM_alpha.  Defaults to 0.5, producing harmonic
+        mean of recall and precision (F-Measure)
 
         @return: TPR, FPR, PPV, FM, ROC_area, PR_area, ThresholdIndex, Threshold, TP, FN, TN, FP, 
         """
@@ -177,8 +200,8 @@ class Validator:
         FPR = [ 0 for xi in xrange(P) ] # 1-specificity
         PPV = [ 0 for xi in xrange(P) ] # precision
         FM  = [ 0 for xi in xrange(P) ] # F-measure
+        FMa = [ 0 for xi in xrange(P) ] # F-measure
         TN  = 1                         # True negatives
-        maxFM_xi = 0                    # Maximum of F-measure
         best_xi, best_TP, best_FN, best_TN, best_FP = 0, P, 0, N, 0
         ROC_area, PR_area = 0, 0
         # Calculate stats for each choice of threshold
@@ -202,23 +225,22 @@ class Validator:
                 PPV[xi] = TP/(TP+FP) 
             # F-Measure = 2*recall*precision/(recall+precision)
             FM[xi] = 0
+            FMa[xi] = 0
             if PPV[xi] > 0 and TPR[xi] > 0:
                 FM[xi] = 2*TPR[xi]*PPV[xi]/(PPV[xi]+TPR[xi])
+                FMa[xi] = 1/(fm_tradeoff/PPV[xi] + (1-fm_tradeoff)/TPR[xi])
             if xi > 0:
                 # Use trapezoidal rule to integrate ROC and PR curves
                 ROC_area += 0.5*abs(TPR[xi]+TPR[xi-1])*abs(FPR[xi]-FPR[xi-1])
                 PR_area += 0.5*abs(PPV[xi]+PPV[xi-1])*abs(TPR[xi]-TPR[xi-1])
                 #print "PPV=%g, TPR=%g, FPR=%g, ROC=%g, PR=%g" % (PPV[xi], TPR[xi], FPR[xi], ROC_area, PR_area)
-            # Track maximum F-Measure
-            if FM[xi] > FM[maxFM_xi]:
-                maxFM_xi = xi
-            # Tune to maximise PPV subject to at least 90% of maximum F-Measure
-            if PPV[xi] > PPV[best_xi] and FM[xi] >= FM[maxFM_xi]*(1-fm_tradeoff):
+            # Tune to maximise F-Measure-alpha (configurable recall/precision tradeoff)
+            if FMa[xi] > FMa[best_xi]:
                 best_xi, best_TP, best_FN, best_TN, best_FP = xi, TP, FN, TN, FP
             #print "thresh = %g, TPR = %d/%d = %.1e, FPR = %d/%d = %.1e" % (threshold, TP, P, TP/P, FP, N, FP/N)
         ROC_area += (1-max(FPR))
         # Return tuned results
-        return TPR, FPR, PPV, FM, ROC_area, PR_area, best_xi, pscores[best_xi], best_TP, best_FN, best_TN, best_FP
+        return TPR, FPR, PPV, FM, FMa, ROC_area, PR_area, best_xi, pscores[best_xi], best_TP, best_FN, best_TN, best_FP
 
     def plotROC(self, roc, TPR, FPR, thresh_idx):
         """ROC curve (TPR vs FPR)
@@ -250,14 +272,14 @@ class Validator:
         g.plot(Data(TPR, PPV, title="Precision", with="lines", smooth="csplines"),
                Data([TPR[thresh_idx], TPR[thresh_idx]], [0,1.0], title="threshold", with="lines"))
 
-    def plotPRF(self, pr_vs_score, pscores, TPR, PPV, FM, threshold):
+    def plotPRF(self, pr_vs_score, pscores, TPR, PPV, FM, FMa, threshold):
         """Precision, Recall, F-Measure vs threshold graph
 
         @parav pr_vs_score: Path to output file for precision,recall vs threshold
         """
         g = self.gnuplot
         g.reset()
-        g.ylabel("Precision, Recall, F-Measure")
+        g.ylabel("Precision, Recall, F-Measure, F-Measure Alpha")
         g.xlabel("Threshold Score")
         g.title("Precision and Recall vs Threshold")
         g("set terminal png")
@@ -265,6 +287,7 @@ class Validator:
         g.plot(Data(pscores, TPR, title="Recall", with="lines"),
                Data(pscores, PPV, title="Precision", with="lines"),
                Data(pscores, FM, title="F-Measure", with="lines"),
+               Data(pscores, FMa, title="F-Measure Alpha", with="lines"),
                Data([threshold, threshold], [0,1], title="threshold", with="lines"))
 
     def report(self, pscores, nscores, prefix, stylesheet):
@@ -287,13 +310,13 @@ class Validator:
         mainfile = "index.html"
         graph_pickle = "graphs.pickle"
         # Performance tuning, save arrays for graphing
-        aTPR, aFPR, aPPV, aFM, ROC_area, PR_area, thresh_idx, threshold, TP, FN, TN, FP  = self.performanceStats(pscores, nscores, self.fm_tradeoff)
-        cPickle.dump(dict(TPR=aTPR,FPR=aFPR,PPV=aPPV,FM=aFM), file(graph_pickle, "wb"))
+        _TPR, _FPR, _PPV, _FM, _FMa, ROC_area, PR_area, thresh_idx, threshold, TP, FN, TN, FP  = self.performanceStats(pscores, nscores, self.fm_tradeoff)
+        cPickle.dump(dict(TPR=_TPR,FPR=_FPR,PPV=_PPV,FM=_FM,FMa=_FMa), file(graph_pickle, "wb"))
         #self.plotHistograms(hist_img, pscores, nscores, threshold)
         self.plotPDF(prefix/hist_img, pscores, nscores, threshold)
-        self.plotROC(prefix/roc_img, aTPR, aFPR, thresh_idx)
-        self.plotPR(prefix/p_vs_r_img, aTPR, aPPV, thresh_idx)
-        self.plotPRF(prefix/pr_vs_score_img, pscores, aTPR, aPPV, aFM, threshold)
+        self.plotROC(prefix/roc_img, _TPR, _FPR, thresh_idx)
+        self.plotPR(prefix/p_vs_r_img, _TPR, _PPV, thresh_idx)
+        self.plotPRF(prefix/pr_vs_score_img, pscores, _TPR, _PPV, _FM, _FMa, threshold)
         # Calculate and write feature scores to CSV
         pfreqs = article.countFeatures(len(self.featmap), self.featdb, self.pos)
         nfreqs = article.countFeatures(len(self.featmap), self.featdb, self.neg)
@@ -310,7 +333,7 @@ class Validator:
         T = TP+TN
         F = FP+FN
         TPR, FNR, TNR, FPR, PPV, NPV = 0, 0, 0, 0, 0, 0
-        accuracy, prevalence, enrichment, fmeasure = 0, 0, 0, 0
+        accuracy, prevalence, enrichment, fmeasure, fmeasure_alpha, fmeasure_max = 0, 0, 0, 0, 0, 0
         if TP+FN != 0:
             TPR = TP/(TP+FN) # TPR = TP/P = sensitivity = recall
             FNR = FN/(TP+FN) # FNR = FN/P = 1 - TP/P = 1-sensitivity = 1-recall
@@ -328,11 +351,15 @@ class Validator:
         precision = PPV
         if recall > 0 and precision > 0:
             fmeasure = 2*recall*precision/(recall+precision)
+            fmeasure_alpha = 1/(self.fm_tradeoff/precision + (1-self.fm_tradeoff)/recall)
+            fmeasure_max = max(_FM)
         if prevalence > 0:
             enrichment = precision / prevalence
         # Write main index file for validation output
         dataset = self.dataset
         nfold = self.nfold
+        pseudocount = self.pseudocount
+        fm_tradeoff = self.fm_tradeoff
         templates.validation.run(locals(), outputfile=file(prefix/mainfile, "w"))
         stylesheet.copy(prefix / "style.css")        
 

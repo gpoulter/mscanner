@@ -94,6 +94,7 @@ def do_query():
         artdb.close()
     finally:
         del statfile
+        article.runMailer(c.smtp_server, c.mailer)
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:

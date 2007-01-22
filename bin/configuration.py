@@ -46,6 +46,11 @@ weboutput = src / "www" / "htdocs" / "output"
 corpora = working / "corpora"
 ## Path to file with progress statistics
 statfile = cache / "mscanner.pid"
+## File of e-mail addresses to alert on completion
+mailer = cache / "emails.txt"
+## Server for sending e-mails
+#smtp_server = "smtp.stanford.edu"
+smtp_server = "smtp.uct.ac.za"
 
 #### DATABASE CONFIGURATION
 
@@ -94,7 +99,7 @@ query_report = output / "results"
 ## Path to database output
 outputdb = None
 ## Types of features to exclude
-exclude_feats = None
+exclude_feats = []
 #exclude_feats = ["mesh","qual","issn"]
 #exclude_feats = ["issn"]
 
@@ -106,8 +111,8 @@ posfile = None
 negfile = None
 ## Validation folds to use
 nfolds = 5
-## Proportion of maximum F-Measure to trade for precision
-fm_tradeoff = 0.0
+## 0<Alpha<1.  Alpha=0.5 maximises standard F-Measure.
+fm_tradeoff = 0.5
 ## Whether to do a gene-drug co-occurrence filter
 dogenedrug = False
 ## Whether to use Daniel's 10^-8 pseudocounts

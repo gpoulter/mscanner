@@ -87,6 +87,7 @@ class FeatureDatabase:
         return self.db.stat()["ndata"]
 
     def __contains__(self, key):
+        """Test for document ID membership.  Converts ID to a string first."""
         return self.db.has_key(str(key))
 
     def keys(self):

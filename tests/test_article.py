@@ -46,15 +46,25 @@ class FeatureMappingTests(TempFileTestCase):
         self.assertEqual(fm.feats, [("A","Q"),("B","Q"),("A","T"),("C","T")])
         self.assertEqual(fm.feat2id, {"Q":{"A":0,"B":1}, "T":{"A":2,"C":3}})
         
-class ArticleTests(unittest.TestCase):
+class ArticleTests(TempFileTestCase):
     """Tests for article module functions
 
     Tests: countFeatures, readPMIDFile, getArticles
     """
-    def test(self):
+    def testCountFeatures(self):
+        self.fn.touch()
         featdb = {1:[1,2], 2:[2,3], 3:[3,4]}
-        counts = countFeatures(5,featdb,[1,2,3])
+        counts = countFeatures(5, featdb, [1,2,3])
         self.assert_(numpy.all(counts == [0,1,2,2,1]))
+
+    def testReadPMIDFile(self):
+        self.fn.write_lines(["1 10", "2 20 blah", "3 30", "4 40", "5 50"])
+        includes = [1,2,3,4]
+        excludes = [1]
+        pmids = list(readPMIDs(self.fn, includes, excludes, withscores=False))
+        self.assertEqual(pmids, [2,3,4])
+        pairs = list(readPMIDs(self.fn, includes, excludes, withscores=True))
+        self.assertEqual(pairs, [(2,20.0),(3,30.0),(4,40.0)])
 
 if __name__ == "__main__":
     unittest.main()

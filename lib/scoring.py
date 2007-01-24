@@ -3,37 +3,109 @@
 @author: Graham Poulter
                                    
 
-getTermScores() -- Calculate termid:termscore mapping, given term counts in pos/neg corpus
-scoreDocument() -- Calculate score for document given term IDs and term scores
+FeatureScores -- Class containing all information about feature scores
+calculateFeatureScores() -- Calculate scores of features
 filterDocuments() -- Return list of (docid,score) paris given documents and term scores
-writeTermScoresCSV() -- Output term scores to CSV file
-writeTermScoresHTML() -- Output term scores to HTML file
-writeResultScoresTXT() -- Output results (docid,score) to TXT file
-writeCitationsHTML() -- Output citations for results to HTML file
 writeReport() -- Collate results of a query (calls all of above)
-
 """
 
 from __future__ import division
+from itertools import chain, izip
 from path import path
 import codecs
 import templates
 import article
 import numpy
 
-def getTermScores(
-    positive,
-    negative,
+class FeatureScoreInfo:
+    """Class to calculate and store all information about the
+    features, their distribution, and their scores"""
+
+    def __init__(self, pos_counts, neg_counts, pdocs, ndocs, pseudocount, featmap, exclude_types=None, daniel=False):
+        """Parameters are as for calculateFeatureScores, and also saved as instance variables.
+
+        @param featmap: Mapping between Feature ID and (feature string, feature type)
+
+        @param exclude_types: Types of features to exclude (mask is calculated from this and featmap)
+
+        @ivar scores: Array of feature scores
+
+        @ivar mask: Boolean array to mask out features of types in exclude_feats
+
+        @ivar pos_occurrences: Total feature occurrences in positives
+
+        @ivar neg_occurrences: Total feature occurrences in negatives
+
+        @ivar feats_per_pos: Number of features per positive article
+
+        @ivar feats_per_neg: Number of features per negative article
+
+        @ivar distinct_feats: Number of distinct features
+
+        @ivar pos_distinct_feats: Number of of distinct features in positives
+
+        @ivar neg_distinct_feats: Number of of distinct features in negatives
+        """
+        self.pos_counts = pos_counts
+        self.neg_counts = neg_counts
+        self.pdocs = pdocs
+        self.ndocs = ndocs
+        self.pseudocount = pseudocount
+        self.featmap = featmap
+        self.exclude_types = exclude_types
+        self.daniel = daniel
+        # Calculate masked features
+        self.num_feats = len(self.featmap)
+        self.mask = featmap.featureTypeMask(self.exclude_types)
+        self.recalculateFeatureScores()
+        self.recalculateFeatureStats()
+
+    def recalculateFeatureScores(self):
+        """Recalculate scores for features, and return the array of scores"""
+        self.scores, self.pfreqs, self.nfreqs = calculateFeatureScores(
+            self.pos_counts, self.neg_counts,
+            self.pdocs, self.ndocs,
+            self.pseudocount, self.daniel, self.mask)
+        return self.scores
+
+    def recalculateFeatureStats(self):
+        """Recalculate statistics about the feature database"""
+        self.pos_occurrences = int(numpy.sum(self.pos_counts)) 
+        self.feats_per_pos = 0.0
+        if self.pdocs > 0:
+            self.feats_per_pos = self.pos_occurrences / self.pdocs 
+        self.neg_occurrences = int(numpy.sum(self.neg_counts))
+        self.feats_per_neg = 0.0
+        if self.ndocs > 0:
+            self.feats_per_neg = self.neg_occurrences / self.ndocs 
+        self.pos_distinct_feats = len(numpy.nonzero(self.pos_counts)[0]) 
+        self.neg_distinct_feats = len(numpy.nonzero(self.neg_counts)[0]) 
+
+    def writeFeatureScoresCSV(self, stream):
+        """Write features scores as CSV to an output stream"""
+        stream.write(u"score,numerator,denominator,positives,negatives,termid,type,term\n")
+        _ = self
+        for line in sorted(
+            [ (_.scores[t], _.pfreqs[t], _.nfreqs[t],
+               _.pos_counts[t], _.neg_counts[t],
+               t, _.featmap[t][1], _.featmap[t][0])
+              for t in xrange(_.num_feats) if _.mask is None or not _.mask[t] ],
+            key=lambda x:x[0], reverse=True):
+            stream.write(u'%.3f,%.2e,%.2e,%d,%d,%d,%s,"%s"\n' % line)
+
+def calculateFeatureScores(
+    pos_counts,
+    neg_counts,
     pdocs,
     ndocs,
-    pseudocount=0.01,
-    daniel=False,
-    featmap=None,
-    exclude=None):
+    pseudocount,
+    mask=None,
+    daniel=False
+    ):
     """Return feature support scores based on relative frequency in positives vs negatives
 
-    @param positive: Frequencies of features in positive documents. 
-    @param negative: Frequencies of features in negatives documents
+    @param pos_counts: Array of feature counts in positive documents. 
+    @param neg_counts: Array of features counts in negatives documents
 
     @param pdocs: Number of positive documents
     @param ndocs: Number of negative documents
@@ -43,42 +115,31 @@ def getTermScores(
     the articles, adding 2*0.1 to the number of articles so that
     P(term|positive)+P(~term|positive)=1
 
+    @param mask: Booolean array specifiying features to mask to zero
+
     @param daniel: If true, use the JAMIA paper's smoothing heuristic
     of 10^-8 for terms found in positive but not negative (and visa
     versa), which greatly exaggerates scores for such terms.
 
-    @param featmap: Mapping from feature ID to (feature string, feature type)
-
-    @param exclude: List of feature types to exclude from scoring
-
-    @rtype: C{{termid:(float,float,float,int,int)}}
-
-    @return: Mapping of term IDs to (support score, frequency in
-    positive, negative corpus, and count in positive, negative corpus)
+    @return: Array of feature scores (zeros for masked features),
+    array of feature frequencies in positives, and array of
+    feature frequencies of negatives.
     """
-    import math
-    def makeScore(termid,pcount,ncount):
-        if daniel:
-            pfreq, nfreq = 1e-8, 1e-8
-            if pcount > 0:
-                pfreq = pcount / pdocs
-            if ncount > 0:
-                nfreq = ncount / ndocs
-        else:
-            pfreq = (pcount+pseudocount) / (pdocs+2*pseudocount)
-            nfreq = (ncount+pseudocount) / (ndocs+2*pseudocount)
-        if exclude is None or featmap[termid][1] not in exclude:
-            return [math.log(pfreq/nfreq), pfreq, nfreq, pcount, ncount]
-        else:
-            return [0, 0, 0, 0, 0]
-    return numpy.array([makeScore(termid,pcount,negative[termid]) for termid, pcount in enumerate(positive)])
-
-def scoreDocument(features, featscores):
-    """Return document score given a feature list and feature scores
-    @param features: Array of feature IDs
-    @param featscores: Array of (score,pfreq,nfreq,pcount,ncount) for feature IDs
-    """
-    return numpy.sum(featscores[:,0][features])
+    num_feats = len(pos_counts) # number of distinct feature
+    if not daniel:
+        pfreqs = (pos_counts+pseudocount) / (pdocs+2*pseudocount)
+        nfreqs = (neg_counts+pseudocount) / (ndocs+2*pseudocount)
+    else:
+        pfreqs = numpy.zeros(num_feats) + 1e-8
+        nfreqs = numpy.zeros(num_feats) + 1e-8
+        pos_nz = pos_counts > 0
+        pfreqs[pos_nz] = pos_counts[pos_nz] / pdocs
+        neg_nz = neg_counts > 0
+        nfreqs[neg_nz] = neg_counts[neg_nz] / ndocs
+    scores = numpy.log(pfreqs / nfreqs)
+    if mask is not None:
+        scores[mask] = 0
+    return scores, pfreqs, nfreqs
 
 def filterDocuments(docs, featscores, limit=10000, threshold=0.0, statfile=None):
     """Return scores for documents given features and feature scores
@@ -93,7 +154,7 @@ def filterDocuments(docs, featscores, limit=10000, threshold=0.0, statfile=None)
 
     @param statfile: Name of file to post status updates
 
-    @return: List of (score,docid) pairs
+    @return: Generator over (docid,score) pairs
     """
     results = list()
     ndocs = 0
@@ -102,115 +163,54 @@ def filterDocuments(docs, featscores, limit=10000, threshold=0.0, statfile=None)
     for idx, (docid, features) in enumerate(docs):
         if statfile is not None and idx % 100000 == 0:
             statfile.update(idx)
-        score = scoreDocument(features, featscores)
+        score = numpy.sum(featscores[features])
         if score >= threshold:
+            #print idx, docid, score
             ndocs += 1
             if score >= results[0][0]:
-                heapreplace(results, (score,docid))
+                heapreplace(results, (score,int(docid)))
     if statfile is not None:
         statfile.update(None)
     results.sort(reverse=True)
     if ndocs < limit:
         del results[ndocs:]
-    return results
-
-def writeFeatureScoresCSV(f, featmap, featscores):
-    """Write features scores to CSV file"""
-    f.write(u"score,numerator,denominator,positives,negatives,termid,type,term\n")
-    for s in sorted(
-        [ (s[0],s[1],s[2],s[3],s[4],termid,featmap[termid][1],featmap[termid][0])
-          for termid, s in enumerate(featscores) if s[3] != 0 or s[4] != 0 ],
-        key=lambda x:x[0], reverse=True):
-        f.write(u'%.3f,%.2e,%.2e,%d,%d,%d,%s,"%s"\n' % s)
-
-def featureStatistics(featmap, featscores, pdocs, ndocs):
-    """Write term scores to HTML file"""
-    pfreqs, nfreqs = featscores[:,3], featscores[:,4]
-    class r:
-        pass
-    r.pos_occurrences = int(numpy.sum(pfreqs)) # feature occurrences in positives
-    r.neg_occurrences = int(numpy.sum(nfreqs)) # feature occurrences in negatives
-    r.feats_per_pos = 0.0
-    if pdocs:
-        r.feats_per_pos = r.pos_occurrences / pdocs # features per positive article
-    r.feats_per_neg = 0.0
-    if ndocs:
-        r.feats_per_neg = r.neg_occurrences / ndocs # features per negative article
-    r.distinct_feats = len(featmap) # distinct features
-    r.pos_distinct_feats = len(numpy.nonzero(pfreqs)[0]) # distinct features in positives
-    r.neg_distinct_feats = len(numpy.nonzero(nfreqs)[0]) # distinct features in negatives
-    return r
+    return numpy.array([pmid for score,pmid in results],dtype=numpy.int32), \
+           numpy.array([score for score,pmid in results],dtype=numpy.float32)
 
 def writeReport(
-    scores,
-    featmap,
-    pdocs,
-    ndocs,
-    termscores,
-    prefix,
-    stylesheet,
-    pseudocount,
-    limit,
-    threshold,
-    dataset,
-    posfile,
-    articles=None,
-   ):
+    input_pmids,
+    input_scores,
+    result_pmids,
+    result_scores,
+    feature_info,
+    configuration,
+    artdb):
     """Write a report using the results of the classifier
-    @param scores: List of (score,docid) pairs, in decreasing order of score
-    @param featmap: termid:term mapping (FeatureMapping instance)
-    @param pdocs: Number of positive documents
-    @param ndocs: Number of negative documents
-    @param termscores: termid:(score,numerator,denominator,pfreq,nfreq) mapping
-    @param prefix: Directory in which to place output
-    @param stylesheet: Path to CSS stylesheet
-    @param pseudocount: Pseudocount for each term
-    @param limit: Maximum number of results to return.
-    @param threshold: Cutoff score for including an article in the results
-    @param dataset: Title of the dataset being processed
-    @param posfile: Path to positive docids
-    @param articles: Mapping from str(pmid) to Article object
+    @param input_pmids: Input PubMed IDs
+    @param input_pmids: Input scores
+    @param result_pmids: Result PubMed IDs
+    @param result_scores: Result scores
+    @param feature_info: A FeatureScoreInfo object with information about features
+    @param configuration: Configuration module with remaining parameters
+    @param artdb: Mapping from Pubmed ID to Article object
     """
-    terms_csv = prefix/"termscores.csv"
-    res_txt = prefix/"resultscores.txt"
-    input_html = prefix/"input_citations.html"
-    result_html= prefix/"result_citations.html"
-    index_html = prefix/"index.html"
-    # Get stats on feature scores, and write score table to CSV file
-    feature_stats = featureStatistics(featmap, termscores, pdocs, ndocs)
-    writeFeatureScoresCSV(codecs.open(terms_csv,"wb","utf-8"), featmap, termscores)
-    # Write result scores to file
-    f = file(res_txt,'w')
-    for score, pmid in scores:
-        f.write("%-9s\t%.5f\n" % (pmid, score))
+    c = configuration
+    rd = c.reportdir
+    feature_info.writeFeatureScoresCSV(codecs.open(rd/c.term_scores_name,"wb","utf-8"))
     # Citations for input articles
-    import article
-    posids = list(article.readPMIDFile(posfile, articles))
+    input_pairs = sorted(zip(input_pmids, input_scores), key=lambda x:x[1], reverse=True)
     templates.citations.run(
-        dict(mode="input", scores=[(0,p) for p in posids], articles=articles),
-        outputfile=file(input_html, "w"))
+        dict(mode="input", scores=input_pairs, articles=artdb),
+        outputfile=file(rd/c.input_citations, "w"))
     # Citations for output articles
     templates.citations.run(
-        dict(mode="output", scores=scores, articles=articles),
-        outputfile=file(result_html, "w"))
+        dict(mode="output", scores=zip(result_pmids, result_scores), articles=artdb),
+        outputfile=file(rd/c.result_citations, "w"))
     # Index file
     templates.results.run(dict(
-        pseudocount = pseudocount,
-        limit = limit,
-        threshold = threshold,
-        num_results = len(scores),
-        lowest_score = scores[-1][0],
-        pdocs = pdocs,
-        ndocs = ndocs,
-        dataset = dataset,
-        posfile = posfile.basename(),
-        feature_stats = feature_stats,
-        terms_csv = terms_csv.basename(),
-        res_txt = res_txt.basename(),
-        input_html = input_html.basename(),
-        result_html = result_html.basename(),
-        ),
-        outputfile=index_html.open("w"))
-    if not (prefix / posfile.basename()).exists():
-        posfile.copy(prefix / posfile.basename())
-    stylesheet.copy(prefix / "style.css")
+        c = configuration,
+        f = feature_info,
+        num_results = len(result_scores),
+        lowest_score = result_scores[-1],
+        ), outputfile=(rd/c.index_file).open("w"))
+    c.stylesheet.copy(rd/"style.css")

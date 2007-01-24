@@ -20,6 +20,8 @@ from array import array
 from codecs import open
 import cPickle
 import dbshelve
+from itertools import izip
+
 import logging as log
 import os
 import time
@@ -28,39 +30,72 @@ from path import path
 import numpy
 
 def countFeatures(nfeats, featdb, docids):
-    """Givent number of features, docid->featlist mapping and document
-    ids, return an array with the number of occurrence of each feature
-    over the documents"""
+    """Givent number of features,
+
+    @param nfeats: Number of distinct features (size of array)
+
+    @param featdb: Mapping from document ID to list of feature IDs
+
+    @param docids: List of document IDs whose features are to be counted
+
+    @return: Array of length nfeats, with occurrence count of each feature
+    """
     import numpy
     counts = numpy.zeros(nfeats, dtype=numpy.int32)
     for docid in docids:
         counts[featdb[docid]] += 1
     return counts
 
-def readPMIDFile(filename, allpmids=None):
+def readPMIDs(filename, include=None, exclude=None):
     """Read PubMed IDs one per line from filename.
 
-    @return: Iteration of integer Pubmed IDs. 
+    @param filename: Path to file containing one PubMed ID per line,
+    with optional score after the PubMed ID. File format ignores blank
+    lines and lines starting with #, and only parses the line up to
+    the first whitespace character.
 
-    File format ignores blank lines and lines starting with #, and only
-    parses the line up to the first whitespace character.
+    @param allpmids: Only return PubMed IDs which are members of this
+    set
 
-    If allpmids is provided, we only return those PMID ints that
-    satisfy 'str(pmid) in allpmids'.
+    @param exclude: Do not return PubMed IDs which are members of this
+    set
     """
     if not isinstance(filename,path) or not filename.exists():
         raise ValueError("File %s does not exist" % filename)
     count = 0
-    for line in file(filename,"r"):
+    for line in file(filename, "r"):
         if line.strip() != "" and not line.startswith("#"):
-            pmid = int(line.split()[0])
-            if allpmids is None or str(pmid) in allpmids:
+            splits = line.strip().split()
+            pmid = int(splits[0])
+            if (include is None or pmid in include) and \
+            (exclude is None or pmid not in exclude):
                 yield pmid
                 count += 1
             else:
-                log.warn("Failed to find PMID %d in allpmids" % pmid)
+                log.warn("PMID %d missing from include, or present in exclude" % pmid)
     if count == 0:
         raise RuntimeError("Did not succeed in reading any PMIDs from %s" % filename)
+
+def readPMIDScores(filename):
+    """Read a file of PubMed IDs and associated scores
+
+    @returns: An array of PubMed IDs and an array of scores
+    """
+    if not isinstance(filename,path) or not filename.exists():
+        raise ValueError("File %s does not exist" % filename)
+    pmids = []
+    scores = []
+    for line in file(filename, "r"):
+        if line.strip() != "" and not line.startswith("#"):
+            splits = line.strip().split()
+            pmids.append(int(splits[0]))
+            scores.append(float(splits[1]))
+    return numpy.array(pmids,dtype=numpy.int32), numpy.array(scores,dtype=numpy.float32),
+
+def writePMIDScores(filename, pmids, scores):
+    """Write PubMed IDs and their scores to a file"""
+    filename.write_lines("%d %f" % x for x in \
+                         sorted(izip(pmids, scores), key=lambda x:x[1], reverse=True))
 
 def runMailer(smtp_server, mailer):
     """Read e-mail addresses from mail file and send them a
@@ -79,11 +114,15 @@ def runMailer(smtp_server, mailer):
         logging.debug("Sending availability alert to %s", email)
         msg = "From: %s\r\nTo: %s\r\n\r\n" % (fromaddr, email)
         msg += """
-Someone - probably you - requested that an alert be sent when MScanner
-(http://mscanner.stanford.edu) becomes available.
+Someone - hopefully you - requested that an alert be sent when
+MScanner (http://mscanner.stanford.edu) completed its current request.
 
-MScanner is available for query and validation operations
--at the time of sending this e-mail.
+MScanner has completed its request and is currently available for
+ query or validation operations at the time of sending of this e-mail.
+
+(MScanner classifies Medline citations by training a Naive Bayes
+classifier on their metadata, making it useful for information
+retrieval using example citations)
 """
         try:
             server.sendmail(fromaddr, email, msg)
@@ -93,12 +132,20 @@ MScanner is available for query and validation operations
     mailer.remove()
 
 def getArticles(article_db_path, pmidlist_path):
-    """Return list of Article's, given the path to an article database
-    and the path to a file with a list of pubmed IDs.
+    """Get Article objects given a file of PubMed IDs.
 
-    The first time it is called for a given pmidlist_path, the results
-    are cached in a .pickle appended to pmidlist_path, and later calls
-    simply use the cached results.
+    @param article_db_path: Path to a berkeley DB mapping PubMed IDs
+    to Article objects.
+
+    @param pmidlist_path: Path to a text file listing one PubMed ID
+    per line.
+
+    @return: List of Article objects in the order given in the text
+    file.
+
+    @note: The first time it is called for a given pmidlist_path, the
+    results are cached in a .pickle appended to pmidlist_path, and
+    later calls simply use the cached results.
     """
     cache_path = path(pmidlist_path + ".pickle")
     if cache_path.isfile():
@@ -212,7 +259,7 @@ class FeatureMapping:
     one type.
 
     @ivar feats: List mapping ID to (feature string, feature type)
-    @ivar freqs: List mapping ID to number of occurrences
+    @ivar counts: List mapping ID to number of occurrences
     @ivar feat2id: {type:{feature:id}} mapping
     """
 
@@ -223,8 +270,8 @@ class FeatureMapping:
         """
         self.featfile = featfile
         self.feats = []
-        self.freqs = []
         self.feat2id = {}
+        self.counts = []
         if featfile is not None and self.featfile.exists():
             self.load()
         
@@ -234,13 +281,12 @@ class FeatureMapping:
         @note: file format is '%(feature)\t%(type)\t%(count)\n'
         """
         self.feats = []
-        self.types = []
         self.feat2id = {}
         f = open(self.featfile, "rb", "utf-8")
         for fid, line in enumerate(f):
-            feat, ftype, freq = line.strip().split("\t")
+            feat, ftype, count = line.strip().split("\t")
             self.feats.append((feat,ftype))
-            self.freqs.append(int(freq))
+            self.counts.append(int(count))
             if ftype not in self.feat2id:
                 self.feat2id[ftype] = {feat:fid}
             else:
@@ -251,8 +297,8 @@ class FeatureMapping:
         """Write the feature mapping to disk"""
         makeBackup(self.featfile)
         f = open(self.featfile, "wb", "utf-8")
-        for (feat, ftype), freq in zip(self.feats, self.freqs):
-            f.write(feat+"\t"+ftype+"\t"+str(freq)+"\n")
+        for (feat, ftype), count in zip(self.feats, self.counts):
+            f.write(feat+"\t"+ftype+"\t"+str(count)+"\n")
         f.close()
         removeBackup(self.featfile)
 
@@ -269,11 +315,28 @@ class FeatureMapping:
         return [self.feats[fid] for fid in feature_ids]
 
     def featureCounts(self):
-        return numpy.array(self.freqs, numpy.int32)
+        """Return array with number of occurrences of each feature"""
+        return numpy.array(self.counts, numpy.int32)
+
+    def featureTypeMask(self, exclude_types):
+        """Get a mask for excluded features
+
+        @param exclude_types: Types of features to exclude
+
+        @return: Boolean array for excluded features (but returns None if exclude_types is None)
+        """
+        if exclude_types is None:
+            return None
+        exclude_feats = numpy.zeros(len(self.feats), dtype=numpy.bool)
+        for ftype in exclude_types:
+            for fid in self.feat2id[ftype].itervalues():
+                result[fid] = True
+        return exclude_feats
 
     def getFeatureIds(self, features, ftype, count=False):
-        """Get term IDs corresponding to the given list of
-        terms. Dynamically creates new features IDs as necessary.
+        """Get feature IDs corresponding to feature strings.
+
+        @note: Dynamically creates new features IDs and types as necessary.
 
         @param features: List of feature strings to convert
 
@@ -292,10 +355,10 @@ class FeatureMapping:
                 if feat not in fdict:
                     featid = len(self.feats)
                     self.feats.append((feat,ftype))
-                    self.freqs.append(1)
+                    self.counts.append(1)
                     fdict[feat] = featid
                 else:
-                    self.freqs[fdict[feat]] += 1
+                    self.counts[fdict[feat]] += 1
                 result.append(fdict[feat])
         else:
             for feat in features:

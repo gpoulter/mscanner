@@ -11,9 +11,10 @@ Shelf -- Class defining a Berkeley DB-backed shelf
 import cPickle, os, unittest
 from path import path
 from bsddb import db
+import zlib
 from UserDict import DictMixin
 
-def open(filename, flags='c', mode=0660, dbenv=None, txn=None, dbname=None):
+def open(filename, flags='c', mode=0660, dbenv=None, txn=None, dbname=None, compress=True):
     """Open a shelf with Berkeley DB backend
 
     flag is one of 'r','rw','w','c','n'.  Optionally specify flags
@@ -36,17 +37,27 @@ def open(filename, flags='c', mode=0660, dbenv=None, txn=None, dbname=None):
             raise db.DBError("Flag %s is not in 'r', 'rw', 'w', 'c' or 'n'"  % str(flags))
     database = db.DB(dbenv)
     database.open(filename, dbname, db.DB_HASH, flags, mode, txn=txn)
-    return Shelf(database, txn)
+    return Shelf(database, txn, compress)
 
 class Shelf(DictMixin):
     """A shelf to hold pickled objects, built upon a bsddb DB object.  It
     automatically pickles/unpickles data objects going to/from the DB.
     """
 
-    def __init__(self, database, txn=None):
-        """Initialise shelf with a db.DB object"""
+    def __init__(self, database, txn=None, do_compression=True):
+        """Initialise shelf with a db.DB object
+
+        @param do_compression: If True, use zlib to transparently
+        compress pickles.
+        """
         self.db = database
+        self.do_compression = do_compression
         self.set_txn(txn)
+        self.compress = lambda x:x
+        self.decompress = lambda x:x
+        if self.do_compression:
+            self.compress = zlib.compress
+            self.decompress = zlib.decompress
 
     def set_txn(self, txn=None):
         """Set the transaction to use for database operations"""
@@ -65,10 +76,10 @@ class Shelf(DictMixin):
     def __getitem__(self, key):
         v = self.db.get(key, txn=self.txn)
         if v is None: raise KeyError("Key %s not in database" % repr(key))
-        return cPickle.loads(v)
+        return cPickle.loads(self.decompress(v))
 
     def __setitem__(self, key, value):
-        self.db.put(key, cPickle.dumps(value, protocol=2), self.txn)
+        self.db.put(key, self.compress(cPickle.dumps(value, protocol=2)), self.txn)
 
     def __delitem__(self, key):
         self.db.delete(key, self.txn)
@@ -89,7 +100,7 @@ class Shelf(DictMixin):
         cur = self.db.cursor(self.txn)
         rec = cur.first()
         while rec is not None:
-            yield rec[0], cPickle.loads(rec[1])
+            yield rec[0], cPickle.loads(self.decompress(rec[1]))
             rec = cur.next()
         cur.close()
         

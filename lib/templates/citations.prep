@@ -70,7 +70,12 @@ Citations for the output results
       {{if hasattr(art, "authors")}}
       <p class="authors">
         {{for initials, lastname in art.authors}}
-        {{initials.encode("ascii","xmlcharrefreplace")+" "+lastname.encode("ascii","xmlcharrefreplace")+","}}
+        {{if initials is not None}}
+        {{initials.encode("ascii","xmlcharrefreplace")}}
+        {{endif}}
+        {{if lastname is not None}}
+        {{lastname.encode("ascii","xmlcharrefreplace")}}
+        {{endif}}
         {{endfor}}
         ({{str(art.year)}}) (issn:<a href="http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?CMD=search&amp;DB=journals&amp;term={{art.issn}}">{{art.issn}})</a>
       </p>

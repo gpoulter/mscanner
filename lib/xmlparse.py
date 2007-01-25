@@ -61,8 +61,6 @@ class ArticleParser:
                             for node3 in node2[CHILDREN]:
                                 if node3[NAME] == 'ISSN':
                                     result.issn = node3[CHILDREN][0]
-                                if node3[NAME] == 'ISOAbbreviation':
-                                    result.journal = node3[CHILDREN][0]
                                 if node3[NAME] == 'JournalIssue':
                                     PubDate = getChild(node3, 'PubDate')
                                     if PubDate is None: continue
@@ -71,11 +69,20 @@ class ArticleParser:
                                     result.year = int(Year[CHILDREN][0])
                         if node2[NAME] == 'AuthorList':
                             for Author in getChildren(node2, ['Author']):
+                                collname = getChild(Author, 'CollectiveName')
+                                if collname is not None:
+                                    result.authors.append((None,collname[CHILDREN][0]))
+                                    continue
                                 lastname = getChild(Author, 'LastName')
-                                if lastname is None: continue
+                                if lastname is None:
+                                    continue
                                 initials = getChild(Author, 'Initials')
-                                if initials is None: continue
-                                result.authors.append((initials[CHILDREN][0],lastname[CHILDREN][0]))
+                                if initials is None:
+                                    result.authors.append((None,lastname[CHILDREN][0]))
+                                else:
+                                    result.authors.append((initials[CHILDREN][0],lastname[CHILDREN][0]))
+                if node1[NAME] == 'MedlineJournalInfo':
+                    result.journal = getChild(node1, 'MedlineTA')[CHILDREN][0]
                 if node1[NAME] == 'MeshHeadingList':
                     for MeshHeading in getChildren(node1, ['MeshHeading']):
                         DescriptorName = getChild(MeshHeading, 'DescriptorName')[CHILDREN][0]
@@ -83,13 +90,6 @@ class ArticleParser:
                         for Qualifier in getChildren(MeshHeading, ['QualifierName']):
                             qualifiers.append(Qualifier[CHILDREN][0])
                         result.meshterms.append(tuple([DescriptorName]+qualifiers))
-                if node1[NAME] == 'ChemicalList':
-                    for Chemical in getChildren(node1, ['Chemical']):
-                        name = getChild(Chemical, 'NameOfSubstance')[CHILDREN][0]
-                        regnum = getChild(Chemical, 'RegistryNumber')
-                        if regnum is not None:
-                            regnum = regnum[CHILDREN][0]
-                        result.chemicals.append((name,regnum))
             return result
         root = parser.parse(text)
         if root[NAME] == 'MedlineCitation' and root[ATTRS]['Status'] == 'MEDLINE':

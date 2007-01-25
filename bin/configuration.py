@@ -115,7 +115,7 @@ result_citations= "result_citations.html"
 #### VALIDATOR CONFIGURATION (for validate.py)
 
 ## Validation folds to use
-nfolds = 0
+nfolds = 10
 ## 0<Alpha<1.  Alpha=0.5 maximises standard F-Measure.
 alpha = 0.5
 ## File name for negative documents

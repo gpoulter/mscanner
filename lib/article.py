@@ -374,12 +374,11 @@ class Article:
     @ivar pmid: Integer PubMed ID or MEDLINE UI of the article.
     @ivar title: Title of the article
     @ivar abstract: Abstract of the article
-    @ivar journal: ISO abbreviated journal name
+    @ivar journal: Medline abbreviated journal title
     @ivar issn: ISSN code for the journal
     @ivar year: Year of publication
     @ivar meshterms: Set of Mesh terms associated with article.
     @ivar authors: Set of (initials,lastname) pairs of article authors
-    @ivar chemicals: Set of chemicals associated with article
     """
     def __init__(self,
                  pmid=0,
@@ -389,8 +388,7 @@ class Article:
                  issn="",
                  year=0,
                  meshterms=None,
-                 authors=None,
-                 chemicals=None):
+                 authors=None):
         self.pmid = int(pmid)
         self.title = title
         self.abstract = abstract
@@ -403,14 +401,11 @@ class Article:
         self.authors = authors
         if authors is None:
             self.authors = list()
-        self.chemicals = chemicals
-        if chemicals is None:
-            self.chemicals = list()
 
     def __repr__(self):
         import pprint
         pp = pprint.PrettyPrinter()
-        astr = "Article(pmid=%d,\ntitle=%s,\nabstract=%s,\njournal=%s\nissn=%s\nyear=%s\nmeshterms=%s\nauthors=%s\nchemicals=%s)\n"
+        astr = "Article(pmid=%d,\ntitle=%s,\nabstract=%s,\njournal=%s\nissn=%s\nyear=%s\nmeshterms=%s\nauthors=%s)\n"
         return astr % (
             self.pmid,
             repr(self.title),
@@ -419,6 +414,5 @@ class Article:
             repr(self.issn),
             repr(self.year),
             pp.pformat(self.meshterms),
-            pp.pformat(self.authors),
-            pp.pformat(self.chemicals),)
+            pp.pformat(self.authors))
 

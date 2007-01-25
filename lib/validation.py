@@ -100,17 +100,17 @@ class Validator:
             """Swaps a portion of data to the front of the array"""
             data[:size], data[start:start+size] = data[start:start+size], data[:size]
         log.info("%d pos and %d neg articles", len(self.pos), len(self.neg))
+        if self.randomise:
+            random.shuffle(self.pos)
+            random.shuffle(self.neg)
         pos = self.pos.copy()
         neg = self.neg.copy()
-        if self.randomise:
-            random.shuffle(pos)
-            random.shuffle(neg)
         pstarts, psizes = self.partitionSizes(len(pos), self.nfold)
         nstarts, nsizes = self.partitionSizes(len(neg), self.nfold)
         pscores = numpy.zeros(len(pos), dtype=numpy.float32)
         nscores = numpy.zeros(len(neg), dtype=numpy.float32)
-        pcounts = article.countFeatures(self.numfeats, self.featdb, self.pos)
-        ncounts = article.countFeatures(self.numfeats, self.featdb, self.neg)
+        pcounts = article.countFeatures(self.numfeats, self.featdb, pos)
+        ncounts = article.countFeatures(self.numfeats, self.featdb, neg)
         for fold, (pstart,psize,nstart,nsize) in enumerate(zip(pstarts,psizes,nstarts,nsizes)):
             log.debug("Carrying out fold number %d", fold)
             if statfile is not None:
@@ -118,17 +118,17 @@ class Validator:
             # Move the test fold to the front 
             moveToFront(pos, pstart, psize)
             moveToFront(neg, nstart, nsize)
-            #print "POS : ", self.pos[:psize], self.pos[psize:]
-            #print "NEG : ", self.neg[:nsize], self.neg[nsize:]
+            #print "POS : ", pos[:psize], pos[psize:]
+            #print "NEG : ", neg[:nsize], neg[nsize:]
             # Modifiy the feature counts by subtracting out the test fold
-            temp_pcounts = pcounts - article.countFeatures(self.numfeats, self.featdb, self.pos[:psize])
-            temp_ncounts = ncounts - article.countFeatures(self.numfeats, self.featdb, self.neg[:nsize])
+            temp_pcounts = pcounts - article.countFeatures(self.numfeats, self.featdb, pos[:psize])
+            temp_ncounts = ncounts - article.countFeatures(self.numfeats, self.featdb, neg[:nsize])
             #print "PCNT: ", temp_pcounts
             #print "NCNT: ", temp_ncounts
             # Calculate the resulting feature scores
             termscores, pfreqs, nfreqs = scoring.calculateFeatureScores(
                 temp_pcounts, temp_ncounts, len(pos)-psize, len(neg)-nsize,
-                self.pseudocount, self.daniel, self.mask)
+                self.pseudocount, self.mask, self.daniel)
             #print "TER: ", termscores
             #print
             # Calculate the article scores for the test fold
@@ -148,11 +148,9 @@ class Validator:
         pdocs = len(self.pos)
         ndocs = len(self.neg)
         ps = self.pseudocount
-        #print "PCNT: ", pcounts
-        #print "NCNT: ", ncounts
         marker = 0
         if not statfile:
-            marker = pdocs+1
+            marker = pdocs+ndocs+1
         for idx, doc in enumerate(self.pos):
             if idx == marker:
                 statfile.update(idx, pdocs+ndocs)
@@ -160,11 +158,8 @@ class Validator:
             pscores[idx] = sum(
                 math.log(((pcounts[f]-1+ps)/(pdocs-1+2*ps))/((ncounts[f]+ps)/(ndocs+2*ps))) for
                 f in self.featdb[doc] if self.mask is None or not self.mask[f])
-        marker = 0
-        if not statfile:
-            marker = ndocs+1
         for idx, doc in enumerate(self.neg):
-            if idx == marker:
+            if pdocs+idx == marker:
                 statfile.update(pdocs+idx, pdocs+ndocs)
                 marker += (pdocs+ndocs)/20
             nscores[idx] = sum(

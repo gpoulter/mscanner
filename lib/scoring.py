@@ -21,7 +21,8 @@ class FeatureScoreInfo:
     """Class to calculate and store all information about the
     features, their distribution, and their scores"""
 
-    def __init__(self, pos_counts, neg_counts, pdocs, ndocs, pseudocount, featmap, exclude_types=None, daniel=False):
+    def __init__(self, pos_counts, neg_counts, pdocs, ndocs,
+                 pseudocount, featmap, exclude_types=None, daniel=False):
         """Parameters are as for calculateFeatureScores, and also saved as instance variables.
 
         @param featmap: Mapping between Feature ID and (feature string, feature type)
@@ -65,7 +66,7 @@ class FeatureScoreInfo:
         self.scores, self.pfreqs, self.nfreqs = calculateFeatureScores(
             self.pos_counts, self.neg_counts,
             self.pdocs, self.ndocs,
-            self.pseudocount, self.daniel, self.mask)
+            self.pseudocount, self.mask, self.daniel)
         return self.scores
 
     def recalculateFeatureStats(self):
@@ -94,18 +95,13 @@ class FeatureScoreInfo:
             stream.write(u'%.3f,%.2e,%.2e,%d,%d,%d,%s,"%s"\n' % line)
 
 def calculateFeatureScores(
-    pos_counts,
-    neg_counts,
-    pdocs,
-    ndocs,
-    pseudocount,
-    mask=None,
-    daniel=False
-    ):
+    pos_counts, neg_counts,
+    pdocs, ndocs,
+    pseudocount, mask=None, daniel=False):
     """Return feature support scores based on relative frequency in positives vs negatives
 
     @param pos_counts: Array of feature counts in positive documents. 
-    @param neg_counts: Array of features counts in negatives documents
+    @param neg_counts: Array of feature counts in negatives documents
 
     @param pdocs: Number of positive documents
     @param ndocs: Number of negative documents
@@ -126,16 +122,14 @@ def calculateFeatureScores(
     feature frequencies of negatives.
     """
     num_feats = len(pos_counts) # number of distinct feature
-    if not daniel:
+    if daniel:
+        pfreqs = pos_counts / float(pdocs)
+        nfreqs = neg_counts / float(ndocs)
+        pfreqs[pfreqs == 0.0] = 1e-8
+        nfreqs[nfreqs == 0.0] = 1e-8
+    else:
         pfreqs = (pos_counts+pseudocount) / (pdocs+2*pseudocount)
         nfreqs = (neg_counts+pseudocount) / (ndocs+2*pseudocount)
-    else:
-        pfreqs = numpy.zeros(num_feats) + 1e-8
-        nfreqs = numpy.zeros(num_feats) + 1e-8
-        pos_nz = pos_counts > 0
-        pfreqs[pos_nz] = pos_counts[pos_nz] / pdocs
-        neg_nz = neg_counts > 0
-        nfreqs[neg_nz] = neg_counts[neg_nz] / ndocs
     scores = numpy.log(pfreqs / nfreqs)
     if mask is not None:
         scores[mask] = 0

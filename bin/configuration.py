@@ -225,6 +225,11 @@ def choose_validation(dataset):
     if dataset == "gdsmall-vs-med06":
         pos = "genedrug-small.txt"
         neg = articlelist
+    if dataset == "gdsmall-vs-med06-dan":
+        pos = "genedrug-small.txt"
+        neg = articlelist
+        c.dodaniel = True
+        c.exclude_feats=["issn"]
     if dataset == "aids1k-vs-500k":
         pos = "aids-bioethics-Oct06-1k.txt"
         neg = "medline06-500k.txt"

@@ -63,15 +63,15 @@ def do_validation():
                         genedrug_articles.add(art.pmid)
                 dbexport.writeGeneDrugCountsCSV(dbexport.countGeneDrug(pos_arts))
             val = validation.Validator(
-                len(featmap),
-                featdb,
-                positives,
-                negatives,
-                c.nfolds,
-                c.pseudocount,
-                c.dodaniel,
-                genedrug_articles,
-                featmap.featureTypeMask(c.exclude_types)
+                numfeats = len(featmap),
+                featdb = featdb,
+                pos = positives,
+                neg = negatives,
+                nfold = c.nfolds,
+                pseudocount = c.pseudocount,
+                daniel = c.dodaniel,
+                genedrug_articles = genedrug_articles,
+                mask = featmap.featureTypeMask(c.exclude_types)
                 )
             pscores, nscores = val.validate(statfile)
             article.writePMIDScores(c.reportdir/c.posfile, positives, pscores)

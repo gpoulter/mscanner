@@ -257,16 +257,10 @@ class PerformanceStats:
         _.ROC_area = n.sum(0.5 * (_.TPR[1:]+_.TPR[:-1]) * n.abs(n.diff(_.FPR))) + (1.0-max(_.FPR))
         _.PR_area = n.sum(_.PPV) / _.P
         # Non-vector calculation of ROC area
-        ROC_area = 0
-        for i in xrange(1,_.P):
-            ROC_area += 0.5 * (_.TPR[i]+_.TPR[i-1]) * abs(_.FPR[i]-_.FPR[i-1])
-        ROC_area += (1.0-max(_.FPR))
-        # Non-vector calculation of PR area
-        PR_area = 0
-        for xi in xrange(0,_.P):
-            PR_area += _.PPV[xi] / _.P
-        print _.ROC_area, ROC_area
-        print _.PR_area, PR_area
+        #ROC_area = 0
+        #for i in xrange(1,_.P):
+        #    ROC_area += 0.5 * (_.TPR[i]+_.TPR[i-1]) * abs(_.FPR[i]-_.FPR[i-1])
+        #ROC_area += (1.0-max(_.FPR))
         return _.ROC_area, _.PR_area
 
     def tuneThreshold(self):
@@ -360,8 +354,8 @@ def report(pos, neg, pscores, nscores, featmap, featdb, configuration):
         ndocs = len(neg),
         pseudocount = c.pseudocount,
         featmap = featmap,
-        daniel = c.dodaniel,
-        exclude_types = c.exclude_types
+        exclude_types = c.exclude_types,
+        daniel = c.dodaniel
         )
     feature_info.writeFeatureScoresCSV(codecs.open(rd/c.term_scores_name,"wb","utf-8"))
     #self.plotHistograms(gp, rd/c.hist_img, pscores, nscores, p.tuned.threshold)

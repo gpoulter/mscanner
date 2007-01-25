@@ -79,8 +79,7 @@ class Validator:
         if self.nfold == 0:
             return self.leave_out_one_validate(statfile)
         else:
-            #return self.cross_validate(statfile)
-            return self.cross_validate_new(statfile)
+            return self.cross_validate(statfile)
 
     @staticmethod
     def partitionSizes(nitems, nparts):
@@ -92,7 +91,7 @@ class Validator:
         starts[1:] = numpy.cumsum(sizes[:-1])
         return starts, sizes
 
-    def cross_validate_new(self, statfile=None):
+    def cross_validate(self, statfile=None):
         """Perform n-fold validation and return the raw performance measures
 
         Calculates term scores a la leave_one_out_validate
@@ -116,59 +115,27 @@ class Validator:
             log.debug("Carrying out fold number %d", fold)
             if statfile is not None:
                 statfile.update(fold+1, self.nfold)
+            # Move the test fold to the front 
             moveToFront(pos, pstart, psize)
             moveToFront(neg, nstart, nsize)
             #print "POS : ", self.pos[:psize], self.pos[psize:]
             #print "NEG : ", self.neg[:nsize], self.neg[nsize:]
+            # Modifiy the feature counts by subtracting out the test fold
             temp_pcounts = pcounts - article.countFeatures(self.numfeats, self.featdb, self.pos[:psize])
             temp_ncounts = ncounts - article.countFeatures(self.numfeats, self.featdb, self.neg[:nsize])
             #print "PCNT: ", temp_pcounts
             #print "NCNT: ", temp_ncounts
+            # Calculate the resulting feature scores
             termscores, pfreqs, nfreqs = scoring.calculateFeatureScores(
                 temp_pcounts, temp_ncounts, len(pos)-psize, len(neg)-nsize,
                 self.pseudocount, self.daniel, self.mask)
             #print "TER: ", termscores
             #print
+            # Calculate the article scores for the test fold
             pscores[pstart:pstart+psize] = [numpy.sum(termscores[self.featdb[d]]) for d in pos[:psize]]
             nscores[nstart:nstart+nsize] = [numpy.sum(termscores[self.featdb[d]]) for d in neg[:nsize]]
         return pscores, nscores
     
-    def cross_validate_old(self, statfile=None):
-        """Perform n-fold validation and return the raw performance measures"""
-        def moveToFront(data, start, size):
-            """Swaps a portion of data to the front of the array"""
-            data[:size], data[start:start+size] = data[start:start+size], data[:size]
-        log.info("%d pos and %d neg articles", len(self.pos), len(self.neg))
-        pos = self.pos.copy()
-        neg = self.neg.copy()
-        if self.randomise:
-            random.shuffle(pos)
-            random.shuffle(neg)
-        pstarts, psizes = self.partitionSizes(len(pos), self.nfold)
-        nstarts, nsizes = self.partitionSizes(len(neg), self.nfold)
-        pscores = numpy.zeros(len(pos), dtype=numpy.float32)
-        nscores = numpy.zeros(len(neg), dtype=numpy.float32)
-        for fold, (pstart,psize,nstart,nsize) in enumerate(zip(pstarts,psizes,nstarts,nsizes)):
-            log.debug("Carrying out fold number %d", fold)
-            if statfile is not None:
-                statfile.update(fold+1, self.nfold)
-            moveToFront(pos, pstart, psize)
-            moveToFront(neg, nstart, nsize)
-            #print "POS: ", self.pos[:psize], self.pos[psize:]
-            #print "NEG: ", self.neg[:nsize], self.neg[nsize:]
-            pcounts = article.countFeatures(self.numfeats, self.featdb, self.pos[psize:])
-            ncounts = article.countFeatures(self.numfeats, self.featdb, self.neg[nsize:])
-            #print "PCNT: ", pcounts
-            #print "NCNT: ", ncounts
-            termscores, pfreqs, nfreqs = scoring.calculateFeatureScores(
-                pcounts, ncounts, len(pos)-psize, len(neg)-nsize,
-                self.pseudocount, self.daniel, self.mask)
-            #print "TER: ", termscores
-            #print
-            pscores[pstart:pstart+psize] = [numpy.sum(termscores[self.featdb[d]]) for d in pos[:psize]]
-            nscores[nstart:nstart+nsize] = [numpy.sum(termscores[self.featdb[d]]) for d in neg[:nsize]]
-        return pscores, nscores
-
     def leave_out_one_validate(self, statfile=None):
         """Carries out leave-out-one validation, returning the resulting scores.
 
@@ -176,33 +143,33 @@ class Validator:
         """
         pcounts = article.countFeatures(self.numfeats, self.featdb, self.pos)
         ncounts = article.countFeatures(self.numfeats, self.featdb, self.neg)
-        #print "PCNT: ", pcounts
-        #print "NCNT: ", ncounts
         pscores = numpy.zeros(len(self.pos), dtype=numpy.float32)
         nscores = numpy.zeros(len(self.neg), dtype=numpy.float32)
         pdocs = len(self.pos)
         ndocs = len(self.neg)
         ps = self.pseudocount
-        for idx, pdoc in enumerate(self.pos):
-            if statfile and idx % ((pdocs+ndocs)/20) == 0:
+        #print "PCNT: ", pcounts
+        #print "NCNT: ", ncounts
+        marker = 0
+        if not statfile:
+            marker = pdocs+1
+        for idx, doc in enumerate(self.pos):
+            if idx == marker:
                 statfile.update(idx, pdocs+ndocs)
-            for f in self.featdb[pdoc]:
-                if self.mask is None or self.mask[f] == False:
-                    #print "TERM ", f, math.log(((pcounts[f]-1+ps)/(pdocs-1+2*ps))/((ncounts[f]+ps)/(ndocs+2*ps)))
-                    pscores[idx] += math.log(((pcounts[f]-1+ps)/(pdocs-1+2*ps))/((ncounts[f]+ps)/(ndocs+2*ps)))
-                    #pscores[idx] += math.log(((pcounts[f]+ps)/(pdocs+2*ps))/((ncounts[f]+ps)/(ndocs+2*ps)))
-            #print pscores[idx]
-        #print pscores
-        for idx, ndoc in enumerate(self.neg):
-            if statfile and (pdocs+idx) % ((pdocs+ndocs)/20) == 0:
+                marker += (pdocs+ndocs)/20
+            pscores[idx] = sum(
+                math.log(((pcounts[f]-1+ps)/(pdocs-1+2*ps))/((ncounts[f]+ps)/(ndocs+2*ps))) for
+                f in self.featdb[doc] if self.mask is None or not self.mask[f])
+        marker = 0
+        if not statfile:
+            marker = ndocs+1
+        for idx, doc in enumerate(self.neg):
+            if idx == marker:
                 statfile.update(pdocs+idx, pdocs+ndocs)
-            for f in self.featdb[ndoc]:
-                if self.mask is None or self.mask[f] == False:
-                    #print "TERM ", f, math.log(((pcounts[f]+ps)/(pdocs+2*ps))/((ncounts[f]-1+ps)/(ndocs-1+2*ps)))
-                    nscores[idx] += math.log(((pcounts[f]+ps)/(pdocs+2*ps))/((ncounts[f]-1+ps)/(ndocs-1+2*ps)))
-                    #nscores[idx] += math.log(((pcounts[f]+ps)/(pdocs+2*ps))/((ncounts[f]+ps)/(ndocs+2*ps)))
-            #print nscores[idx]
-        #print nscores
+                marker += (pdocs+ndocs)/20
+            nscores[idx] = sum(
+                math.log(((pcounts[f]+ps)/(pdocs+2*ps))/((ncounts[f]-1+ps)/(ndocs-1+2*ps))) for
+                f in self.featdb[doc] if self.mask is None or not self.mask[f])
         return pscores, nscores
 
 class PerformanceStats:
@@ -308,9 +275,9 @@ class PerformanceStats:
         return _.ROC_area, _.PR_area
 
     def tuneThreshold(self):
-        """Return index into arrays which results in the best
-        alpha-weighted F-Measure, and the score threshold which that
-performance statistics        represents.
+        """Calculate the score threshold which results in the best
+        alpha-weighted F-Measure.  Returns the index into pscores for
+        the threshold, and the threshold itself.
         """
         best_idx = 0
         for idx in xrange(self.P):

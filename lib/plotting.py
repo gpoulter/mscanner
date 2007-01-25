@@ -102,6 +102,6 @@ def plotPrecisionRecallFmeasure(g, pr_vs_score, pscores, TPR, PPV, FM, FMa, thre
     g("set output '%s'" % pr_vs_score)
     g.plot(Data(pscores, TPR, title="Recall", with="lines"),
            Data(pscores, PPV, title="Precision", with="lines"),
-           Data(pscores, FM, title="F-Measure", with="lines"),
-           Data(pscores, FMa, title="F-Measure Alpha", with="lines"),
+           Data(pscores, FM, title="F1 Measure", with="lines"),
+           Data(pscores, FMa, title="F Measure", with="lines"),
            Data([threshold, threshold], [0,0.99], title="threshold", with="lines"))

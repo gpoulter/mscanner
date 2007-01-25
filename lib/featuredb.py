@@ -84,6 +84,7 @@ class FeatureDatabase:
         self.setitem(key, values)
 
     def __len__(self):
+        """Fast way to check number of items in database"""
         return self.db.stat()["ndata"]
 
     def __contains__(self, key):

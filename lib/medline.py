@@ -81,28 +81,28 @@ class MedlineCache:
         try:
             artdb = dbshelve.open(self.article_db, dbenv=dbenv, txn=txn)
             meshfeatdb = FeatureDatabase(self.feature_db, dbenv=dbenv, txn=txn)
-            feats = self.featmap.getFeatureIds
+            featureIds = self.featmap.getFeatureIds
             pmidlist = []
             for art in articles:
                 # Refuse to add duplicates
-                if not art.pmid in meshfeatdb:
-                    # Store article, adding it to list of documents
-                    artdb[str(art.pmid)] = art
-                    pmidlist.append(str(art.pmid))
-                    # Get MeSH headings and qualifiers from article
-                    headings = list()
-                    quals = list()
-                    for term in art.meshterms:
-                        headings.append(term[0])
-                        if(len(term)>1):
-                            quals.extend(term[1:])
-                    # Add features for MeSH, qualifiers and journal ISSN
-                    featids = list()
-                    featids.extend(feats(headings, "mesh", True))
-                    featids.extend(feats(quals, "qual", True))
-                    if art.issn:
-                        featids.extend(feats([art.issn], "issn", True))
-                    meshfeatdb.setitem(art.pmid, featids, txn)
+                if art.pmid in meshfeatdb: continue
+                # Store article, adding it to list of documents
+                artdb[str(art.pmid)] = art
+                pmidlist.append(str(art.pmid))
+                # Get MeSH headings and qualifiers from article
+                headings = list()
+                quals = list()
+                for term in art.meshterms:
+                    headings.append(term[0])
+                    if(len(term)>1):
+                        quals.extend(term[1:])
+                # Add features for MeSH, qualifiers and journal ISSN
+                featids = list()
+                featids.extend(featureIds(headings, "mesh", True))
+                featids.extend(featureIds(quals, "qual", True))
+                if art.issn:
+                    featids.extend(featureIds([art.issn], "issn", True))
+                meshfeatdb.setitem(art.pmid, featids, txn)
             artdb.close()
             meshfeatdb.close()
             self.article_list.write_lines(pmidlist, append=True)

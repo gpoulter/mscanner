@@ -73,6 +73,8 @@ drugtable = working / "genedrug" / "drugtable.txt"
 
 #### Shared configuration (by query & validation) 
 
+## Per-term pseudocount to use
+pseudocount = 0.01
 ## Path to output files
 output = working / "output"
 #output = src / "www" / "htdocs" / "output"
@@ -80,8 +82,6 @@ output = working / "output"
 corpora = working / "corpora"
 ## Prefix for report files (output/dataset)
 reportdir = None
-## Per-term pseudocount to use
-pseudocount = 0.01
 ## File name for positive documents
 posfile = "positives.txt"
 ## Types of features to exclude
@@ -114,14 +114,14 @@ result_citations= "result_citations.html"
 
 #### VALIDATOR CONFIGURATION (for validate.py)
 
+## Validation folds to use
+nfolds = 0
+## 0<Alpha<1.  Alpha=0.5 maximises standard F-Measure.
+alpha = 0.5
 ## File name for negative documents
 negfile = "negatives.txt"
 ## Maximum number of negatives
 numnegs = 500000
-## Validation folds to use
-nfolds = 10
-## 0<Alpha<1.  Alpha=0.5 maximises standard F-Measure.
-alpha = 0.5
 ## Whether to do a gene-drug co-occurrence filter
 dogenedrug = False
 ## Whether to use Daniel's 10^-8 pseudocounts

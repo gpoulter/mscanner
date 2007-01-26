@@ -39,7 +39,7 @@ class Validator:
         pos,
         neg,
         nfold,
-        pseudocount = 0.1,
+        pseudocount = 0.01,
         daniel = False,
         genedrug_articles = None,
         mask = None,

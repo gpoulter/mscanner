@@ -115,7 +115,7 @@ def calculateFeatureScores(
 
     @param daniel: If true, use the JAMIA paper's smoothing heuristic
     of 10^-8 for terms found in positive but not negative (and visa
-    versa), which greatly exaggerates scores for such terms.
+    versa).
 
     @return: Array of feature scores (zeros for masked features),
     array of feature frequencies in positives, and array of

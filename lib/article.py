@@ -330,7 +330,7 @@ class FeatureMapping:
         exclude_feats = numpy.zeros(len(self.feats), dtype=numpy.bool)
         for ftype in exclude_types:
             for fid in self.feat2id[ftype].itervalues():
-                result[fid] = True
+                exclude_feats[fid] = True
         return exclude_feats
 
     def getFeatureIds(self, features, ftype, count=False):

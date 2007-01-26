@@ -191,17 +191,17 @@ def choose_validation(dataset):
     if dataset == "pg04-vs-30k-dan":
         pos = "pharmgkb-2004.txt"
         neg = "medline06-30k.txt"
-        c.exclude_feats = ["issn"]
+        c.exclude_types = ["issn"]
         c.dodaniel = True
     if dataset == "pg06-vs-500k-dan":
         pos = "pharmgkb-Oct06.txt"
         neg = "medline06-500k.txt"
-        c.exclude_feats = ["issn"]
+        c.exclude_types = ["issn"]
         c.dodaniel = True
     if dataset == "pg06-vs-500k-noissn":
         pos = "pharmgkb-Oct06.txt"
         neg = "medline06-500k.txt"
-        c.exclude_feats = ["issn"]
+        c.exclude_types = ["issn"]
     # Primary results
     if dataset == "aids-vs-500k":
         pos = "aids-bioethics-Oct06.txt"
@@ -232,7 +232,7 @@ def choose_validation(dataset):
         pos = "genedrug-small.txt"
         neg = articlelist
         c.dodaniel = True
-        c.exclude_feats=["issn"]
+        c.exclude_types=["issn"]
     if dataset == "pg04-vs-go4":
         pos = "pharmgkb-2004.txt"
         neg = "geneontology-2004.txt"

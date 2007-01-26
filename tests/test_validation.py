@@ -6,6 +6,13 @@ from random import seed
 import unittest
 import numpy
 from validation import Validator, PerformanceStats
+import logging
+
+logging.basicConfig(
+    level    = logging.DEBUG,
+    datefmt  = "%H:%M:%S",
+    format   = "%(asctime)-9s %(levelname)-8s %(message)s",
+)
 
 class PerformanceStatisticTest(unittest.TestCase):
 
@@ -45,27 +52,27 @@ class ValidatorTest(unittest.TestCase):
             print self.pos[:psize], self.pos[psize:]
             print self.neg[:nsize], self.neg[nsize:]
         """
-        return
         val = Validator(
-            featmap = [("A","X")],
-            featdb = {0:[0], 1:[0], 2:[0], 3:[0], 4:[0], 5:[0], 6:[0], 7:[0], 8:[0], 9:[0]},
-            pos = numpy.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
-            neg = numpy.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+            numfeats = 2,
+            featdb = {0:[0], 1:[0,1], 2:[0,1], 3:[0], 4:[0], 5:[0], 6:[0], 7:[0], 8:[0], 9:[0], 10:[0,1]},
+            pos = numpy.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+            neg = numpy.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
             nfold = 5,
             pseudocount = 0.1,
-            norandom = True)
+            randomise = False)
         pscores, nscores = val.validate()
 
     def testCrossValid(self):
         """Test that cross-validated scores are correctly calculated"""
+        return
         val = Validator(
-            featmap = [("A","X"), ("B","Y"), ("C","X")],
+            numfeats = 3,
             featdb = {0:[0,1,2], 1:[0,1], 2:[0,1], 3:[0,1], 4:[1,2], 5:[1,2], 6:[1,2], 7:[0,1,2]},
             pos = numpy.array([0, 1, 2, 3]),
             neg = numpy.array([4, 5, 6, 7]),
             nfold = 4,
             pseudocount = 0.1,
-            norandom = True)
+            randomise = False)
         pscores, nscores = val.validate()
         print pscores
         print nscores
@@ -74,14 +81,15 @@ class ValidatorTest(unittest.TestCase):
     def testLeaveOutOne(self):
         """Test of leave-out-one cross validation.  Manually calculate
         scores on the articles to see if they are correct"""
+        return
         val = Validator(
-            featmap = [("A","X"), ("B","Y"), ("C","X")],
+            numfeats = 3,
             featdb = {0:[0,1,2], 1:[0,1], 2:[0,1], 3:[0,1], 4:[1,2], 5:[1,2], 6:[1,2], 7:[0,1,2]},
             pos = numpy.array([0, 1, 2, 3]),
             neg = numpy.array([4, 5, 6, 7]),
             nfold = 0,
             pseudocount = 0.1,
-            norandom = True)
+            randomise = False)
         pscores, nscores = val.validate()
         print pscores
         print nscores

@@ -115,7 +115,7 @@ result_citations= "result_citations.html"
 #### VALIDATOR CONFIGURATION (for validate.py)
 
 ## Validation folds to use
-nfolds = 10
+nfolds = 0
 ## 0<Alpha<1.  Alpha=0.5 maximises standard F-Measure.
 alpha = 0.5
 ## File name for negative documents
@@ -216,23 +216,23 @@ def choose_validation(dataset):
         pos = "random10k-06.txt"
         neg = "medline06-500k.txt"
     # Other experiments
+    if dataset == "pg06-vs-500k-loo":
+        pos = "pharmgkb-Oct06.txt"
+        neg = "medline06-500k.txt"
     if dataset == "mscanner-vs-500k":
         pos = "mscanner-bibliography.txt"
         neg = "medline06-500k.txt"
     if dataset == "pg06-vs-med06":
         pos = "pharmgkb-Oct06.txt"
         neg = articlelist
-    if dataset == "gdsmall-vs-med06":
+    if dataset == "gdsmall-vs-sample":
         pos = "genedrug-small.txt"
         neg = articlelist
-    if dataset == "gdsmall-vs-med06-dan":
+    if dataset == "gdsmall-vs-sample-dan":
         pos = "genedrug-small.txt"
         neg = articlelist
         c.dodaniel = True
         c.exclude_feats=["issn"]
-    if dataset == "aids1k-vs-500k":
-        pos = "aids-bioethics-Oct06-1k.txt"
-        neg = "medline06-500k.txt"
     if dataset == "pg04-vs-go4":
         pos = "pharmgkb-2004.txt"
         neg = "geneontology-2004.txt"

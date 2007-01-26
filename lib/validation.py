@@ -98,7 +98,9 @@ class Validator:
         """
         def moveToFront(data, start, size):
             """Swaps a portion of data to the front of the array"""
-            data[:size], data[start:start+size] = data[start:start+size], data[:size]
+            tmp = data[:size].copy()
+            data[:size] = data[start:start+size]
+            data[start:start+size] = tmp
         log.info("%d pos and %d neg articles", len(self.pos), len(self.neg))
         if self.randomise:
             random.shuffle(self.pos)
@@ -118,19 +120,20 @@ class Validator:
             # Move the test fold to the front 
             moveToFront(pos, pstart, psize)
             moveToFront(neg, nstart, nsize)
-            #print "POS : ", pos[:psize], pos[psize:]
-            #print "NEG : ", neg[:nsize], neg[nsize:]
+            log.debug("pstart = %d, psize = %s, nstart = %d, nsize = %d", pstart, psize, nstart, nsize)
+            #log.debug("POS %s %s", repr(pos[:psize]), repr(pos[psize:]))
+            #log.debug("NEG %s %s", repr(neg[:nsize]), repr(neg[nsize:]))
             # Modifiy the feature counts by subtracting out the test fold
             temp_pcounts = pcounts - article.countFeatures(self.numfeats, self.featdb, pos[:psize])
             temp_ncounts = ncounts - article.countFeatures(self.numfeats, self.featdb, neg[:nsize])
-            #print "PCNT: ", temp_pcounts
-            #print "NCNT: ", temp_ncounts
+            #old_pcounts = article.countFeatures(self.numfeats, self.featdb, pos[psize:])
+            #old_ncounts = article.countFeatures(self.numfeats, self.featdb, neg[nsize:])
+            #log.debug("PDIFF %s", repr(old_pcounts - temp_pcounts))
+            #log.debug("NDIFF %s", repr(old_ncounts - temp_ncounts))
             # Calculate the resulting feature scores
             termscores, pfreqs, nfreqs = scoring.calculateFeatureScores(
                 temp_pcounts, temp_ncounts, len(pos)-psize, len(neg)-nsize,
                 self.pseudocount, self.mask, self.daniel)
-            #print "TER: ", termscores
-            #print
             # Calculate the article scores for the test fold
             pscores[pstart:pstart+psize] = [numpy.sum(termscores[self.featdb[d]]) for d in pos[:psize]]
             nscores[nstart:nstart+nsize] = [numpy.sum(termscores[self.featdb[d]]) for d in neg[:nsize]]
@@ -369,6 +372,7 @@ def report(pos, neg, pscores, nscores, featmap, featdb, configuration):
         gp, rd/c.pr_vs_score_img, p.pscores, p.TPR, p.PPV, p.FM, p.FMa, p.tuned.threshold)
     # Write main index file for validation output
     templates.validation.run(dict(
+        time = time.strftime("%Y-%m-%d %H:%M:%S"),
         p = p,
         t = p.tuned,
         f = feature_info,

@@ -46,6 +46,14 @@
         </thead>
         <tbody>
           <tr>
+            <th>
+              Timestamp
+            </th>
+            <td>
+              {{time}}
+            </td>
+          </tr>
+          <tr>
             <th>Pseudocount
             <button onclick="show('pseudocount_help')">?</button>
             </th>

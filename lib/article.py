@@ -187,20 +187,20 @@ class StatusFile:
 
     def __init__(self, filename, dataset, total=0):
         """Create status file with PID, progress, total, dataset and start time"""
+        if filename is None:
+            raise RuntimeError("No status file given")
+        if filename.exists():
+            raise RuntimeError("Status file %s already exists" % str(filename))
         self.filename = filename
         self.dataset = dataset
         self.progress = 0
         self.total = total
         self.start = time.time()
-        if self.filename is None:
-            raise  RuntimeError("No status file given")
-        if self.filename.exists():
-            raise RuntimeError("Status file %s already exists" % str(filename))
         self.write()
 
     def __del__(self):
         """Remove status file on deletion"""
-        if self.filename.isfile():
+        if hasattr(self,"filename") and self.filename.isfile():
             self.filename.remove()
 
     def __str__(self):

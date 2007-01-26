@@ -202,6 +202,7 @@ def writeReport(
         outputfile=file(rd/c.result_citations, "w"))
     # Index file
     templates.results.run(dict(
+        time = time.strftime("%Y-%m-%d %H:%M:%S"),
         c = configuration,
         f = feature_info,
         num_results = len(result_scores),

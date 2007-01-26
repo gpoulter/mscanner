@@ -60,6 +60,14 @@ c - Configuration module
     <table>
       <tr>
         <th>
+          Timestamp
+        </th>
+        <td>
+          {{time}}
+        </td>
+      </tr>
+      <tr>
+        <th>
           Positive data (.txt)
           <button onclick="show('positives_help')">?</button>
         </th>

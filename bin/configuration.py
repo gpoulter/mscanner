@@ -142,21 +142,22 @@ def configure_query(dataset, pseudocount, limit, threshold, pos):
     c.dataset = dataset
     c.pseudocount = pseudocount
     c.limit = limit
-    c.threshold = thresholdp
+    c.threshold = threshold
     c.reportdir = output / dataset
-    pos.copy(reportdir/posfile)
+    pos.copy(reportdir / posfile)
 
 def configure_validation(dataset, pseudocount, numnegs, alpha, pos, neg):
+    import configuration as c
     c.dataset = datset
     c.pseudocount = pseudocount
     c.numnegs = numnegs
     c.alpha = alpha
     c.reportdir = output / dataset
-    pos.copy(posfile)
+    pos.copy(reportdir / posfile)
     if isinstance(neg, basestring):
-        neg.copy(reportdir/negfile)
+        neg.copy(reportdir / negfile)
     elif isinstance(neg, int):
-        (reportdir/negfile).write_lines(random.sample(articlelist.lines(), numnegs))
+        (reportdir / negfile).write_lines(random.sample(articlelist.lines(), numnegs))
     
 def choose_query(dataset):
     import configuration as c
@@ -164,16 +165,18 @@ def choose_query(dataset):
     c.reportdir = output / (dataset+"-query")
     if dataset == "pg04":
         pos = "pharmgkb-2004.txt"
-    if dataset == "pg06":
+    elif dataset == "pg06":
         pos = "pharmgkb-Oct06.txt"
-    if dataset == "aids":
+    elif dataset == "aids":
         pos = "aids-bioethics-Oct06.txt"
-    if dataset == "radiology":
+    elif dataset == "radiology":
         pos = "daniel-radiology.txt"
-    if dataset == "mscanner":
+    elif dataset == "mscanner":
         pos = "mscanner-bibliography.txt"
-    if dataset == "gdsmall":
+    elif dataset == "gdsmall":
         pos = "genedrug-small.txt"
+    else:
+        raise ValueError("Invalid query dataset " + dataset)
     if not isinstance(pos, path):
         pos = corpora / pos
     if not reportdir.isdir():
@@ -188,60 +191,62 @@ def choose_validation(dataset):
     if dataset == "pg04-vs-30k":
         pos = "pharmgkb-2004.txt"
         neg = "medline06-30k.txt"
-    if dataset == "pg04-vs-30k-dan":
+    elif dataset == "pg04-vs-30k-dan":
         pos = "pharmgkb-2004.txt"
         neg = "medline06-30k.txt"
         c.exclude_types = ["issn"]
         c.dodaniel = True
-    if dataset == "pg06-vs-500k-dan":
+    elif dataset == "pg06-vs-500k-dan":
         pos = "pharmgkb-Oct06.txt"
         neg = "medline06-500k.txt"
         c.exclude_types = ["issn"]
         c.dodaniel = True
-    if dataset == "pg06-vs-500k-noissn":
+    elif dataset == "pg06-vs-500k-noissn":
         pos = "pharmgkb-Oct06.txt"
         neg = "medline06-500k.txt"
         c.exclude_types = ["issn"]
     # Primary results
-    if dataset == "aids-vs-500k":
+    elif dataset == "aids-vs-500k":
         pos = "aids-bioethics-Oct06.txt"
         neg = "medline06-500k.txt"
-    if dataset == "pg06-vs-500k":
+    elif dataset == "pg06-vs-500k":
         pos = "pharmgkb-Oct06.txt"
         neg = "medline06-500k.txt"
-    if dataset == "radiology-vs-500k":
+    elif dataset == "radiology-vs-500k":
         pos = "daniel-radiology.txt"
         neg = "medline06-500k.txt"
-    if dataset == "random10k-vs-500k":
+    elif dataset == "random10k-vs-500k":
         pos = "random10k-06.txt"
         neg = "medline06-500k.txt"
     # Other experiments
-    if dataset == "pg06-vs-500k-loo":
+    elif dataset == "pg06-vs-500k-loo":
         pos = "pharmgkb-Oct06.txt"
         neg = "medline06-500k.txt"
-    if dataset == "mscanner-vs-500k":
+    elif dataset == "mscanner-vs-500k":
         pos = "mscanner-bibliography.txt"
         neg = "medline06-500k.txt"
-    if dataset == "pg06-vs-med06":
+    elif dataset == "pg06-vs-med06":
         pos = "pharmgkb-Oct06.txt"
         neg = articlelist
-    if dataset == "gdsmall-vs-sample":
+    elif dataset == "gdsmall-vs-sample":
         pos = "genedrug-small.txt"
         neg = articlelist
-    if dataset == "gdsmall-vs-sample-dan":
+    elif dataset == "gdsmall-vs-sample-dan":
         pos = "genedrug-small.txt"
         neg = articlelist
         c.dodaniel = True
         c.exclude_types=["issn"]
-    if dataset == "pg04-vs-go4":
+    elif dataset == "pg04-vs-go4":
         pos = "pharmgkb-2004.txt"
         neg = "geneontology-2004.txt"
-    if dataset == "pg04-vs-500k":
+    elif dataset == "pg04-vs-500k":
         pos = "pharmgkb-2004.txt"
         neg = "medline06-500k.txt"
-    if dataset == "pgdan-vs-500k":
+    elif dataset == "pgdan-vs-500k":
         pos = "pharmgkb-daniel.txt"
         neg = "medline06-500k.txt"
+    else:
+        raise ValueError("Invalid validation dataset " + dataset)
     if not isinstance(pos, path):
         pos = corpora / pos
     if not isinstance(neg, path):

@@ -16,6 +16,7 @@ import codecs
 import templates
 import article
 import numpy
+import time
 
 class FeatureScoreInfo:
     """Class to calculate and store all information about the

@@ -355,19 +355,11 @@ c - Configuration module
   <div class="box">
 
     <h2 class="heading">
-      Derived measures
+      Performance Measures
       <button onclick="toggle('derived_help')">?</button>
     </h2>
 
     <table>
-      <tr>
-        <th><b>Positive Predictive Value</b> <span class="footnote">(= PPV = TP/(TP+FP))</span></th>
-        <td>{{"%.5f"%t.PPV}}</td>
-      </tr>
-      <tr>
-        <th><b>Negative Preditive Value</b> <span class="footnote">(= NPV = TN/(TN+FN))</span></th>
-        <td>{{"%.5f"%t.NPV}}</td>
-      </tr>
       <tr>
         <th><b>Prevalence</b> <span class="footnote">(=P/A)</span></th>
         <td>{{"%.5f"%t.prevalence}}</td>
@@ -380,28 +372,14 @@ c - Configuration module
         <th><b>Error Rate</b> <span class="footnote">(=F/A=1-Accuracy)</span></th>
         <td>{{"%.5f"%(1-t.accuracy)}}</td>
       </tr>
-    </table>
-
-    <div class="help" id="derived_help">
-      <ul>
-        <li>PPV = Proportion of those classified positive which actually were positive</li>
-        <li>NPV = Proportion of those classified negative which actually were negative</li>
-        <li>Prevalence = Proportion of data which was positive</li>
-        <li>Accuracy = Proportion of correct classifications</li>
-        <li>Error Rate = Proportion of incorrect classifications</li>
-      </ul>
-    </div>
-
-  </div>
-
-  <div class="box">
-
-    <h2 class="heading">
-      Information Recall (IR) measures
-      <button onclick="toggle('ir_help')">?</button>
-    </h2>
-
-    <table>
+      <tr>
+        <th><b>Positive Predictive Value</b> <span class="footnote">(= PPV = TP/(TP+FP))</span></th>
+        <td>{{"%.5f"%t.PPV}}</td>
+      </tr>
+      <tr>
+        <th><b>Negative Preditive Value</b> <span class="footnote">(= NPV = TN/(TN+FN))</span></th>
+        <td>{{"%.5f"%t.NPV}}</td>
+      </tr>
       <tr>
         <th><b>Recall</b> <span class="footnote">(= &rho; = TPR = sensitivity = TP/P)</span></th>
         <td>{{"%.5f"%t.recall}}</td>
@@ -411,25 +389,45 @@ c - Configuration module
         <td>{{"%.5f"%t.precision}}</td>
       </tr>
       <tr>
-        <th><b>Enrichment</b> <span class="footnote">(= precision/prevalence)</span></th>
-        <td>{{"%.5f"%t.enrichment}}</td>
-      </tr>
-      <tr>
-        <th><b>F-Measure</b> <span class="footnote">(2*&rho;*&pi;/(&rho;+&pi;))</span></th>
-        <td>{{"%.5f"%t.fmeasure}}</td>
+        <th><b>Break-Even</b> <span class="footnote">(where precision=recall)</span></th>
+        <td>{{"%.5f"%p.breakeven}}</td>
       </tr>
       <tr>
         <th><b>Weighted F-Measure</b> <span class="footnote">(1/(&alpha;/&pi;+(1-&alpha;)/&rho;))</span></th>
         <td>{{"%.5f"%t.fmeasure_alpha}}</td>
       </tr>
       <tr>
-        <th><b>Maximum Possible F-Measure</b></th>
+        <th><b>F1-Measure</b> <span class="footnote">(2*&rho;*&pi;/(&rho;+&pi;))</span></th>
+        <td>{{"%.5f"%t.fmeasure}}</td>
+      </tr>
+      <tr>
+        <th><b>Maximum F1-Measure</b></th>
         <td>{{"%.5f"%t.fmeasure_max}}</td>
+      </tr>
+      <tr>
+        <th><b>Enrichment</b> <span class="footnote">(= precision/prevalence)</span></th>
+        <td>{{"%.5f"%t.enrichment}}</td>
       </tr>
     </table>
 
     <div class="help" id="ir_help">
       <ul>
+        <li>
+          Prevalence = Proportion of data which was positive
+        </li>
+        <li>
+          Accuracy = Proportion of correct classifications
+        </li>
+        <li>
+          Error Rate = Proportion of incorrect classifications
+          (1-Accuracy).
+        </li>
+        <li>
+          PPV = Proportion of those classified positive which actually were positive
+        </li>
+        <li>
+          NPV = Proportion of those classified negative which actually were negative
+        </li>
         <li>
           Recall = Proportion of positives which were classified
           correctly (same thing as true positive rate). That is, it is
@@ -441,22 +439,27 @@ c - Configuration module
           actually were positive.
         </li>
         <li>
+          BreakEven = The break-even point, which is the value at
+          which precision equals recall (equals F1-Measure).  This is
+          value is usually somewhat lower than the maximum F1-Measure.
+        </li>
+        <li>
+          Weighted F-Measure = Parameter &alpha; weights precision or
+          recall more highly. The weighted F-Measure is used for
+          tuning the threshold.  When &alpha;=0.5, the weighted
+          F-Measure equals the F1-Measure.
+        </li> 
+        <li>
+          F1-Measure = Harmonic mean of recall and precision
+        </li>
+        <li>
+          Maximum F1-Measure = Maximum possible F1-Measure (weighted
+          F-Measure achieves this only for &alpha;=0.5).
+        </li>
+        <li>
           Enrichment = Precision over prevalence.  This is how many
           times the precision is enriched compared to a classifier
           which called everything positive.  The
-        </li>
-        <li>
-          F-Measure = Harmonic mean of recall and precision
-        </li>
-        <li>
-          Weighted F-Measure = Parameter &alpha; weights precision
-          or recall more highly. The weighted F-Measure is what is used
-          for tuning the threshold.  Weighted F-Measure = F-Measure for
-          &alpha;=0.5.
-        </li> 
-        <li>
-          Maximum F-Measure = Maximum possible F-Measure (only when
-          optimising weighted F-Measure with &alpha;=0.5)
         </li>
       </ul>
     </div>

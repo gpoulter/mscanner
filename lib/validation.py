@@ -203,8 +203,9 @@ class PerformanceStats:
         _.makeCountVectors()
         _.makeRatioVectors()
         _.makeCurveAreas()
-        idx, threshold =_.tuneThreshold()
-        _.tunedStatistics(idx)
+        _.maxFMeasurePoint()
+        _.breakEvenPoint()
+        _.tunedStatistics()
 
     def makeCountVectors(self):
         """Calculates arrays of TP, TN, FP, FN by iterating over pscores"""
@@ -245,11 +246,9 @@ class PerformanceStats:
         _.PPV = _.TP / (_.TP + _.FP) 
         _.PPV[_.TP+_.FP == 0] = 1.0
         # FM is F-Measure
-        prec = _.PPV
-        rec = _.TPR
-        _.FM = 2 * rec * prec / (rec + prec) 
+        _.FM = 2 * _.TPR * _.PPV / (_.TPR + _.PPV) 
         # FMa is the alpha-weighted F-Measures
-        _.FMa = 1 / (_.alpha / prec + (1 - _.alpha) / rec)
+        _.FMa = 1 / (_.alpha / _.PPV + (1 - _.alpha) / _.TPR)
         return _.TPR, _.FPR, _.PPV, _.FM, _.FMa
 
     def makeCurveAreas(self):
@@ -258,7 +257,7 @@ class PerformanceStats:
         # Vectorised calculations
         import numpy as n
         _.ROC_area = n.sum(0.5 * (_.TPR[1:]+_.TPR[:-1]) * n.abs(n.diff(_.FPR))) + (1.0-max(_.FPR))
-        _.PR_area = n.sum(_.PPV) / _.P
+        _.PR_area = n.sum(_.PPV) / _.P             
         # Non-vector calculation of ROC area
         #ROC_area = 0
         #for i in xrange(1,_.P):
@@ -266,18 +265,35 @@ class PerformanceStats:
         #ROC_area += (1.0-max(_.FPR))
         return _.ROC_area, _.PR_area
 
-    def tuneThreshold(self):
-        """Calculate the score threshold which results in the best
-        alpha-weighted F-Measure.  Returns the index into pscores for
-        the threshold, and the threshold itself.
+    def breakEvenPoint(self):
+        """Calculate the threshold resulting in the break-even point
+        where precision equals recall.  Returns index into pscores,
+        and the recall/precision of the break-even point.
         """
-        best_idx = 0
-        for idx in xrange(self.P):
-            if self.FMa[idx] > self.FMa[best_idx]:
-                best_idx = idx
-        return best_idx, self.pscores[best_idx]
+        _ = self
+        _.bep_index = 0
+        diff = 1.0
+        for xi in xrange(_.P):
+            if abs(_.TPR[xi]-_.PPV[xi]) < diff:
+                _.bep_index = xi
+                diff = abs(_.TPR[xi]-_.PPV[xi])
+        _.breakeven = 0.5*(_.TPR[_.bep_index]+_.PPV[_.bep_index])
+        return _.bep_index, _.breakeven
 
-    def tunedStatistics(self, index):
+    def maxFMeasurePoint(self):
+        """Calculate the threshold which results in the highest
+        alpha-weighted F-Measure.  Returns the index into pscores for
+        the threshold, and the threshold maximising F-Measure.
+        """
+        _ = self
+        _.fmax_index = 0
+        for idx in xrange(self.P):
+            if self.FMa[idx] > self.FMa[_.fmax_index]:
+                _.fmax_index = idx
+        _.threshold = self.pscores[_.fmax_index]
+        return _.fmax_index, _.threshold
+
+    def tunedStatistics(self):
         """Object contains performance statistics for a particular tuned threshold.
     
         Instance variables include:
@@ -290,11 +306,11 @@ class PerformanceStats:
         fmeasure, fmeasure_alpha, fmeasure_max,
         enrichment
         """
-        threshold = self.pscores[index]
-        TP = self.TP[index]
-        TN = self.TN[index]
-        FP = self.FP[index]
-        FN = self.FN[index]
+        threshold = self.threshold
+        TP = self.TP[self.fmax_index]
+        TN = self.TN[self.fmax_index]
+        FP = self.FP[self.fmax_index]
+        FN = self.FN[self.fmax_index]
         P = self.P
         N = self.N
         A = self.A

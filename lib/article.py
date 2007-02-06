@@ -72,7 +72,13 @@ def readPMIDs(filename, include=None, exclude=None):
                 yield pmid
                 count += 1
             else:
-                log.warn("PMID %d missing from include, or present in exclude" % pmid)
+                if include is not None and pmid not in include:
+                    fname, ext = filename.splitext()
+                    (fname+".broken"+ext).write_lines([str(pmid)],append=True)
+                elif exclude is not None and pmid in exclude:
+                    fname, ext = filename.splitext()
+                    (fname+".exclude"+ext).write_lines([str(pmid)],append=True)
+                log.warn("PMID %d excluded or not in list" % pmid)
     if count == 0:
         raise RuntimeError("Did not succeed in reading any PMIDs from %s" % filename)
 

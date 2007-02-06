@@ -165,8 +165,8 @@ def choose_query(dataset):
     c.reportdir = output / (dataset+"-query")
     if dataset == "pg04":
         pos = "pharmgkb-2004.txt"
-    elif dataset == "pg06":
-        pos = "pharmgkb-Oct06.txt"
+    elif dataset == "pg07":
+        pos = "pharmgkb-070205.txt"
     elif dataset == "aids":
         pos = "aids-bioethics-Oct06.txt"
     elif dataset == "radiology":
@@ -187,46 +187,56 @@ def choose_validation(dataset):
     import configuration as c
     c.dataset = dataset
     c.reportdir = output / (dataset+"-valid")
-    # Comparing to daniel's old method
-    if dataset == "pg04-vs-30k":
-        pos = "pharmgkb-2004.txt"
-        neg = "medline06-30k.txt"
-    elif dataset == "pg04-vs-30k-dan":
-        pos = "pharmgkb-2004.txt"
-        neg = "medline06-30k.txt"
-        c.exclude_types = ["issn"]
-        c.dodaniel = True
-    elif dataset == "pg06-vs-500k-dan":
-        pos = "pharmgkb-Oct06.txt"
-        neg = "medline06-500k.txt"
-        c.exclude_types = ["issn"]
-        c.dodaniel = True
-    elif dataset == "pg06-vs-500k-noissn":
-        pos = "pharmgkb-Oct06.txt"
-        neg = "medline06-500k.txt"
-        c.exclude_types = ["issn"]
     # Primary results
-    elif dataset == "aids-vs-500k":
+    if dataset == "aids-vs-500k":
         pos = "aids-bioethics-Oct06.txt"
-        neg = "medline06-500k.txt"
-    elif dataset == "pg06-vs-500k":
-        pos = "pharmgkb-Oct06.txt"
-        neg = "medline06-500k.txt"
+        neg = "medline07-500k.txt"
+    elif dataset == "pg07-vs-500k":
+        pos = "pharmgkb-070205.txt"
+        neg = "medline07-500k.txt"
     elif dataset == "radiology-vs-500k":
         pos = "daniel-radiology.txt"
-        neg = "medline06-500k.txt"
+        neg = "medline07-500k.txt"
     elif dataset == "random10k-vs-500k":
         pos = "random10k-06.txt"
-        neg = "medline06-500k.txt"
+        neg = "medline07-500k.txt"
+    elif dataset == "aids-vs-500k-noissn":
+        pos = "aids-bioethics-Oct06.txt"
+        neg = "medline07-500k.txt"
+        c.exclude_types = ["issn"]
+    # Comparing with Daniel on PG04
+    elif dataset == "pg04-vs-30k":
+        pos = "pharmgkb-2004.txt"
+        neg = "medline07-30k.txt"
+    elif dataset == "pg04-vs-30k-dan":
+        pos = "pharmgkb-2004.txt"
+        neg = "medline07-30k.txt"
+        c.exclude_types = ["issn"]
+        c.nfolds = 10
+        c.dodaniel = True
+    elif dataset == "pg04-vs-500k":
+        pos = "pharmgkb-2004.txt"
+        neg = "medline07-500k.txt"
+    # Comparing with Daniel on PG07
+    elif dataset == "pg07-vs-30k":
+        pos = "pharmgkb-070205.txt"
+        neg = "medline07-30k.txt"
+    elif dataset == "pg07-vs-500k-dan":
+        pos = "pharmgkb-070205.txt"
+        neg = "medline07-500k.txt"
+        c.exclude_types = ["issn"]
+        c.nfolds = 10
+        c.dodaniel = True
+    elif dataset == "pg07-vs-500k-noissn":
+        pos = "pharmgkb-070205.txt"
+        neg = "medline07-500k.txt"
+        c.exclude_types = ["issn"]
     # Other experiments
-    elif dataset == "pg06-vs-500k-loo":
-        pos = "pharmgkb-Oct06.txt"
-        neg = "medline06-500k.txt"
     elif dataset == "mscanner-vs-500k":
         pos = "mscanner-bibliography.txt"
-        neg = "medline06-500k.txt"
-    elif dataset == "pg06-vs-med06":
-        pos = "pharmgkb-Oct06.txt"
+        neg = "medline07-500k.txt"
+    elif dataset == "pg07-vs-med07":
+        pos = "pharmgkb-070205.txt"
         neg = articlelist
     elif dataset == "gdsmall-vs-sample":
         pos = "genedrug-small.txt"
@@ -234,17 +244,9 @@ def choose_validation(dataset):
     elif dataset == "gdsmall-vs-sample-dan":
         pos = "genedrug-small.txt"
         neg = articlelist
-        c.dodaniel = True
         c.exclude_types=["issn"]
-    elif dataset == "pg04-vs-go4":
-        pos = "pharmgkb-2004.txt"
-        neg = "geneontology-2004.txt"
-    elif dataset == "pg04-vs-500k":
-        pos = "pharmgkb-2004.txt"
-        neg = "medline06-500k.txt"
-    elif dataset == "pgdan-vs-500k":
-        pos = "pharmgkb-daniel.txt"
-        neg = "medline06-500k.txt"
+        c.nfolds = 10
+        c.dodaniel = True
     else:
         raise ValueError("Invalid validation dataset " + dataset)
     if not isinstance(pos, path):

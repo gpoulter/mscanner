@@ -37,17 +37,20 @@ def do_validation():
 
         # Load already-calculated scores
         if (c.reportdir/c.index_file).isfile():
-            log.info("Using cached results")
+            log.info("Using cached results for %s", c.dataset)
             positives, pscores = article.readPMIDScores(c.reportdir/c.posfile)
             negatives, nscores = article.readPMIDScores(c.reportdir/c.negfile)
 
         # Recalculate scores
         else:
-            log.info("Recalculating results")
+            log.info("Recalculating results for %s", c.dataset)
+            log.info("Reading positives")
             positives = set(article.readPMIDs(c.reportdir/c.posfile, include=featdb))
+            log.info("Reading negatives")
             negatives = list(article.readPMIDs(c.reportdir/c.negfile, exclude=positives))
             positives = numpy.array(list(positives), dtype=numpy.int32)
             negatives = numpy.array(negatives, dtype=numpy.int32)
+            log.info("Done reading")
             # Get which document ids have gene-drug assocations
             genedrug_articles = None
             if c.dogenedrug:

@@ -129,6 +129,13 @@ c - Configuration module
         </th>
         <td>{{"%.5f"%p.PR_area}}</td>
       </tr>
+      <tr>
+        <th>
+          Overlap in score densities
+          <button onclick="show('overlap_help')">?</button>
+        </th>
+        <td>{{"%.5f"%overlap}}</td>
+      </tr>
     </table>
 
     <div class="help" id="positives_help">
@@ -207,13 +214,21 @@ c - Configuration module
     </div>
 
     <div class="help" id="pr_area_help">
-      The area under the PR (Precision-Recall) curve is a global
+      The area under the Precision-Recall (PR) curve is a global
       measure of classifier performance.  The closer to 1.0, the
-      better the classifier.  The PR curve is a function of sizes of
-      the positive and negative test sets, an gets worse for larger
-      negative sets.
+      better the classifier.  Although it is independent of threshold, it 
+      still correlates with prevalence so it not directly comparable between 
+      inputs of different size.
     </div>
 
+    <div class="help" id="overlap_help">
+      The overlap between score distributions, is the area of the score 
+      density distributions (the top graph below) which overlap.  Since the area is 
+      populated by a mixture of positive and negative items, the classifier has to
+      make a tradeoff between recall and precision when choosing the decision threshold.  
+      The larger the area of overlap, the worse one can expect classifier 
+      performance to be.
+    </div>
   </div>
 
   <div class="box">

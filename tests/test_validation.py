@@ -34,7 +34,6 @@ class ValidatorTest(unittest.TestCase):
 
     def tearDown(self):
         self.prefix.rmtree(ignore_errors=True)
-        pass
 
     def testPartitionSizes(self):
         """Test that partitioning function for cross-validation"""
@@ -44,6 +43,13 @@ class ValidatorTest(unittest.TestCase):
         starts, sizes = Validator.partitionSizes(33,5)
         self.assert_((starts == [0,7,14,21,27]).all())
         self.assert_((sizes == [7,7,7,6,6]).all())
+        
+    def testMoveToFront(self):
+        """Tests the swapping function doesn't overwrite"""
+        data = numpy.arange(10)
+        Validator.moveToFront(data, 3, 3)
+        correct = numpy.array([3,4,5,0,1,2,6,7,8,9])
+        self.assert_(numpy.all(data == correct))
 
     def testCrossValidMovement(self):
         """Confirm that data is being shuffled correctly during
@@ -64,7 +70,6 @@ class ValidatorTest(unittest.TestCase):
 
     def testCrossValid(self):
         """Test that cross-validated scores are correctly calculated"""
-        return
         val = Validator(
             numfeats = 3,
             featdb = {0:[0,1,2], 1:[0,1], 2:[0,1], 3:[0,1], 4:[1,2], 5:[1,2], 6:[1,2], 7:[0,1,2]},
@@ -74,14 +79,14 @@ class ValidatorTest(unittest.TestCase):
             pseudocount = 0.1,
             randomise = False)
         pscores, nscores = val.validate()
-        print pscores
-        print nscores
-        #val.report(pscores, nscores, self.prefix, path("../lib/templates/style.css"))
+        cpscores = numpy.array([-2.39789534,  1.03609192,  1.03609192,  3.43398714])
+        cnscores = numpy.array([-3.43398714, -1.03609192, -1.03609192,  2.39789534])
+        self.assert_(numpy.allclose(pscores,cpscores,rtol=1e-3))
+        self.assert_(numpy.allclose(nscores,cnscores,rtol=1e-3))
 
     def testLeaveOutOne(self):
         """Test of leave-out-one cross validation.  Manually calculate
         scores on the articles to see if they are correct"""
-        return
         val = Validator(
             numfeats = 3,
             featdb = {0:[0,1,2], 1:[0,1], 2:[0,1], 3:[0,1], 4:[1,2], 5:[1,2], 6:[1,2], 7:[0,1,2]},
@@ -91,8 +96,10 @@ class ValidatorTest(unittest.TestCase):
             pseudocount = 0.1,
             randomise = False)
         pscores, nscores = val.validate()
-        print pscores
-        print nscores
+        cpscores = numpy.array([-2.14126396, 1.30037451, 1.30037451, 1.30037451])
+        cnscores = numpy.array([-1.30037451, -1.30037451, -1.30037451,  2.14126396])
+        self.assert_(numpy.allclose(pscores,cpscores,rtol=1e-3))
+        self.assert_(numpy.allclose(nscores,cnscores,rtol=1e-3))
 
 if __name__ == "__main__":
     unittest.main()

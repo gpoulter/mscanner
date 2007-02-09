@@ -21,7 +21,8 @@ import time
 import sys
 #Local
 from Gnuplot import Gnuplot
-import numpy
+import numpy as nx
+from scipy.integrate import trapz
 from path import path
 #MScanner
 import article
@@ -77,30 +78,30 @@ class Validator:
     def validate(self, statfile=None):
         """Carry out validation.  0 folds is taken to mean leave-out-one validation"""
         if self.nfold == 0:
-            return self.leave_out_one_validate(statfile)
+            return self.leaveOutOneValidate(statfile)
         else:
-            return self.cross_validate(statfile)
+            return self.crossValidate(statfile)
 
     @staticmethod
     def partitionSizes(nitems, nparts):
         """Returns start indeces and lengths of partitions for cross-validation"""
         base, rem = divmod(nitems, nparts)
-        sizes = base * numpy.ones(nparts, dtype=numpy.int32)
+        sizes = base * nx.ones(nparts, dtype=nx.int32)
         sizes[:rem] += 1
-        starts = numpy.zeros(nparts, dtype=numpy.int32)
-        starts[1:] = numpy.cumsum(sizes[:-1])
+        starts = nx.zeros(nparts, dtype=nx.int32)
+        starts[1:] = nx.cumsum(sizes[:-1])
         return starts, sizes
 
-    def cross_validate(self, statfile=None):
-        """Perform n-fold validation and return the raw performance measures
+    @staticmethod
+    def moveToFront(data, start, size):
+        """Swaps a portion of data to the front of the array"""
+        tmp = data[:size].copy()
+        data[:size] = data[start:start+size]
+        data[start:start+size] = tmp
 
-        Calculates term scores a la leave_one_out_validate
+    def crossValidate(self, statfile=None):
+        """Perform n-fold validation and return the raw performance measures
         """
-        def moveToFront(data, start, size):
-            """Swaps a portion of data to the front of the array"""
-            tmp = data[:size].copy()
-            data[:size] = data[start:start+size]
-            data[start:start+size] = tmp
         log.info("%d pos and %d neg articles", len(self.pos), len(self.neg))
         if self.randomise:
             random.shuffle(self.pos)
@@ -109,8 +110,8 @@ class Validator:
         neg = self.neg.copy()
         pstarts, psizes = self.partitionSizes(len(pos), self.nfold)
         nstarts, nsizes = self.partitionSizes(len(neg), self.nfold)
-        pscores = numpy.zeros(len(pos), dtype=numpy.float32)
-        nscores = numpy.zeros(len(neg), dtype=numpy.float32)
+        pscores = nx.zeros(len(pos), dtype=nx.float32)
+        nscores = nx.zeros(len(neg), dtype=nx.float32)
         pcounts = article.countFeatures(self.numfeats, self.featdb, pos)
         ncounts = article.countFeatures(self.numfeats, self.featdb, neg)
         for fold, (pstart,psize,nstart,nsize) in enumerate(zip(pstarts,psizes,nstarts,nsizes)):
@@ -118,8 +119,8 @@ class Validator:
             if statfile is not None:
                 statfile.update(fold+1, self.nfold)
             # Move the test fold to the front 
-            moveToFront(pos, pstart, psize)
-            moveToFront(neg, nstart, nsize)
+            self.moveToFront(pos, pstart, psize)
+            self.moveToFront(neg, nstart, nsize)
             log.debug("pstart = %d, psize = %s, nstart = %d, nsize = %d", pstart, psize, nstart, nsize)
             #log.debug("POS %s %s", repr(pos[:psize]), repr(pos[psize:]))
             #log.debug("NEG %s %s", repr(neg[:nsize]), repr(neg[nsize:]))
@@ -135,19 +136,19 @@ class Validator:
                 temp_pcounts, temp_ncounts, len(pos)-psize, len(neg)-nsize,
                 self.pseudocount, self.mask, self.daniel)
             # Calculate the article scores for the test fold
-            pscores[pstart:pstart+psize] = [numpy.sum(termscores[self.featdb[d]]) for d in pos[:psize]]
-            nscores[nstart:nstart+nsize] = [numpy.sum(termscores[self.featdb[d]]) for d in neg[:nsize]]
+            pscores[pstart:pstart+psize] = [nx.sum(termscores[self.featdb[d]]) for d in pos[:psize]]
+            nscores[nstart:nstart+nsize] = [nx.sum(termscores[self.featdb[d]]) for d in neg[:nsize]]
         return pscores, nscores
     
-    def leave_out_one_validate(self, statfile=None):
+    def leaveOutOneValidate(self, statfile=None):
         """Carries out leave-out-one validation, returning the resulting scores.
 
         @note: Does not support 'daniel' scoring method
         """
         pcounts = article.countFeatures(self.numfeats, self.featdb, self.pos)
         ncounts = article.countFeatures(self.numfeats, self.featdb, self.neg)
-        pscores = numpy.zeros(len(self.pos), dtype=numpy.float32)
-        nscores = numpy.zeros(len(self.neg), dtype=numpy.float32)
+        pscores = nx.zeros(len(self.pos), dtype=nx.float32)
+        nscores = nx.zeros(len(self.neg), dtype=nx.float32)
         pdocs = len(self.pos)
         ndocs = len(self.neg)
         ps = self.pseudocount
@@ -171,9 +172,12 @@ class Validator:
         return pscores, nscores
 
 class PerformanceStats:
-    """Calculates and stores performance statistics. There are arrays
-    of TPR, FPR, PPV, FM, FMa for graphing, and counts P, N, A.
+    """Calculates and stores performance statistics.
 
+    P, N, A, pscores, nscores, alpha,
+    TP, FN, FP, FN, TPR, FPR, PPV, FM, FMa, 
+    ROC_area, PR_area, 
+    
     @ivar tuned: Object with tuned performance statistics (see tunedStatistics)
     """
 
@@ -188,8 +192,6 @@ class PerformanceStats:
         @param alpha: Alpha parameter to balance recall and
         precision in FM_alpha.  Defaults to 0.5, producing harmonic
         mean of recall and precision (F-Measure)
-
-        @return: TPR, FPR, PPV, FM, FMa, ROC_area, PR_area, ThresholdIndex, Threshold, TP, FN, TN, FP, 
         """
         _ = self
         _.alpha = alpha
@@ -210,7 +212,7 @@ class PerformanceStats:
     def makeCountVectors(self):
         """Calculates arrays of TP, TN, FP, FN by iterating over pscores"""
         _ = self
-        z = numpy.zeros(_.P, dtype=numpy.float32)
+        z = nx.zeros(_.P, dtype=nx.float32)
         _.TP = z.copy() # true positives
         _.TN = z.copy() # true negatives
         _.FP = z.copy() # false positives
@@ -237,7 +239,7 @@ class PerformanceStats:
     def makeRatioVectors(self):
         """Calculate arrays of TPR, FPR, PPV, FM, FMa"""
         _ = self
-        z = numpy.zeros(_.P, dtype=numpy.float32)
+        z = nx.zeros(_.P, dtype=nx.float32)
         # TPR is recall
         _.TPR = _.TP / _.P
         # FPR is 1-specificity
@@ -254,29 +256,22 @@ class PerformanceStats:
     def makeCurveAreas(self):
         """Calculate areas under ROC and precision-recall curves"""
         _ = self
-        # Vectorised calculations
-        import numpy as n
-        _.ROC_area = n.sum(0.5 * (_.TPR[1:]+_.TPR[:-1]) * n.abs(n.diff(_.FPR))) + (1.0-max(_.FPR))
-        _.PR_area = n.sum(_.PPV) / _.P             
-        # Non-vector calculation of ROC area
-        #ROC_area = 0
-        #for i in xrange(1,_.P):
-        #    ROC_area += 0.5 * (_.TPR[i]+_.TPR[i-1]) * abs(_.FPR[i]-_.FPR[i-1])
-        #ROC_area += (1.0-max(_.FPR))
+        # Note that trapz expects y, x TPR is decreasing, so we reverse the
+        # vectors to present it in standard increasing form. ROC_area is
+        # calculated as 1 - remaining area, since TPR covers 0.0 to 1.0 but FPR
+        # does not, meaning we must use TPR on the x-axis instead of FPR.
+        _.ROC_area = 1.0 - trapz(_.FPR[::-1], _.TPR[::-1])
+        _.PR_area = trapz(_.PPV[::-1], _.TPR[::-1])
         return _.ROC_area, _.PR_area
-
+    
     def breakEvenPoint(self):
         """Calculate the threshold resulting in the break-even point
         where precision equals recall.  Returns index into pscores,
         and the recall/precision of the break-even point.
         """
         _ = self
-        _.bep_index = 0
-        diff = 1.0
-        for xi in xrange(_.P):
-            if abs(_.TPR[xi]-_.PPV[xi]) < diff:
-                _.bep_index = xi
-                diff = abs(_.TPR[xi]-_.PPV[xi])
+        diff = nx.absolute(nx.subtract(_.TPR, _.PPV))
+        _.bep_index = nx.nonzero(diff == nx.min(diff))[0][0]
         _.breakeven = 0.5*(_.TPR[_.bep_index]+_.PPV[_.bep_index])
         return _.bep_index, _.breakeven
 
@@ -286,10 +281,7 @@ class PerformanceStats:
         the threshold, and the threshold maximising F-Measure.
         """
         _ = self
-        _.fmax_index = 0
-        for idx in xrange(self.P):
-            if self.FMa[idx] > self.FMa[_.fmax_index]:
-                _.fmax_index = idx
+        _.fmax_index = nx.nonzero(_.FMa == nx.max(_.FMa))[0][0]
         _.threshold = self.pscores[_.fmax_index]
         return _.fmax_index, _.threshold
 
@@ -297,7 +289,7 @@ class PerformanceStats:
         """Object contains performance statistics for a particular tuned threshold.
     
         Instance variables include:
-        index, threshold,
+        threshold,
         TP, FP, TN, FN,
         P, N, A, T, F,
         TPR, FNR, TNR, FPR, PPV, NPV,
@@ -377,8 +369,7 @@ def report(pos, neg, pscores, nscores, featmap, featdb, configuration):
         daniel = c.dodaniel
         )
     feature_info.writeFeatureScoresCSV(codecs.open(rd/c.term_scores_name,"wb","utf-8"))
-    #self.plotHistograms(gp, rd/c.hist_img, pscores, nscores, p.tuned.threshold)
-    plotting.plotPDF(
+    overlap, iX, iY = plotting.plotPDF(
         gp, rd/c.hist_img, p.pscores, p.nscores, p.tuned.threshold)
     plotting.plotROC(
         gp, rd/c.roc_img, p.FPR, p.TPR, p.tuned.FPR)
@@ -389,6 +380,7 @@ def report(pos, neg, pscores, nscores, featmap, featdb, configuration):
     # Write main index file for validation output
     templates.validation.run(dict(
         time = time.strftime("%Y-%m-%d %H:%M:%S"),
+        overlap = overlap,
         p = p,
         t = p.tuned,
         f = feature_info,

@@ -20,6 +20,11 @@ result = server.specialSearch(SOAPpy.intType(search_code))
 if len(result) == 0:
     raise RuntimeError("No results found!")
 else:
-    print "# %s PharmGKB evidence PubMed IDs" % len(result)
+    fname = "pharmgkb-pmids.txt"
+    print "# %d PharmGKB PMIDs, going to %s" % (len(result), fname)
+    f = file(fname,"w")
     for r in result:
         print r[7]
+        f.write(r[7]+"\n")
+    f.close()
+        

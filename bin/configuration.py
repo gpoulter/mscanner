@@ -204,6 +204,7 @@ def choose_validation(dataset):
         pos = "aids-bioethics-Oct06.txt"
         neg = "medline07-500k.txt"
         c.exclude_types = ["issn"]
+        
     # Comparing with Daniel on PG04
     elif dataset == "pg04-vs-30k":
         pos = "pharmgkb-2004.txt"
@@ -217,6 +218,7 @@ def choose_validation(dataset):
     elif dataset == "pg04-vs-500k":
         pos = "pharmgkb-2004.txt"
         neg = "medline07-500k.txt"
+        
     # Comparing with Daniel on PG07
     elif dataset == "pg07-vs-30k":
         pos = "pharmgkb-070205.txt"
@@ -231,6 +233,7 @@ def choose_validation(dataset):
         pos = "pharmgkb-070205.txt"
         neg = "medline07-500k.txt"
         c.exclude_types = ["issn"]
+        
     # Other experiments
     elif dataset == "mscanner-vs-500k":
         pos = "mscanner-bibliography.txt"

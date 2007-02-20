@@ -1,5 +1,3 @@
-#!env python
-
 from article import *
 import numpy
 from path import path
@@ -38,7 +36,7 @@ class FeatureMappingTests(TempFileTestCase):
         self.assertEqual(fm.getFeatureIds(["A","C"],"T",True), [2,3])
         self.assertEqual(fm.getFeatures([0,1,2,3]), [("A","Q"), ("B","Q"),("A","T"),("C","T")])
         self.assertEqual(fm[1], ("B","Q"))
-        self.assert_(numpy.all(fm.freqs == [1,1,1,1]))
+        self.assert_(numpy.all(fm.counts == [1,1,1,1]))
         fm.dump()
         fm.load()
         fm.dump()
@@ -58,7 +56,7 @@ class ArticleTests(TempFileTestCase):
         self.assert_(numpy.all(counts == [0,1,2,2,1]))
 
     def testReadPMIDFile(self):
-        self.fn.write_lines(["1 10", "2 20 blah", "3 30", "4 40", "5 50"])
+        self.fn.write_lines(["# comment", "1 10", "2 20 blah", "3 30", "4 40", "5 50"])
         includes = [1,2,3,4]
         excludes = [1]
         pmids = list(readPMIDs(self.fn, includes, excludes, withscores=False))

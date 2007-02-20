@@ -1,5 +1,3 @@
-#!env python
-
 from article import Article
 from path import path
 import unittest

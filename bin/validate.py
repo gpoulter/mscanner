@@ -38,18 +38,22 @@ def do_validation():
         # Load already-calculated scores
         if (c.reportdir/c.index_file).isfile():
             log.info("Using cached results for %s", c.dataset)
-            positives, pscores = article.readPMIDScores(c.reportdir/c.posfile)
-            negatives, nscores = article.readPMIDScores(c.reportdir/c.negfile)
+            positives, pscores = zip(*article.readPMIDs(c.reportdir/c.posfile, withscores=True))
+            negatives, nscores = zip(*article.readPMIDs(c.reportdir/c.negfile, withscores=True))
+            positives = numpy.array(positives, numpy.int32)
+            pscores = numpy.array(pscores, numpy.float32)
+            negatives = numpy.array(negatives, numpy.int32)
+            nscores = numpy.array(nscores, numpy.float32)
 
         # Recalculate scores
         else:
             log.info("Recalculating results for %s", c.dataset)
             log.info("Reading positives")
-            positives = set(article.readPMIDs(c.reportdir/c.posfile, include=featdb))
+            positives = list(article.readPMIDs(c.reportdir/c.posfile, include=featdb))
             log.info("Reading negatives")
-            negatives = list(article.readPMIDs(c.reportdir/c.negfile, exclude=positives))
-            positives = numpy.array(list(positives), dtype=numpy.int32)
-            negatives = numpy.array(negatives, dtype=numpy.int32)
+            negatives = list(article.readPMIDs(c.reportdir/c.negfile, exclude=set(positives)))
+            positives = numpy.array(positives, numpy.int32)
+            negatives = numpy.array(negatives, numpy.int32)
             log.info("Done reading")
             # Get which document ids have gene-drug assocations
             genedrug_articles = None
@@ -77,8 +81,8 @@ def do_validation():
                 mask = featmap.featureTypeMask(c.exclude_types)
                 )
             pscores, nscores = val.validate(statfile)
-            article.writePMIDScores(c.reportdir/c.posfile, positives, pscores)
-            article.writePMIDScores(c.reportdir/c.negfile, negatives, nscores)
+            article.writePMIDScores(c.reportdir/c.posfile, izip(positives, pscores))
+            article.writePMIDScores(c.reportdir/c.negfile, izip(negatives, nscores))
 
         # Output performance statistics
         log.debug("Writing performance statistics")

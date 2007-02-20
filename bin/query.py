@@ -28,6 +28,7 @@ import dbexport
 import article
 import genedrug
 import medline
+import numpy
 import scoring
 
 def do_query():
@@ -36,11 +37,11 @@ def do_query():
     statfile = article.StatusFile(c.statfile, c.dataset)
     try:
         # Load article information
-        featdb = medline.FeatureDatabase(c.featuredb, 'r') # Doc ID -> Feature IDs 
+        featdb = medline.FeatureDatabase(c.featuredb, 'r')
         statfile.update(0, len(featdb)) 
-        featmap = article.FeatureMapping(c.featuremap) # Feature name <-> (feature ID, feature Type)
-        artdb = dbshelve.open(c.articledb, 'r') # Doc ID -> Article
-        input_pmids = set(article.readPMIDs(c.reportdir/c.posfile, include=featdb)) # set of doc IDs
+        featmap = article.FeatureMapping(c.featuremap)
+        artdb = dbshelve.open(c.articledb, 'r')
+        input_pmids = set(article.readPMIDs(c.reportdir/c.posfile, include=featdb))
 
         # Calculate feature score information
         pos_counts = article.countFeatures(len(featmap), featdb, input_pmids)
@@ -53,39 +54,29 @@ def do_query():
         # Load saved results
         if (c.reportdir/c.index_file).isfile():
             log.info("Loading saved results")
-            input_pmids, input_scores = article.readPMIDScores(c.reportdir/c.posfile)
-            result_pmids, result_scores = article.readPMIDScores(c.reportdir/c.query_results_name)
+            inputs = article.readPMIDScores(c.reportdir/c.posfile, withscores=True)
+            results = article.readPMIDScores(c.reportdir/c.query_results_name, withscores=True)
         # Recalculate results
         else:
             log.info("Recalculating results")
             # Calculate and write result scores
             queryids = ((k,v) for k,v in featdb.iteritems() if int(k) not in input_pmids)
-            result_pmids, result_scores = scoring.filterDocuments( \
-                queryids, feature_info.scores, c.limit, c.threshold, statfile)
-            article.writePMIDScores(c.reportdir/c.query_results_name, result_pmids, result_scores)
+            results = scoring.filterDocuments(queryids, feature_info.scores, c.limit, c.threshold, statfile)
+            article.writePMIDScores(c.reportdir/c.query_results_name, results)
             # Calculate and write input scores
-            input_pmids = list(input_pmids)
-            input_scores = [numpy.sum(feature_info.scores[featdb[d]]) for d in input_pmids]
-            article.writePMIDScores(c.reportdir/c.posfile, input_pmids, input_scores)
+            inputs = [ (pmid,numpy.sum(feature_info.scores[featdb[pmid]])) for pmid in input_pmids ]
+            article.writePMIDScores(c.reportdir/c.posfile, inputs)
 
         # Write result report
         log.debug("Writing report")
-        scoring.writeReport(
-            input_pmids,
-            input_scores,
-            result_pmids,
-            result_scores,
-            feature_info,
-            configuration = c,
-            artdb = artdb
-            )
+        scoring.writeReport(inputs, results, feature_info, c, artdb)
 
         # Export to database
         if c.outputdb is not None:
             log.debug("Getting gene-drug associations on results")
             gdfilter = genedrug.getGeneDrugFilter(c.genedrug, c.drugtable, c.gapscore)
             gdarticles = []
-            for pmid in chain(result_pmids, input_pmids):
+            for pmid, score in chain(results, inputs):
                 a = artdb[str(pmid)]
                 a.genedrug = gdfilter(a)
                 if len(a.genedrug) > 0:
@@ -110,6 +101,6 @@ if __name__ == "__main__":
             pseudocount = float(sys.argv[2]),
             limit = int(sys.argv[3]),
             threshold = float(sys.argv[4]),
-            pos = path(sys.argv[5]),
+            pos = path(sys.argv[5])
             )
     do_query()

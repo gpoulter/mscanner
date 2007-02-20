@@ -1,5 +1,3 @@
-#!env python
-
 import tempfile
 from path import path
 from random import seed

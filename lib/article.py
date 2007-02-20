@@ -3,16 +3,17 @@
 @author: Graham Poulter
                                      
 
-countFeatures() -- Get feature occurrence counts over a set of documents
-readPMIDFile() -- Get PMIDs reliably from a text file
-getArticles() -- Retrieve Articles from a DB, caching results in a Pickle
-makeBackup() -- Create a .recovery file
-removeBackup() -- Remove a .recovery file
-
 StatusFile -- One way posting of program status to a file
 Article -- Stores attributes of an article
 FileTracker -- Track processed files (to avoid re-parsing), with on-disk persistence
 FeatureMapping -- Mapping between string features and 16-bit feature IDs
+
+countFeatures() -- Get feature occurrence counts over a set of documents
+getArticles() -- Retrieve Articles from a DB, caching results in a Pickle
+readPMIDs() -- Get PMIDs (and scores too) from a text file
+makeBackup() -- Create a .recovery file
+removeBackup() -- Remove a .recovery file
+
 
 """
 
@@ -46,7 +47,7 @@ def countFeatures(nfeats, featdb, docids):
         counts[featdb[docid]] += 1
     return counts
 
-def readPMIDs(filename, include=None, exclude=None):
+def readPMIDs(filename, include=None, exclude=None, withscores=False):
     """Read PubMed IDs one per line from filename.
 
     @param filename: Path to file containing one PubMed ID per line,
@@ -54,54 +55,48 @@ def readPMIDs(filename, include=None, exclude=None):
     lines and lines starting with #, and only parses the line up to
     the first whitespace character.
 
-    @param allpmids: Only return PubMed IDs which are members of this
-    set
+    @param include: Only return members of this set
 
-    @param exclude: Do not return PubMed IDs which are members of this
-    set
+    @param exclude: Do not return members of this set
+    
+    @param withscores: Also read the score after the PubMed ID on each line.
+    
+    @returns: An iterator over PubMed ID, or (PubMed ID, Score) if withscores==True
     """
     if not isinstance(filename,path) or not filename.exists():
         raise ValueError("File %s does not exist" % filename)
     count = 0
     for line in file(filename, "r"):
-        if line.strip() != "" and not line.startswith("#"):
-            splits = line.strip().split()
-            pmid = int(splits[0])
-            if (include is None or pmid in include) and \
-            (exclude is None or pmid not in exclude):
-                yield pmid
-                count += 1
-            else:
-                if include is not None and pmid not in include:
-                    fname, ext = filename.splitext()
-                    (fname+".broken"+ext).write_lines([str(pmid)],append=True)
-                elif exclude is not None and pmid in exclude:
-                    fname, ext = filename.splitext()
-                    (fname+".exclude"+ext).write_lines([str(pmid)],append=True)
-                log.warn("PMID %d excluded or not in list" % pmid)
+        sline = line.strip()
+        if sline == "" or sline.startswith("#"):
+            continue
+        splits = sline.split()
+        pmid = int(splits[0])
+        if include is not None and pmid not in include:
+            fname, ext = filename.splitext()
+            (fname+".broken"+ext).write_lines([str(pmid)],append=True)
+            log.warn("PMID %d is not a member of include" % pmid)
+            continue
+        if exclude is not None and pmid in exclude:
+            fname, ext = filename.splitext()
+            (fname+".exclude"+ext).write_lines([str(pmid)],append=True)
+            log.warn("PMID %d is a member of exclude" % pmid)
+            continue
+        if withscores:
+            yield pmid, float(splits[1])
+        else:
+            yield pmid
+        count += 1
     if count == 0:
         raise RuntimeError("Did not succeed in reading any PMIDs from %s" % filename)
 
-def readPMIDScores(filename):
-    """Read a file of PubMed IDs and associated scores
-
-    @returns: An array of PubMed IDs and an array of scores
+def writePMIDScores(filename, pairs):
+    """Write PubMed IDs and their scores to a file
+    
+    @pairs: Iteratable over (PubMed ID, Score) pairs
     """
-    if not isinstance(filename,path) or not filename.exists():
-        raise ValueError("File %s does not exist" % filename)
-    pmids = []
-    scores = []
-    for line in file(filename, "r"):
-        if line.strip() != "" and not line.startswith("#"):
-            splits = line.strip().split()
-            pmids.append(int(splits[0]))
-            scores.append(float(splits[1]))
-    return numpy.array(pmids,dtype=numpy.int32), numpy.array(scores,dtype=numpy.float32),
-
-def writePMIDScores(filename, pmids, scores):
-    """Write PubMed IDs and their scores to a file"""
-    filename.write_lines("%d %f" % x for x in \
-                         sorted(izip(pmids, scores), key=lambda x:x[1], reverse=True))
+    oscores = sorted(pairs, key=lambda x:x[1], reverse=True)
+    filename.write_lines("%d %f" % x for x in oscores)
 
 def runMailer(smtp_server, mailer):
     """Read e-mail addresses from mail file and send them a
@@ -282,7 +277,7 @@ class FeatureMapping:
             self.load()
         
     def load(self):
-        """Load featur mapping mapping from file
+        """Load feature mapping mapping from file
 
         @note: file format is '%(feature)\t%(type)\t%(count)\n'
         """
@@ -375,16 +370,10 @@ class FeatureMapping:
         return result
 
 class Article:
-    """A simple wrapper for parsed Medline articles
+    """A simple wrapper for parsed Medline articles.
+    
+    Instance variables are same as the constructor parameters.
 
-    @ivar pmid: Integer PubMed ID or MEDLINE UI of the article.
-    @ivar title: Title of the article
-    @ivar abstract: Abstract of the article
-    @ivar journal: Medline abbreviated journal title
-    @ivar issn: ISSN code for the journal
-    @ivar year: Year of publication
-    @ivar meshterms: Set of Mesh terms associated with article.
-    @ivar authors: Set of (initials,lastname) pairs of article authors
     """
     def __init__(self,
                  pmid=0,
@@ -395,6 +384,18 @@ class Article:
                  year=0,
                  meshterms=None,
                  authors=None):
+        """
+        Initialise a new article with the given parameters.
+        
+        @param pmid: Integer PubMed ID or MEDLINE UI of the article.
+        @param title: Title of the article
+        @param abstract: Abstract of the article
+        @param journal: Medline abbreviated journal title
+        @param issn: ISSN code for the journal
+        @param year: Year of publication
+        @param meshterms: Set of Mesh terms associated with article.
+        @param authors: Set of (initials,lastname) pairs of article authors
+        """
         self.pmid = int(pmid)
         self.title = title
         self.abstract = abstract

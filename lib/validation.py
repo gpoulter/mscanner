@@ -86,9 +86,9 @@ class Validator:
     def partitionSizes(nitems, nparts):
         """Returns start indeces and lengths of partitions for cross-validation"""
         base, rem = divmod(nitems, nparts)
-        sizes = base * nx.ones(nparts, dtype=nx.int32)
+        sizes = base * nx.ones(nparts, nx.int32)
         sizes[:rem] += 1
-        starts = nx.zeros(nparts, dtype=nx.int32)
+        starts = nx.zeros(nparts, nx.int32)
         starts[1:] = nx.cumsum(sizes[:-1])
         return starts, sizes
 
@@ -110,8 +110,8 @@ class Validator:
         neg = self.neg.copy()
         pstarts, psizes = self.partitionSizes(len(pos), self.nfold)
         nstarts, nsizes = self.partitionSizes(len(neg), self.nfold)
-        pscores = nx.zeros(len(pos), dtype=nx.float32)
-        nscores = nx.zeros(len(neg), dtype=nx.float32)
+        pscores = nx.zeros(len(pos), nx.float32)
+        nscores = nx.zeros(len(neg), nx.float32)
         pcounts = article.countFeatures(self.numfeats, self.featdb, pos)
         ncounts = article.countFeatures(self.numfeats, self.featdb, neg)
         for fold, (pstart,psize,nstart,nsize) in enumerate(zip(pstarts,psizes,nstarts,nsizes)):
@@ -147,29 +147,48 @@ class Validator:
         """
         pcounts = article.countFeatures(self.numfeats, self.featdb, self.pos)
         ncounts = article.countFeatures(self.numfeats, self.featdb, self.neg)
-        pscores = nx.zeros(len(self.pos), dtype=nx.float32)
-        nscores = nx.zeros(len(self.neg), dtype=nx.float32)
+        pscores = nx.zeros(len(self.pos), nx.float32)
+        nscores = nx.zeros(len(self.neg), nx.float32)
         pdocs = len(self.pos)
         ndocs = len(self.neg)
+        mask = None
+        ignore_unknowns = True
+        if ignore_unknowns:
+            mask = (pcounts<=1) & (ncounts<=1)
+        else:
+            mask = nx.zeros(self.numfeats, nx.bool)
+        if self.mask is not None:
+            mask |= self.mask
         ps = self.pseudocount
         marker = 0
         if not statfile:
             marker = pdocs+ndocs+1
         for idx, doc in enumerate(self.pos):
             if idx == marker:
-                statfile.update(idx, pdocs+ndocs)
+                statfile.update(marker, pdocs+ndocs)
                 marker += (pdocs+ndocs)/20
             pscores[idx] = sum(
                 math.log(((pcounts[f]-1+ps)/(pdocs-1+2*ps))/((ncounts[f]+ps)/(ndocs+2*ps))) for
-                f in self.featdb[doc] if self.mask is None or not self.mask[f])
+                f in self.featdb[doc] if not mask[f])
         for idx, doc in enumerate(self.neg):
             if pdocs+idx == marker:
-                statfile.update(pdocs+idx, pdocs+ndocs)
+                statfile.update(marker, pdocs+ndocs)
                 marker += (pdocs+ndocs)/20
             nscores[idx] = sum(
                 math.log(((pcounts[f]+ps)/(pdocs+2*ps))/((ncounts[f]-1+ps)/(ndocs-1+2*ps))) for
-                f in self.featdb[doc] if self.mask is None or not self.mask[f])
+                f in self.featdb[doc] if not mask[f])
         return pscores, nscores
+
+def classDictionary(dictionary, exclude):
+    """Converts a dictionary to a class with attributes of the dictionary keys,
+    deleting those attributes listed in exclude."""
+    class Empty: pass
+    result = Empty()
+    result.__dict__.update(dictionary)
+    for attr in exclude:
+        if hasattr(result, attr):
+            delattr(result, attr)
+    return result
 
 class PerformanceStats:
     """Calculates and stores performance statistics.
@@ -212,7 +231,7 @@ class PerformanceStats:
     def makeCountVectors(self):
         """Calculates arrays of TP, TN, FP, FN by iterating over pscores"""
         _ = self
-        z = nx.zeros(_.P, dtype=nx.float32)
+        z = nx.zeros(_.P, nx.float32)
         _.TP = z.copy() # true positives
         _.TN = z.copy() # true negatives
         _.FP = z.copy() # false positives
@@ -239,7 +258,7 @@ class PerformanceStats:
     def makeRatioVectors(self):
         """Calculate arrays of TPR, FPR, PPV, FM, FMa"""
         _ = self
-        z = nx.zeros(_.P, dtype=nx.float32)
+        z = nx.zeros(_.P, nx.float32)
         # TPR is recall
         _.TPR = _.TP / _.P
         # FPR is 1-specificity
@@ -334,12 +353,8 @@ class PerformanceStats:
         if prevalence > 0:
             enrichment = precision / prevalence
         # Return local variables as members of an object
-        class Empty: pass
-        self.tuned = Empty()
-        self.tuned.__dict__.update(locals())
-        del self.tuned.self
-        del self.tuned.Empty
-        return self.tuned
+        self.tuned = classDictionary(locals(), ["self"])
+        return self.tuned 
 
 def report(pos, neg, pscores, nscores, featmap, featdb, configuration):
     """Write a full validation report

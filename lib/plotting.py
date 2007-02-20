@@ -25,7 +25,16 @@ def calculateOverlap(px, py, nx, ny):
     interidx = n.nonzero(diffs == n.min(diffs))[0][0]
     iY = n.concatenate((pY[:interidx],nY[interidx:]))
     area = trapz(iY,X)
-    return area, X[iY != 0], iY[iY != 0]
+    include = iY != 0
+    ingraph = False
+    for idx in xrange(len(iY)):
+        if not ingraph and include[idx]:
+            include[idx-1] = True
+            ingraph = True
+        if ingraph and not include[idx]:
+            include[idx] = True
+            break
+    return area, X[include], iY[include]
 
 def kernelPDF(values, npoints=512):
     """Given 1D values, return an approximate probability density function

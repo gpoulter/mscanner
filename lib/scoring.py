@@ -3,7 +3,7 @@
 @author: Graham Poulter
                                    
 
-FeatureScores -- Class containing all information about feature scores
+FeatureScoreInfo -- Contains all information about feature scores
 calculateFeatureScores() -- Calculate scores of features
 filterDocuments() -- Return list of (docid,score) paris given documents and term scores
 writeReport() -- Collate results of a query (calls all of above)
@@ -13,6 +13,7 @@ from __future__ import division
 from itertools import chain, izip
 from path import path
 import codecs
+import heapq
 import templates
 import article
 import numpy
@@ -20,7 +21,27 @@ import time
 
 class FeatureScoreInfo:
     """Class to calculate and store all information about the
-    features, their distribution, and their scores"""
+    features, their distribution, and their scores
+    
+    @ivar scores: Array of feature scores
+
+    @ivar mask: Boolean array to mask out features of types in exclude_feats
+    
+    @ivar pos_occurrences: Total feature occurrences in positives
+
+    @ivar neg_occurrences: Total feature occurrences in negatives
+
+    @ivar feats_per_pos: Number of features per positive article
+
+    @ivar feats_per_neg: Number of features per negative article
+
+    @ivar distinct_feats: Number of distinct features
+
+    @ivar pos_distinct_feats: Number of of distinct features in positives
+
+    @ivar neg_distinct_feats: Number of of distinct features in negatives
+    
+    """
 
     def __init__(self, pos_counts, neg_counts, pdocs, ndocs,
                  pseudocount, featmap, exclude_types=None, daniel=False):
@@ -28,25 +49,10 @@ class FeatureScoreInfo:
 
         @param featmap: Mapping between Feature ID and (feature string, feature type)
 
-        @param exclude_types: Types of features to exclude (mask is calculated from this and featmap)
-
-        @ivar scores: Array of feature scores
-
-        @ivar mask: Boolean array to mask out features of types in exclude_feats
-
-        @ivar pos_occurrences: Total feature occurrences in positives
-
-        @ivar neg_occurrences: Total feature occurrences in negatives
-
-        @ivar feats_per_pos: Number of features per positive article
-
-        @ivar feats_per_neg: Number of features per negative article
-
-        @ivar distinct_feats: Number of distinct features
-
-        @ivar pos_distinct_feats: Number of of distinct features in positives
-
-        @ivar neg_distinct_feats: Number of of distinct features in negatives
+        @param exclude_types: Types of features to exclude. Features of this
+        type are or'd to the mask, where the default mask is those feature which
+        have pos_counts[i] and neg_counts[i] equal to zero.
+ 
         """
         self.pos_counts = pos_counts
         self.neg_counts = neg_counts
@@ -56,7 +62,6 @@ class FeatureScoreInfo:
         self.featmap = featmap
         self.exclude_types = exclude_types
         self.daniel = daniel
-        # Calculate masked features
         self.num_feats = len(self.featmap)
         self.mask = featmap.featureTypeMask(self.exclude_types)
         self.recalculateFeatureScores()
@@ -107,10 +112,9 @@ def calculateFeatureScores(
     @param pdocs: Number of positive documents
     @param ndocs: Number of negative documents
 
-    @param pseudocount: Pseudocount for each term, e.g. if 0.1, we
-    pretend that each term has an additional 0.1 occurrences across
-    the articles, adding 2*0.1 to the number of articles so that
-    P(term|positive)+P(~term|positive)=1
+    @param pseudocount: Pseudocount for each term, e.g. if 0.1, we add 0.1
+    occurrences across of the term, and add 0.2 (2*0.1) to the number of
+    articles so that P(term|positive)+P(~term|positive)=1
 
     @param mask: Booolean array specifiying features to mask to zero
 
@@ -134,14 +138,19 @@ def calculateFeatureScores(
     scores = numpy.log(pfreqs / nfreqs)
     if mask is not None:
         scores[mask] = 0
+    ## Uncomment to exclude "prior scores" on features we haven't encountered
+    #dmask = (pos_counts + neg_counts == 0)
+    #pfreqs[dmask] = 0
+    #nfreqs[dmask] = 0
+    #scores[dmask] = 0
     return scores, pfreqs, nfreqs
 
 def filterDocuments(docs, featscores, limit=10000, threshold=0.0, statfile=None):
     """Return scores for documents given features and feature scores
 
-    @param docs: Iteratable over (doc ID, feature ID list) pairs
+    @param docs: Iterable over (doc ID, array of feature ID) pairs
 
-    @param featscores: Mapping from feature ID to score
+    @param featscores: Array of feature scores (mapping feature ID to score)
 
     @param limit: Maximum number of results to return.
 
@@ -151,10 +160,8 @@ def filterDocuments(docs, featscores, limit=10000, threshold=0.0, statfile=None)
 
     @return: Generator over (docid,score) pairs
     """
-    results = list()
+    results = [(-100000, 0)] * limit
     ndocs = 0
-    results = [ (-100000, 0) for i in range(limit) ]
-    from heapq import heapreplace
     for idx, (docid, features) in enumerate(docs):
         if statfile is not None and idx % 100000 == 0:
             statfile.update(idx)
@@ -163,50 +170,43 @@ def filterDocuments(docs, featscores, limit=10000, threshold=0.0, statfile=None)
             #print idx, docid, score
             ndocs += 1
             if score >= results[0][0]:
-                heapreplace(results, (score,int(docid)))
+                heapq.heapreplace(results, (score,int(docid)))
     if statfile is not None:
         statfile.update(None)
-    results.sort(reverse=True)
     if ndocs < limit:
-        del results[ndocs:]
-    return numpy.array([pmid for score,pmid in results],dtype=numpy.int32), \
-           numpy.array([score for score,pmid in results],dtype=numpy.float32)
+        limit = ndocs
+    return [(pmid,score) for score,pmid in heapq.nlargest(limit, results)]
 
-def writeReport(
-    input_pmids,
-    input_scores,
-    result_pmids,
-    result_scores,
-    feature_info,
-    configuration,
-    artdb):
+def writeReport(input, output, feature_info, configuration, artdb):
     """Write a report using the results of the classifier
-    @param input_pmids: Input PubMed IDs
-    @param input_pmids: Input scores
-    @param result_pmids: Result PubMed IDs
-    @param result_scores: Result scores
+    @param input: Iterator over (PubMed ID, Score)
+    @param output: Iterator over (PubMed ID, Score)
     @param feature_info: A FeatureScoreInfo object with information about features
     @param configuration: Configuration module with remaining parameters
     @param artdb: Mapping from Pubmed ID to Article object
     """
     c = configuration
     rd = c.reportdir
+    isinstance(feature_info, FeatureScoreInfo)
     feature_info.writeFeatureScoresCSV(codecs.open(rd/c.term_scores_name,"wb","utf-8"))
     # Citations for input articles
-    input_pairs = sorted(zip(input_pmids, input_scores), key=lambda x:x[1], reverse=True)
     templates.citations.run(
-        dict(mode="input", scores=input_pairs, articles=artdb),
+        dict(mode="input", 
+             scores=sorted(input, key=lambda x:x[1], reverse=True), 
+             articles=artdb),
         outputfile=file(rd/c.input_citations, "w"))
     # Citations for output articles
     templates.citations.run(
-        dict(mode="output", scores=zip(result_pmids, result_scores), articles=artdb),
+        dict(mode="output", 
+             scores=sorted(output, key=lambda x:x[1], reverse=True), 
+             articles=artdb),
         outputfile=file(rd/c.result_citations, "w"))
     # Index file
     templates.results.run(dict(
         time = time.strftime("%Y-%m-%d %H:%M:%S"),
         c = configuration,
         f = feature_info,
-        num_results = len(result_scores),
-        lowest_score = result_scores[-1],
+        num_results = len(output),
+        lowest_score = output[-1][1],
         ), outputfile=(rd/c.index_file).open("w"))
     c.stylesheet.copy(rd/"style.css")

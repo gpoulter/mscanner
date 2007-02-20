@@ -1,5 +1,3 @@
-#!env python
-
 from bsddb import db
 from dbshelve import open
 from path import path

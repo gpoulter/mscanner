@@ -1,17 +1,12 @@
-#!env python
-
 from path import path
-from scoring import *
+import article
+import scoring
 import tempfile
 import unittest
 import numpy
 
 class ScoringTests(unittest.TestCase):
-    """Tests for scoring module functions
-
-    Tests: getTermScores, filterDocuments, writeReport
-    Implicit: scoreDocument, writeTermScoresCSV, writeTermScoresHTML
-    """
+    """Tests for scoring module functions"""
     def setUp(self):
         self.prefix = path(tempfile.mkdtemp(prefix="scoring-"))
         print self.prefix
@@ -20,51 +15,40 @@ class ScoringTests(unittest.TestCase):
         return
         self.prefix.rmtree(ignore_errors=True)
         
-    def test_getTermScores(self):
-        pfreqs = numpy.array([1,2])
-        nfreqs = numpy.array([2,1])
+    def test_FeatureScoreInfo(self):
+        """Implicitly tests calculateFeatureScores"""
+        pfreqs = numpy.array([1,2,0])
+        nfreqs = numpy.array([2,1,0])
         pdocs = 2
-        ndocs = 2
-        termscores = getTermScores(pfreqs, nfreqs, pdocs, ndocs, pseudocount=0)
-        self.assertEqual(termscores.tolist(), 
-                          [[-0.69314718055994529, 0.5, 1.0, 1, 2],
-                           [0.69314718055994529, 1.0, 0.5, 2, 1]])
+        ndocs = 3
+        fm = article.FeatureMapping()
+        f = scoring.FeatureScoreInfo(pfreqs, nfreqs, pdocs, ndocs, 0.1, fm)
+        # With masking of unknown features
+        #self.assert_(numpy.allclose(
+        #    f.scores, numpy.array([-0.27193372,  1.02132061,  0.0 ])))
+        # Without masking of unknown features
+        self.assert_(numpy.allclose(
+            f.scores, numpy.array([-0.27193372,  1.02132061,  0.37469345])))
 
     def test_filterDocuments(self):
-        docs = { 1:[0,2], 2:[1,2] }
-        feat_scores = numpy.array([(1,0,0,0,0),(10,0,0,0,0),(100,0,0,0,0)])
-        self.assertEqual(scoreDocument(docs[1], feat_scores), 101.0)
-        self.assertEqual(scoreDocument(docs[2], feat_scores), 110.0)
-        self.assertEqual(filterDocuments(docs.iteritems(), feat_scores, 1, 0 ), [ (110.0,2) ])
-        self.assertEqual(filterDocuments(docs.iteritems(), feat_scores, 10, 102.0 ), [ (110.0,2) ])
+        docs = { 1:[0,2], 2:[1,2], 3:[0,1] }
+        fscores = numpy.array([1.0, 10.0, 100.0])
+        self.assertEqual(numpy.sum(fscores[docs[1]]), 101.0)
+        self.assertEqual(scoring.filterDocuments(docs.iteritems(), fscores, 2, 0 ), [ (2,110.0), (1,101.0) ])
+        self.assertEqual(scoring.filterDocuments(docs.iteritems(), fscores, 10, 102.0 ), [ (2,110.0) ])
 
     def test_writeReport(self):
         pfreqs = numpy.array([1,1,2])
         nfreqs = numpy.array([1,1,0])
         pdocs = 2
         ndocs = 1
-        from article import Article
         articles = {
-            "1111": Article(1111,"T","A",set(["A","B"])),
-            "2222": Article(2222,"T","A",set(["A","C"])),
-            "3333": Article(3333,"T","A",set(["B","C"])),
+            "1111": article.Article(1111,"T","A",meshterms=set(["A","B"])),
+            "2222": article.Article(2222,"T","A",meshterms=set(["A","C"])),
+            "3333": article.Article(3333,"T","A",meshterms=set(["B","C"])),
             }
-        (self.prefix/"positives.txt").write_text("2222\n3333\n")
-        termscores = getTermScores(pfreqs, nfreqs, pdocs, ndocs, pseudocount=0.1)
-        writeReport(
-            scores = [(1.0,1111), (2.0,2222), (3.5,3333)],
-            featmap = [ ("A","T"), ("B","T"), ("C","Q") ],
-            pdocs = pdocs,
-            ndocs = ndocs,
-            termscores = termscores,
-            prefix = self.prefix,
-            stylesheet = path("../lib/templates/style.css"),
-            pseudocount = 0.1,
-            limit = 3,
-            threshold = 0.0,
-            posfile = self.prefix/"positives.txt",
-            articles = articles,
-            )
+        scores = [(3333,3.5), (2222,2.0), (1111,1.0)]
+        featmap = [("A","T"), ("B","T"), ("C","Q")]
 
 if __name__ == "__main__":
     unittest.main()

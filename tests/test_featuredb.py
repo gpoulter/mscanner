@@ -1,5 +1,3 @@
-#!env python
-
 from featuredb import *
 from numpy import *
 import unittest

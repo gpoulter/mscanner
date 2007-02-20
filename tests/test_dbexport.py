@@ -1,5 +1,3 @@
-#!env python
-
 from article import Article
 import dbexport
 from path import path

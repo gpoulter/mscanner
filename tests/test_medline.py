@@ -1,5 +1,3 @@
-#!env python
-
 from medline import *
 from path import path
 import tempfile

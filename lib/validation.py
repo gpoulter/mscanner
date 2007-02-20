@@ -75,7 +75,7 @@ class Validator:
         else:
             return False
 
-    def validate(self, statfile=None):
+    def validate(self, statfile=lambda x,y:x):
         """Carry out validation.  0 folds is taken to mean leave-out-one validation"""
         if self.nfold == 0:
             return self.leaveOutOneValidate(statfile)
@@ -92,55 +92,38 @@ class Validator:
         starts[1:] = nx.cumsum(sizes[:-1])
         return starts, sizes
 
-    @staticmethod
-    def moveToFront(data, start, size):
-        """Swaps a portion of data to the front of the array"""
-        tmp = data[:size].copy()
-        data[:size] = data[start:start+size]
-        data[start:start+size] = tmp
-
-    def crossValidate(self, statfile=None):
+    def crossValidate(self, statfile=lambda x,y:x):
         """Perform n-fold validation and return the raw performance measures
         """
-        log.info("%d pos and %d neg articles", len(self.pos), len(self.neg))
+        pdocs = len(self.pos)
+        ndocs = len(self.neg)
+        log.info("%d pos and %d neg articles", pdocs, ndocs)
         if self.randomise:
             random.shuffle(self.pos)
             random.shuffle(self.neg)
-        pos = self.pos.copy()
-        neg = self.neg.copy()
-        pstarts, psizes = self.partitionSizes(len(pos), self.nfold)
-        nstarts, nsizes = self.partitionSizes(len(neg), self.nfold)
-        pscores = nx.zeros(len(pos), nx.float32)
-        nscores = nx.zeros(len(neg), nx.float32)
-        pcounts = article.countFeatures(self.numfeats, self.featdb, pos)
-        ncounts = article.countFeatures(self.numfeats, self.featdb, neg)
+        pstarts, psizes = self.partitionSizes(pdocs, self.nfold)
+        nstarts, nsizes = self.partitionSizes(ndocs, self.nfold)
+        pscores = nx.zeros(pdocs, nx.float32)
+        nscores = nx.zeros(ndocs, nx.float32)
+        pcounts = article.countFeatures(self.numfeats, self.featdb, self.pos)
+        ncounts = article.countFeatures(self.numfeats, self.featdb, self.neg)
         for fold, (pstart,psize,nstart,nsize) in enumerate(zip(pstarts,psizes,nstarts,nsizes)):
-            log.debug("Carrying out fold number %d", fold)
-            if statfile is not None:
-                statfile.update(fold+1, self.nfold)
-            # Move the test fold to the front 
-            self.moveToFront(pos, pstart, psize)
-            self.moveToFront(neg, nstart, nsize)
-            log.debug("pstart = %d, psize = %s, nstart = %d, nsize = %d", pstart, psize, nstart, nsize)
-            #log.debug("POS %s %s", repr(pos[:psize]), repr(pos[psize:]))
-            #log.debug("NEG %s %s", repr(neg[:nsize]), repr(neg[nsize:]))
+            statfile(fold, self.nfold)
+            log.debug("pstart = %d, psize = %s; nstart = %d, nsize = %d", pstart, psize, nstart, nsize)
             # Modifiy the feature counts by subtracting out the test fold
-            temp_pcounts = pcounts - article.countFeatures(self.numfeats, self.featdb, pos[:psize])
-            temp_ncounts = ncounts - article.countFeatures(self.numfeats, self.featdb, neg[:nsize])
-            #old_pcounts = article.countFeatures(self.numfeats, self.featdb, pos[psize:])
-            #old_ncounts = article.countFeatures(self.numfeats, self.featdb, neg[nsize:])
-            #log.debug("PDIFF %s", repr(old_pcounts - temp_pcounts))
-            #log.debug("NDIFF %s", repr(old_ncounts - temp_ncounts))
+            temp_pcounts = pcounts - article.countFeatures(self.numfeats, self.featdb, self.pos[pstart:pstart+psize])
+            temp_ncounts = ncounts - article.countFeatures(self.numfeats, self.featdb, self.neg[nstart:nstart+nsize])
             # Calculate the resulting feature scores
             termscores, pfreqs, nfreqs = scoring.calculateFeatureScores(
-                temp_pcounts, temp_ncounts, len(pos)-psize, len(neg)-nsize,
+                temp_pcounts, temp_ncounts, pdocs-psize, ndocs-nsize,
                 self.pseudocount, self.mask, self.daniel)
             # Calculate the article scores for the test fold
-            pscores[pstart:pstart+psize] = [nx.sum(termscores[self.featdb[d]]) for d in pos[:psize]]
-            nscores[nstart:nstart+nsize] = [nx.sum(termscores[self.featdb[d]]) for d in neg[:nsize]]
+            pscores[pstart:pstart+psize] = [nx.sum(termscores[self.featdb[d]]) for d in self.pos[pstart:pstart+psize]]
+            nscores[nstart:nstart+nsize] = [nx.sum(termscores[self.featdb[d]]) for d in self.neg[nstart:nstart+nsize]]
+        statfile(None, self.nfold)
         return pscores, nscores
     
-    def leaveOutOneValidate(self, statfile=None):
+    def leaveOutOneValidate(self, statfile=lambda x,y:x):
         """Carries out leave-out-one validation, returning the resulting scores.
 
         @note: Does not support 'daniel' scoring method
@@ -152,31 +135,29 @@ class Validator:
         pdocs = len(self.pos)
         ndocs = len(self.neg)
         mask = None
-        ignore_unknowns = True
-        if ignore_unknowns:
-            mask = (pcounts<=1) & (ncounts<=1)
-        else:
-            mask = nx.zeros(self.numfeats, nx.bool)
+        #mask = (pcounts<=1) & (ncounts<=1)
         if self.mask is not None:
-            mask |= self.mask
+            if mask is None:
+                mask = self.mask
+            else:
+                mask |= self.mask
         ps = self.pseudocount
         marker = 0
-        if not statfile:
-            marker = pdocs+ndocs+1
         for idx, doc in enumerate(self.pos):
             if idx == marker:
-                statfile.update(marker, pdocs+ndocs)
-                marker += (pdocs+ndocs)/20
+                statfile(marker, pdocs+ndocs)
+                marker += int((pdocs+ndocs)/20)
             pscores[idx] = sum(
                 math.log(((pcounts[f]-1+ps)/(pdocs-1+2*ps))/((ncounts[f]+ps)/(ndocs+2*ps))) for
-                f in self.featdb[doc] if not mask[f])
+                f in self.featdb[doc] if mask is None or not mask[f])
         for idx, doc in enumerate(self.neg):
             if pdocs+idx == marker:
-                statfile.update(marker, pdocs+ndocs)
-                marker += (pdocs+ndocs)/20
+                statfile(marker, pdocs+ndocs)
+                marker += int((pdocs+ndocs)/20)
             nscores[idx] = sum(
                 math.log(((pcounts[f]+ps)/(pdocs+2*ps))/((ncounts[f]-1+ps)/(ndocs-1+2*ps))) for
-                f in self.featdb[doc] if not mask[f])
+                f in self.featdb[doc] if mask is None or not mask[f])
+        statfile(None, pdocs+ndocs)
         return pscores, nscores
 
 def classDictionary(dictionary, exclude):

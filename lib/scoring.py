@@ -145,7 +145,7 @@ def calculateFeatureScores(
     #scores[dmask] = 0
     return scores, pfreqs, nfreqs
 
-def filterDocuments(docs, featscores, limit=10000, threshold=0.0, statfile=None):
+def filterDocuments(docs, featscores, limit=10000, threshold=0.0, statfile=lambda x:x):
     """Return scores for documents given features and feature scores
 
     @param docs: Iterable over (doc ID, array of feature ID) pairs
@@ -156,23 +156,24 @@ def filterDocuments(docs, featscores, limit=10000, threshold=0.0, statfile=None)
 
     @param threshold: Cutoff score for including an article in the results
 
-    @param statfile: Name of file to post status updates
+    @param statfile: Callable for posting status updates
 
     @return: Generator over (docid,score) pairs
     """
     results = [(-100000, 0)] * limit
     ndocs = 0
+    marker = 0
     for idx, (docid, features) in enumerate(docs):
-        if statfile is not None and idx % 100000 == 0:
-            statfile.update(idx)
+        if idx == marker:
+            statfile(idx)
+            marker += 100000
         score = numpy.sum(featscores[features])
         if score >= threshold:
             #print idx, docid, score
             ndocs += 1
             if score >= results[0][0]:
                 heapq.heapreplace(results, (score,int(docid)))
-    if statfile is not None:
-        statfile.update(None)
+    statfile(None)
     if ndocs < limit:
         limit = ndocs
     return [(pmid,score) for score,pmid in heapq.nlargest(limit, results)]

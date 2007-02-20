@@ -212,7 +212,7 @@ class StatusFile:
     def write(self):
         """Write status file to disk"""
         self.filename.write_text(str(self))
-
+        
     def update(self, progress, total=None):
         """Update progress of status file.  If progress is None, set to total."""
         if total is not None:
@@ -221,8 +221,11 @@ class StatusFile:
             self.progress = self.total
         else:
             self.progress = progress
+        log.info("Completed %d out of %d", self.progress, self.total)
         self.write()
 
+    __call__ = update
+    
 class FileTracker(set):
     """Class which tracks processed files.
 

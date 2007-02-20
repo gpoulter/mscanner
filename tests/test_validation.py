@@ -42,30 +42,6 @@ class ValidatorTest(unittest.TestCase):
         self.assert_((starts == [0,7,14,21,27]).all())
         self.assert_((sizes == [7,7,7,6,6]).all())
         
-    def testMoveToFront(self):
-        """Tests the swapping function doesn't overwrite"""
-        data = numpy.arange(10)
-        Validator.moveToFront(data, 3, 3)
-        correct = numpy.array([3,4,5,0,1,2,6,7,8,9])
-        self.assert_(numpy.all(data == correct))
-
-    def testCrossValidMovement(self):
-        """Confirm that data is being shuffled correctly during
-        validation by adding these lines to Validator.crossValidate:
-
-            print self.pos[:psize], self.pos[psize:]
-            print self.neg[:nsize], self.neg[nsize:]
-        """
-        val = Validator(
-            numfeats = 2,
-            featdb = {0:[0], 1:[0,1], 2:[0,1], 3:[0], 4:[0], 5:[0], 6:[0], 7:[0], 8:[0], 9:[0], 10:[0,1]},
-            pos = numpy.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
-            neg = numpy.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
-            nfold = 5,
-            pseudocount = 0.1,
-            randomise = False)
-        pscores, nscores = val.validate()
-
     def testCrossValid(self):
         """Test that cross-validated scores are correctly calculated"""
         val = Validator(

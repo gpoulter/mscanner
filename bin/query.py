@@ -38,10 +38,10 @@ def do_query():
     try:
         # Load article information
         featdb = medline.FeatureDatabase(c.featuredb, 'r')
-        statfile.update(0, len(featdb)) 
         featmap = article.FeatureMapping(c.featuremap)
         artdb = dbshelve.open(c.articledb, 'r')
         input_pmids = set(article.readPMIDs(c.reportdir/c.posfile, include=featdb))
+        statfile.total = len(featdb)-len(input_pmids)
 
         # Calculate feature score information
         pos_counts = article.countFeatures(len(featmap), featdb, input_pmids)

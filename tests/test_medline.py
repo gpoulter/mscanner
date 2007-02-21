@@ -2,6 +2,7 @@ from medline import *
 from path import path
 import tempfile
 import unittest
+import article
 
 class MedlineCacheTests(unittest.TestCase):
     """
@@ -33,16 +34,15 @@ class MedlineCacheTests(unittest.TestCase):
         xml.write_text(test_xmlparse.xmltext)
         m.updateCacheFromDir(h, save_delay=1)
         pmids.write_lines(["1", "2"])
-        from article import getArticles
-        a = getArticles(artdb, pmids)
+        a = article.getArticles(artdb, pmids)
         self.assertEqual(a[0].pmid, 1)
         self.assertEqual(a[1].pmid, 2)
-        self.assertEqual(fmap.freqs, [2, 2, 2, 2, 2, 2, 2, 1])
+        self.assertEqual(fmap.counts, [2, 2, 2, 2, 2, 2, 2, 1])
         self.assertEqual(
-            fmap.feats,
-            [(u'T1', 'mesh'), (u'T2', 'mesh'), (u'T3', 'mesh'),
-             (u'T6', 'mesh'), (u'Q4', 'qual'), (u'Q5', 'qual'),
-             (u'Q7', 'qual'), (u'0301-4851', 'issn')])
+            fmap.features, [
+                (u'Q4', 'qual'), (u'Q5', 'qual'), (u'Q7', 'qual'), 
+                (u'T1', 'mesh'), (u'T2', 'mesh'), (u'T3', 'mesh'), (u'T6', 'mesh'), 
+                (u'0301-4851', 'issn')])
             
 if __name__ == "__main__":
     unittest.main()

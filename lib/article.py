@@ -22,13 +22,11 @@ from codecs import open
 import cPickle
 import dbshelve
 from itertools import izip
-
 import logging as log
 import os
 import time
-
 from path import path
-import numpy
+import numpy as nx
 
 def countFeatures(nfeats, featdb, docids):
     """Givent number of features,
@@ -41,8 +39,7 @@ def countFeatures(nfeats, featdb, docids):
 
     @return: Array of length nfeats, with occurrence count of each feature
     """
-    import numpy
-    counts = numpy.zeros(nfeats, dtype=numpy.int32)
+    counts = nx.zeros(nfeats, nx.int32)
     for docid in docids:
         counts[featdb[docid]] += 1
     return counts
@@ -151,7 +148,7 @@ def getArticles(article_db_path, pmidlist_path):
     cache_path = path(pmidlist_path + ".pickle")
     if cache_path.isfile():
         return cPickle.load(file(cache_path, "rb"))
-    pmids = readPMIDFile(pmidlist_path)
+    pmids = readPMIDs(pmidlist_path)
     artdb = dbshelve.open(article_db_path, 'r')
     articles = [artdb[str(p)] for p in pmids]
     cPickle.dump(articles, file(cache_path,"wb"), protocol=2)
@@ -262,9 +259,13 @@ class FeatureMapping:
     'year', or 'author'.  A given feature string could have more than
     one type.
 
-    @ivar feats: List mapping ID to (feature string, feature type)
+    @ivar numdocs: Number of documents used in creating the mapping
+
+    @ivar features: List mapping ID to (feature string, feature type)
+
+    @ivar feature_ids: {type:{feature:id}} mapping
+
     @ivar counts: List mapping ID to number of occurrences
-    @ivar feat2id: {type:{feature:id}} mapping
     """
 
     def __init__(self, featfile=None):
@@ -273,8 +274,9 @@ class FeatureMapping:
         @param featfile: Path to text file with list of terms
         """
         self.featfile = featfile
-        self.feats = []
-        self.feat2id = {}
+        self.numdocs = 0
+        self.features = []
+        self.feature_ids = {}
         self.counts = []
         if featfile is not None and self.featfile.exists():
             self.load()
@@ -284,43 +286,43 @@ class FeatureMapping:
 
         @note: file format is '%(feature)\t%(type)\t%(count)\n'
         """
-        self.feats = []
-        self.feat2id = {}
+        self.features = []
+        self.feature_ids = {}
         f = open(self.featfile, "rb", "utf-8")
+        self.numdocs = int(f.readline().strip())
         for fid, line in enumerate(f):
             feat, ftype, count = line.strip().split("\t")
-            self.feats.append((feat,ftype))
+            self.features.append((feat,ftype))
             self.counts.append(int(count))
-            if ftype not in self.feat2id:
-                self.feat2id[ftype] = {feat:fid}
+            if ftype not in self.feature_ids:
+                self.feature_ids[ftype] = {feat:fid}
             else:
-                self.feat2id[ftype][feat] = fid
+                self.feature_ids[ftype][feat] = fid
         f.close()
 
     def dump(self):
         """Write the feature mapping to disk"""
         makeBackup(self.featfile)
         f = open(self.featfile, "wb", "utf-8")
-        for (feat, ftype), count in zip(self.feats, self.counts):
+        f.write("%s\n" % self.numdocs)
+        for (feat, ftype), count in zip(self.features, self.counts):
             f.write(feat+"\t"+ftype+"\t"+str(count)+"\n")
         f.close()
         removeBackup(self.featfile)
 
-    def __getitem__(self, featid):
-        """Return (feature string, feature type) given feature ID"""
-        return self.feats[featid]
+    def __getitem__(self, key):
+        """Given a feature ID, returns (feature, feature type), given 
+        (feature, feature type), returns feature ID"""
+        if isinstance(key, int):
+            return self.features[key]
+        elif isinstance(key, tuple) and len(key) == 2:
+            return self.feature_ids[key[1]][key[0]]
+        else:
+            raise KeyError("Invalid key  %s" % str(key))
 
     def __len__(self):
         """Return number of distinct features"""
-        return len(self.feats)
-
-    def getFeatures(self, feature_ids):
-        """Return (string,type) for features given feature id list"""
-        return [self.feats[fid] for fid in feature_ids]
-
-    def featureCounts(self):
-        """Return array with number of occurrences of each feature"""
-        return numpy.array(self.counts, numpy.int32)
+        return len(self.features)
 
     def featureTypeMask(self, exclude_types):
         """Get a mask for excluded features
@@ -331,45 +333,38 @@ class FeatureMapping:
         """
         if exclude_types is None:
             return None
-        exclude_feats = numpy.zeros(len(self.feats), dtype=numpy.bool)
+        exclude_feats = nx.zeros(len(self.features), nx.bool)
         for ftype in exclude_types:
-            for fid in self.feat2id[ftype].itervalues():
+            for fid in self.feature_ids[ftype].itervalues():
                 exclude_feats[fid] = True
         return exclude_feats
 
-    def getFeatureIds(self, features, ftype, count=False):
-        """Get feature IDs corresponding to feature strings.
+    def addArticle(self, **kwargs):
+        """Add an article given a list of feature strings of with keyword
+        arguments for feature types.
 
-        @note: Dynamically creates new features IDs and types as necessary.
+        @note: Dynamically creates new features IDs and feature types as necessary.
 
-        @param features: List of feature strings to convert
+        @note: Takes keyword arguments for feature types, with values being a
+        list of feature strings for that type.
 
-        @param ftype: Type of the feature strings
-
-        @param count: Whether or not to add to occurrence counts
-        
         @return: List of feature IDs
         """
         result = []
-        if ftype not in self.feat2id:
-            self.feat2id[ftype] = {}
-        fdict = self.feat2id[ftype]
-        if count:
-            for feat in features:
+        self.numdocs += 1
+        for ftype, fstrings in kwargs.iteritems():
+            if ftype not in self.feature_ids:
+                self.feature_ids[ftype] = {}
+            fdict = self.feature_ids[ftype]
+            for feat in fstrings:
                 if feat not in fdict:
-                    featid = len(self.feats)
-                    self.feats.append((feat,ftype))
+                    featid = len(self.features)
+                    self.features.append((feat,ftype))
                     self.counts.append(1)
                     fdict[feat] = featid
                 else:
                     self.counts[fdict[feat]] += 1
                 result.append(fdict[feat])
-        else:
-            for feat in features:
-                if feat not in fdict:
-                    raise ValueError("Unknown feature in read-only feature mapping: " + feat)
-                else:
-                    result.append(fdict[feat])
         return result
 
 class Article:

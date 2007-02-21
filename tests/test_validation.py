@@ -45,7 +45,7 @@ class ValidatorTest(unittest.TestCase):
     def testCrossValid(self):
         """Test that cross-validated scores are correctly calculated"""
         val = Validator(
-            numfeats = 3,
+            featmap = [7,5,2],
             featdb = {0:[0,1,2], 1:[0,1], 2:[0,1], 3:[0,1], 4:[1,2], 5:[1,2], 6:[1,2], 7:[0,1,2]},
             pos = numpy.array([0, 1, 2, 3]),
             neg = numpy.array([4, 5, 6, 7]),
@@ -62,7 +62,7 @@ class ValidatorTest(unittest.TestCase):
         """Test of leave-out-one cross validation.  Manually calculate
         scores on the articles to see if they are correct"""
         val = Validator(
-            numfeats = 3,
+            featmap = [7,5,2],
             featdb = {0:[0,1,2], 1:[0,1], 2:[0,1], 3:[0,1], 4:[1,2], 5:[1,2], 6:[1,2], 7:[0,1,2]},
             pos = numpy.array([0, 1, 2, 3]),
             neg = numpy.array([4, 5, 6, 7]),

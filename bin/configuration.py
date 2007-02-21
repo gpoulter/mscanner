@@ -74,7 +74,7 @@ drugtable = working / "genedrug" / "drugtable.txt"
 #### Shared configuration (by query & validation) 
 
 ## Per-term pseudocount to use
-pseudocount = 0.01
+pseudocount = None
 ## Path to output files
 output = working / "output"
 #output = src / "www" / "htdocs" / "output"

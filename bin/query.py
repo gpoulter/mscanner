@@ -10,25 +10,21 @@ threshold as arguments.
 
 """
 
-#Builtin
 import cPickle
 from itertools import chain
 import logging as log
-import numpy
+import numpy as nx
 import os
+from path import path
 import sys
 import time
-#Local
-from path import path
-import numpy
-#MScanner
+
 import configuration as c
 import dbshelve
 import dbexport
 import article
 import genedrug
 import medline
-import numpy
 import scoring
 
 def do_query():
@@ -45,7 +41,7 @@ def do_query():
 
         # Calculate feature score information
         pos_counts = article.countFeatures(len(featmap), featdb, input_pmids)
-        neg_counts = featmap.featureCounts() - pos_counts
+        neg_counts = nx.array(featmap.counts, nx.int32) - pos_counts
         feature_info = scoring.FeatureScoreInfo(
             pos_counts,  neg_counts,
             len(input_pmids), len(featdb) - len(input_pmids),
@@ -54,8 +50,8 @@ def do_query():
         # Load saved results
         if (c.reportdir/c.index_file).isfile():
             log.info("Loading saved results")
-            inputs = article.readPMIDScores(c.reportdir/c.posfile, withscores=True)
-            results = article.readPMIDScores(c.reportdir/c.query_results_name, withscores=True)
+            inputs = article.readPMIDs(c.reportdir/c.posfile, withscores=True)
+            results = article.readPMIDs(c.reportdir/c.query_results_name, withscores=True)
         # Recalculate results
         else:
             log.info("Recalculating results")
@@ -64,7 +60,7 @@ def do_query():
             results = scoring.filterDocuments(queryids, feature_info.scores, c.limit, c.threshold, statfile)
             article.writePMIDScores(c.reportdir/c.query_results_name, results)
             # Calculate and write input scores
-            inputs = [ (pmid,numpy.sum(feature_info.scores[featdb[pmid]])) for pmid in input_pmids ]
+            inputs = [ (pmid,nx.sum(feature_info.scores[featdb[pmid]])) for pmid in input_pmids ]
             article.writePMIDScores(c.reportdir/c.posfile, inputs)
 
         # Write result report

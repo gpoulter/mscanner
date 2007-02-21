@@ -92,7 +92,13 @@ c - Configuration module
           Pseudocount
           <button onclick="show('pseudocount_help')">?</button>
         </th>
-        <td>{{"%f"%c.pseudocount}}</td>
+        <td>
+        {{if isinstance(c.pseudocount, float)}}
+        {{"%f"%c.pseudocount}}
+        {{else}}
+        per-feature
+        {{endif}}
+        </td>
       </tr>
       <tr>
         <th>

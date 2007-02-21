@@ -1,5 +1,5 @@
 from article import *
-import numpy
+import numpy as nx
 from path import path
 import tempfile
 import unittest
@@ -32,17 +32,17 @@ class FeatureMappingTests(TempFileTestCase):
     """
     def test(self):
         fm = FeatureMapping(self.fn)
-        self.assertEqual(fm.getFeatureIds(["A","B"],"Q",True), [0,1])
-        self.assertEqual(fm.getFeatureIds(["A","C"],"T",True), [2,3])
-        self.assertEqual(fm.getFeatures([0,1,2,3]), [("A","Q"), ("B","Q"),("A","T"),("C","T")])
+        self.assertEqual(fm.addArticle(Q=["A","B"], T=["A","C"]), [0,1,2,3])
+        self.assertEqual([fm[i] for i in [0,1,2,3,]], [("A","Q"), ("B","Q"),("A","T"),("C","T")])
         self.assertEqual(fm[1], ("B","Q"))
-        self.assert_(numpy.all(fm.counts == [1,1,1,1]))
+        self.assertEqual(fm[("C","T")], 3)
+        self.assert_(nx.all(fm.counts == [1,1,1,1]))
         fm.dump()
         fm.load()
         fm.dump()
         fm.load()
-        self.assertEqual(fm.feats, [("A","Q"),("B","Q"),("A","T"),("C","T")])
-        self.assertEqual(fm.feat2id, {"Q":{"A":0,"B":1}, "T":{"A":2,"C":3}})
+        self.assertEqual(fm.features, [("A","Q"),("B","Q"),("A","T"),("C","T")])
+        self.assertEqual(fm.feature_ids, {"Q":{"A":0,"B":1}, "T":{"A":2,"C":3}})
         
 class ArticleTests(TempFileTestCase):
     """Tests for article module functions
@@ -53,7 +53,7 @@ class ArticleTests(TempFileTestCase):
         self.fn.touch()
         featdb = {1:[1,2], 2:[2,3], 3:[3,4]}
         counts = countFeatures(5, featdb, [1,2,3])
-        self.assert_(numpy.all(counts == [0,1,2,2,1]))
+        self.assert_(nx.all(counts == [0,1,2,2,1]))
 
     def testReadPMIDFile(self):
         self.fn.write_lines(["# comment", "1 10", "2 20 blah", "3 30", "4 40", "5 50"])

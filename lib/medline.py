@@ -81,7 +81,6 @@ class MedlineCache:
         try:
             artdb = dbshelve.open(self.article_db, dbenv=dbenv, txn=txn)
             meshfeatdb = FeatureDatabase(self.feature_db, dbenv=dbenv, txn=txn)
-            featureIds = self.featmap.getFeatureIds
             pmidlist = []
             for art in articles:
                 # Refuse to add duplicates
@@ -89,19 +88,20 @@ class MedlineCache:
                 # Store article, adding it to list of documents
                 artdb[str(art.pmid)] = art
                 pmidlist.append(str(art.pmid))
-                # Get MeSH headings and qualifiers from article
+                # Get MeSH headings, qualifiers and ISSN from article
                 headings = list()
                 quals = list()
+                issns = list()
                 for term in art.meshterms:
                     headings.append(term[0])
                     if(len(term)>1):
-                        quals.extend(term[1:])
-                # Add features for MeSH, qualifiers and journal ISSN
-                featids = list()
-                featids.extend(featureIds(headings, "mesh", True))
-                featids.extend(featureIds(quals, "qual", True))
+                        for q in term[1:]:
+                            if q not in quals:
+                                quals.append(q)
                 if art.issn:
-                    featids.extend(featureIds([art.issn], "issn", True))
+                    issns = [art.issn]
+                # Add features to feature mapping
+                featids = self.featmap.addArticle(mesh=headings, qual=quals, issn=issns)
                 meshfeatdb.setitem(art.pmid, featids, txn)
             artdb.close()
             meshfeatdb.close()

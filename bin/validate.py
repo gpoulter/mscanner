@@ -70,7 +70,7 @@ def do_validation():
                         genedrug_articles.add(art.pmid)
                 dbexport.writeGeneDrugCountsCSV(dbexport.countGeneDrug(pos_arts))
             val = validation.Validator(
-                numfeats = len(featmap),
+                featmap = featmap,
                 featdb = featdb,
                 pos = positives,
                 neg = negatives,

@@ -7,24 +7,21 @@ Validator -- Perform cross-validation and output performance statistics
 
 """
 
-#Standard
 from __future__ import division
 import warnings
 warnings.simplefilter('ignore', FutureWarning)
 from itertools import chain, izip
 import codecs
 import cPickle
+from Gnuplot import Gnuplot
 import logging as log
 import math
-import random
-import time
-import sys
-#Local
-from Gnuplot import Gnuplot
 import numpy as nx
-from scipy.integrate import trapz
 from path import path
-#MScanner
+from scipy.integrate import trapz
+import sys
+import time
+
 import article
 import scoring
 import templates
@@ -35,7 +32,7 @@ class Validator:
 
     def __init__(
         self,
-        numfeats,
+        featmap,
         featdb,
         pos,
         neg,
@@ -47,7 +44,7 @@ class Validator:
         randomise = True,
         ):
         """Initialise validator
-        @param numfeats: Number of distinct features (thus the length of the feature score vector)
+        @param featmap: FeatureMapping instance (but list of counts will do)
         @param featdb: Mapping of doc id to list of feature ids
         @param pos: Array of positive doc ids
         @param neg: Array of negative doc ids
@@ -57,12 +54,16 @@ class Validator:
         @param mask: Features to exclude for scoring purposes
         @param norandom: If True forgoes randomisation in cross-validation for test purposes
         """
-        self.numfeats = numfeats
+        self.featmap = featmap
+        self.numfeats = len(featmap)
         self.featdb = featdb
         self.pos = pos
         self.neg = neg
         self.nfold = nfold
-        self.pseudocount = pseudocount
+        if pseudocount is None:
+            self.pseudocount = nx.array(featmap.counts, nx.float32) / featmap.numdocs
+        else:
+            self.pseudocount = pseudocount
         self.daniel = daniel
         self.genedrug_articles = genedrug_articles
         self.mask = mask
@@ -99,8 +100,8 @@ class Validator:
         ndocs = len(self.neg)
         log.info("%d pos and %d neg articles", pdocs, ndocs)
         if self.randomise:
-            random.shuffle(self.pos)
-            random.shuffle(self.neg)
+            nx.random.shuffle(self.pos)
+            nx.random.shuffle(self.neg)
         pstarts, psizes = self.partitionSizes(pdocs, self.nfold)
         nstarts, nsizes = self.partitionSizes(ndocs, self.nfold)
         pscores = nx.zeros(pdocs, nx.float32)
@@ -141,22 +142,23 @@ class Validator:
                 mask = self.mask
             else:
                 mask |= self.mask
-        ps = self.pseudocount
+        if isinstance(self.pseudocount, float):
+            ps = nx.zeros(self.numfeats, nx.float32) + self.pseudocount
+        else:
+            ps = self.pseudocount
         marker = 0
         for idx, doc in enumerate(self.pos):
             if idx == marker:
                 statfile(marker, pdocs+ndocs)
                 marker += int((pdocs+ndocs)/20)
-            pscores[idx] = sum(
-                math.log(((pcounts[f]-1+ps)/(pdocs-1+2*ps))/((ncounts[f]+ps)/(ndocs+2*ps))) for
-                f in self.featdb[doc] if mask is None or not mask[f])
+            f = [fid for fid in self.featdb[doc] if mask is None or not mask[fid]]
+            pscores[idx] = nx.sum(nx.log(((pcounts[f]-1+ps[f])/(pdocs-1+2*ps[f]))/((ncounts[f]+ps[f])/(ndocs+2*ps[f]))))
         for idx, doc in enumerate(self.neg):
             if pdocs+idx == marker:
                 statfile(marker, pdocs+ndocs)
                 marker += int((pdocs+ndocs)/20)
-            nscores[idx] = sum(
-                math.log(((pcounts[f]+ps)/(pdocs+2*ps))/((ncounts[f]-1+ps)/(ndocs-1+2*ps))) for
-                f in self.featdb[doc] if mask is None or not mask[f])
+            f = [fid for fid in self.featdb[doc] if mask is None or not mask[fid]]
+            nscores[idx] = nx.sum(nx.log(((pcounts[f]+ps[f])/(pdocs+2*ps[f]))/((ncounts[f]-1+ps[f])/(ndocs-1+2*ps[f]))))
         statfile(None, pdocs+ndocs)
         return pscores, nscores
 

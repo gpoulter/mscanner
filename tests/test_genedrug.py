@@ -128,10 +128,11 @@ class GapScoreTests(unittest.TestCase):
 
     def setUp(self):
         self.fn = path(tempfile.mktemp(prefix="gd-"))
-        self.filter = genedrug.GeneDrugFilter({},genedrug.CachingGeneFinder(self.fn))
+        self.genefinder = genedrug.CachingGeneFinder(self.fn)
+        self.filter = genedrug.GeneDrugFilter({},self.genefinder)
 
     def tearDown(self):
-        del self.filter
+        self.genefinder.__del__()
         self.fn.remove()
 
     def test_listGenes(self):

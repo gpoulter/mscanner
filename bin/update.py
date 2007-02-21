@@ -7,10 +7,10 @@
 
 Usage: update.py [somepickle]
 
-No arguments: Parse .xml[.gz] files in configuration.medline_path and
+Without arguments: Parse .xml[.gz] files in configured Medline path and
 add Article's to databse.
 
-One argument: Load Article objects from a Pickle and add to database
+With one argument: Load Article objects from a Pickle and them to database.
 
 """
 
@@ -51,6 +51,7 @@ try:
         dbenv = medcache.makeDBEnv()
         medcache.putArticleList(articles, dbenv)
         dbenv.close()
+        
     # Parse articles from XML directory
     else:
         log.info("Starting update from %s" % c.medline.relpath())

@@ -17,12 +17,11 @@ class ArticleParserTests(unittest.TestCase):
         self.assertEqual(a.year,b.year)
         self.assertEqual(a.meshterms,b.meshterms)
         self.assertEqual(a.authors,b.authors)
-        self.assertEqual(a.chemicals,b.chemicals)
     def test(self):
         a1 = Article(1,"T1","A1","Mol. Biol. Rep.","0301-4851",1999,
-                     [("T1",),("T2",),("T3","Q4","Q5"),("T6","Q7")],[("F1","L1"),("F2","L2")],[])
+                     [("T1",),("T2",),("T3","Q4","Q5"),("T6","Q7")],[("F1","L1"),("F2","L2")])
         a2 = Article(2,"T2","A2","","",0,
-                     [("T1",),("T2",),("T3","Q4","Q5"),("T6","Q7")],[],[("C1","0"),("C2","1")])
+                     [("T1",),("T2",),("T3","Q4","Q5"),("T6","Q7")],[])
         parser = ArticleParser()
         result = list(parser.parse(xmltext))
         self.art_equal(result[0],a1)
@@ -66,6 +65,11 @@ xmltext = u'''<?xml version="1.0" encoding="UTF-8"?>
 </Author>
 </AuthorList>
 </Article>
+<MedlineJournalInfo>
+<Country>ENGLAND</Country>
+<MedlineTA>Mol. Biol. Rep.</MedlineTA>
+<NlmUniqueID>8712028</NlmUniqueID>
+</MedlineJournalInfo>
 <MeshHeadingList>
 <MeshHeading>
 <DescriptorName MajorTopicYN="N">T1</DescriptorName>

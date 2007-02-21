@@ -7,6 +7,7 @@ import numpy
 
 class ScoringTests(unittest.TestCase):
     """Tests for scoring module functions"""
+    
     def setUp(self):
         self.prefix = path(tempfile.mkdtemp(prefix="scoring-"))
         print self.prefix
@@ -22,13 +23,20 @@ class ScoringTests(unittest.TestCase):
         pdocs = 2
         ndocs = 3
         fm = article.FeatureMapping()
-        f = scoring.FeatureScoreInfo(pfreqs, nfreqs, pdocs, ndocs, 0.1, fm)
-        # With masking of unknown features
-        #self.assert_(numpy.allclose(
-        #    f.scores, numpy.array([-0.27193372,  1.02132061,  0.0 ])))
         # Without masking of unknown features
+        f = scoring.FeatureScoreInfo(pfreqs, nfreqs, pdocs, ndocs, 0.1, fm)
         self.assert_(numpy.allclose(
             f.scores, numpy.array([-0.27193372,  1.02132061,  0.37469345])))
+        # With background-calculated pseudocounts
+        fm.numdocs = 10
+        fm.counts = [3,2,1]
+        f = scoring.FeatureScoreInfo(pfreqs, nfreqs, pdocs, ndocs, None, fm)
+        self.assert_(numpy.allclose(
+            f.scores, numpy.array([-0.24512244,  0.95444249,  0.37469344])))
+        # With masking of unseen features
+        #f = scoring.FeatureScoreInfo(pfreqs, nfreqs, pdocs, ndocs, 0.1, fm)
+        #self.assert_(numpy.allclose(
+        #    f.scores, numpy.array([-0.27193372,  1.02132061,  0.0 ])))
 
     def test_filterDocuments(self):
         docs = { 1:[0,2], 2:[1,2], 3:[0,1] }

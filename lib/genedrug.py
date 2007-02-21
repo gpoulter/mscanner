@@ -69,7 +69,13 @@ def parseDrugs(text):
 
 
 class CachingGeneFinder:
-    """Cache results of gene finding queries"""
+    """Cache results of gene finding queries
+    
+    @ivar min_threshold: Minimum score for keeping results
+    
+    @ivar cache: Mapping from query texts to results
+    
+    """
 
     def __init__(self, cache):
         """Initialise cache
@@ -82,7 +88,6 @@ class CachingGeneFinder:
         L{findGenes}, or the file name of a persistent shelf
         containing such a mapping.
 
-        @var min_threshold: Minimum score for keeping results
         """
         self.min_threshold = 0.1
         # Set up XMLRPC (possibly proxied)
@@ -91,7 +96,9 @@ class CachingGeneFinder:
         if proxy is None:
             rpc_server = xmlrpclib.ServerProxy(bionlp_uri)
         else:
-            rpc_server = self.HTTPProxiedXMLRPC(bionlp_uri, proxy[len("http://"):])
+            if proxy.startswith("http://"):
+                proxy = proxy[len("http://"):]
+            rpc_server = self.HTTPProxiedXMLRPC(bionlp_uri, proxy)
         self.geneFinder=rpc_server.find_gene_and_protein_names
         # Set up results cache
         if isinstance(cache, basestring):
@@ -102,14 +109,16 @@ class CachingGeneFinder:
             raise ValueError("Cache is neither a filename nor dictionary")
 
     @staticmethod
-    def HTTPProxiedXMLRPC(url,proxy):
+    def HTTPProxiedXMLRPC(url, proxy):
         """Access an XMLRPC server from behind an HTTP proxy
         
         @param url: URL of XMLRPC service
+        
         @param proxy: string with hostname:port for HTTP proxy
         """
         class ProxyTransport(xmlrpclib.Transport):
-            def __init__(self,proxy):
+            def __init__(self, proxy, use_datetime=0):
+                xmlrpclib.Transport.__init__(self, use_datetime)
                 self.proxy = proxy
             def make_connection(self,host):
                 self.realhost = host
@@ -122,8 +131,9 @@ class CachingGeneFinder:
         return xmlrpclib.ServerProxy(url,transport=ProxyTransport(proxy))
 
     def __del__(self):
-        if isinstance(self.cache, dbshelve.Shelf):
+        if hasattr(self,"cache") and isinstance(self.cache, dbshelve.Shelf):
             self.cache.close()
+            del self.cache
 
     def __call__(self,text):
         """Automatically calls L{findGenes}"""
@@ -350,8 +360,9 @@ class CachingGeneDrugLister:
         self.gdfilter=gdfilter
 
     def __del__(self):
-        if isinstance(self.cache, dbshelve.Shelf):
+        if hasattr(self, "cache") and isinstance(self.cache, dbshelve.Shelf):
             self.cache.close()
+            del self.cache
 
     def __call__(self, article):
         """Automatically calls L{listGeneDrugs}"""

@@ -127,13 +127,15 @@ dogenedrug = False
 ## Whether to use Daniel's 10^-8 pseudocounts
 dodaniel = False
 ## File name for histogram
-hist_img = "histogram.png"
+hist_img = "art_scores.png"
+### File name for feature score density
+feat_img = "feat_scores.png"
 ## File name for ROC curve
 roc_img = "roc.png"
 ## File name for PR curve
 p_vs_r_img = "prcurve.png"
 ## File name for PRF vs threshold
-pr_vs_score_img = "prscore.png"
+pr_vs_score_img = "fmeasure.png"
 
 #### DATA SET CONFIGURATION
 
@@ -186,7 +188,7 @@ def choose_query(dataset):
 def choose_validation(dataset):
     import configuration as c
     c.dataset = dataset
-    c.reportdir = output / (dataset+"-valid")
+    c.reportdir = output / dataset
     # Primary results
     if dataset == "aids-vs-500k":
         pos = "aids-bioethics-Oct06.txt"

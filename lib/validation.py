@@ -367,14 +367,14 @@ def report(pos, neg, pscores, nscores, featmap, featdb, configuration):
         daniel = c.dodaniel
         )
     feature_info.writeFeatureScoresCSV(codecs.open(rd/c.term_scores_name,"wb","utf-8"))
-    overlap, iX, iY = plotting.plotPDF(
-        gp, rd/c.hist_img, p.pscores, p.nscores, p.tuned.threshold)
-    plotting.plotROC(
-        gp, rd/c.roc_img, p.FPR, p.TPR, p.tuned.FPR)
-    plotting.plotPrecisionRecall(
-        gp, rd/c.p_vs_r_img, p.TPR, p.PPV, p.tuned.TPR)
-    plotting.plotPrecisionRecallFmeasure(
-        gp, rd/c.pr_vs_score_img, p.pscores, p.TPR, p.PPV, p.FM, p.FMa, p.tuned.threshold)
+    overlap = None
+    #overlap, iX, iY = plotting.plotArticleScoreDensity(gp, rd/c.hist_img, p.pscores, p.nscores, p.tuned.threshold)
+    #plotting.plotFeatureScoreDensity(gp, rd/c.feat_img, feature_info.scores)
+    plotting.plotArticleScoreHistogram(gp, rd/c.hist_img, p.pscores, p.nscores, p.tuned.threshold)
+    plotting.plotFeatureScoreHistogram(gp, rd/c.feat_img, feature_info.scores)
+    plotting.plotROC(gp, rd/c.roc_img, p.FPR, p.TPR, p.tuned.FPR)
+    plotting.plotPrecisionRecall(gp, rd/c.p_vs_r_img, p.TPR, p.PPV, p.tuned.TPR)
+    plotting.plotPrecisionRecallFmeasure(gp, rd/c.pr_vs_score_img, p.pscores, p.TPR, p.PPV, p.FM, p.FMa, p.tuned.threshold)
     # Write main index file for validation output
     templates.validation.run(dict(
         time = time.strftime("%Y-%m-%d %H:%M:%S"),

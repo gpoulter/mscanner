@@ -135,6 +135,7 @@ c - Configuration module
         </th>
         <td>{{"%.5f"%p.PR_area}}</td>
       </tr>
+      {{if overlap is not None}}
       <tr>
         <th>
           Overlap in score densities
@@ -142,6 +143,7 @@ c - Configuration module
         </th>
         <td>{{"%.5f"%overlap}}</td>
       </tr>
+      {{endif}}
     </table>
 
     <div class="help" id="positives_help">
@@ -526,7 +528,9 @@ c - Configuration module
       </ul>
     </div>
 
-    <img src="{{c.hist_img}}" alt="Score Histogram"/>
+    <img src="{{c.hist_img}}" alt="Article Score Densities"/>
+    
+    <img src="{{c.feat_img}}" alt="Feature Score Density"/>
     
     <img src="{{c.roc_img}}" alt="ROC Curve"/>
     

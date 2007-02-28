@@ -52,22 +52,20 @@ Citations for the output results
     </p>
   </div>
 
-  <!--
   {{script}}ncbi='http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;db=pubmed&amp;dopt=Abstract&amp;list_uids='{{endscript}}
-  -->
 
   <div class="box">
-    <!--{{for idx, (pmid, score) in enumerate(scores)}}-->
+    {{for idx, (pmid, score) in enumerate(scores)}}
     <div class="citation">
       <h2 class="heading">
         Rank: {{"%d"%idx}}, PubMed ID: <a href="{{ncbi}}{{pmid}}">{{pmid}}</a>, Score: {{"%.5f"%score}}
       </h2>
-      <!--{{if articles is not None}}-->
-      <!--{{script}}art = articles[str(pmid)]{{endscript}}-->
+      {{if articles is not None}}
+      {{script}}art = articles[str(pmid)]{{endscript}}
       <h3 class="title">
         {{art.title.encode("ascii","xmlcharrefreplace")}}
       </h3>
-      {{if hasattr(art, "authors")}}
+      {{if art.authors}}
       <p class="authors">
         {{for initials, lastname in art.authors}}
         {{if initials is not None}}
@@ -80,12 +78,14 @@ Citations for the output results
         ({{str(art.year)}}) (issn:<a href="http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?CMD=search&amp;DB=journals&amp;term={{art.issn}}">{{art.issn}})</a>
       </p>
       {{endif}}
+      {{if art.abstract}}
       <p class="abstract">
         {{art.abstract.encode("ascii","xmlcharrefreplace")}}
       </p>
-      <!--{{endif}}-->
+      {{endif}}
+      {{endif}}
     </div>
-    <!--{{endfor}}-->
+    {{endfor}}
   </div>
 
 </div>

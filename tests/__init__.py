@@ -4,15 +4,15 @@ import unittest
 
 def suite():
     modules = [
-        "test_article",
         "test_dbexport",
         "test_dbshelve",
         "test_featuredb",
+        "test_featuremap",
         "test_genedrug",
         "test_medline",
         "test_scoring",
-        "test_validation",
-        "test_xmlparse"
+        "test_utils",
+        "test_validation"
         ]
     tests = unittest.TestSuite()
     for modname in modules:

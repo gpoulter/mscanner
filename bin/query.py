@@ -22,25 +22,26 @@ import time
 import configuration as c
 import dbshelve
 import dbexport
-import article
+from featuredb import FeatureDatabase
+from featuremap import FeatureMapping
 import genedrug
-import medline
 import scoring
+from utils import countFeatures, runMailer, StatusFile, readPMIDs, writePMIDScores
 
 def do_query():
     # Perform query
     log.debug("Peforming query for dataset %s", c.dataset)
-    statfile = article.StatusFile(c.statfile, c.dataset)
+    statfile = StatusFile(c.statfile, c.dataset)
     try:
         # Load article information
-        featdb = medline.FeatureDatabase(c.featuredb, 'r')
-        featmap = article.FeatureMapping(c.featuremap)
+        featdb = FeatureDatabase(c.featuredb, 'r')
+        featmap = FeatureMapping(c.featuremap)
         artdb = dbshelve.open(c.articledb, 'r')
-        input_pmids = set(article.readPMIDs(c.reportdir/c.posfile, include=featdb))
+        input_pmids = set(readPMIDs(c.reportdir/c.posfile, include=featdb))
         statfile.total = len(featdb)-len(input_pmids)
 
         # Calculate feature score information
-        pos_counts = article.countFeatures(len(featmap), featdb, input_pmids)
+        pos_counts = countFeatures(len(featmap), featdb, input_pmids)
         neg_counts = nx.array(featmap.counts, nx.int32) - pos_counts
         feature_info = scoring.FeatureScoreInfo(
             pos_counts,  neg_counts,
@@ -50,18 +51,18 @@ def do_query():
         # Load saved results
         if (c.reportdir/c.index_file).isfile():
             log.info("Loading saved results")
-            inputs = article.readPMIDs(c.reportdir/c.posfile, withscores=True)
-            results = article.readPMIDs(c.reportdir/c.query_results_name, withscores=True)
+            inputs = readPMIDs(c.reportdir/c.posfile, withscores=True)
+            results = readPMIDs(c.reportdir/c.query_results_name, withscores=True)
         # Recalculate results
         else:
             log.info("Recalculating results")
             # Calculate and write result scores
             queryids = ((k,v) for k,v in featdb.iteritems() if int(k) not in input_pmids)
             results = scoring.filterDocuments(queryids, feature_info.scores, c.limit, c.threshold, statfile)
-            article.writePMIDScores(c.reportdir/c.query_results_name, results)
+            writePMIDScores(c.reportdir/c.query_results_name, results)
             # Calculate and write input scores
             inputs = [ (pmid,nx.sum(feature_info.scores[featdb[pmid]])) for pmid in input_pmids ]
-            article.writePMIDScores(c.reportdir/c.posfile, inputs)
+            writePMIDScores(c.reportdir/c.posfile, inputs)
 
         # Write result report
         log.debug("Writing report")
@@ -84,7 +85,7 @@ def do_query():
         featdb.close()
         artdb.close()
         del statfile
-        article.runMailer(c.smtp_server, c.mailer)
+        runMailer(c.smtp_server, c.mailer)
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:

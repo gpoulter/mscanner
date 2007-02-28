@@ -1,9 +1,10 @@
-from article import Article
-import dbexport
 from path import path
 import sys
 import tempfile
 import unittest
+
+from article import Article
+import dbexport
 
 articles=[
     Article(

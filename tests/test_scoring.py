@@ -1,9 +1,11 @@
+import numpy
 from path import path
-import article
-import scoring
 import tempfile
 import unittest
-import numpy
+
+from article import Article
+from featuremap import FeatureMapping
+import scoring
 
 class ScoringTests(unittest.TestCase):
     """Tests for scoring module functions"""
@@ -22,7 +24,7 @@ class ScoringTests(unittest.TestCase):
         nfreqs = numpy.array([2,1,0])
         pdocs = 2
         ndocs = 3
-        fm = article.FeatureMapping()
+        fm = FeatureMapping()
         # Without masking of unknown features
         f = scoring.FeatureScoreInfo(pfreqs, nfreqs, pdocs, ndocs, 0.1, fm)
         self.assert_(numpy.allclose(
@@ -51,9 +53,9 @@ class ScoringTests(unittest.TestCase):
         pdocs = 2
         ndocs = 1
         articles = {
-            "1111": article.Article(1111,"T","A",meshterms=set(["A","B"])),
-            "2222": article.Article(2222,"T","A",meshterms=set(["A","C"])),
-            "3333": article.Article(3333,"T","A",meshterms=set(["B","C"])),
+            "1111": Article(1111,"T","A",meshterms=set(["A","B"])),
+            "2222": Article(2222,"T","A",meshterms=set(["A","C"])),
+            "3333": Article(3333,"T","A",meshterms=set(["B","C"])),
             }
         scores = [(3333,3.5), (2222,2.0), (1111,1.0)]
         featmap = [("A","T"), ("B","T"), ("C","Q")]

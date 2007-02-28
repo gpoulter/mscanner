@@ -1,19 +1,55 @@
 """Manage Article and feature database
 
 @author: Graham Poulter
-                                    
+                                        
 
 """
 
-import os
 from bsddb import db
+import cPickle
+import gzip
 import logging as log
-from array import array
+import os
 from path import path
+import xml.etree.cElementTree as ET
 
+from article import Article
 import dbshelve
 from featuredb import FeatureDatabase
-from article import Article, FileTracker, FeatureMapping
+from featuremap import FeatureMapping
+from utils import FileTracker
+
+def parse(source):
+    """Convert XML file into Article objects
+    
+    @param source: File-like object containing XML and MedlineCitation elements
+    
+    @return: Iterator over Article objects
+    """
+    context = ET.iterparse(source, events=("start", "end"))
+    context = iter(context)
+    event, root = context.next()
+    for event, record in context:
+        if event == "end" and record.tag == "MedlineCitation":
+            if record.get("Status") == "MEDLINE":
+                result = Article()
+                result.pmid = int(record.findtext("PMID"))
+                art = record.find("Article")
+                result.issn = art.findtext("Journal/ISSN")
+                result.year = art.findtext("Journal/JournalIssue/PubDate/Year")
+                if result.year is not None:
+                    result.year = int(result.year)
+                result.title = art.findtext("ArticleTitle")
+                result.abstract = art.findtext("Abstract/AbstractText")
+                result.authors = [(a.findtext("Initials"), a.findtext("LastName")) 
+                                  for a in art.findall("AuthorList/Author")]
+                result.journal = record.findtext("MedlineJournalInfo/MedlineTA")
+                for heading in record.findall("MeshHeadingList/MeshHeading"):
+                    descriptor = heading.findtext("DescriptorName")
+                    quals = [ q.text for q in heading.findall("QualifierName") ]
+                    result.meshterms.append(tuple([descriptor] + quals))
+                yield result
+            root.clear()
 
 class MedlineCache:
     """Manages the database of medline abstracts.  Function is to
@@ -24,7 +60,6 @@ class MedlineCache:
     def __init__(
         self,
         featmap,
-        parser,
         db_env_home,
         article_db,
         feature_db,
@@ -34,7 +69,6 @@ class MedlineCache:
         """Initialse a cache of the results of parsing medline.
 
         @param featmap: A FeatureMapping object for mapping string features to IDs
-        @param parser: An ArticleParser object to parse XML
         @param db_env_home: Path to DB home directory 
         @param article_db: Path to article database
         @param feature_db: Path to feature database
@@ -44,7 +78,6 @@ class MedlineCache:
         """
         self.db_env_home = db_env_home
         self.featmap = featmap
-        self.parser = parser
         self.article_db = article_db
         self.feature_db = feature_db
         self.article_list = article_list
@@ -68,10 +101,10 @@ class MedlineCache:
         dbenv.open(self.db_env_home, flags)
         return dbenv
 
-    def putArticleList(self, articles, dbenv):
+    def putArticles(self, articles, dbenv):
         """Store Article objects and feature lists the databases
 
-        @param articles: List of Article objects
+        @param articles: Iterable of Article objects
         @param dbenv: Database environment to use
         """
         log.info("Starting transaction to add articles")
@@ -84,7 +117,8 @@ class MedlineCache:
             pmidlist = []
             for art in articles:
                 # Refuse to add duplicates
-                if art.pmid in meshfeatdb: continue
+                if art.pmid in meshfeatdb: 
+                    continue
                 # Store article, adding it to list of documents
                 artdb[str(art.pmid)] = art
                 pmidlist.append(str(art.pmid))
@@ -110,13 +144,14 @@ class MedlineCache:
             if txn is not None:
                 txn.commit()
         except Exception, e:
-            raise
             if txn is not None:
                 log.error("Aborting Transaction: Error %s", e)
                 txn.abort()
+            raise
         else:
             if txn is not None:
                 log.info("Committed transaction")
+            return len(pmidlist)
             
     def updateCacheFromDir(self, medlinedir, save_delay=5):
         """Updates the cache given that medlinedir contains .xml.gz
@@ -127,15 +162,19 @@ class MedlineCache:
         tracker = FileTracker(self.processed_path)
         toprocess = tracker.toprocess(filenames)
         dbenv = self.makeDBEnv()
-        for idx, f in enumerate(toprocess):
-            log.info("Adding to cache: file %d out of %d (%s)", idx+1, len(toprocess), f.name)
+        for idx, filename in enumerate(toprocess):
+            log.info("Adding to cache: file %d out of %d (%s)", idx+1, len(toprocess), filename.name)
             for t in xrange(save_delay):
                 log.debug("Saving in %d seconds...", save_delay-t)
                 time.sleep(1)
-            articles = list(self.parser.parseFile(f))
-            log.debug("Parsed %d articles", len(articles))
-            self.putArticleList(articles, dbenv)
-            tracker.add(f)
+            log.debug("Parsing XML file %s", filename.basename())
+            if filename.endswith(".gz"):
+                infile = gzip.open(filename, 'r')
+            else:
+                infile = file(filename, 'r')
+            numadded = self.putArticles(parse(infile), dbenv)
+            log.debug("Added %d articles", numadded)
+            tracker.add(filename)
             tracker.dump()
-            log.info("Completed file %d out of %d (%s)", idx+1, len(toprocess), f.name)
+            log.info("Completed file %d out of %d (%s)", idx+1, len(toprocess), filename.name)
         dbenv.close()

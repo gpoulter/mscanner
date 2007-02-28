@@ -60,15 +60,16 @@ def getStats(dataset, title, alpha=0.5, with_fscores=False):
     stats.title = title
     return stats
 
-def custom_show(fname, doshow=interactive):
+def custom_show(fname, doshow=interactive, type="eps"):
     """Either shows an interactive plot, or writes to EPS"""
     if interactive: 
         show()
     try:
-        fullname = outdir/fname+".eps"
+        fullname = outdir/fname + "." + type
         savefig(fullname)
-        call(["epstopdf", fullname], shell=True)
-        os.remove(fullname)
+        if type == "eps":
+            call(["epstopdf", fullname], shell=True)
+            os.remove(fullname)
     finally:
         close()
 
@@ -100,13 +101,13 @@ def plotArticleScoreHistogram(fname, pscores, nscores):
     ylabel("Article Density")
     p_n, p_bins, p_patches = hist(pscores, bins=bincount(pscores), normed=True)
     n_n, n_bins, n_patches = hist(nscores, bins=bincount(nscores), normed=True)
-    setp(p_patches, 'facecolor', 'r', 'alpha', 0.20, 'linewidth', 0.0)
-    setp(n_patches, 'facecolor', 'b', 'alpha', 0.20, 'linewidth', 0.0)
+    setp(p_patches, 'facecolor', 'r', 'alpha', 0.50, 'linewidth', 0.0)
+    setp(n_patches, 'facecolor', 'b', 'alpha', 0.50, 'linewidth', 0.0)
     p_y = normpdf(p_bins, mean(pscores), std(pscores))
     n_y = normpdf(n_bins, mean(nscores), std(nscores))
     p_l = plot(p_bins, p_y, 'r--', label=r"$\rm{Positive}$")
     n_l = plot(n_bins, n_y, 'b--', label=r"$\rm{Negative}$")
-    custom_show(fname)
+    custom_show(fname, type="svg")
     
 def plotFeatureScoreHistogram(fname, fscores):
     """Plot histogram for individual feature scores"""

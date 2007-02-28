@@ -14,15 +14,14 @@ With one argument: Load Article objects from a Pickle and them to database.
 
 """
 
-# Builtin modules
 import cPickle
 import logging as log
 import sys
-# Custom modules
+
 import configuration as c
-import article
-import medline
-import xmlparse
+from featuremap import FeatureMapping
+from utils import StatusFile, runMailer
+from medline import MedlineCache
 
 # Usage information
 if len(sys.argv)>1:
@@ -31,9 +30,8 @@ if len(sys.argv)>1:
         sys.exit(0)
 
 # Initialise database
-medcache = medline.MedlineCache(
-        article.FeatureMapping(c.featuremap),
-        xmlparse.ArticleParser(),
+medcache = MedlineCache(
+        FeatureMapping(c.featuremap),
         c.db_home,
         c.articledb,
         c.featuredb,
@@ -42,7 +40,7 @@ medcache = medline.MedlineCache(
         c.use_transactions,
         )
 
-statfile = article.StatusFile(c.statfile, "UPDATING DATABASE")
+statfile = StatusFile(c.statfile, "UPDATING DATABASE")
 try: 
     # Load articles from a pickle
     if len(sys.argv) == 2:
@@ -58,6 +56,6 @@ try:
         medcache.updateCacheFromDir(c.medline, c.save_delay)
 finally:
     del statfile
-    article.runMailer(c.smtp_server, c.mailer)
+    runMailer(c.smtp_server, c.mailer)
     
         

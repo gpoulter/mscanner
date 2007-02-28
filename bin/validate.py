@@ -21,25 +21,25 @@ from path import path
 import numpy
 #MScanner
 import configuration as c
-import article
+from featuredb import FeatureDatabase
+from featuremap import FeatureMapping
 import dbexport
 import genedrug
-import medline
-import scoring
 import validation
+from utils import getArticles, readPMIDs, StatusFile, runMailer, writePMIDScores
 
 def do_validation():
-    statfile = article.StatusFile(c.statfile, c.dataset, c.nfolds)
+    statfile = StatusFile(c.statfile, c.dataset, c.nfolds)
     try:
         # Load up info about features and articles
-        featmap = article.FeatureMapping(c.featuremap)
-        featdb = medline.FeatureDatabase(c.featuredb, 'r')
+        featmap = FeatureMapping(c.featuremap)
+        featdb = FeatureDatabase(c.featuredb, 'r')
 
         # Load already-calculated scores
         if (c.reportdir/c.index_file).isfile():
             log.info("Using cached results for %s", c.dataset)
-            positives, pscores = zip(*article.readPMIDs(c.reportdir/c.posfile, withscores=True))
-            negatives, nscores = zip(*article.readPMIDs(c.reportdir/c.negfile, withscores=True))
+            positives, pscores = zip(*readPMIDs(c.reportdir/c.posfile, withscores=True))
+            negatives, nscores = zip(*readPMIDs(c.reportdir/c.negfile, withscores=True))
             positives = numpy.array(positives, numpy.int32)
             pscores = numpy.array(pscores, numpy.float32)
             negatives = numpy.array(negatives, numpy.int32)
@@ -49,9 +49,9 @@ def do_validation():
         else:
             log.info("Recalculating results for %s", c.dataset)
             log.info("Reading positives")
-            positives = list(article.readPMIDs(c.reportdir/c.posfile, include=featdb))
+            positives = list(readPMIDs(c.reportdir/c.posfile, include=featdb))
             log.info("Reading negatives")
-            negatives = list(article.readPMIDs(c.reportdir/c.negfile, exclude=set(positives)))
+            negatives = list(readPMIDs(c.reportdir/c.negfile, exclude=set(positives)))
             positives = numpy.array(positives, numpy.int32)
             negatives = numpy.array(negatives, numpy.int32)
             log.info("Done reading")
@@ -60,8 +60,8 @@ def do_validation():
             if c.dogenedrug:
                 log.debug("Getting gene-drug associations") 
                 genedrug_articles = set()
-                pos_arts = article.getArticles(c.articledb, c.reportdir/c.posfile)
-                neg_arts = article.getArticles(c.articledb, c.reportdir/c.negfile)
+                pos_arts = getArticles(c.articledb, c.reportdir/c.posfile)
+                neg_arts = getArticles(c.articledb, c.reportdir/c.negfile)
                 gdfilter = genedrug.getGeneDrugFilter(c.genedrug, c.drugtable, c.gapscore)
                 for art in chain(pos_arts, neg_arts):
                     gdresult = gdfilter(art)
@@ -81,8 +81,8 @@ def do_validation():
                 mask = featmap.featureTypeMask(c.exclude_types)
                 )
             pscores, nscores = val.validate(statfile)
-            article.writePMIDScores(c.reportdir/c.posfile, izip(positives, pscores))
-            article.writePMIDScores(c.reportdir/c.negfile, izip(negatives, nscores))
+            writePMIDScores(c.reportdir/c.posfile, izip(positives, pscores))
+            writePMIDScores(c.reportdir/c.negfile, izip(negatives, nscores))
 
         # Output performance statistics
         log.debug("Writing performance statistics")
@@ -90,7 +90,7 @@ def do_validation():
         
     finally:
         del statfile
-        article.runMailer(c.smtp_server, c.mailer)
+        runMailer(c.smtp_server, c.mailer)
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:

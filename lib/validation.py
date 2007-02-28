@@ -3,29 +3,32 @@
 @author: Graham Poulter
                                    
 
-Validator -- Perform cross-validation and output performance statistics
+Validator -- Perform cross-validation for article scores
+PerformanceStats -- Calculate statistics from article scores
+
+classDictionary() -- Convert dictionary to an object
+report() -- Produce performance report
 
 """
 
 from __future__ import division
 import warnings
 warnings.simplefilter('ignore', FutureWarning)
-from itertools import chain, izip
+
 import codecs
 import cPickle
 from Gnuplot import Gnuplot
 import logging as log
-import math
 import numpy as nx
 from path import path
 from scipy.integrate import trapz
 import sys
 import time
 
-import article
 import scoring
 import templates
 import plotting
+from utils import countFeatures
 
 class Validator:
     """Cross-validated calculation of article scores"""
@@ -44,7 +47,7 @@ class Validator:
         randomise = True,
         ):
         """Initialise validator
-        @param featmap: FeatureMapping instance (but list of counts will do)
+        @param featmap: FeatureMapping instance (but only length is used for fixed pseudocount)
         @param featdb: Mapping of doc id to list of feature ids
         @param pos: Array of positive doc ids
         @param neg: Array of negative doc ids
@@ -106,14 +109,14 @@ class Validator:
         nstarts, nsizes = self.partitionSizes(ndocs, self.nfold)
         pscores = nx.zeros(pdocs, nx.float32)
         nscores = nx.zeros(ndocs, nx.float32)
-        pcounts = article.countFeatures(self.numfeats, self.featdb, self.pos)
-        ncounts = article.countFeatures(self.numfeats, self.featdb, self.neg)
+        pcounts = countFeatures(self.numfeats, self.featdb, self.pos)
+        ncounts = countFeatures(self.numfeats, self.featdb, self.neg)
         for fold, (pstart,psize,nstart,nsize) in enumerate(zip(pstarts,psizes,nstarts,nsizes)):
             statfile(fold, self.nfold)
             log.debug("pstart = %d, psize = %s; nstart = %d, nsize = %d", pstart, psize, nstart, nsize)
             # Modifiy the feature counts by subtracting out the test fold
-            temp_pcounts = pcounts - article.countFeatures(self.numfeats, self.featdb, self.pos[pstart:pstart+psize])
-            temp_ncounts = ncounts - article.countFeatures(self.numfeats, self.featdb, self.neg[nstart:nstart+nsize])
+            temp_pcounts = pcounts - countFeatures(self.numfeats, self.featdb, self.pos[pstart:pstart+psize])
+            temp_ncounts = ncounts - countFeatures(self.numfeats, self.featdb, self.neg[nstart:nstart+nsize])
             # Calculate the resulting feature scores
             termscores, pfreqs, nfreqs = scoring.calculateFeatureScores(
                 temp_pcounts, temp_ncounts, pdocs-psize, ndocs-nsize,
@@ -129,8 +132,8 @@ class Validator:
 
         @note: Does not support 'daniel' scoring method
         """
-        pcounts = article.countFeatures(self.numfeats, self.featdb, self.pos)
-        ncounts = article.countFeatures(self.numfeats, self.featdb, self.neg)
+        pcounts = countFeatures(self.numfeats, self.featdb, self.pos)
+        ncounts = countFeatures(self.numfeats, self.featdb, self.neg)
         pscores = nx.zeros(len(self.pos), nx.float32)
         nscores = nx.zeros(len(self.neg), nx.float32)
         pdocs = len(self.pos)
@@ -357,8 +360,8 @@ def report(pos, neg, pscores, nscores, featmap, featdb, configuration):
     p = PerformanceStats(pscores, nscores, c.alpha)
     gp = Gnuplot(debug=1)
     feature_info = scoring.FeatureScoreInfo(
-        pos_counts = article.countFeatures(len(featmap), featdb, pos),
-        neg_counts = article.countFeatures(len(featmap), featdb, neg),
+        pos_counts = countFeatures(len(featmap), featdb, pos),
+        neg_counts = countFeatures(len(featmap), featdb, neg),
         pdocs = len(pos),
         ndocs = len(neg),
         pseudocount = c.pseudocount,

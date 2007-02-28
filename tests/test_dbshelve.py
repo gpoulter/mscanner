@@ -1,5 +1,5 @@
 from bsddb import db
-from dbshelve import open
+import dbshelve
 from path import path
 import tempfile
 import unittest
@@ -11,7 +11,7 @@ class ShelfTests(unittest.TestCase):
     """
 
     def setUp(self):
-        self.db = open(None)
+        self.db = dbshelve.open(None)
 
     def testMethods(self):
         d = self.db
@@ -38,7 +38,7 @@ class ShelfTnxTests(ShelfTests):
         self.envdir = path(tempfile.mkdtemp(prefix="dbshelve-"))
         self.env = db.DBEnv()
         self.env.open(self.envdir, db.DB_INIT_MPOOL|db.DB_INIT_TXN|db.DB_CREATE)
-        self.db = open(self.envdir/'dbshelf.db', db.DB_CREATE|db.DB_AUTO_COMMIT, dbenv=self.env)
+        self.db = dbshelve.open(self.envdir/'dbshelf.db', db.DB_CREATE|db.DB_AUTO_COMMIT, dbenv=self.env)
 
     def tearDown(self):
         if self.txn is not None:

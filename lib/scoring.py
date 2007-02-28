@@ -10,14 +10,14 @@ writeReport() -- Collate results of a query (calls all of above)
 """
 
 from __future__ import division
-from itertools import chain, izip
-from path import path
 import codecs
 import heapq
-import templates
-import article
 import numpy as nx
+from path import path
 import time
+
+from featuremap import FeatureMapping
+import templates
 
 class FeatureScoreInfo:
     """Class to calculate and store all information about the
@@ -59,7 +59,7 @@ class FeatureScoreInfo:
         (Medline) frequency of a feature being its pseudocount.
   
         """
-        isinstance(featmap, article.FeatureMapping)
+        isinstance(featmap, FeatureMapping)
         self.pos_counts = pos_counts
         self.neg_counts = neg_counts
         self.pdocs = pdocs

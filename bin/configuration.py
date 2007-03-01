@@ -51,6 +51,8 @@ articledb = cache / "articles.db"
 articlelist = cache / "articles.txt"
 ## Path to DB of term features for each article
 featuredb = cache / "features.db"
+## Path to binary stream of PMIDs and feature arrays
+featurestream = cache / "features.stream"
 ## Path to feature<->ID mapping
 featuremap = cache / "featuremap.txt"
 ## Path to list files already processed
@@ -60,7 +62,7 @@ use_transactions = False
 ## Path to compressed MEDLINE 
 medline = working / "medline"
 ## Number of files to process between saving
-save_delay = 5
+save_delay = 2
 
 #### GENEDRUG CONFIGURATION
 
@@ -85,7 +87,7 @@ reportdir = None
 ## File name for positive documents
 posfile = "positives.txt"
 ## Types of features to exclude
-exclude_types = None
+exclude_types = []
 ## Path to file with progress statistics
 statfile = cache / "mscanner.pid"
 ## File of e-mail addresses to alert on completion

@@ -34,12 +34,7 @@ class Validator:
     """Cross-validated calculation of article scores"""
 
     def __init__(
-        self,
-        featmap,
-        featdb,
-        pos,
-        neg,
-        nfold,
+        self, featmap, featdb, pos, neg, nfold,
         pseudocount = 0.01,
         daniel = False,
         genedrug_articles = None,
@@ -47,7 +42,7 @@ class Validator:
         randomise = True,
         ):
         """Initialise validator
-        @param featmap: FeatureMapping instance (but only length is used for fixed pseudocount)
+        @param featmap: FeatureMapping instance (for fixed pseudocount only len()is used)
         @param featdb: Mapping of doc id to list of feature ids
         @param pos: Array of positive doc ids
         @param neg: Array of negative doc ids
@@ -63,10 +58,9 @@ class Validator:
         self.pos = pos
         self.neg = neg
         self.nfold = nfold
-        if pseudocount is None:
+        self.pseudocount = pseudocount
+        if not pseudocount:
             self.pseudocount = nx.array(featmap.counts, nx.float32) / featmap.numdocs
-        else:
-            self.pseudocount = pseudocount
         self.daniel = daniel
         self.genedrug_articles = genedrug_articles
         self.mask = mask
@@ -74,17 +68,17 @@ class Validator:
 
     def articleIsPositive(self, docid, score, threshold):
         """Classifies an article as positive or negative based on score threshold"""
-        if self.genedrug_articles is None or docid in self.genedrug_articles:
+        if self.genedrug_articles and docid in self.genedrug_articles:
             return score >= threshold
         else:
             return False
 
     def validate(self, statfile=lambda x,y:x):
         """Carry out validation.  0 folds is taken to mean leave-out-one validation"""
-        if self.nfold == 0:
-            return self.leaveOutOneValidate(statfile)
-        else:
+        if self.nfold:
             return self.crossValidate(statfile)
+        else:
+            return self.leaveOutOneValidate(statfile)
 
     @staticmethod
     def partitionSizes(nitems, nparts):

@@ -7,6 +7,8 @@
 from bsddb import db
 import numpy
 import logging as log
+from path import path
+import struct
 
 class FeatureDatabase:
     """Persistent mapping from integer key to array objects of numerical values"""
@@ -56,15 +58,9 @@ class FeatureDatabase:
         return numpy.fromstring(buf, self.ftype)
 
     def setitem(self, key, values, txn=None):
-        """Associate integer key with an ndarray object of values
-
-        If given a list instead of an ndarray, convert to array of
-        self.ftype, and make sure values are unique.
-        """
-        if not isinstance(values, numpy.ndarray):
-            values = numpy.unique(numpy.array(values, self.ftype))
+        """Associate integer key with an ndarray object of values"""
         if values.dtype != self.ftype:
-            raise ValueError("data value type mismatch: tried to place " + str(values.dtype) + " for key " + str(key))
+            raise ValueError("array type mismatch: tried to place " + str(values.dtype) + " for key " + str(key))
         try:
             self.db.put(str(key), values.tostring(), txn=txn)
         except ValueError, e:
@@ -75,7 +71,7 @@ class FeatureDatabase:
         """Delete a given key from the database"""
         self.db.delete(str(key), txn=txn)
 
-    # Bunch of dictionary methods
+    # Bunch of derived dictionary methods
 
     def __getitem__(self, key):
         return self.getitem(key)
@@ -109,4 +105,32 @@ class FeatureDatabase:
             yield rec[0], numpy.fromstring(rec[1],self.ftype)
             rec = cur.next()
         cur.close()
+        
+class FeatureStream:
+    """Alternative to FeatureDatabase which stores the data in compact format
+    for fast iteration over all of it during a query operation."""
 
+    def __init__(self, stream):
+        """Initialise with a stream, usually a file opened in rb or ab mode.
+        Must support read() and write()."""
+        self.stream = stream
+    
+    def close(self):
+        self.stream.close()
+
+    def write(self, pmid, features):
+        """Given PubMed ID (string or integer) and numpy array of features, add
+        the document to the stream"""
+        if features.dtype != numpy.uint16:
+            raise ValueError("Array dtype must be uint16, not %s" % str(features.dtype))
+        self.stream.write(struct.pack("IH", int(pmid), len(features)))
+        features.tofile(self.stream)
+        
+    def __iter__(self):
+        """Iterate over pairs of (PubMed ID, Features), where PubMed ID
+        is int, and Features are numpy arrays of uint16."""
+        head = self.stream.read(6)
+        while len(head) == 6:
+            pmid, alen = struct.unpack("IH", head)
+            yield (pmid, numpy.fromfile(self.stream, numpy.uint16, alen))
+            head = self.stream.read(6)

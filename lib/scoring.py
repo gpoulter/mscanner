@@ -64,18 +64,14 @@ class FeatureScoreInfo:
         self.neg_counts = neg_counts
         self.pdocs = pdocs
         self.ndocs = ndocs
-        if pseudocount is None:
+        self.pseudocount = pseudocount
+        if not pseudocount:
             self.pseudocount = nx.array(featmap.counts, nx.float32) / featmap.numdocs
-        else:
-            self.pseudocount = pseudocount
         self.featmap = featmap
         self.exclude_types = exclude_types
         self.daniel = daniel
         self.num_feats = len(self.featmap)
-        if exclude_types == None:
-            self.mask = None
-        else:
-            self.mask = self.featmap.featureTypeMask(self.exclude_types)
+        self.mask = self.featmap.featureTypeMask(self.exclude_types)
         self.recalculateFeatureScores()
         self.recalculateFeatureStats()
 
@@ -109,7 +105,7 @@ class FeatureScoreInfo:
         else:
             pseudocount = self.pseudocount
         for t, score in sorted(enumerate(_.scores), key=lambda x:x[1], reverse=True):
-            if _.mask is not None and _.mask[t]:
+            if _.mask and _.mask[t]:
                 continue
             stream.write(
                 u'%.3f,%d,%d,%.2e,%.2e,%.2e,%d,%s,"%s"\n' % 
@@ -134,7 +130,7 @@ def calculateFeatureScores(
     P(term|positive)+P(~term|positive)=1. It may instead be an array of floats
     with a different pseudocount for each feature.
 
-    @param mask: Booolean array specifiying features to mask to zero
+    @param mask: Optional boolean array specifiying features to mask to zero
 
     @param daniel: If true, use the JAMIA paper's smoothing heuristic
     of 10^-8 for terms found in positive but not negative (and visa
@@ -160,7 +156,7 @@ def calculateFeatureScores(
     scores = nx.log(pfreqs / nfreqs)
     
     ## Remove masked features from consideration
-    if mask is not None:
+    if mask:
         pfreqs[mask] = 0
         nfreqs[mask] = 0
         scores[mask] = 0
@@ -174,12 +170,14 @@ def calculateFeatureScores(
         
     return scores, pfreqs, nfreqs
 
-def filterDocuments(docs, featscores, limit=10000, threshold=0.0, statfile=lambda x:x):
+def filterDocuments(docs, featscores, exclude=[], limit=10000, threshold=0.0, statfile=lambda x:x):
     """Return scores for documents given features and feature scores
 
-    @param docs: Iterable over (doc ID, array of feature ID) pairs
+    @param docs: Iterator over (integer doc ID, array of feature ID) pairs
 
     @param featscores: Array of feature scores (mapping feature ID to score)
+    
+    @param exclude: Set of doc IDs to exclude from scoring
 
     @param limit: Maximum number of results to return.
 
@@ -193,6 +191,8 @@ def filterDocuments(docs, featscores, limit=10000, threshold=0.0, statfile=lambd
     ndocs = 0
     marker = 0
     for idx, (docid, features) in enumerate(docs):
+        if docid in exclude:
+            continue
         if idx == marker:
             statfile(idx)
             marker += 100000
@@ -201,11 +201,11 @@ def filterDocuments(docs, featscores, limit=10000, threshold=0.0, statfile=lambd
             #print idx, docid, score
             ndocs += 1
             if score >= results[0][0]:
-                heapq.heapreplace(results, (score,int(docid)))
+                heapq.heapreplace(results, (score,docid))
     statfile(None)
     if ndocs < limit:
         limit = ndocs
-    return [(pmid,score) for score,pmid in heapq.nlargest(limit, results)]
+    return [(docid,score) for score,docid in heapq.nlargest(limit, results)]
 
 def writeReport(input, output, feature_info, configuration, artdb):
     """Write a report using the results of the classifier

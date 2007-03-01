@@ -44,8 +44,8 @@ class ScoringTests(unittest.TestCase):
         docs = { 1:[0,2], 2:[1,2], 3:[0,1] }
         fscores = numpy.array([1.0, 10.0, 100.0])
         self.assertEqual(numpy.sum(fscores[docs[1]]), 101.0)
-        self.assertEqual(scoring.filterDocuments(docs.iteritems(), fscores, 2, 0 ), [ (2,110.0), (1,101.0) ])
-        self.assertEqual(scoring.filterDocuments(docs.iteritems(), fscores, 10, 102.0 ), [ (2,110.0) ])
+        self.assertEqual(scoring.filterDocuments(docs.iteritems(), fscores, [], 2, 0 ), [ (2,110.0), (1,101.0) ])
+        self.assertEqual(scoring.filterDocuments(docs.iteritems(), fscores, [], 10, 102.0 ), [ (2,110.0) ])
 
     def test_writeReport(self):
         pfreqs = numpy.array([1,1,2])

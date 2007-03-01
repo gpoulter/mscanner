@@ -22,7 +22,7 @@ import time
 import configuration as c
 import dbshelve
 import dbexport
-from featuredb import FeatureDatabase
+from featuredb import FeatureDatabase, FeatureStream
 from featuremap import FeatureMapping
 import genedrug
 import scoring
@@ -57,8 +57,8 @@ def do_query():
         else:
             log.info("Recalculating results")
             # Calculate and write result scores
-            queryids = ((k,v) for k,v in featdb.iteritems() if int(k) not in input_pmids)
-            results = scoring.filterDocuments(queryids, feature_info.scores, c.limit, c.threshold, statfile)
+            featstream = FeatureStream(file(c.featurestream, "rb"))
+            results = scoring.filterDocuments(featstream, feature_info.scores, input_pmids, c.limit, c.threshold, statfile)
             writePMIDScores(c.reportdir/c.query_results_name, results)
             # Calculate and write input scores
             inputs = [ (pmid,nx.sum(feature_info.scores[featdb[pmid]])) for pmid in input_pmids ]

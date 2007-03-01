@@ -48,11 +48,13 @@ class MedlineCacheTests(unittest.TestCase):
         pmids = h/"pmids.txt"
         artdb = h/"articles.db"
         featdb = h/"features.db"
+        featstream = h/"features.stream"
         fmap = FeatureMapping(h/"featuremap.txt")
         m = MedlineCache(fmap,
                          h,
                          artdb,
                          featdb,
+                         featstream,
                          h/"articles.txt",
                          h/"processed.txt",
                          use_transactions=True,)

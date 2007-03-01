@@ -35,6 +35,7 @@ medcache = MedlineCache(
         c.db_home,
         c.articledb,
         c.featuredb,
+        c.featurestream,
         c.articlelist,
         c.processed,
         c.use_transactions,

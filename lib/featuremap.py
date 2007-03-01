@@ -8,6 +8,7 @@ FeatureMapping -- Mapping between string features and 16-bit feature IDs
 """
 
 import codecs
+import numpy as nx
 
 from utils import makeBackup, removeBackup
 
@@ -21,9 +22,9 @@ class FeatureMapping:
 
     @ivar numdocs: Number of documents used in creating the mapping
 
-    @ivar features: List mapping ID to (feature string, feature type)
+    @ivar features: List which effectively maps id:(feature,type)
 
-    @ivar feature_ids: {type:{feature:id}} mapping
+    @ivar feature_ids: Dictionary to map type:{feature:id}
 
     @ivar counts: List mapping ID to number of occurrences
     """
@@ -91,7 +92,7 @@ class FeatureMapping:
 
         @return: Boolean array for excluded features (but returns None if exclude_types is None)
         """
-        if exclude_types is None:
+        if not exclude_types:
             return None
         exclude_feats = nx.zeros(len(self.features), nx.bool)
         for ftype in exclude_types:
@@ -106,9 +107,9 @@ class FeatureMapping:
         @note: Dynamically creates new features IDs and feature types as necessary.
 
         @note: Takes keyword arguments for feature types, with values being a
-        list of feature strings for that type.
+        list of feature strings for that type. e.g. mesh=["Term A","Term B"]
 
-        @return: List of feature IDs
+        @return: Numpy array of uint16 feature IDs
         """
         result = []
         self.numdocs += 1
@@ -125,4 +126,4 @@ class FeatureMapping:
                 else:
                     self.counts[fdict[feat]] += 1
                 result.append(fdict[feat])
-        return result
+        return nx.array(result, nx.uint16)

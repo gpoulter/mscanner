@@ -9,13 +9,14 @@ from bsddb import db
 import cPickle
 import gzip
 import logging as log
+import numpy as nx
 import os
 from path import path
 import xml.etree.cElementTree as ET
 
 from article import Article
 import dbshelve
-from featuredb import FeatureDatabase
+from featuredb import FeatureDatabase, FeatureStream
 from featuremap import FeatureMapping
 from utils import FileTracker
 
@@ -58,20 +59,16 @@ class MedlineCache:
     """
 
     def __init__(
-        self,
-        featmap,
-        db_env_home,
-        article_db,
-        feature_db,
-        article_list,
-        processed_path,
-        use_transactions=True):
+        self, featmap, db_env_home,
+        article_db, feature_db, feature_stream, article_list,
+        processed_path, use_transactions=True):
         """Initialse a cache of the results of parsing medline.
 
         @param featmap: A FeatureMapping object for mapping string features to IDs
         @param db_env_home: Path to DB home directory 
         @param article_db: Path to article database
         @param feature_db: Path to feature database
+        @param feature_stream: Path to feature stream file
         @param article_list: Path to list of article PMIDs
         @param processed_path: Path to list of processed files
         @param use_transactions: If false, disable transaction engine
@@ -80,6 +77,7 @@ class MedlineCache:
         self.featmap = featmap
         self.article_db = article_db
         self.feature_db = feature_db
+        self.feature_stream = feature_stream
         self.article_list = article_list
         self.processed_path = processed_path
         self.use_transactions = use_transactions
@@ -114,6 +112,7 @@ class MedlineCache:
         try:
             artdb = dbshelve.open(self.article_db, dbenv=dbenv, txn=txn)
             meshfeatdb = FeatureDatabase(self.feature_db, dbenv=dbenv, txn=txn)
+            featstream = FeatureStream(file(self.feature_stream,"ab"))
             pmidlist = []
             for art in articles:
                 # Refuse to add duplicates
@@ -137,8 +136,10 @@ class MedlineCache:
                 # Add features to feature mapping
                 featids = self.featmap.addArticle(mesh=headings, qual=quals, issn=issns)
                 meshfeatdb.setitem(art.pmid, featids, txn)
+                featstream.write(art.pmid, featids)
             artdb.close()
             meshfeatdb.close()
+            featstream.close()
             self.article_list.write_lines(pmidlist, append=True)
             self.featmap.dump()
             if txn is not None:

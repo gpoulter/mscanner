@@ -1,0 +1,196 @@
+#def title
+Submit Query or Validation #slurp
+#end def
+
+#def head
+<script type="text/javascript" src="$root/static/mootools.js"></script>
+
+<script type="text/javascript">
+var help = new Object();
+
+window.onload = function() {
+  var names = [
+    "h_batch",
+    "h_code",
+    "h_pseudocount",
+    "h_positives",
+    "h_threshold",
+    "h_limit",
+    "h_nfold",
+    "h_negatives",
+    "h_alpha"
+  ];
+  for (var i = 0; i < names.length; i++) {
+    help[names[i]] = new Fx.Slide(names[i], {duration: 500})
+    help[names[i]].hide() 
+  }
+}
+
+function example() {
+   $('batch').value = "example-radiology-query"
+   $('positives').value = "10390570\n10555669\n10587123\n10658726\n10702822\n10747308\n11092485\n11812973\n12216754\n12438060\n12708922\n12828616\n12945936\n14510633\n14628859\n14700161\n14752189\n14914750\n15256634\n15310152\n15351243\n15405683\n15480032\n15520901\n15717221\n15718419\n1592926\n16009818\n16019460\n16154823\n16189163\n16272860\n16299797\n16344746\n16415460\n16488085\n1727362\n1899742\n1928554\n1950868\n1984330\n2406785\n2731700\n2806818\n3275982\n3279735\n3416282\n3840980\n3871147\n4040300\n5327041\n5368340\n6497634\n6783686\n6856834\n7034554\n7480744\n8190956\n8208972\n8316667\n8372948\n8615251\n8911169\n8988207\n8988208\n9754100\n9922200\n9922201\n"
+}
+</script>
+#end def
+
+#def disabled
+#if $status#disabled="disabled"#end if##slurp
+#end def
+
+#def form_row(label, id, input, help)
+<tr>
+  <th>
+    $label
+  </th>
+  <td class="value">
+    $input
+  </td>
+  <td class="help">
+    <button type="button" onclick="help['h_$id'].toggle()">help</button>
+  </td>
+</tr>
+<tr class="help">
+  <td colspan="3">
+    <div id="h_$id">
+      $help
+    </div>
+  </td>
+</tr>
+#end def
+
+#def h_input(name, size, value)
+<input name="$name" id="$name" type="text" size="$size" value="$value" $disabled />
+#end def
+
+#def h_textarea(name, rows, cols, value)
+<textarea name="$name" id="$name" rows="$rows" cols="$cols" $disabled>$value</textarea>
+#end def
+
+#def h_option(name, options, value)
+<select name="$name" id="$name" $disabled>
+#for f in options
+<option value="$f" #if $f==$value#selected="selected"#end if#>$f</option>
+#end for
+</select>
+#end def
+
+#def content
+<form class="query" action="" method="post">
+  
+  #if $getVar('errors',None)
+  <fieldset>
+    <legend>Form Errors</legend>
+    <ul>
+      #for error in $errors
+      <li>
+        $error
+      </li>
+      #end for
+    </ul>
+  </fieldset>
+  #end if
+
+  #if $getVar('status',None)
+  <p class="alert">
+    MScanner is busy with another submission.  You can <a
+    href="/status">check on its status</a> (option to notify by
+    e-mail), or browse the help buttons below.
+  </p>
+  #end if
+
+  <fieldset>
+    
+    <legend>Standard Options</legend>
+
+    <table>
+      $form_row("Batch Name", "batch", $h_input("batch",30,$batch),
+      """To help identify your results, provide a name for your
+      submission so that you can identify it later.  The title may
+      only consist of lowercase alphanumerics plus _.-, up to a
+      maximum of 30 characters (no spaces or uppercase).""")
+      
+      $form_row("Deletion Code", "code", $h_input("code",8,$code),
+      """To prevent random people from cancelling your submission or
+      deleting your output you should specify a code (if blank, anyone
+      can delete your output).  <br /><br />Preventing others from
+      <i>viewing</i> your output requires your downloading it and then
+      deleting it from the output page (output is a plain directory,
+      so this application can't limit access)""")
+
+      $form_row("Pseudocount", "pseudocount",
+      $h_input("pseudocount",8,$pseudocount), """Experts-only option.
+      The pseudocount is related to the prior expectation of observing
+      a term.  The default of 0.01 works well.  Specify 0 and MScanner
+      will use the background pseudocount.""")
+
+      $form_row("Input Citations", "positives",
+      $h_textarea("positives",3,10,$positives), """Paste a list of
+      PubMed IDs (not <a
+      href="http://www.ncbi.nlm.nih.gov/entrez/publisher/uidpmid.cgi">Medline
+      UIs</a>) one per line into the text box.  The scanner will be
+      trained to detect further articles like these.  Invalid IDs will
+      be displayed, and filtered out of this box.""")
+    </table>
+
+  </fieldset>
+
+  <fieldset>
+    
+    <legend>
+      <input type="radio" name="operation" value="query" checked="checked" $disabled/>Query Operation
+    </legend>
+    
+    <table>
+      $form_row("Score Threshold", "threshold",
+      $h_input("threshold",8,$threshold), """Only return articles
+      scoring above this threshold.  If very few articles score this
+      high, there may be fewer results than the result limit.""")
+
+      $form_row("Result Limit", "limit", $h_input("limit",8,$limit),
+      """The maximum number of results to return.  If many articles
+      score above the threshold, the result limit will trim the list
+      down to this maximum.  Maximum allowed value: 10000.""")
+    </table>
+
+  </fieldset>
+
+  <fieldset>
+    
+    <legend>
+      <input type="radio" name="operation" value="validation" $disabled />
+      Validation Operation
+    </legend>
+    
+    <table>
+      $form_row("Number of Folds", "nfold",
+      $h_option("nfold",[0,5,10],$nfold), """The number of groups to
+      split the positives into, and also to split the negatives into.
+      For validation, all but one pair of groups is used to build the
+      statistical model, and then scores are calculated for the last
+      group.  Specifying 0 (zero), performs leave-out-one validation
+      instead, where only the article being scored is left out of the
+      training model.""")
+
+      $form_row("Number of Negatives", "negatives",
+      $h_input("negatives",8,$negatives), """Select this many random
+      articles from Medline to use as negatives (custom negative sets
+      can only be used on the command line version of MScanner, since
+      they need to be quite large).""")
+
+      $form_row("F-Measure Alpha", "alpha",
+      $h_input("alpha",8,$alpha), """The validation threshold is tuned
+      to maximise the &alpha;-weighted F-Measure, which reduces to the
+      F<sub>1</sub> measure (which balances recall and precision) in
+      the case of &alpha;=0.5.  &alpha; is the weight to give to
+      precision, and may take on values between 0.0 and 1.0.  Using
+      &alpha;>0.5 trades some recall for increased precision.""")
+    </table>
+
+  </fieldset>
+
+  <button type="submit" $disabled>Submit Batch</button>
+
+  <button type="button" onclick="javascript:example()" $disabled>Example Query</button>
+
+</form>
+#end def

@@ -1,0 +1,82 @@
+#def title
+Detailed Status Report
+#end def
+
+#def content
+
+#if $status is None
+<h2>MScanner is not busy at the moment</h2>
+
+<p>When MScanner is cross-validating or performing a query, this page will display the start time of the operation, the time elapsed, the number of steps completed, and the total number of steps.   There is also be an option to cancel the operation if the correct deletion code is entered.</p>
+
+<p>Visit the <a href="/form">Submission</a> page to submit a query or
+cross validation task.</p>
+
+#else
+
+<div class="status">
+
+<div style="margin:1em 0 1em 0;" width="20em">
+#include $_inc("statusblock.tmpl")
+</div>
+
+<form action="" method="post">
+  <fieldset>
+    <legend>
+      Output directory
+    </legend>
+    <p>Future location of the results after the run completes.  You
+    can bookmark and return later, or choose to be notifed by e-mail
+    below. The output location will be</p>
+    <p>
+      <input type="text" size="60" name="output" readonly="readonly"
+             value="http://mscanner.stanford.edu/static/output/$status.batch" />
+      or bookmark <a href="/static/output/$status.batch">this link</a>
+    </p>
+  </fieldset>
+  <fieldset>
+    <legend>E-mail Notification of Completion</legend>
+    <p>
+      If you wish to be notified when the results are ready (or when
+      MScanner is available), enter an e-mail address below.  I have
+      programmed MScanner to delete the e-mail address immediately
+      after sending the notification.
+    </p>
+    <p style="padding:0;margin:0;">
+      <input type="text" size="40" name="email" value="" />
+      <button type="submit" class="submit" name="cancel" value="notify">Notify By Email</button>
+    </p>
+  </fieldset>
+  <fieldset>
+    <legend>Cancel Operation</legend>
+    <p>
+      If you are the submitter of this query but made a mistake in the
+      form, you can enter your deletion code here to cancel the
+      operation and try again.
+    </p>
+    <p style="padding:0;margin:0;">
+      <input type="text" size="10" name="code" value="" />
+      <button type="submit" class="submit" name="cancel" value="cancel">Cancel Operation</button>
+    </p>
+  </fieldset>
+</form>
+
+#if $getVar('output', None) is None
+
+<p>This batch has written nothing to the log.</p> 
+
+#else
+
+<p><b>Contents of the log (updated every 30 seconds)</b></p>
+
+<textarea rows="20" cols="85" readonly="readonly">
+$output
+</textarea>
+
+</div>
+
+#end if
+
+#end if
+
+#end def

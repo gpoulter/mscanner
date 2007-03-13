@@ -1,0 +1,51 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+
+<html>
+
+<head>
+  <title>$title</title>
+  <link rel="stylesheet" type="text/css" href="$root/static/mscanner.css"/>
+  <link rel="shortcut icon" href="$root/favicon.png" type="image/x-icon"/>
+  $getVar('head', '')
+</head>
+
+<body>
+  
+<div class="header">
+#if $getVar('heading', False)
+$heading
+#else
+<h1>$title</h1>
+#end if
+</div>
+
+<div class="topmenu">
+  <table>
+    <tr>
+      <td>
+        <a href="/">Front Page</a>
+      </td>
+      <td>
+        <a href="/status">Detailed Status</a>
+      </td>
+      <td>
+        <a href="/form">Submit Query</a>
+      </td>
+      <td>
+        <a href="/output/">View Output</a>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<div class="body">
+$content
+</div>
+
+<div class="footer">
+                                      
+</div>
+
+</body>
+  
+</html>

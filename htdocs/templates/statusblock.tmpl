@@ -1,0 +1,45 @@
+<table class="status" style="margin:auto;">
+  <thead>
+    <tr>
+      <th colspan="2" style="text-align:center;font-weight:bold;">
+        Status for batch <a href="/status">$status.batch</a>
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>
+          Start Date
+      </th>
+      <td>
+        $time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($status.start))
+      </td>
+    </tr>
+    <tr>
+      <th>
+        Elapsed Time
+      </th>
+      <td>
+        #import time
+        #set $elapsed = $time.time() - $status.start
+        #echo "%d hours, %d minutes, %d seconds" % ($elapsed / (60*60), ($elapsed % (60*60)) / 60, $elapsed % 60)
+      </td>
+    </tr>
+    <tr>
+      <th>
+        Steps Completed
+      </th>
+      <td>
+        $status.progress
+      </td>
+    </tr>
+    <tr>
+      <th>
+        Total Steps
+      </th>
+      <td>
+        $status.total
+      </td>
+    </tr>
+  </tbody>
+</table>

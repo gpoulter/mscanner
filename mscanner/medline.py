@@ -1,8 +1,17 @@
-"""Manage Article and feature database
+"""For updating the databases of articles and features (feature
+mapping, db of article->features and stream of article->features).
 
-@author: Graham Poulter
-                                        
+                                   
 
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+General Public License for more details.
 """
 
 from bsddb import db

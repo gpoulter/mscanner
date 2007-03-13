@@ -1,18 +1,26 @@
 """Persistent shelf backed by Berkeley DB
 
-@author: Graham Poulter
-                                   
-
 open() -- Open/create a Shelf
 Shelf -- Class defining a Berkeley DB-backed shelf
 
+                                   
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+General Public License for more details.
 """
 
+from bsddb import db
 import cPickle, os, unittest
 from path import path
-from bsddb import db
-import zlib
 from UserDict import DictMixin
+import zlib
 
 def open(filename, flags='c', mode=0660, dbenv=None, txn=None, dbname=None, compress=True):
     """Open a shelf with Berkeley DB backend

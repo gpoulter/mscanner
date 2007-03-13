@@ -1,8 +1,8 @@
 from bsddb import db
-import dbshelve
 from path import path
 import tempfile
 import unittest
+from mscanner import dbshelve
 
 class ShelfTests(unittest.TestCase):
     """Test for Shelf class

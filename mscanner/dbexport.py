@@ -1,8 +1,5 @@
 """Export a database compatible with pharmdemo.stanford.edu
 
-@author: Graham Poulter
-                                   
-
 countGeneDrug() -- Turn per-article associations into global associations
 writeGeneDrugCountsCSV() -- Record global gene-drug associations for checking
 exportDatabase() -- Export articles to a database connection
@@ -10,6 +7,17 @@ exportText() -- Export articles to SQL text
 exportSQLite() -- Export articles to an SQLite database
 schema -- The schema of the pharmdemo database
 
+                                   
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+General Public License for more details.
 """
 
 import logging as log

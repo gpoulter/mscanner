@@ -11,6 +11,6 @@ from subprocess import call
 from path import path
 
 top = path(sys.argv[0]).dirname().abspath().parent
-templates = top/"lib"/"templates"
+templates = top/"mscanner"/"templates"
 preppy = templates/"preppy.py"
 call(["python",preppy,"compile",templates])

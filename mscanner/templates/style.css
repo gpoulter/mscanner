@@ -1,0 +1,138 @@
+/* #EEEEEE; = light gray */
+/* #CCCCCC; = middle gray */
+/* #BBBBBB; = darker gray */
+
+/* #C2D7EE; = light blue */
+/* #A3C2E2; = middle blue */
+
+/* #FFFFDD; = light yellow */
+/* #EEEEFF; = light mauve */
+
+@media print {
+    background-color: white;
+    color: black;
+    button {
+        visibility: hidden;
+    }
+}
+
+html, body, div {
+    display: block;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+}
+html {
+    background-color: #C2D7EE;
+}
+div.header {
+    background-color: #FFFFFF;
+    border-bottom-style: dotted;
+    margin: 0;
+    padding: 0.3em;
+    text-align: center;
+}
+div.header > h1 {
+    margin: 0;
+}
+div.body {
+    padding: 1em;
+    width: 100%;
+}
+div.footer {
+    border-top-style: dotted;
+    background-color: #FFFFFF;
+    width: 100%;
+    padding: 1ex;
+}
+div.help {
+    width: 33em;
+    text-align: justify;
+}
+h2 {
+    border-bottom: 2px solid black;
+}
+img {
+    display: block;
+}
+dt {
+    font-weight: bold;
+}
+
+/* ALL TABLES */
+
+table, thead, tbody {
+    border: 2px solid black;
+}
+table {
+    width: 33em;
+    border-collapse: collapse;
+}
+thead {
+    background-color: #A3C2E2; 
+}
+tbody th {
+    background-color: #93B2D2;
+    text-align: left;
+}
+td, th {
+    border: 1px solid black;
+    padding: 0.5ex;
+}
+
+/* RESULTS TABLES */
+
+table.results col.label {
+    width: 11em;
+}
+table.results col.longlabel {
+    width: 25em;
+}
+table.results col.value {
+    background-color: #FFFFFF;
+}
+table.results col.help {
+    background-color: #EEEEFF;
+    width: 2em;
+}
+table.results tr.help {
+    background-color: #EEEEFF;
+    text-align: justify;
+}
+table.results tr.help td {
+    padding: 1ex;
+}
+
+/* MATRIX TABLES */
+
+table.matrix col {
+    width: 25%;
+}
+
+/* FEATURE TABLE */
+
+table.features col.label {
+    width: 20em;
+}
+
+/* CITATIONS */
+
+table.cite {
+    background-color: white;
+    width: 95%;
+    min-width: 40em;
+    text-align: center;
+}
+table.cite td.title {
+    font-size: smaller;
+}
+table.cite tr.author, col.author {
+    background-color: #FFFFDD;
+}
+table.cite tr.abstract, col.abstract {
+    background-color: #EEEEFF;
+}
+table.cite tr.abstract td {
+    padding: 1em;
+    text-align: justify;
+}

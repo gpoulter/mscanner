@@ -3,10 +3,10 @@ from path import path
 import tempfile
 import unittest
 
-from article import Article
-from featuremap import FeatureMapping
-from medline import *
-import utils
+from mscanner.article import Article
+from mscanner.featuremap import FeatureMapping
+from mscanner.medline import *
+from mscanner import utils
 
 class ArticleParserTests(unittest.TestCase):
     """

@@ -3,8 +3,8 @@ import sys
 import tempfile
 import unittest
 
-from article import Article
-import dbexport
+from mscanner.article import Article
+from mscanner import dbexport
 
 articles=[
     Article(

@@ -1,0 +1,476 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+#*
+p - Global performance stats object
+t - Tuned performance stats object
+f - Feature information object
+c - Configuration variables
+*#
+
+<head>
+
+  <title>MScanner validation results: $c.dataset</title>
+
+  <script type="text/javascript">
+    #include raw $_inc("hider.js")
+  </script>
+
+  <style type="text/css">
+    td.tp { background-color: #FF3333; }
+    td.fn { background-color: #FFCCCC; }
+    td.tn { background-color: #3333FF; }
+    td.fp { background-color: #CCCCFF; }
+
+    #include raw $_inc("style.css")
+  </style>
+
+</head>
+
+#def help(name)
+<td>
+  #if $name is not None
+  <button onclick="toggle('$name')">?</button>
+  #end if
+</td>
+#end def
+
+#def hr(name, value)
+<tr id="$name" class="help">
+  <td colspan="3">
+    $value
+    <script type="text/javascript">hide('$name')</script>
+  </td>
+</tr>
+#end def
+
+<body>
+
+<div class="header">
+ <h1>MScanner validation results: $c.dataset</h1>
+</div>
+
+<div class="body">
+
+<h2>Global information</h2>
+
+<table class="results">
+
+  <colgroup>
+    <col class="label"></col>
+    <col class="value"></col>
+    <col class="help"></col>
+  </colgroup>
+
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Value</th>
+      <th>Help</th>
+    </tr>
+  </thead>
+
+  <tbody>
+
+    <tr>
+      <th>Timestamp</th>
+      #import time
+      <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($c.timestamp))</td>
+      $help(None)
+    </tr>
+
+    <tr>
+      <th>Pseudocount</th>
+      <td>
+        #if isinstance($c.pseudocount, float)
+        #echo "%f" % $c.pseudocount
+        #else #per-feature #end if#
+      </td>
+      $help("h_pseudocount")
+    </tr>
+    $hr("h_pseudocount", """Prior count added to the number of
+    occurrences of every term, so that no terms have probabilities of
+    zero.""")
+
+    <tr>
+      <th>Score threshold</th>
+      <td>$t.threshold</td>
+      $help("h_threshold")
+    </tr>
+    $hr("h_threshold", """The score threshold which maximises
+    &alpha;-weighted F-Measure.""")
+
+    <tr>
+      <th>Feature Scores</th>
+      <td><a href="$c.term_scores">$c.term_scores</a></td>
+      $help("h_csv")
+    </tr>
+    $hr("h_csv", """CSV spreadsheet with the support scores for the
+    features (MeSH terms and ISSNs).  The number of positive and
+    negative occurrences and pseudocount are also included, as these
+    go into calculating the support score.""")
+
+    <tr>
+      <th>Positive PMIDs</th>
+      <td><a href="$c.posname">$c.posname</a></td>
+      $help("h_positives")
+    </tr>
+    $hr("h_positives", """PubMed IDs for positive training documents.""")
+
+    <tr>
+      <th>Negative PMIDs</th>
+      <td><a href="$c.negname">$c.negname</a></td>
+      $help("h_negatives")
+    </tr>
+    $hr("h_negatives", """PubMed IDs for negative training documents
+    (randomly selected).  Any overlap with the positive training
+    documents is removed from this.""")
+
+    <tr>
+      <th>Number of folds</th>
+      <td>$c.nfolds</td>
+      $help("h_nfolds")
+    </tr>
+    $hr("h_nfolds", """Number of partitions to split the positive
+    and negative data into.  One partition of each is used for
+    calculating articles scores (the feature scores having been
+    trained using the remaining partitions).  If zero, leave-out-one
+    validation is used, in which the feature scores are calculated
+    leaving out only the article which is to be scored (this mode is
+    about 5x slower than 10-fold cross validation).""")
+
+    <tr>
+      <th>F-Measure Alpha</th>
+      <td>$c.alpha</td>
+      $help("h_alpha")
+    </tr>
+    $hr("h_alpha", """The weight of precision in the &alpha;-weighted
+    F-Measure (which is maximised to choose the threshold).
+    &alpha;=0.5 weights precision and recall equally, &alpha; closer
+    to 1.0 trades recall for increased precision.""")
+
+    <tr>
+      <th>Area under ROC curve</th>
+      <td>#echo "%.5f" % $p.ROC_area #</td>
+      $help("h_roc")
+    </tr>
+    $hr("h_roc", """Global measure of classifier performance which is
+    independent of the prevalence in the input data and the choice of
+    decision threshold.  Worst case is 0.5 (true positives increase at
+    same rate as false positives), and best case is 1.0.""")
+
+    <tr>
+      <th>Area under PR curve</th>
+      <td>#echo "%.5f" % $p.PR_area #</td>
+      $help("h_prcurve")
+    </tr>
+    $hr("h_prcurve", """The area under the Precision-Recall (PR) curbe
+    is equal to the average precision over equally spaced points of
+    recall between 0 and 1.  Best performance is 1.0, worst
+    performance is equal to prevalence.  All other factors held
+    constant, this value increases monotonically with prevalence
+    (number of positives over number of negatives).""")
+    
+    #if $overlap is not None
+    <tr>
+      <th>Score overlap</th>
+      <td>#echo "%.5f" % $overlap #</td>
+      $help("h_overlap")
+    </tr>
+    $hr("h_overlap", """Area of density overlap between positive and
+    negative score distributions.""")  #end if
+
+  </table>
+
+  #include $_inc("features.tmpl")
+
+  <h2>Classifier Confusion Matrix
+  <button onclick="toggle('h_cmatrix')">?</button>
+  </h2>
+
+  <div class="help" id="h_cmatrix">
+    <dl>
+      <dt>TP</dt><dd>True Positives</dd>
+      <dt>FP</dt><dd>False Positives</dd>
+      <dt>TN</dt><dd>True Negatives</dd>
+      <dt>FN</dt><dd>False Negatives</dd>
+      <dt>P</dt><dd>Number of positives</dd>
+      <dt>N</dt><dd>Number of negatives</dd>
+      <dt>A</dt><dd>Total number of articles</dd>
+      <dt>T</dt><dd>Correctly classified</dd>
+      <dt>F</dt><dd>Incorrectly classified</dd>
+    </dl>
+  </div>
+  <script type="text/javascript">hide('h_cmatrix')</script>
+
+  <table class="matrix">
+    <colgroup span="4">
+      <col span="4" ></col>
+    </colgroup>
+    <thead>
+      <tr>
+        <th></th>
+        <th>Correct</th>
+        <th>Incorrect</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th>Positive</th>
+        <td class="tp">TP=$t.TP</td>
+        <td class="fn">FN=$t.FN</td>
+        <td>P=$t.P</td>
+      </tr>
+      <tr>
+        <th>Negative</th>
+        <td class="tn">TN=$t.TN</td>
+        <td class="fp">FP=$t.FP</td>
+        <td>N=$t.N</td>
+      </tr>
+      <tr>
+        <th>Total</th>
+        <td>T=$t.T</td>
+        <td>F=$t.F</td>
+        <td>A=$t.A</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Proportional Confusion Matrix
+  <button onclick="toggle('h_proportions')">?</button>
+  </h2>
+
+  <div class="help" id="h_proportions">
+    <dl>
+      <dt>TPR</dt>
+      <dd>True Positive Rate (TP/P)</dd>
+      <dt>FNR</dt>
+      <dd>False Negative Rate (FN/P)</dd>
+      <dt>FPR</dt>
+      <dd>False Positive Rate (FP/N)</dd>
+      <dt>TNR</dt>
+      <dd>True Negative Rate (TN/N)</dd>
+    </dl>
+  </div>
+  <script type="text/javascript">hide('h_proportions')</script>
+
+  <table class="matrix">
+    <colgroup span="4">
+      <col span="4" ></col>
+    </colgroup>
+    <thead>
+      <tr>
+        <th></th>
+        <th>Correct</th>
+        <th>Incorrect</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th>Positive</th>
+        <td class="tp">TPR=#echo "%.2f"%$t.TPR #</td>
+        <td class="fn">FNR=#echo "%.2f"%$t.FNR #</td>
+        <td>#echo "%.2f"%($t.TPR+$t.FNR) #</td>
+      </tr>
+      <tr>
+        <th>Negative</th>
+        <td class="tn">TNR=#echo "%.2f"%$t.TNR #</td>
+        <td class="fp">FPR=#echo "%.2f"%$t.FPR #</td>
+        <td>#echo "%.2f"%($t.TNR+$t.FPR) #</td>
+      </tr>
+      <tr>
+        <th>Total</th>
+        <td>#echo "%.2f"%($t.TPR+$t.TNR) #</td>
+        <td>#echo "%.2f"%($t.FNR+$t.FPR) #</td>
+        <td>#echo "%.2f"%($t.TPR+$t.FNR+$t.TNR+$t.FPR) #</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Performance Measures
+  <button onclick="toggle('h_performance')">?</button>
+  </h2>
+
+  <div class="help" id="h_performance">
+    <dl>
+      <dt>Prevalence</dt>
+      <dd>
+        Proportion of training data which was positive
+      </dd>
+      <dt>Accuracy</dt>
+      <dd>
+        Proportion of correct classifications
+      </dd>
+      <dt>Error Rate</dt>
+      <dd>
+        Proportion of incorrect classifications (1-Accuracy).
+      </dd>
+      <dt>Precision / Positive Predictive Value</dt>
+      <dd>
+        Proportion of classifier positives which are true positives.
+      </dd>
+      <dt>Negative Predictive Value</dt>
+      <dd>
+        Proportion of classifier negatives which are true
+        negatives.
+      </dd>
+      <dt>Recall / True Positive Rate</dt>
+      <dd>
+        Proportion of positives which were classified as positive.
+      </dd>
+      <dt>Break-even Point</dt>
+      <dd>
+        Value at the threshold where Recall = Precision =
+        F1-measure.  Typically the F-Measure at break-even is slightly
+        lower than the maximum F1-Measure.
+      </dd>
+      <dt>&alpha;-Weighted F-Measure</dt>
+      <dd>
+        The threshold is chosen to maximise this quantity. 0 &lt;=
+        &alpha; &lt;= 1 controls the weight of precision.  When
+        &alpha;=0.5 precision and recall are weighted equally
+        (identical to F1-Measure).
+      </dd>
+      <dt>F1-Measure</dt>
+      <dd>
+        Harmonic mean of recall and precision at the threshold
+        corresponding to the maximum &alpha;-weighted F-Measure.
+      </dd>
+      <dt>Maximum F1-Measure</dt>
+      <dd>
+        Maximum possible value of F1-Measure (can be achieved using
+        &alpha;=0.5).
+      </dd>
+      <dt>Enrichment</dt>
+      <dd>
+        Precision over prevalence.  This is is how much better this
+        classifier's precision is over a classifier which calls
+        everything positive.
+      </dd>
+    </dl>
+  </div>
+  <script type="text/javascript">hide('h_performance')</script>
+
+  <table class="results">
+    <colgroup>
+      <col class="longlabel"></col>
+      <col class="value"></col>
+    </colgroup>
+    <tbody>
+    <tr>
+      <th><b>Prevalence</b> <span class="footnote">(=P/A)</span></th>
+      <td>#echo "%.5f" % $t.prevalence #</td>
+    </tr>
+    <tr>
+      <th><b>Accuracy</b> <span class="footnote">(=T/A)</span></th>
+      <td>#echo "%.5f" % $t.accuracy #</td>
+    </tr>
+    <tr>
+      <th><b>Error Rate</b> <span class="footnote">(=F/A=1-Accuracy)</span></th>
+      <td>#echo "%.5f" % (1-$t.accuracy) #</td>
+    </tr>
+    <tr>
+      <th><b>Positive Predictive Value</b> <span class="footnote">(= PPV = TP/(TP+FP))</span></th>
+      <td>#echo "%.5f" % $t.PPV #</td>
+    </tr>
+    <tr>
+      <th><b>Negative Preditive Value</b> <span class="footnote">(= NPV = TN/(TN+FN))</span></th>
+      <td>#echo "%.5f" % $t.NPV #</td>
+    </tr>
+    </tbody>
+    <tbody>
+    <tr>
+      <th><b>Recall</b> <span class="footnote">(= &rho; = TPR = sensitivity = TP/P)</span></th>
+      <td>#echo "%.5f" % $t.recall #</td>
+    </tr>
+    <tr>
+      <th><b>Precision</b> <span class="footnote">(= &pi; = PPV = TP/(TP+FP))</span></th>
+      <td>#echo "%.5f" % $t.precision #</td>
+    </tr>
+    <tr>
+      <th><b>Break-Even</b> <span class="footnote">(where precision=recall)</span></th>
+      <td>#echo "%.5f" % $p.breakeven #</td>
+    </tr>
+    <tr>
+      <th><b>Weighted F-Measure</b> <span class="footnote">(1/(&alpha;/&pi;+(1-&alpha;)/&rho;))</span></th>
+      <td>#echo "%.5f" % $t.fmeasure_alpha #</td>
+    </tr>
+    <tr>
+      <th><b>F1-Measure</b> <span class="footnote">(2*&rho;*&pi;/(&rho;+&pi;))</span></th>
+      <td>#echo "%.5f" % $t.fmeasure #</td>
+    </tr>
+    <tr>
+      <th><b>Maximum F1-Measure</b></th>
+      <td>#echo "%.5f" % $t.fmeasure_max #</td>
+    </tr>
+    <tr>
+      <th><b>Enrichment</b> <span class="footnote">(= precision/prevalence)</span></th>
+      <td>#echo "%.5f" % $t.enrichment #</td>
+    </tr>
+    </tbody>
+  </table>
+
+  <h2>Performance graphs
+  <button onclick="toggle('h_graphs')">?</button>
+  </h2>
+
+  <div class="help" id="h_graphs">
+    <dl>
+      <dt>Article Score Densities</dt>
+      <dd>
+        Histograms of article scores for negative and positive
+        articles.  Classifier performs better when the distributions
+        are well-separated. Tuned threshold is marked with a vertical
+        line.
+      </dd>
+      <dt>Feature Score Density</dt>
+      <dd>
+        Histogram of feature scores.
+      </dd>
+      <dt>ROC Curve</dt>
+      <dd>
+        True Positive Rate (recall) against False Positive Rate
+        (1-specificity).  The greater the area under the ROC curve,
+        the better the global performance of the classifier.  In the
+        worst case, true positives increase at the same rate as false
+        positives, yielding a 45-degree line.
+      </dd>
+      <dt>Precision-Recall Curve</dt>
+      <dd>
+        Precision against Recall.  In good cases, the precision only
+        drops off at high recall.  Tuned threshold is marked with a
+        vertical line.  Worst case is a horizontal line with precision
+        equal to prevalence.
+      </dd>
+      <dt>Variation against Threshold</dt>
+      <dd>
+        Precision, recall and F-measure against threshold shows how
+        the threshold was optimised for &alpha;-weighted F-Measure and
+        how changing the threshold would affect the recall/precision
+        balance.
+      </dd>
+    </dl>
+  </div>
+  <script type="text/javascript">hide('h_graphs')</script>
+
+  <img src="$c.artscores_img" alt="Article Score Densities"/>
+  
+  <img src="$c.featscores_img" alt="Feature Score Density"/>
+  
+  <img src="$c.roc_img" alt="ROC Curve"/>
+  
+  <img src="$c.prcurve_img" alt="Precision-Recall Curve"/>
+  
+  <img src="$c.fmeasure_img" alt="Precision and Recall vs Threshold"/>
+
+</div>
+
+<div class="footer">
+                                               
+</div>
+
+</body>
+</html>

@@ -1,10 +1,11 @@
-from article import Article
-import genedrug
-import re
 from path import path
 import pprint 
+import re
 import tempfile
 import unittest
+
+from mscanner.article import Article
+from mscanner import genedrug
 
 pp = pprint.PrettyPrinter()
 

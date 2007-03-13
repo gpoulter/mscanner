@@ -1,0 +1,142 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+
+  <title>
+    #if $mode == "input"
+    Input Citations for $dataset
+    #else
+    Result Citations for $dataset
+    #end if
+  </title>
+
+  <script type="text/javascript">
+    #include raw $_inc("hider.js")
+  </script>
+
+  <style type="text/css">
+    #include raw $_inc("style.css")
+  </style>
+
+</head>
+
+<body>
+
+<div class="header">
+  <h1>
+    #if $mode == "input"
+    Input Citations for $dataset
+    #else
+    Output Citations for $dataset
+    #end if
+  </h1>
+</div>
+
+<div class="body">
+
+<p>
+  This report contains $len($scores) citations.
+</p>
+  
+<table class="cite">
+
+#if $articles
+#set $ncols = 8
+#else
+#set $ncols = 3
+#end if
+
+<colgroup>
+  <col class="rank"></col>
+  <col class="score"></col>
+  <col class="pmid"></col>
+  #if $articles
+  <col class="year"></col>
+  <col class="author"></col>
+  <col class="abstract"></col>
+  <col class="title"></col>
+  <col class="journal"></col>
+  #end if
+</colgroup>
+
+<thead>
+  <tr>
+    <th abbr="R" title="Rank">R</th>
+    <th>Score</th>
+    <th>PMID</th>
+    #if $articles
+    <th>Year</th>
+    <th abbr="Au" title="Author">Au</th>
+    <th abbr="Ab" title="Abstract">Ab</th>
+    <th>Title</th>
+    <th>Journal</th>
+    #end if
+  </tr>
+</thead>
+
+<tbody>
+  #for idx, (pmid, score) in enumerate($scores)
+  #if $articles
+  #set $art = $articles[str($pmid)]
+  #end if
+  <tr class="main">
+    <td>#echo $idx+1 #</td>
+    <td>#echo "%.2f" % $score #</td>
+    <td>
+      <a href="http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;db=pubmed&amp;dopt=Abstract&amp;list_uids=$pmid">$pmid</a>
+    </td>
+    #if $articles
+    <td>$art.year</td>
+    <td onclick="toggle('au_$pmid')">#if $art.authors#+#else#-#end if#</td>
+    <td onclick="toggle('ab_$pmid')">#if $art.abstract#+#else#-#end if#</td>
+    <td class="title">$art.title.encode("ascii","xmlcharrefreplace")</td>
+    <td>
+      #if $art.issn 
+      <a href="http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?CMD=search&amp;DB=journals&amp;term=$art.issn">
+        #if $art.journal
+        $art.journal
+        #else
+        $art.issn
+        #end if
+      </a>
+      #end if
+    </td>
+    #end if
+  </tr>
+  #if $articles
+  #if $art.authors
+  <tr class="author" id="au_$pmid">
+    <td colspan="$ncols">
+      #for initials, lastname in $art.authors
+      #if $initials#$initials.encode("ascii","xmlcharrefreplace")#end if#
+      #if $lastname#$lastname.encode("ascii","xmlcharrefreplace")#end if#,
+      #end for
+      <script type="text/javascript">hide('au_$pmid')</script>
+    </td>
+  </tr>
+  #end if
+  #if $art.abstract
+  <tr class="abstract" id="ab_$pmid">
+    <td colspan="$ncols">
+      $art.abstract.encode("ascii","xmlcharrefreplace")
+      <script type="text/javascript">hide('ab_$pmid')</script>
+    </td>
+  </tr>
+  #end if
+  #end if
+  #end for
+</tbody>
+  
+</table>
+
+</div>
+
+<div class="footer">
+                                               
+</div>
+
+</body>
+
+</html>

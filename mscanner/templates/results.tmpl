@@ -1,0 +1,160 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+
+  <title>MScanner query results: $c.dataset</title>
+
+  <script type="text/javascript">
+    #include raw $_inc("hider.js")
+  </script>
+
+  <style type="text/css">
+    #include raw $_inc("style.css")
+  </style>
+
+</head>
+
+#def help(name)
+<td>
+  #if $name is not None
+  <button onclick="toggle('$name')">?</button>
+  #end if
+</td>
+#end def
+
+#def hr(name, value)
+<tr id="$name" class="help">
+  <td colspan="3">
+    $value
+    <script type="text/javascript">hide('$name')</script>
+  </td>
+</tr>
+#end def
+
+<body>
+
+<div class="header">
+ <h1>MScanner query results: $c.dataset</h1>
+</div>
+
+<div class="body">
+
+ <h2>Result Properties</h2>
+
+ <table class="results">
+   <colgroup>
+     <col class="label"></col>
+     <col class="value"></col>
+     <col class="help"></col>
+   </colgroup>
+   <thead>
+     <tr>
+       <th>Name</th>
+       <th>Value</th>
+       <th>Help</th>
+     </tr>
+   </thead>
+   <tbody>
+
+     <tr>
+       <th>Timestamp</th>
+       #import time
+       <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($c.timestamp))</td>
+       $help(None)
+     </tr>
+
+     <tr>
+       <th>Pseudocount</th>
+       <td>$c.pseudocount</td>
+       $help("h_pseudocount")
+     </tr>
+     $hr("h_pseudocount", """Prior added to the number of occurrences
+     of each term to avoid probabilities of zero.""")
+
+     <tr>
+       <th>Result limit</th>
+       <td>$c.limit</td>
+       $help("h_limit")
+     </tr>
+     $hr("h_limit", """The maximum number of results.""")
+
+     <tr>
+       <th>Score threshold</th>
+       <td>$c.threshold</td>
+       $help("h_threshold")
+     </tr>
+     $hr("h_threshold", """The minimum score which may be included in
+     the results""")
+
+     <tr>
+       <th>Number of results</th>
+       <td>$num_results</td>
+       $help(None)
+     </tr>
+
+     <tr>
+       <th>Lowest scoring result</th>
+       <td>#echo "%.5f" % $lowest_score #</td>
+       $help(None)
+     </tr>
+
+     <tr>
+       <th>Input PubMed IDs</th>
+       <td><a href="$c.posname">$c.posname</a></td>
+       $help("h_positives")
+     </tr>
+     $hr("h_positives", """PubMed IDs for the examples.""")
+
+     <tr>
+       <th>MeSH Scores (CSV)</th>
+       <td><a href="$c.term_scores">$c.term_scores</a></td>
+       $help("h_csv")
+     </tr>
+     $hr("h_csv", """CSV spreadsheet with the support scores for the
+     features (MeSH terms and ISSNs).  The number of positive and
+     negative occurrences and pseudocount are also included, as these
+     go into calculating the support score.""")
+
+     <tr>
+       <th>Result scores</th>
+       <td><a href="$c.result_scores">$c.result_scores</a></td>
+       $help("h_result_scores")
+     </tr>
+     $hr("h_result_scores", """Text file with the result PubMed IDs
+     ranked by decreasing score (score is also listed).""")
+
+     <tr>
+       <th>Input citations</th>
+       <td><a href="$c.input_citations">$c.input_citations</a></td>
+       $help("h_input_citations")
+     </tr>
+     $hr("h_input_citations", """Web page with the example citations
+     provided as input.  They are ranked by score, so if there are
+     examples which don't fit with the majority they should be near
+     the bottom.""")
+
+     <tr>
+       <th>Result citations</th>
+       <td><a href="$c.result_citations">$c.result_citations</a></td>
+       $help("h_result_citations")
+     </tr>
+     $hr("h_result_citations", """Web page with the results of the
+     query, including links to NCBI, titles and abstracts.  Warning:
+     file may be large.""")
+
+   </tbody>
+ </table>
+
+ #include $_inc("features.tmpl")
+
+</div>
+
+<div class="footer">
+                                               
+</div>
+
+</body>
+
+</html>

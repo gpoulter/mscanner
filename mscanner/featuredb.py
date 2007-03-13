@@ -1,11 +1,20 @@
 """Persistent assocation of items to list of integer feautres
 
-@author: Graham Poulter
-                                 
+                                   
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+General Public License for more details.
 """
 
 from bsddb import db
-import numpy
+import numpy as nx
 import logging as log
 from path import path
 import struct
@@ -13,7 +22,7 @@ import struct
 class FeatureDatabase:
     """Persistent mapping from integer key to array objects of numerical values"""
     
-    def __init__(self, filename=None, flags='c', mode=0660, dbenv=None, txn=None, dbname=None, ftype=numpy.uint16):
+    def __init__(self, filename=None, flags='c', mode=0660, dbenv=None, txn=None, dbname=None, ftype=nx.uint16):
         """Initialise database
 
         @param filename: Database file
@@ -55,7 +64,7 @@ class FeatureDatabase:
         buf = self.db.get(str(key), txn=txn)
         if buf is None:
             raise KeyError("Record %d not found in feature database" % key)
-        return numpy.fromstring(buf, self.ftype)
+        return nx.fromstring(buf, self.ftype)
 
     def setitem(self, key, values, txn=None):
         """Associate integer key with an ndarray object of values"""
@@ -102,7 +111,7 @@ class FeatureDatabase:
         cur = self.db.cursor()
         rec = cur.first()
         while rec is not None:
-            yield rec[0], numpy.fromstring(rec[1],self.ftype)
+            yield rec[0], nx.fromstring(rec[1],self.ftype)
             rec = cur.next()
         cur.close()
         
@@ -121,7 +130,7 @@ class FeatureStream:
     def write(self, pmid, features):
         """Given PubMed ID (string or integer) and numpy array of features, add
         the document to the stream"""
-        if features.dtype != numpy.uint16:
+        if features.dtype != nx.uint16:
             raise ValueError("Array dtype must be uint16, not %s" % str(features.dtype))
         self.stream.write(struct.pack("IH", int(pmid), len(features)))
         features.tofile(self.stream)
@@ -132,5 +141,5 @@ class FeatureStream:
         head = self.stream.read(6)
         while len(head) == 6:
             pmid, alen = struct.unpack("IH", head)
-            yield (pmid, numpy.fromfile(self.stream, numpy.uint16, alen))
+            yield (pmid, nx.fromfile(self.stream, nx.uint16, alen))
             head = self.stream.read(6)

@@ -4,7 +4,7 @@ import tempfile
 import unittest
 import os
 
-from featuredb import *
+from mscanner.featuredb import *
 
 class FeatureDatabaseTests(unittest.TestCase):
     """

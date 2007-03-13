@@ -3,7 +3,7 @@ import numpy as nx
 import tempfile
 import unittest
 
-from featuremap import FeatureMapping
+from mscanner.featuremap import FeatureMapping
 
 class TempFileTestCase(unittest.TestCase):
     def setUp(self):

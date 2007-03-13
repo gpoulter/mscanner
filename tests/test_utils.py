@@ -3,7 +3,7 @@ from path import path
 import tempfile
 import unittest
 
-from utils import *
+from mscanner.utils import *
 
 class TempFileTestCase(unittest.TestCase):
     def setUp(self):

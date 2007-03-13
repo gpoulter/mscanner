@@ -1,10 +1,18 @@
 """Implements the FeatureMapping type
 
-@author: Graham Poulter
-                                        
-
 FeatureMapping -- Mapping between string features and 16-bit feature IDs
 
+                                   
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+General Public License for more details.
 """
 
 import codecs
@@ -79,7 +87,7 @@ class FeatureMapping:
         elif isinstance(key, tuple) and len(key) == 2:
             return self.feature_ids[key[1]][key[0]]
         else:
-            raise KeyError("Invalid key  %s" % str(key))
+            raise KeyError("Invalid key: %s" % str(key))
 
     def __len__(self):
         """Return number of distinct features"""

@@ -1,17 +1,26 @@
 """Handle Articles, processed files, features, feature occurrence counts
 
-@author: Graham Poulter
-                                     
-
-StatusFile -- One way posting of program status to a file
-FileTracker -- Track processed files (to avoid re-parsing), with on-disk persistence
-
 countFeatures() -- Get feature occurrence counts over a set of documents
 getArticles() -- Retrieve Articles from a DB, caching results in a Pickle
 readPMIDs() -- Get PMIDs (and scores too) from a text file
 makeBackup() -- Create a .recovery file
 removeBackup() -- Remove a .recovery file
+StatusFile -- Post program status to a file (cheap IPC...)
+FileTracker -- Track processed files (to avoid re-parsing), with on-disk persistence
+Storage -- Dictionary which supports d.foo attribute access
+TemplateMapper -- Convenient frontend to Cheetah templating engine
 
+                                   
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+General Public License for more details.
 """
 
 import cPickle
@@ -21,6 +30,8 @@ import os
 import time
 from path import path
 import numpy as nx
+import warnings
+warnings.simplefilter("ignore", UserWarning)
 
 def countFeatures(nfeats, featdb, docids):
     """Givent number of features,
@@ -87,7 +98,7 @@ def writePMIDScores(filename, pairs):
     @pairs: Iteratable over (PubMed ID, Score) pairs
     """
     oscores = sorted(pairs, key=lambda x:x[1], reverse=True)
-    filename.write_lines("%d %f" % x for x in oscores)
+    filename.write_lines("%10d %f" % x for x in oscores)
 
 def runMailer(smtp_server, mailer):
     """Read e-mail addresses from mail file and send them a
@@ -106,15 +117,15 @@ def runMailer(smtp_server, mailer):
         logging.debug("Sending availability alert to %s", email)
         msg = "From: %s\r\nTo: %s\r\n\r\n" % (fromaddr, email)
         msg += """
-Someone - hopefully you - requested that an alert be sent when
-MScanner (http://mscanner.stanford.edu) completed its current request.
+Someone requested that an alert be sent to this address when MScanner,
+a service for classifying Medline citations given a set of examples
+(http://mscanner.stanford.edu) completed its current request.
 
-MScanner has completed its request and is currently available for
- query or validation operations at the time of sending of this e-mail.
+MScanner has completed the last submission and at the time of sending
+this email is available for query or validation operations.
 
-(MScanner classifies Medline citations by training a Naive Bayes
-classifier on their metadata, making it useful for information
-retrieval using example citations)
+This is a once-off notification and MScanner keeps no record of e-mail
+addresses.
 """
         try:
             server.sendmail(fromaddr, email, msg)
@@ -177,18 +188,21 @@ class StatusFile:
     """Class to manage a status file, for one way posting of program
     status to listeners."""
 
-    def __init__(self, filename, dataset, total=0):
+    def __init__(self, filename, readonly=False, progress=0, total=0, dataset="", start=None):
         """Create status file with PID, progress, total, dataset and start time"""
-        if filename is None:
-            raise RuntimeError("No status file given")
-        if filename.exists():
-            raise RuntimeError("Status file %s already exists" % str(filename))
         self.filename = filename
-        self.dataset = dataset
-        self.progress = 0
-        self.total = total
-        self.start = time.time()
-        self.write()
+        if filename.exists():
+            self.read()
+        else:
+            self.pid = os.getpid()
+            self.progress = progress
+            self.total = total
+            self.dataset = dataset
+            if start is None:
+                self.start = time.time()
+            else:
+                self.start = start
+            self.write()
 
     def __del__(self):
         """Remove status file on deletion"""
@@ -198,7 +212,18 @@ class StatusFile:
     def __str__(self):
         """Return status file contents"""
         return "%d\n%d\n%d\n%s\n%s\n" % (
-            os.getpid(), self.progress, self.total, self.dataset, str(self.start))
+            self.pid, self.progress, self.total, self.dataset, str(self.start))
+    
+    def read(self):
+        _ = self
+        if not self.filename.isfile():
+            raise RuntimeError("Status file does not exist")
+        lines = self.filename.lines()
+        self.pid = int(lines[0])
+        self.progress = int(lines[1])
+        self.total = int(lines[2])
+        self.dataset = lines[3].strip()
+        self.start = float(lines[4])
 
     def write(self):
         """Write status file to disk"""
@@ -244,4 +269,74 @@ class FileTracker(set):
     def toprocess(self, files):
         """Given a list of files return sorted list of those not in the tracker"""
         return sorted(f for f in files if f.basename() not in self)
+
+class Storage(dict):
+    """A Storage object is a dictionary, except `obj.foo` can be used in
+    addition to `obj['foo']`, and raises AttributeError when used in that
+    manner. """
+    def __getattr__(self, key): 
+        try:
+            return self[key]
+        except KeyError, k:
+            raise AttributeError, k
+
+    def __setattr__(self, key, value): 
+        self[key] = value
+
+    def __delattr__(self, key):
+        try:
+            del self[key]
+        except KeyError, k:
+            raise AttributeError, k
+
+    def __repr__(self):     
+        return '<Storage ' + dict.__repr__(self) + '>'
+
+class TemplateMapper:
+    """Provides attribute-style access to Cheetah templates, for
+    either importing template modules from a package or compiling
+    files in the template directory."""
+
+    def __init__(self, gvars={}, root=path("templates"), ext=".tmpl", module=None):
+        """Initialise template mapper.
+
+        @param gvars: Global variables dictionary
+        @param root: Path to template directory
+        @param ext: Template extension
+        @param module: Templates are modules under this module
+        instead of re-compiling
+        """
+        self.gvars = gvars
+        self.gvars["_inc"] = lambda x: str(self.root / x)
+        self.root = path(root)
+        self.ext = ext
+        self.module = module
+
+    def __getattr__(self, name):
+        """Use attribute access to obtain a callable template object"""
+        if self.module is None:
+            return self.CallableTemplate(self.root / name + self.ext, self.gvars)
+        else:
+            return self.CallableTemplate(getattr(getattr(self.module, name), name), self.gvars)
+
+    class CallableTemplate:
+        
+        def __init__(self, template, gvars={}):
+            """Initialise callable template with set of global variables"""
+            self.template = template
+            self.gvars = gvars
+
+        def __call__(self, *pvars, **kvars):
+            """Call template with self.gvars for globals, pvars adding to
+            the searchlist, and kvars forming a dictionary of parameters."""
+            from Cheetah.Template import Template
+            slist = list(pvars) + [kvars, self.gvars]
+            if isinstance(self.template, path):
+                return Template(file=str(self.template), searchList=slist)
+            elif isinstance(self.template, basestring):
+                return Template(self.template, searchList=slist)
+            elif issubclass(self.template, Template):
+                return self.template(searchList=slist)
+            else:
+                raise ValueError("Unrecognised template")
 

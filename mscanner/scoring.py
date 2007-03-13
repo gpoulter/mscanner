@@ -1,12 +1,21 @@
 """Calculate term and document scores, and print results
 
-@author: Graham Poulter
-                                   
-
 FeatureScoreInfo -- Contains all information about feature scores
 calculateFeatureScores() -- Calculate scores of features
 filterDocuments() -- Return list of (docid,score) paris given documents and term scores
 writeReport() -- Collate results of a query (calls all of above)
+
+                                   
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+General Public License for more details.
 """
 
 from __future__ import division
@@ -17,7 +26,7 @@ from path import path
 import time
 
 from featuremap import FeatureMapping
-import templates
+from utils import Storage, TemplateMapper
 
 class FeatureScoreInfo:
     """Class to calculate and store all information about the
@@ -218,25 +227,27 @@ def writeReport(input, output, feature_info, configuration, artdb):
     c = configuration
     rd = c.reportdir
     isinstance(feature_info, FeatureScoreInfo)
-    feature_info.writeFeatureScoresCSV(codecs.open(rd/c.term_scores_name,"wb","utf-8"))
-    # Citations for input articles
-    templates.citations.run(
-        dict(mode="input", 
-             scores=sorted(input, key=lambda x:x[1], reverse=True), 
-             articles=artdb),
-        outputfile=file(rd/c.input_citations, "w"))
-    # Citations for output articles
+    feature_info.writeFeatureScoresCSV(codecs.open(rd/c.term_scores, "wb", "utf-8"))
+    # Sort lists of scores
+    input = list(input)
+    input.sort(key=lambda x:x[1], reverse=True)
     output = list(output)
     output.sort(key=lambda x:x[1], reverse=True)
-    templates.citations.run(
-        dict(mode="output", scores=output, articles=artdb),
-        outputfile=file(rd/c.result_citations, "w"))
-    # Index file
-    templates.results.run(dict(
-        time = time.strftime("%Y-%m-%d %H:%M:%S"),
+    # Write templates
+    mapper = TemplateMapper(root=c.templates)
+    params = Storage(
+        dataset = c.dataset,
+        mode = "input", 
+        scores = input,
+        articles = artdb)
+    (rd/c.input_citations).write_text(str(mapper.citations(params)))
+    params.mode = "output"
+    params.scores = output
+    (rd/c.result_citations).write_text(str(mapper.citations(params)))
+    index = mapper.results(
         c = configuration,
         f = feature_info,
         num_results = len(output),
-        lowest_score = output[-1][1],
-        ), outputfile=(rd/c.index_file).open("w"))
-    c.stylesheet.copy(rd/"style.css")
+        lowest_score = output[-1][1])
+    (rd/c.index_html).write_text(str(index))
+    

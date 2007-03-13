@@ -1,14 +1,22 @@
 """Find associations of genes and drugs
 
-@author: Graham Poulter
-                                   
-
 parseDrugs() -- Parse text version of PharmGKB drug table
 CachingGeneFinder -- Caches results of XMLRPC gene-finding queries
 GeneDrugFilter -- Use a gene-finder and drug table to find associations
 CachingGeneDrugLister -- Find associations for articles, caching results
 getGeneDrugFilter() -- Return a caching gene-drug association lister
 
+                                   
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+General Public License for more details.
 """
 
 import logging as log

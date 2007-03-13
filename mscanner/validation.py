@@ -1,14 +1,21 @@
 """Cross-validation and performance statistics module
 
-@author: Graham Poulter
-                                   
-
 Validator -- Perform cross-validation for article scores
 PerformanceStats -- Calculate statistics from article scores
-
 classDictionary() -- Convert dictionary to an object
 report() -- Produce performance report
 
+                                   
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+General Public License for more details.
 """
 
 from __future__ import division
@@ -26,9 +33,8 @@ import sys
 import time
 
 import scoring
-import templates
 import plotting
-from utils import countFeatures
+from utils import countFeatures, Storage, TemplateMapper
 
 class Validator:
     """Cross-validated calculation of article scores"""
@@ -158,17 +164,6 @@ class Validator:
             nscores[idx] = nx.sum(nx.log(((pcounts[f]+ps[f])/(pdocs+2*ps[f]))/((ncounts[f]-1+ps[f])/(ndocs-1+2*ps[f]))))
         statfile(None, pdocs+ndocs)
         return pscores, nscores
-
-def classDictionary(dictionary, exclude):
-    """Converts a dictionary to a class with attributes of the dictionary keys,
-    deleting those attributes listed in exclude."""
-    class Empty: pass
-    result = Empty()
-    result.__dict__.update(dictionary)
-    for attr in exclude:
-        if hasattr(result, attr):
-            delattr(result, attr)
-    return result
 
 class PerformanceStats:
     """Calculates and stores performance statistics.
@@ -333,7 +328,8 @@ class PerformanceStats:
         if prevalence > 0:
             enrichment = precision / prevalence
         # Return local variables as members of an object
-        self.tuned = classDictionary(locals(), ["self"])
+        self.tuned = Storage(locals())
+        del self.tuned.self
         return self.tuned 
 
 def report(pos, neg, pscores, nscores, featmap, featdb, configuration):
@@ -363,22 +359,21 @@ def report(pos, neg, pscores, nscores, featmap, featdb, configuration):
         exclude_types = c.exclude_types,
         daniel = c.dodaniel
         )
-    feature_info.writeFeatureScoresCSV(codecs.open(rd/c.term_scores_name,"wb","utf-8"))
+    feature_info.writeFeatureScoresCSV(codecs.open(rd/c.term_scores, "wb", "utf-8"))
     overlap = None
-    #overlap, iX, iY = plotting.plotArticleScoreDensity(gp, rd/c.hist_img, p.pscores, p.nscores, p.tuned.threshold)
-    #plotting.plotFeatureScoreDensity(gp, rd/c.feat_img, feature_info.scores)
-    plotting.plotArticleScoreHistogram(gp, rd/c.hist_img, p.pscores, p.nscores, p.tuned.threshold)
-    plotting.plotFeatureScoreHistogram(gp, rd/c.feat_img, feature_info.scores)
+    ##overlap, iX, iY = plotting.plotArticleScoreDensity(gp, rd/c.artscores_img, p.pscores, p.nscores, p.tuned.threshold)
+    ##plotting.plotFeatureScoreDensity(gp, rd/c.featscores_img, feature_info.scores)
+    plotting.plotArticleScoreHistogram(gp, rd/c.artscores_img, p.pscores, p.nscores, p.tuned.threshold)
+    plotting.plotFeatureScoreHistogram(gp, rd/c.featscores_img, feature_info.scores)
     plotting.plotROC(gp, rd/c.roc_img, p.FPR, p.TPR, p.tuned.FPR)
-    plotting.plotPrecisionRecall(gp, rd/c.p_vs_r_img, p.TPR, p.PPV, p.tuned.TPR)
-    plotting.plotPrecisionRecallFmeasure(gp, rd/c.pr_vs_score_img, p.pscores, p.TPR, p.PPV, p.FM, p.FMa, p.tuned.threshold)
-    # Write main index file for validation output
-    templates.validation.run(dict(
-        time = time.strftime("%Y-%m-%d %H:%M:%S"),
+    plotting.plotPrecisionRecall(gp, rd/c.prcurve_img, p.TPR, p.PPV, p.tuned.TPR)
+    plotting.plotPrecisionRecallFmeasure(gp, rd/c.fmeasure_img, p.pscores, p.TPR, p.PPV, p.FM, p.FMa, p.tuned.threshold)
+     Write main index file for validation output
+    mapper = TemplateMapper(root=c.templates)
+    tpl = mapper.validation(
+        c = configuration,
         overlap = overlap,
         p = p,
         t = p.tuned,
-        f = feature_info,
-        c = configuration,
-        ), outputfile=file(rd/c.index_file, "w"))
-    c.stylesheet.copy(rd/"style.css")
+        f = feature_info)
+    (rd / c.index_html).write_text(str(tpl))

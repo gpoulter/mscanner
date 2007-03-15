@@ -136,6 +136,7 @@ def plotFeatureScoreHistogram(g, fname, scores):
     g.title("Feature Score Histogram")
     g.xlabel("Feature Score")
     g.ylabel("Histogram Mass")
+    g("set logscale y")
     g("set terminal png")
     g("set output '%s'" % fname)
     g("set style fill solid 1.0")

@@ -109,7 +109,7 @@ table.matrix col {
     width: 25%;
 }
 
-/* FEATURE TABLE */
+/* FEATURE STATS TABLE */
 
 table.features col.label {
     width: 20em;
@@ -117,20 +117,30 @@ table.features col.label {
 
 /* CITATIONS */
 
+form.cite {
+    max-width: 95%;
+    margin-bottom: 1em;
+}
+form.cite fieldset {
+    width: auto;
+}
 table.cite {
     background-color: white;
     width: 95%;
     min-width: 40em;
     text-align: center;
-}
-table.cite td.title {
-    font-size: smaller;
+}              
+table.cite col.classification {
+    background-color: lightgrey;
 }
 table.cite tr.author, col.author {
     background-color: #FFFFDD;
 }
 table.cite tr.abstract, col.abstract {
     background-color: #EEEEFF;
+}
+table.cite td.title {
+    font-size: smaller;
 }
 table.cite tr.abstract td {
     padding: 1em;

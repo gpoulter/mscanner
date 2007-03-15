@@ -368,7 +368,7 @@ def report(pos, neg, pscores, nscores, featmap, featdb, configuration):
     plotting.plotROC(gp, rd/c.roc_img, p.FPR, p.TPR, p.tuned.FPR)
     plotting.plotPrecisionRecall(gp, rd/c.prcurve_img, p.TPR, p.PPV, p.tuned.TPR)
     plotting.plotPrecisionRecallFmeasure(gp, rd/c.fmeasure_img, p.pscores, p.TPR, p.PPV, p.FM, p.FMa, p.tuned.threshold)
-     Write main index file for validation output
+    #Write main index file for validation output
     mapper = TemplateMapper(root=c.templates)
     tpl = mapper.validation(
         c = configuration,

@@ -12,8 +12,17 @@
     #end if
   </title>
 
+  #*
+  <script type="text/javascript" src="../../../source/mscanner/templates/citations.js"></script>
+  <script type="text/javascript" src="../../../source/mscanner/templates/fileutils.js"></script>
+  <script type="text/javascript" src="../../../source/mscanner/templates/hider.js"></script>
+  <link rel="stylesheet" type="text/css" href="../../../source/mscanner/templates/style.css" />
+  *#
+
   <script type="text/javascript">
     #include raw $_inc("hider.js")
+    #include raw $_inc("fileutils.js")
+    #include raw $_inc("citations.js")
   </script>
 
   <style type="text/css">
@@ -36,19 +45,66 @@
 
 <div class="body">
 
-<p>
-  This report contains $len($scores) citations.
-</p>
-  
-<table class="cite">
+<form class="cite">
 
+<p>
+  This report contains $len($scores) citations,
+  #if $mode == "input"
+  which are input citations (examples of relevant articles) used to train the classifier.
+  #else
+  which are the results of a query operation (articles which MScanner has classified as relevant).
+  #end if
+</p>
+
+<fieldset>
+  <legend>Manage Classifications</legend>
+  <input type="file" size="80" id="fname" value="classifications.txt" />
+  <br />
+  <input type="button" onclick="saveTags()" value="Save Classifications" />
+  <input type="button" onclick="loadTags()" value="Load Classifications" />
+  <p>
+    The citations can be manually classified by clicking on the box in
+    the "C" column. Gray citations <span
+    style="background-color:lightgray;color:lightgray;">...</span>
+    have not been manually classified, red citations <span
+    style="background-color:red;color:red;">...</span> are relevant,
+    and blue citations <span
+    style="background-color:blue;color:blue;">...</span> are
+    non-relevant.
+  </p>
+  <p>
+    Use the buttons above to save and load the manual classifications
+    to/from disk in CSV format.  Since remote pages are not able to
+    access local files, this page must first be saved as an HTML file
+    and opened locally for the save/load feature to work.
+  </p>
+  <input type="button" onclick="openPubMed()" value="Open Relevant Citations in PubMed" />
+</fieldset>
+
+<fieldset>
+  <legend>Filter Citations</legend>
+  <input type="text" size="50" id="filter" />
+  <input type="button" onclick="filterCitations($('filter').value)" value="Filter Citations" />
+  <input type="button" onclick="$('filter').value='';filterCitations('')" value="Clear Filter" />
+  <p>
+    Use the Filter Citations button to show only citations which have
+    the filter text present in their title or abstract.  Clearing the
+    filter shows all citations.  By default it matches any substring -
+    add a space on the left and right to match a whole word.
+  </p>
+</fieldset>
+
+</form>
+
+<table id="citations" class="cite">
+
+#set $ncols = 4
 #if $articles
-#set $ncols = 8
-#else
-#set $ncols = 3
+#set $ncols = $ncols + 5
 #end if
 
 <colgroup>
+  <col class="classification"></col>
   <col class="rank"></col>
   <col class="score"></col>
   <col class="pmid"></col>
@@ -63,13 +119,14 @@
 
 <thead>
   <tr>
-    <th abbr="R" title="Rank">R</th>
+    <th title="Classification">C</th>
+    <th title="Rank">R</th>
     <th>Score</th>
     <th>PMID</th>
     #if $articles
     <th>Year</th>
-    <th abbr="Au" title="Author">Au</th>
-    <th abbr="Ab" title="Abstract">Ab</th>
+    <th title="Author">Au</th>
+    <th title="Abstract">Ab</th>
     <th>Title</th>
     <th>Journal</th>
     #end if
@@ -81,25 +138,22 @@
   #if $articles
   #set $art = $articles[str($pmid)]
   #end if
-  <tr class="main">
+  <tr id="$pmid" class="main">
+    <td id="c_$pmid" onclick="classify('$pmid')"></td>
     <td>#echo $idx+1 #</td>
-    <td>#echo "%.2f" % $score #</td>
+    <td id="s_$pmid">#echo "%.2f" % $score #</td>
     <td>
-      <a href="http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;db=pubmed&amp;dopt=Abstract&amp;list_uids=$pmid">$pmid</a>
+      <a href="http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;db=pubmed&amp;dopt=AbstractPlus&amp;list_uids=$pmid">$pmid</a>
     </td>
     #if $articles
     <td>$art.year</td>
     <td onclick="toggle('au_$pmid')">#if $art.authors#+#else#-#end if#</td>
     <td onclick="toggle('ab_$pmid')">#if $art.abstract#+#else#-#end if#</td>
-    <td class="title">$art.title.encode("ascii","xmlcharrefreplace")</td>
+    <td id="t_$pmid" class="title">$art.title.encode("ascii","xmlcharrefreplace")</td>
     <td>
       #if $art.issn 
       <a href="http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?CMD=search&amp;DB=journals&amp;term=$art.issn">
-        #if $art.journal
-        $art.journal
-        #else
-        $art.issn
-        #end if
+        #if $art.journal #$art.journal#else#$art.issn#end if#
       </a>
       #end if
     </td>
@@ -109,10 +163,10 @@
   #if $art.authors
   <tr class="author" id="au_$pmid">
     <td colspan="$ncols">
-      #for initials, lastname in $art.authors
-      #if $initials#$initials.encode("ascii","xmlcharrefreplace")#end if#
-      #if $lastname#$lastname.encode("ascii","xmlcharrefreplace")#end if#,
-      #end for
+#for initials, lastname in $art.authors##slurp
+#if $initials#$initials.encode("ascii","xmlcharrefreplace")#end if# #slurp
+#if $lastname#$lastname.encode("ascii","xmlcharrefreplace")#end if#, #slurp
+#end for#
       <script type="text/javascript">hide('au_$pmid')</script>
     </td>
   </tr>

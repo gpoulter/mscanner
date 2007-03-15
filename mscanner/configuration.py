@@ -81,9 +81,6 @@ drugtable = working / "genedrug" / "drugtable.txt"
 
 ## Per-term pseudocount to use
 pseudocount = None
-## Path to outputs directory
-output = working / "output"
-#output = htdocs / "output"
 ## Path to corpora directory
 corpora = working / "corpora"
 ## Prefix for report files (output/dataset)
@@ -119,6 +116,8 @@ result_scores = "result_scores.txt"
 input_citations = "input_citations.html"
 ## Name of file with result citations
 result_citations = "result_citations.html"
+## Path to outputs directory
+query_output = working / "query"
 
 #### VALIDATOR CONFIGURATION (for validate.py)
 
@@ -144,3 +143,5 @@ roc_img = "roc.png"
 prcurve_img = "prcurve.png"
 ## Name of PRF vs threshold file
 fmeasure_img = "fmeasure.png"
+## Path to outputs directory
+valid_output = working / "validation"

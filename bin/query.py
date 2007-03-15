@@ -99,7 +99,7 @@ def do_query(configvars):
 def choose_query(configvars, dataset):
     c = configvars
     c.dataset = dataset
-    c.reportdir = c.output / c.dataset
+    c.reportdir = c.query_output / c.dataset
     if dataset == "pg04":
         pos = "pharmgkb-2004.txt"
     elif dataset == "pg07":
@@ -131,6 +131,6 @@ if __name__ == "__main__":
         c.pseudocount = float(sys.argv[2])
         c.limit = int(sys.argv[3])
         c.threshold = float(sys.argv[4])
-        c.reportdir = c.output / c.dataset
+        c.reportdir = c.query_output / c.dataset
         path(sys.argv[5]).copy(c.reportdir / c.posname)
     do_query(configuration)

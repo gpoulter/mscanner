@@ -100,7 +100,7 @@ def do_validation(configvars):
 def choose_validation(configvars, dataset):
     c = configvars
     c.dataset = dataset
-    c.reportdir = c.output / c.dataset
+    c.reportdir = c.valid_output / c.dataset
     # Primary results
     if dataset == "aids-vs-500k":
         pos = "aids-bioethics-Oct06.txt"
@@ -184,7 +184,7 @@ if __name__ == "__main__":
         c.nfolds = int(sys.argv[3])
         c.pseudocount = float(sys.argv[4])
         c.alpha = float(sys.argv[5])
-        c.reportdir = c.output / c.dataset
+        c.reportdir = c.valid_output / c.dataset
         path(sys.argv[6]).copy(c.reportdir / c.posname)
         (c.reportdir / c.negname).write_lines(random.sample(c.articlelist.lines(), c.numnegs))
     do_validation(configuration)

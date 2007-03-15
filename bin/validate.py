@@ -94,6 +94,7 @@ def do_validation(configvars):
         validation.report(positives, negatives, pscores, nscores, featmap, featdb, c)
         
     finally:
+        log.debug("Cleaning up")
         del statfile
         runMailer(c.smtp_server, c.emails_path)
 

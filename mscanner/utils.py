@@ -8,7 +8,6 @@ removeBackup() -- Remove a .recovery file
 StatusFile -- Post program status to a file (cheap IPC...)
 FileTracker -- Track processed files (to avoid re-parsing), with on-disk persistence
 Storage -- Dictionary which supports d.foo attribute access
-TemplateMapper -- Convenient frontend to Cheetah templating engine
 
                                    
 
@@ -30,8 +29,6 @@ import os
 import time
 from path import path
 import numpy as nx
-import warnings
-warnings.simplefilter("ignore", UserWarning)
 
 def countFeatures(nfeats, featdb, docids):
     """Givent number of features,
@@ -98,7 +95,7 @@ def writePMIDScores(filename, pairs):
     @pairs: Iteratable over (PubMed ID, Score) pairs
     """
     oscores = sorted(pairs, key=lambda x:x[1], reverse=True)
-    filename.write_lines("%10d %f" % x for x in oscores)
+    filename.write_lines("%-10d %f" % x for x in oscores)
 
 def runMailer(smtp_server, mailer):
     """Read e-mail addresses from mail file and send them a
@@ -291,52 +288,3 @@ class Storage(dict):
 
     def __repr__(self):     
         return '<Storage ' + dict.__repr__(self) + '>'
-
-class TemplateMapper:
-    """Provides attribute-style access to Cheetah templates, for
-    either importing template modules from a package or compiling
-    files in the template directory."""
-
-    def __init__(self, gvars={}, root=path("templates"), ext=".tmpl", module=None):
-        """Initialise template mapper.
-
-        @param gvars: Global variables dictionary
-        @param root: Path to template directory
-        @param ext: Template extension
-        @param module: Templates are modules under this module
-        instead of re-compiling
-        """
-        self.gvars = gvars
-        self.gvars["_inc"] = lambda x: str(self.root / x)
-        self.root = path(root)
-        self.ext = ext
-        self.module = module
-
-    def __getattr__(self, name):
-        """Use attribute access to obtain a callable template object"""
-        if self.module is None:
-            return self.CallableTemplate(self.root / name + self.ext, self.gvars)
-        else:
-            return self.CallableTemplate(getattr(getattr(self.module, name), name), self.gvars)
-
-    class CallableTemplate:
-        
-        def __init__(self, template, gvars={}):
-            """Initialise callable template with set of global variables"""
-            self.template = template
-            self.gvars = gvars
-
-        def __call__(self, *pvars, **kvars):
-            """Call template with self.gvars for globals, pvars adding to
-            the searchlist, and kvars forming a dictionary of parameters."""
-            from Cheetah.Template import Template
-            slist = list(pvars) + [kvars, self.gvars]
-            if isinstance(self.template, path):
-                return Template(file=str(self.template), searchList=slist)
-            elif isinstance(self.template, basestring):
-                return Template(self.template, searchList=slist)
-            elif issubclass(self.template, Template):
-                return self.template(searchList=slist)
-            else:
-                raise ValueError("Unrecognised template")
-

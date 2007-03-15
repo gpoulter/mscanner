@@ -34,7 +34,8 @@ import time
 
 import scoring
 import plotting
-from utils import countFeatures, Storage, TemplateMapper
+from utils import countFeatures, Storage
+from gcheetah import TemplateMapper
 
 class Validator:
     """Cross-validated calculation of article scores"""

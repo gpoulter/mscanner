@@ -91,6 +91,7 @@ def do_query(configvars):
             exportDefault(c.outputdb, gdarticles)
             
     finally:
+        log.debug("Cleaning up")
         featdb.close()
         artdb.close()
         del statfile

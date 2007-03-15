@@ -80,7 +80,7 @@ drugtable = working / "genedrug" / "drugtable.txt"
 #### Shared configuration (by query & validation) 
 
 ## Per-term pseudocount to use
-pseudocount = None
+pseudocount = 0.01
 ## Path to corpora directory
 corpora = working / "corpora"
 ## Prefix for report files (output/dataset)

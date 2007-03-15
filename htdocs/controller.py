@@ -1,4 +1,3 @@
-#!C:\Python25\python.exe
 #!/usr/bin/env python
 
 """
@@ -20,9 +19,12 @@ General Public License for more details.
 
 import web
 from web.utils import Storage
-from mscanner.utils import TemplateMapper
 import time
+import platform
 
+from mscanner.utils import TemplateMapper
+
+windows = platform.system() == "Windows"
 web.webapi.internalerror = web.debugerror
 
 urls = (
@@ -66,10 +68,11 @@ class front:
 
 class form:
     def GET(self):
-        print r.page(r.form(testing.form, status=None, errors=testing.errors))
+        print r.page(r.form(testing.form, status=None, errors=None))
     def POST(self):
         i = web.input("batch", "code", "pseudocount", "positives",
                       "threshold", "limit", "nfold", "negatives", "alpha")
+        
         print r.page(r.form(testing.form, status=testing.status))
 
 class status:

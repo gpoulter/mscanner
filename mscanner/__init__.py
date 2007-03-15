@@ -1,3 +1,3 @@
 __all__ = [ "article", "dbexport", "dbshelve", "featuredb", 
-            "featuremap", "genedrug", "medline", "plotting",
+            "featuremap", "gcheetah", "genedrug", "medline", "plotting",
             "scoring", "utils", "validation" ]

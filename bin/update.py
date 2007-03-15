@@ -67,6 +67,7 @@ try:
         log.info("Starting update from %s" % c.medline.relpath())
         medcache.updateCacheFromDir(c.medline, c.save_delay)
 finally:
+    log.debug("Cleaning up")
     del statfile
     runMailer(c.smtp_server, c.emails_path)
     

@@ -21,12 +21,14 @@ General Public License for more details.
 from __future__ import division
 import codecs
 import heapq
+import logging as log
 import numpy as nx
 from path import path
 import time
 
 from featuremap import FeatureMapping
-from utils import Storage, TemplateMapper
+from utils import Storage
+from gcheetah import FileTransaction, TemplateMapper
 
 class FeatureScoreInfo:
     """Class to calculate and store all information about the
@@ -227,23 +229,27 @@ def writeReport(input, output, feature_info, configuration, artdb):
     c = configuration
     rd = c.reportdir
     isinstance(feature_info, FeatureScoreInfo)
+
+    log.debug("Writing feature scores")
     feature_info.writeFeatureScoresCSV(codecs.open(rd/c.term_scores, "wb", "utf-8"))
-    # Sort lists of scores
-    input = list(input)
-    input.sort(key=lambda x:x[1], reverse=True)
-    output = list(output)
-    output.sort(key=lambda x:x[1], reverse=True)
-    # Write templates
-    mapper = TemplateMapper(root=c.templates)
+    mapper = TemplateMapper(root=c.templates, kwargs=dict(filter="Filter"))
+
+    log.debug("Writing input citations")
+    input = sorted(input, key=lambda x:x[1], reverse=True)
     params = Storage(
         dataset = c.dataset,
         mode = "input", 
         scores = input,
         articles = artdb)
-    (rd/c.input_citations).write_text(str(mapper.citations(params)))
+    mapper.citations(params).respond(FileTransaction(rd/c.input_citations, "w"))
+
+    log.debug("Writing output citations")
+    output = sorted(output, key=lambda x:x[1], reverse=True)
     params.mode = "output"
     params.scores = output
-    (rd/c.result_citations).write_text(str(mapper.citations(params)))
+    mapper.citations(params).respond(FileTransaction(rd/c.result_citations, "w"))
+
+    log.debug("Writing index file")
     index = mapper.results(
         c = configuration,
         f = feature_info,

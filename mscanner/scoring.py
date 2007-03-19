@@ -218,14 +218,25 @@ def filterDocuments(docs, featscores, exclude=[], limit=10000, threshold=0.0, st
         limit = ndocs
     return [(docid,score) for score,docid in heapq.nlargest(limit, results)]
 
-def writeReport(input, output, feature_info, configuration, artdb):
+def writeReport(inputs, outputs, feature_info, configuration, artdb):
     """Write a report using the results of the classifier
-    @param input: Iterator over (PubMed ID, Score)
-    @param output: Iterator over (PubMed ID, Score)
+    @param inputs: Iterator over (PubMed ID, Score)
+    @param outputs: Iterator over (PubMed ID, Score)
     @param feature_info: A FeatureScoreInfo object with information about features
     @param configuration: Configuration module with remaining parameters
     @param artdb: Mapping from Pubmed ID to Article object
     """
+    def copyDict(scores):
+        """Workaround for a mysterious bug where template takes
+        forever to execute - unless we first copy the article objects
+        out of the database and into a dict.  This may be due to
+        Cheetah doing something that works on a dict but takes forever
+        on a Berkeley DB of 15 million entries."""
+        d = dict()
+        for pmid, score in scores:
+            d[str(pmid)] = artdb[str(pmid)]
+        return d
+
     c = configuration
     rd = c.reportdir
     isinstance(feature_info, FeatureScoreInfo)
@@ -235,25 +246,26 @@ def writeReport(input, output, feature_info, configuration, artdb):
     mapper = TemplateMapper(root=c.templates, kwargs=dict(filter="Filter"))
 
     log.debug("Writing input citations")
-    input = sorted(input, key=lambda x:x[1], reverse=True)
-    params = Storage(
+    inputs = sorted(inputs, key=lambda x:x[1], reverse=True)
+    mapper.citations(
         dataset = c.dataset,
         mode = "input", 
-        scores = input,
-        articles = artdb)
-    mapper.citations(params).respond(FileTransaction(rd/c.input_citations, "w"))
+        scores = inputs,
+        articles = copyDict(inputs)).respond(FileTransaction(rd/c.input_citations, "w"))
 
     log.debug("Writing output citations")
-    output = sorted(output, key=lambda x:x[1], reverse=True)
-    params.mode = "output"
-    params.scores = output
-    mapper.citations(params).respond(FileTransaction(rd/c.result_citations, "w"))
+    outputs = sorted(outputs, key=lambda x:x[1], reverse=True)
+    mapper.citations(
+        dataset = c.dataset,
+        mode = "output", 
+        scores = outputs,
+        articles = copyDict(outputs)).respond(FileTransaction(rd/c.result_citations, "w"))
 
     log.debug("Writing index file")
     index = mapper.results(
         c = configuration,
         f = feature_info,
-        num_results = len(output),
-        lowest_score = output[-1][1])
+        num_results = len(outputs),
+        lowest_score = outputs[-1][1])
     (rd/c.index_html).write_text(str(index))
     

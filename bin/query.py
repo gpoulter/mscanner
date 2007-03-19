@@ -43,18 +43,21 @@ def do_query(configvars):
     statfile = StatusFile(c.statfile, dataset=c.dataset, start=c.timestamp)
     try:
         # Load article information
+        log.debug("Loading article database and verifying input PMIDs")
         featdb = FeatureDatabase(c.featuredb, 'r')
         featmap = FeatureMapping(c.featuremap)
         artdb = dbshelve.open(c.articledb, 'r')
         input_pmids = set(readPMIDs(c.reportdir / c.posname, include=featdb))
-        statfile.total = len(featdb)-len(input_pmids)
+        narticles = int(c.narticles.text())
+        statfile.total = narticles - len(input_pmids)
 
         # Calculate feature score information
+        log.debug("Calculating feature scores")
         pos_counts = countFeatures(len(featmap), featdb, input_pmids)
         neg_counts = nx.array(featmap.counts, nx.int32) - pos_counts
         feature_info = FeatureScoreInfo(
             pos_counts,  neg_counts,
-            len(input_pmids), len(featdb) - len(input_pmids),
+            len(input_pmids), narticles - len(input_pmids),
             c.pseudocount, featmap, c.exclude_types, c.dodaniel)
 
         # Load saved results

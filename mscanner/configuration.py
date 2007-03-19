@@ -53,6 +53,8 @@ db_home = cache / "db_home"
 articledb = cache / "articles.db"
 ## Path to list of article IDs
 articlelist = cache / "articles.txt"
+## Path to count of number of articles
+narticles = cache / "narticles.txt"
 ## Path to DB of term features for each article
 featuredb = cache / "features.db"
 ## Path to binary stream of PMIDs and feature arrays

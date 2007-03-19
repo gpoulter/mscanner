@@ -49,6 +49,7 @@ medcache = MedlineCache(
         c.featurestream,
         c.articlelist,
         c.processed,
+        c.narticles,
         c.use_transactions,
         )
 

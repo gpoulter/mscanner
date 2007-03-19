@@ -70,7 +70,7 @@ class MedlineCache:
     def __init__(
         self, featmap, db_env_home,
         article_db, feature_db, feature_stream, article_list,
-        processed_path, use_transactions=True):
+        processed_path, narticles_path, use_transactions=True):
         """Initialse a cache of the results of parsing medline.
 
         @param featmap: A FeatureMapping object for mapping string features to IDs
@@ -89,6 +89,7 @@ class MedlineCache:
         self.feature_stream = feature_stream
         self.article_list = article_list
         self.processed_path = processed_path
+        self.narticles_path = narticles_path
         self.use_transactions = use_transactions
         self.recover = False
 
@@ -122,6 +123,10 @@ class MedlineCache:
             artdb = dbshelve.open(self.article_db, dbenv=dbenv, txn=txn)
             meshfeatdb = FeatureDatabase(self.feature_db, dbenv=dbenv, txn=txn)
             featstream = FeatureStream(file(self.feature_stream,"ab"))
+            if not self.narticles_path.isfile():
+                narticles = len(meshfeatdb)
+            else:
+                narticles = int(self.narticles_path.text())
             pmidlist = []
             for art in articles:
                 # Refuse to add duplicates
@@ -150,6 +155,7 @@ class MedlineCache:
             meshfeatdb.close()
             featstream.close()
             self.article_list.write_lines(pmidlist, append=True)
+            self.narticles_path.write_text(str(narticles+len(pmidlist))+"\n")
             self.featmap.dump()
             if txn is not None:
                 txn.commit()

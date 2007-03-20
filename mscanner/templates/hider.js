@@ -1,5 +1,9 @@
+function $(name) {
+   return document.getElementById(name);
+}
+
 function toggle(id, type) {
-   if (document.getElementById(id).style.display == "none") {
+   if ($(id).style.display == "none") {
       show(id, type);
    } else {
       hide(id);
@@ -7,13 +11,14 @@ function toggle(id, type) {
 }
 
 function hide(id) {
-   document.getElementById(id).style.display = "none";
+   $(id).style.display = "none";
 }
 
 function show(id, type) {
    if (type == null) {
-      document.getElementById(id).style.display = "";
+      $(id).style.display = "";
    } else {
-      document.getElementById(id).style.display = type;
+      $(id).style.display = type;
    }
-}  
+}
+

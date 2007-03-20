@@ -117,12 +117,10 @@ table.features col.label {
 
 /* CITATIONS */
 
-form.cite {
+fieldset.cite {
+    width: auto;
     max-width: 95%;
     margin-bottom: 1em;
-}
-form.cite fieldset {
-    width: auto;
 }
 table.cite {
     background-color: white;

@@ -2,10 +2,6 @@
 // 1 = Negative (blue)
 // 2 = Positive (red)
 
-function $(name) {
-   return document.getElementById(name);
-}
-
 // Read classifications from disk
 function loadTags() {
    fname = document.getElementById("fname").value
@@ -42,7 +38,6 @@ function saveTags() {
       }
    }
    fname = document.getElementById("fname").value
-   console.log(fname);
    writeFile(fname, text);
 }
 
@@ -110,8 +105,8 @@ function filterCitations(filter) {
       if (rows[i].className == "main") {
          pmid = rows[i].id;
          if (filter == "" || 
-             $("t_"+pmid).innerHTML.indexOf(filter) != -1 ||
-             $("ab_"+pmid).innerHTML.indexOf(filter) != -1) {
+            RegExp(filter, "i").test($("t_"+pmid).innerHTML + $("ab_"+pmid).innerHTML)
+         ) {
             rows[i].style.display = "";            
          } else {
             rows[i].style.display = "none";            
@@ -121,3 +116,4 @@ function filterCitations(filter) {
       }
    }
 }
+

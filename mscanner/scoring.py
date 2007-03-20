@@ -226,40 +226,70 @@ def writeReport(inputs, outputs, feature_info, configuration, artdb):
     @param configuration: Configuration module with remaining parameters
     @param artdb: Mapping from Pubmed ID to Article object
     """
+
     def copyDict(scores):
-        """Workaround for a mysterious bug where template takes
-        forever to execute - unless we first copy the article objects
-        out of the database and into a dict.  This may be due to
-        Cheetah doing something that works on a dict but takes forever
-        on a Berkeley DB of 15 million entries."""
+        """Workaround for a mysterious bug on mtree.stanford.edu where template
+        takes forever to execute - unless we first copy the article objects out
+        of the database and into a dict. This may be due to Cheetah doing
+        something that works on a dict but takes forever on a 22GiB Berkeley DB."""
         d = dict()
         for pmid, score in scores:
             d[str(pmid)] = artdb[str(pmid)]
         return d
-
+    
     c = configuration
     rd = c.reportdir
     isinstance(feature_info, FeatureScoreInfo)
+    mapper = TemplateMapper(root=c.templates, kwargs=dict(filter="Filter"))
+
+    def writeCitations(mode, scores, fname, perfile=500):
+        """Because 10000 citations in one HTML file is impossible to work with,
+        I wrote this function which splits the results up into multiple files 
+        
+        @param mode: 'input or 'output'
+
+        @param scores: List of (pmid, score) pairs in descending order of score
+
+        @param fname: Base file name (e.g. results.html, resulting in
+        results.html, results_02.html, ...)
+
+        @param perfile: Number of citations per file (the very last file may
+        have up to 2*perfile-1 citations)
+        """
+        articles = copyDict(scores)
+        scores = list(scores)
+        fname = path(fname)
+        fnames = [None] + [fname] + [ 
+            (fname.namebase + ("_%02d" % x) + fname.ext)
+            for x in range(2,2+int(len(scores)/perfile)) ] + [None]
+        starts = range(0, len(scores), perfile)
+        if len(starts)>1 and (len(scores)-starts[-1]) < perfile:
+            del starts[-1]
+        for count, start in enumerate(starts):
+            if count < len(starts)-1:
+                towrite = scores[start:start+perfile]
+            else:
+                towrite = scores[start:]
+                fnames[count+2] = None
+            mapper.citations(
+                dataset = c.dataset,
+                mode = mode, 
+                scores = towrite,
+                prev_file = fnames[count],
+                this_file = fnames[count+1],
+                next_file = fnames[count+2],
+                startfrom = start+1,
+                articles = articles).respond(
+                    FileTransaction(rd/fnames[count+1], "w"))
 
     log.debug("Writing feature scores")
     feature_info.writeFeatureScoresCSV(codecs.open(rd/c.term_scores, "wb", "utf-8"))
-    mapper = TemplateMapper(root=c.templates, kwargs=dict(filter="Filter"))
-
     log.debug("Writing input citations")
     inputs = sorted(inputs, key=lambda x:x[1], reverse=True)
-    mapper.citations(
-        dataset = c.dataset,
-        mode = "input", 
-        scores = inputs,
-        articles = copyDict(inputs)).respond(FileTransaction(rd/c.input_citations, "w"))
-
+    writeCitations("input", inputs, c.input_citations)
     log.debug("Writing output citations")
     outputs = sorted(outputs, key=lambda x:x[1], reverse=True)
-    mapper.citations(
-        dataset = c.dataset,
-        mode = "output", 
-        scores = outputs,
-        articles = copyDict(outputs)).respond(FileTransaction(rd/c.result_citations, "w"))
+    writeCitations("output", outputs, c.result_citations)
 
     log.debug("Writing index file")
     index = mapper.results(

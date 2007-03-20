@@ -45,7 +45,14 @@
 
 <div class="body">
 
-<form class="cite">
+<p>
+#if $getVar("prev_file", None)
+Previous File: <a href="$prev_file">$prev_file</a>
+#end if
+#if $getVar("next_file", None)
+Next File: <a href="$next_file">$next_file</a>
+#end if
+</p>
 
 <p>
   This report contains $len($scores) citations,
@@ -56,12 +63,15 @@
   #end if
 </p>
 
-<fieldset>
+<fieldset class="cite">
+
   <legend>Manage Classifications</legend>
-  <input type="file" size="80" id="fname" value="classifications.txt" />
+  
+  <input type="file" size="80" id="fname" />
   <br />
   <input type="button" onclick="saveTags()" value="Save Classifications" />
   <input type="button" onclick="loadTags()" value="Load Classifications" />
+  
   <p>
     The citations can be manually classified by clicking on the box in
     the "C" column. Gray citations <span
@@ -72,6 +82,7 @@
     style="background-color:blue;color:blue;">...</span> are
     non-relevant.
   </p>
+  
   <p>
     Use the buttons above to save and load the manual classifications
     to/from disk in CSV format.  Since remote pages are not able to
@@ -79,22 +90,31 @@
     and opened locally for the save/load feature to work.
   </p>
   <input type="button" onclick="openPubMed()" value="Open Relevant Citations in PubMed" />
+  
 </fieldset>
 
-<fieldset>
-  <legend>Filter Citations</legend>
-  <input type="text" size="50" id="filter" />
-  <input type="button" onclick="filterCitations($('filter').value)" value="Filter Citations" />
-  <input type="button" onclick="$('filter').value='';filterCitations('')" value="Clear Filter" />
-  <p>
-    Use the Filter Citations button to show only citations which have
-    the filter text present in their title or abstract.  Clearing the
-    filter shows all citations.  By default it matches any substring -
-    add a space on the left and right to match a whole word.
-  </p>
-</fieldset>
+<fieldset class="cite"> 
 
-</form>
+<legend>Filter Citations</legend> 
+
+<input type="text" size="50" id="filter" onkeypress="return noenter()"/> 
+
+<input type="button" 
+onclick="filterCitations(\$('filter').value)"
+value="Filter Citations" /> 
+
+<input type="button"
+onclick="\$('filter').value='';filterCitations('')" 
+value="Clear Filter" />
+
+<p>Case-insensitive filter to show only citations which have the filter text
+present in their title or abstract. Clearing the filter shows all citations. The
+filter makes use of <a
+href="http://www.javascriptkit.com/jsref/regexp.shtml">Regular expressions</a>
+(for filter text "X" we create RegExp("X","i")).  For example, to find
+"rat" as a whole word, use "\brat\b" .</p>
+
+</fieldset>
 
 <table id="citations" class="cite">
 
@@ -143,7 +163,7 @@
 #end if
 <tr id="#echo pmid#" class="main">
 <td id="c_#echo pmid#" onclick="classify('#echo pmid#')"></td>
-<td>#echo idx+1 #</td>
+<td>#echo idx+$startfrom#</td>
 <td id="s_#echo pmid#">#echo "%.2f" % score#</td>
 <td>
 <a href="http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;db=pubmed&amp;dopt=AbstractPlus&amp;list_uids=#echo pmid#">#echo pmid#</a>
@@ -152,7 +172,7 @@
 <td>#echo art.year#</td>
 <td#if art.authors# onclick="toggle('au_#echo pmid#')">+#else#>-#end if#</td>
 <td#if art.abstract# onclick="toggle('ab_#echo pmid#')">+#else#>-#end if#</td>
-<td id="t_#echo pmid#" class="title">#echo art.title.encode("ascii","xmlcharrefreplace")#</td>
+<td id="t_#echo pmid#" class="title"> #echo art.title.encode("ascii","xmlcharrefreplace")# </td>
 <td>
 #if art.issn 
 <a href="http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?CMD=search&amp;DB=journals&amp;term=#echo art.issn#">

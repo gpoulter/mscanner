@@ -67,3 +67,4 @@ function writeFileNetscape(fname, text) {
    var result = outputStream.write(text, text.length);
    outputStream.close();
 }
+

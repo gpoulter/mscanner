@@ -14,6 +14,8 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 General Public License for more details.
 
 http://www.gnu.org/copyleft/gpl.html
+
+http://www.gnu.org/copyleft/gpl.html
 """
 
 from bsddb import db
@@ -81,6 +83,7 @@ class MedlineCache:
         @param feature_db: Path to feature database
         @param feature_stream: Path to feature stream file
         @param article_list: Path to list of article PMIDs
+        @param narticles_path: Path to file containing the total number of PMIDs
         @param processed_path: Path to list of processed files
         @param use_transactions: If false, disable transaction engine
         """

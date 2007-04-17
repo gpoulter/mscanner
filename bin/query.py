@@ -16,6 +16,8 @@ This program is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 General Public License for more details.
+
+http://www.gnu.org/copyleft/gpl.html
 """
 
 import cPickle
@@ -58,7 +60,7 @@ def do_query(configvars):
         feature_info = FeatureScoreInfo(
             pos_counts,  neg_counts,
             len(input_pmids), narticles - len(input_pmids),
-            c.pseudocount, featmap, c.exclude_types, c.dodaniel)
+            c.pseudocount, featmap, c.exclude_types, c.dodaniel, c.cutoff)
 
         # Load saved results
         if (c.reportdir / c.index_html).isfile():
@@ -116,6 +118,16 @@ def choose_query(configvars, dataset):
         pos = "mscanner-bibliography.txt"
     elif dataset == "gdsmall":
         pos = "genedrug-small.txt"
+    elif dataset == "heparin-ps_const":
+        pos = "pubfinder-heparin.txt"
+        c.pseudocount = 0.01
+    elif dataset == "heparin-ps_per":
+        pos = "pubfinder-heparin.txt"
+        c.pseudocount = 0
+    elif dataset == "heparin-ps_cut":
+        pos = "pubfinder-heparin.txt"
+        c.pseudocount = 0.01
+        c.feature_selection = true
     else:
         raise ValueError("Invalid query dataset " + dataset)
     if not isinstance(pos, path):

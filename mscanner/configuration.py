@@ -13,6 +13,8 @@ This program is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 General Public License for more details.
+
+http://www.gnu.org/copyleft/gpl.html
 """
 
 import logging
@@ -83,6 +85,8 @@ drugtable = working / "genedrug" / "drugtable.txt"
 
 ## Per-term pseudocount to use
 pseudocount = 0.01
+## Whether to set to zero negative-only features with positive scores 
+cutoff = False
 ## Path to corpora directory
 corpora = working / "corpora"
 ## Prefix for report files (output/dataset)

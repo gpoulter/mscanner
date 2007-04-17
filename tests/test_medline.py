@@ -57,6 +57,7 @@ class MedlineCacheTests(unittest.TestCase):
                          featstream,
                          h/"articles.txt",
                          h/"processed.txt",
+                         h/"narticles.txt",
                          use_transactions=True,)
         xml.write_text(xmltext)
         m.updateCacheFromDir(h, save_delay=1)

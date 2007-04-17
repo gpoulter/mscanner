@@ -16,6 +16,8 @@ This program is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 General Public License for more details.
+
+http://www.gnu.org/copyleft/gpl.html
 """
 
 from __future__ import division
@@ -55,19 +57,22 @@ class FeatureScoreInfo:
     """
 
     def __init__(self, pos_counts, neg_counts, pdocs, ndocs,
-                 pseudocount, featmap, exclude_types=None, daniel=False):
+                 pseudocount, featmap, exclude_types=None, 
+                 daniel=False, cutoff=False):
         """Parameters are as for calculateFeatureScores, and are also kept as
         instance variables.
 
         @param featmap: Mapping between Feature ID and (feature string, feature type)
 
-        @param exclude_types: Types of features to exclude. Features of this
-        type are or'd to the mask, where the default mask is those feature which
-        have pos_counts[i] and neg_counts[i] equal to zero.
+        @param exclude_types: Types of features to exclude (their scores are set to zero).
         
         @param pseudocount: Either a float which is the pseudocount for any
-        feature, or None, in which case we create an array with the global
-        (Medline) frequency of a feature being its pseudocount.
+        feature. If "not pseudocount" (false/0/None), case we create an 
+        array of per-feature pseudocount, with each being the Medline frequency 
+        of the feature.
+        
+        @param pos_counts, neg_count, pdocs, ndocs, daniel, cutoff: Passed on
+        direct to calculateFeatureScores.
   
         """
         isinstance(featmap, FeatureMapping)
@@ -81,6 +86,7 @@ class FeatureScoreInfo:
         self.featmap = featmap
         self.exclude_types = exclude_types
         self.daniel = daniel
+        self.cutoff = cutoff
         self.num_feats = len(self.featmap)
         self.mask = self.featmap.featureTypeMask(self.exclude_types)
         self.recalculateFeatureScores()
@@ -91,7 +97,7 @@ class FeatureScoreInfo:
         self.scores, self.pfreqs, self.nfreqs = calculateFeatureScores(
             self.pos_counts, self.neg_counts,
             self.pdocs, self.ndocs,
-            self.pseudocount, self.mask, self.daniel)
+            self.pseudocount, self.mask, self.daniel, self.cutoff)
         return self.scores
 
     def recalculateFeatureStats(self):
@@ -125,7 +131,8 @@ class FeatureScoreInfo:
                  t, _.featmap[t][1], _.featmap[t][0]))
 
 def calculateFeatureScores(
-    pos_counts, neg_counts, pdocs, ndocs, pseudocount, mask=None, daniel=False):
+    pos_counts, neg_counts, pdocs, ndocs, pseudocount, 
+    mask=None, daniel=False, cutoff=False):
     """Return feature support scores based on relative frequency in positives vs
     negatives
 
@@ -135,17 +142,24 @@ def calculateFeatureScores(
     @param pdocs: Number of positive documents
     @param ndocs: Number of negative documents
 
-    @param pseudocount: May be a float with the global Bayesian pseudocount for
+    @param pseudocount: Float with the global pseudocount for
     any term, e.g. if 0.1, we add 0.1 occurrences across of the term, and add
     0.2 (2*0.1) to the number of articles so that
-    P(term|positive)+P(~term|positive)=1. It may instead be an array of floats
-    with a different pseudocount for each feature.
+    P(term|positive)+P(~term|positive)=1.  May instead be an array of floats
+    specifying a different pseudocount for each feature.
 
     @param mask: Optional boolean array specifiying features to mask to zero
 
     @param daniel: If true, use the JAMIA paper's smoothing heuristic
     of 10^-8 for terms found in positive but not negative (and visa
     versa).
+    
+    @param cutoff: If true, any features whose positive count is zero but
+    nonetheless obtain a positive score (due to pseudocount priors), has its
+    score set to zero.
+    
+    @note:  Features where pos_counts[i] and neg_counts[i] are both zero 
+    have scores set to zero (disabled in favour of cutoff).
 
     @return: Array of feature scores (zeros for masked features),
     array of feature frequencies in positives, and array of
@@ -163,6 +177,9 @@ def calculateFeatureScores(
         nfreqs = (neg_counts+pseudocount) / (2*pseudocount+ndocs)
     ## Log likelihood scores
     scores = nx.log(pfreqs / nfreqs)
+    ## Testing removing positive-scoring rare features
+    if cutoff:
+        scores[(scores > 0) & (pos_counts == 0)] = 0
     ## Remove masked features from consideration
     if mask:
         pfreqs[mask] = 0

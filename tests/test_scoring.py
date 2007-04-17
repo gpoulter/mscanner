@@ -25,20 +25,24 @@ class ScoringTests(unittest.TestCase):
         pdocs = 2
         ndocs = 3
         fm = FeatureMapping()
-        # Without masking of unknown features
+        ## Without masking of unknown features
         f = scoring.FeatureScoreInfo(pfreqs, nfreqs, pdocs, ndocs, 0.1, fm)
         self.assert_(nx.allclose(
             f.scores, nx.array([-0.27193372,  1.02132061,  0.37469345])))
-        # With background-calculated pseudocounts
+        ## With background-calculated pseudocounts
         fm.numdocs = 10
         fm.counts = [3,2,1]
         f = scoring.FeatureScoreInfo(pfreqs, nfreqs, pdocs, ndocs, None, fm)
         self.assert_(nx.allclose(
             f.scores, nx.array([-0.24512244,  0.95444249,  0.37469344])))
-        # With masking of unseen features
+        ## With masking of unseen features
         #f = scoring.FeatureScoreInfo(pfreqs, nfreqs, pdocs, ndocs, 0.1, fm)
         #self.assert_(nx.allclose(
         #    f.scores, nx.array([-0.27193372,  1.02132061,  0.0 ])))
+        ## With cutoff (rare positive scoring features set to zero)
+        f = scoring.FeatureScoreInfo(pfreqs, nfreqs, pdocs, ndocs, 0.1, fm, cutoff=True)
+        self.assert_(nx.allclose(
+            f.scores, nx.array([-0.27193372,  1.02132061,  0.0 ])))
 
     def test_filterDocuments(self):
         docs = { 1:[0,2], 2:[1,2], 3:[0,1] }

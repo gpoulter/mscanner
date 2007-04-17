@@ -14,6 +14,7 @@ def suite():
         "test_utils",
         "test_validation"
         ]
+    del modules[4]
     tests = unittest.TestSuite()
     for modname in modules:
         tests.addTest(unittest.findTestCases(__import__(modname)))

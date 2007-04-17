@@ -121,13 +121,19 @@ def choose_query(configvars, dataset):
     elif dataset == "heparin-ps_const":
         pos = "pubfinder-heparin.txt"
         c.pseudocount = 0.01
+        c.cutoff = False
     elif dataset == "heparin-ps_per":
         pos = "pubfinder-heparin.txt"
         c.pseudocount = 0
-    elif dataset == "heparin-ps_cut":
+        c.cutoff = False
+    elif dataset == "heparin-ps_constcut":
         pos = "pubfinder-heparin.txt"
         c.pseudocount = 0.01
-        c.feature_selection = true
+        c.cutoff = True
+    elif dataset == "heparin-ps_percut":
+        pos = "pubfinder-heparin.txt"
+        c.pseudocount = 0
+        c.cutoff = True
     else:
         raise ValueError("Invalid query dataset " + dataset)
     if not isinstance(pos, path):

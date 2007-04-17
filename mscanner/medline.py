@@ -12,6 +12,8 @@ This program is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 General Public License for more details.
+
+http://www.gnu.org/copyleft/gpl.html
 """
 
 from bsddb import db
@@ -98,14 +100,14 @@ class MedlineCache:
         if not self.db_env_home.isdir():
             self.db_env_home.mkdir()
         dbenv = db.DBEnv()
-        dbenv.set_lg_max(512*1024*1024) # 512Mb log files
+        dbenv.set_lg_max(128*1024*1024) # 128Mb log files
         dbenv.set_tx_max(1) # 1 transaction at a time
         dbenv.set_cachesize(0, 8*1024*1024) # 8Mb shared cache
         flags = db.DB_INIT_MPOOL|db.DB_CREATE
         if self.use_transactions:
             flags |= db.DB_INIT_TXN
         if self.recover:
-            flags |= db.DB_RECOVER # db.DB_RECOVER_FATAL
+            flags |= db.DB_RECOVER # might use db.DB_RECOVER_FATAL
         dbenv.open(self.db_env_home, flags)
         return dbenv
 

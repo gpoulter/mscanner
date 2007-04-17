@@ -2,4 +2,4 @@
 
 ## Adds MScanner modules to Python Path
 
-munge before PYTHONPATH "/home/graham/data/mscanner/source/lib"
+munge before PYTHONPATH "/home/data/mscanner/source/lib"

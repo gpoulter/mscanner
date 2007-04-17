@@ -12,12 +12,9 @@
     #end if
   </title>
 
-  #*
-  <script type="text/javascript" src="../../../source/mscanner/templates/citations.js"></script>
-  <script type="text/javascript" src="../../../source/mscanner/templates/fileutils.js"></script>
-  <script type="text/javascript" src="../../../source/mscanner/templates/hider.js"></script>
-  <link rel="stylesheet" type="text/css" href="../../../source/mscanner/templates/style.css" />
-  *#
+  ##<script type="text/javascript" src="../../../source/mscanner/templates/citations.js"></script>
+  ##<script type="text/javascript" src="../../../source/mscanner/templates/fileutils.js"></script>
+  ##<script type="text/javascript" src="../../../source/mscanner/templates/hider.js"></script>
 
   <script type="text/javascript">
     #include raw $_inc("hider.js")
@@ -25,8 +22,9 @@
     #include raw $_inc("citations.js")
   </script>
 
+  <link rel="stylesheet" type="text/css" href="../../../source/mscanner/templates/style.css" />
   <style type="text/css">
-    #include raw $_inc("style.css")
+    ##include raw $_inc("style.css")
   </style>
 
 </head>
@@ -190,7 +188,7 @@ href="http://www.javascriptkit.com/jsref/regexp.shtml">Regular expressions</a>
 #if initials##echo initials.encode("ascii","xmlcharrefreplace")##end if# #slurp
 #if lastname##echo lastname.encode("ascii","xmlcharrefreplace")##end if#, #slurp
 #end for#
-<script type="text/javascript">hide('au_#echo pmid#')</script>
+##<script type="text/javascript">hide('au_#echo pmid#')</script>
 </td>
 #end if
 </tr>
@@ -198,7 +196,7 @@ href="http://www.javascriptkit.com/jsref/regexp.shtml">Regular expressions</a>
 #if art.abstract
 <td colspan="#echo ncols#" >
 #echo art.abstract.encode("ascii","xmlcharrefreplace")
-<script type="text/javascript">hide('ab_#echo pmid#')</script>
+##<script type="text/javascript">hide('ab_#echo pmid#')</script>
 </td>
 #end if
 </tr>

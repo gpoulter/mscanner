@@ -169,11 +169,13 @@ class Validator:
 class PerformanceStats:
     """Calculates and stores performance statistics.
 
-    P, N, A, pscores, nscores, alpha,
-    TP, FN, FP, FN, TPR, FPR, PPV, FM, FMa, 
-    ROC_area, PR_area, 
+    @ivar P, N, A, alpha, pscores, nscores: Input variables
     
-    @ivar tuned: Object with tuned performance statistics (see tunedStatistics)
+    @ivar TP, FN, FP, FN, TPR, FPR, PPV, FM, FMa: Performance graph data
+    
+    @ivar ROC_area, PR_area: Integral statistics
+    
+    @ivar tuned: Tuned performance statistics (see tunedStatistics)
     """
 
     def __init__(self, pscores, nscores, alpha=0.5):

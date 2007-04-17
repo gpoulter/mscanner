@@ -10,20 +10,22 @@ Figure 4. P,R,F1,Fa curve for AIDSBio to demo optimisation
 
 """
 
-from article import readPMIDs
-from validation import PerformanceStats
-from plotting import kernelPDF, calculateOverlap, bincount
+from getopt import getopt
+import os
 from path import path
 from pprint import pprint
 from pylab import *
 import scipy
 from subprocess import call
-import os
+
+from mscanner.utils import readPMIDs
+from mscanner.validation import PerformanceStats
+from mscanner.plotting import bincount, kernelPDF, calculateOverlap
 
 interactive = False
 npoints = 400
 indir = path(r'C:\Documents and Settings\Graham\My Documents\data\mscanner\results\0206-valid')
-outdir = path(r"C:\Documents and Settings\Graham\My Documents\temporary")
+outdir = path(r"C:\Documents and Settings\Graham\My Documents\temporary\mscanner\latex-plots")
 
 rc("figure", figsize=(8,6), dpi=100)
 rc("figure.subplot", hspace=0.3)
@@ -35,7 +37,7 @@ rc("xtick.major", pad=6.0)
 rc("ytick.major", pad=6.0)
 
 def smooth(x, y, xn=npoints):
-    """Resample a curve (x,y) usinginterpolation. xn is either a float with the
+    """Resample a curve (x,y) using interpolation. xn is either a float with the
     new number of x value to evaluate the curve at, or an array of x values.
     """
     X = xn
@@ -146,8 +148,12 @@ def plotPR(fname, statlist):
     title(r"Precision versus Recall")
     ylabel(r"$\rm{Precision}\ (\pi)$")
     xlabel(r"$\rm{Recall}\ (\rho)$")
+    # Pairs of TPR and PPV vectors for plotting
     values = [smooth(s.TPR[::-1], s.PPV[::-1]) for s in statlist]
     lines = [plot(TPR, PPV)[0] for TPR, PPV in values]
+    # Place X marks where threshold is
+    plot([s.tuned.TPR for s in statlist], [s.tuned.PPV for s in statlist], "kx")
+    # Draw legends
     legend(lines, [r"$\rm{"+s.title+r"}$" for s in statlist])
     axis([0.0, 1.0, 0.0, 1.0])
     custom_show(fname)
@@ -188,12 +194,12 @@ def publication_plots():
 def test_plots():
     pg04 = getStats("pg04-vs-30k", "PG04")
     pg07 = getStats("pg07-vs-30k", "PG07")
-    plotArticleScoreDensity("test_density", (pg04,pg07,pg07,pg04))
-    plotROC("test_roc", (pg04,pg07))
+    #plotArticleScoreDensity("test_density", (pg04,pg07,pg07,pg04))
+    #plotROC("test_roc", (pg04,pg07))
     plotPR("test_pr", (pg04,pg07))
-    pg04alpha = PerformanceStats(pg04.pscores, pg04.nscores, alpha=0.9)
-    pg04alpha.title = pg04.title
-    plotPRF("test_prf", pg04alpha)
+    #pg04alpha = PerformanceStats(pg04.pscores, pg04.nscores, alpha=0.9)
+    #pg04alpha.title = pg04.title
+    #plotPRF("test_prf", pg04alpha)
 
 def custom_plots(fnames):
     statlist = [getStats(f,f) for f in fnames]
@@ -206,13 +212,18 @@ def custom_plots(fnames):
         plotArticleScoreHistogram("cus_%s_arthist" % stats.title, stats.pscores, stats.nscores)
         plotFeatureScoreHistogram("cus_%s_feathist" % stats.title, fscores)
 
-if __name__ == "__main__":    
-    if len(sys.argv) < 2:
-        raise ValueError("Usage: latexplots.py bmc|test|custom [id1 id2...]")
-    param = sys.argv[1]
-    if param == "bmc":
+if __name__ == "__main__":
+    optlist, args = getopt(sys.argv[1:], "d:", ["data="])
+    data = None
+    for key, value in optlist:
+        if key in ["-d","--data"]:
+            data = value
+    if data is None:
+        print __doc__
+        sys.exit(1)
+    if data== "bmc":
         publication_plots()
-    elif param == "test":
+    elif data == "test":
         test_plots()
-    elif param == "custom":
+    elif data == "custom":
         custom_plots(sys.argv[2:])

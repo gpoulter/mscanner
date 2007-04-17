@@ -157,28 +157,23 @@ def calculateFeatureScores(
         nfreqs = neg_counts / float(ndocs)
         pfreqs[pfreqs == 0.0] = 1e-8
         nfreqs[nfreqs == 0.0] = 1e-8
-    
     ## Use Bayesian pseudocount vector, or zero-offset psuedocount float
     else:
         pfreqs = (pos_counts+pseudocount) / (2*pseudocount+pdocs)
         nfreqs = (neg_counts+pseudocount) / (2*pseudocount+ndocs)
-
     ## Log likelihood scores
     scores = nx.log(pfreqs / nfreqs)
-    
     ## Remove masked features from consideration
     if mask:
         pfreqs[mask] = 0
         nfreqs[mask] = 0
         scores[mask] = 0
-
-    ## Remove "prior scores" from features we haven't encountered
+    ## Set "prior scores" for not-encountered features to zero?
     if False:
         dmask = (pos_counts + neg_counts == 0)
         pfreqs[dmask] = 0
         nfreqs[dmask] = 0
         scores[dmask] = 0
-        
     return scores, pfreqs, nfreqs
 
 def filterDocuments(docs, featscores, exclude=[], limit=10000, threshold=0.0, statfile=lambda x:x):

@@ -16,10 +16,10 @@ standard output.
 import sys, os, re, gzip
 
 def parseGeneOntology(fname,pmids):
-    pmid_finder=re.compile(r'PMID:([0-9]{1,8})')
-    input=gzip.open(fname)
+    pmid_finder = re.compile(r'PMID:([0-9]{1,8})')
+    input = gzip.open(fname)
     for line in input:
-        result=pmid_finder.search(line)
+        result = pmid_finder.search(line)
         if result is not None:
             pmids.add(result.group(1))
 
@@ -27,15 +27,15 @@ if __name__=="__main__":
     if(len(sys.argv)==1):
         print __doc__
         sys.exit(0)
-    files=sys.argv[1:]
+    files = sys.argv[1:]
     for f in files:
         if not os.path.exists(f):
             print "Error: File %s does not exist" % (f,)
             sys.exit(1)
-    pmids=set()
+    pmids = set()
     for f in files:
         parseGeneOntology(f,pmids)
-    pmids=list(pmids)
+    pmids = list(pmids)
     pmids.sort(key=int)
     for p in pmids:
         print p

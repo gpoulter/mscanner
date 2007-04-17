@@ -1,3 +1,40 @@
+// Return element for ID
+function $(name) {
+   return document.getElementById(name);
+}
+
+last_visible = null
+
+// Toggle element (only one element can be visible)
+function toggle(id, type) {
+   if ($(id).style.display == "none") {
+      show(id, type);
+   } else {
+      hide(id);
+   }
+}
+
+// Hide element, clearing last_visible
+function hide(id) {
+   $(id).style.display = "none";
+   if (last_visible == id) {
+      last_visible = null;
+   }
+}
+
+// Show element, changing last_visible
+function show(id, type) {
+   if (last_visible != id and last_visible != null) {
+      hide(last_visible);
+   }
+   if (type == null) {
+      $(id).style.display = "";
+   } else {
+      $(id).style.display = type;
+   }
+   last_visible = id;
+}
+
 // 0 = Unclassified (gray)
 // 1 = Negative (blue)
 // 2 = Positive (red)
@@ -111,9 +148,17 @@ function filterCitations(filter) {
          } else {
             rows[i].style.display = "none";            
          }
-         rows[i+1].style.display = "none";            
+         rows[i+1].style.display = "none";
          rows[i+2].style.display = "none";            
       }
    }
 }
 
+function hide_allrows() {
+   rows = document.getElementById("citations").rows;
+   for (i = 0; i < rows.length; i++) {
+      if (rows[i].className == "main") {
+         rows[i+1].style.display = "none";            
+         rows[i+2].style.display = "none";
+      }
+}

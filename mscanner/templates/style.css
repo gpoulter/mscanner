@@ -144,3 +144,13 @@ table.cite tr.abstract td {
     padding: 1em;
     text-align: justify;
 }
+
+table.cite col.classification { width: 1em; }
+table.cite col.rank { width: 1em; }
+table.cite col.score { width: 3em;}
+table.cite col.pmid { width: 5em; }
+table.cite col.year { width: 3em; }
+table.cite col.author{ width: 1em; }
+table.cite col.abstract { width: 1em; }
+table.cite col.title { }
+table.cite col.journal { width: 10em; }

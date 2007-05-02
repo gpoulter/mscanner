@@ -48,9 +48,7 @@
       </p>
     </div>
 
-    <div class="hidden box" id="status"></div>
-
-    <div class="hidden box" id="deleted">
+    <div class="hidden box" id="status">
     </div>
 
     <div class="box" id="form">
@@ -68,6 +66,30 @@
           </h3>
 
           <div class="body">
+
+            <p class="item">
+              <button class="help" onclick="g.fx['title_help'].toggle()">help</button>
+              <b class="label">Title</b>
+              <input class="field" type="text" size="30" value="" id="title"/>
+            </p>
+            <p class="help" id="title_help">
+              Specify a title for your query or validation operation,
+              so that you can identify it later.  The title may only
+              consist of alphanumeric characters (A-Za-z0-9),
+              underscores (_), full-stops (.) and dashes (-).
+            </p>
+
+            <p class="item">
+              <button class="help" onclick="g.fx['code_help'].toggle()">help</button>
+              <b class="label">Deletion Code</b>
+              <input class="field" type="text" size="8" value="" id="code"/>
+            </p>
+            <p class="help" id="code_help">
+              Choose a code up to 8 characters that is easy to
+              remember (e.g. your first name).  It is purely temporary - all it does is stop some
+              random person from deleting the output of this batch (however,
+              batches do get deleted on their own after a month).
+            </p>
 
             <p class="item">
               <button class="help" onclick="g.fx['positives_help'].toggle()">help</button>
@@ -94,9 +116,10 @@
               </select>
             </p>
             <p class="help" id="pseudocount_help">
-              The pseudocount is the number of occurrences of each term that
-              the classifier should add on, to avoid divide-by-zero in
-              calculating the score for terms not found in the query set.
+              The pseudocount is the number of occurrences of each
+              term that the classifier should add on, to avoid
+              divide-by-zero in calculating the score for terms not
+              found in the query set.
             </p>
             
           </div>
@@ -186,7 +209,22 @@
               500,000.
             </p>
 
-            <button class="action" onclick="validate()">Perform validation</button>
+            <p class="item">
+              <button class="help" onclick="g.fx['alpha_help'].toggle()">help</button>
+              <b class="label">F-Measure Alpha</b>
+              <input class="field" type="text" size="6" value="0.5" id="alpha"/>
+            </p>
+            <p class="help" id="alpha_help">
+              By default F-Measure is maximised to tune the threshold.
+              An alternative measure, called the &alpha;-weighted
+              F-Measure is equivalent to standard F-Measure for
+              &alpha;=0.5.  &alpha; ranges from 0.0 to 1.0, and values
+              above 0.5 will assign greater weight to precision,
+              thereby trading some recall for greater precision.
+            </p>
+
+            <button class="action" onclick="validate()">Perform
+            validation</button>
 
           </div><!--body-->
         </div><!--group-->

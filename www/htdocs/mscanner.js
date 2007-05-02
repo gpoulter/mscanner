@@ -16,12 +16,15 @@ window.onload = function() {
    // Set up sliding help effects
    g.fx = new Object();
    var names = [
+      "title_help",
+      "code_help",
       "positives_help",
       "pseudocount_help",
       "limit_help",
       "threshold_help",
+      "nfold_help",
       "negatives_help",
-      "nfold_help"
+      "alpha_help"
    ];
    for (var i = 0; i < names.length; i++) {
       g.fx[names[i]] = new fx.Combo( names[i] , {height: true, opacity: true, duration: 300} );
@@ -42,7 +45,7 @@ function showBlock(block) {
 }
 
 /* Delete batch output */
-function deleteBatch(batchid) {
+function deleteBatch(batchid, delcode) {
    var status_callback = function(result, err) {
       if (err != null) {
          alert("XMLRPC Error in getStatus():\n\n" + err.faultString);
@@ -52,24 +55,16 @@ function deleteBatch(batchid) {
          alert("Cannot delete since busy processing another batch");
          return;
       }
+      /* If status is ok for deletion, do it! */
       var delete_callback = function(result, err) {
          if (err != null) {
             alert("XMLRPC Error in deleteBatch():\n\n" + err.faultString);
-            return
+         } else {
+            alert("Results for Batch ID " + batchid + " have been deleted!");
          }
-         $("status").innerHTML = ""
-         graft($("status"),['h2.heading', "Batch Deleted"])
-         graft($("status"),[
-            'div.body',
-            ['p.para',
-             "Batch ID " + batchid + " has been deleted."
-            ]
-         ])
-         $("status").innerHTML = $("status").innerHTML
-         showBlock("status");
          listBatches();
       }
-      g.service.deleteBatch(batchid, delete_callback);
+      g.service.deleteBatch(batchid, delcode, delete_callback);
    }
    g.service.getStatus("", status_callback);
 }
@@ -86,17 +81,20 @@ function query() {
       g.rpcbusy = false;
       if (err != null) {
          alert("Cannot process query request: \n\n" + err.faultString);
+         g.batchid = null;
          return;
       }
-      g.batchid = result;
       setTimeout("getStatus()", 1000);
    }
+   var batchid = $("title")
+   var code = $("code")
    var positives = parsePMIDs($("positives").value);
    var pseudocount = parseFloat($("pseudocount").value);
    var limit = parseInt($("limit").value);
    var threshold = parseFloat($("threshold").value);
    g.rpcbusy = true;
-   g.service.query(positives, pseudocount, limit, threshold, query_callback);
+   g.batchid = batchid;
+   g.service.query(batchid, code, positives, pseudocount, limit, threshold, query_callback);
 }
 
 /* Start validation, returning batch id */
@@ -111,17 +109,21 @@ function validate() {
       g.rpcbusy = false;
       if (err != null) {
          alert("Cannot process validation request: \n\n" + err.faultString);
+         g.batchid = null;
          return;
       }
-      g.batchid = result;
       setTimeout("getStatus()", 1000);
    }
+   var batchid = $("title")
+   var code = $("code")
    var positives = parsePMIDs($("positives").value);
    var negatives = parseInt($("negatives").value);
    var nfold = parseInt($("nfold").value);
    var pseudocount = parseFloat($("pseudocount").value);
+   var alpha = parseFloat($("alpha"));
    g.rpcbusy = true;
-   g.service.validate(positives, negatives, nfold, pseudocount, valid_callback);
+   g.batchid = batchid;
+   g.service.validate(batchid, code, positives, negatives, nfold, pseudocount, alpha, valid_callback);
 }
 
 /* Print whether scanner is busy or done with this file.  If busy,
@@ -141,7 +143,12 @@ function getStatus() {
          graft($("status"),[
             'div.body',
             ['p.para',
-             "Batch ID " + g.batchid + " is busy running."
+             "Batch ID " + g.batchid + " is busy running. It has been " +
+             Math.floor(result.elapsed / 60) +
+             " minutes and " +
+             Math.floor(result.elapsed % 60) +
+             " seconds since scanning started, and "+
+             result.progress + " steps out of " + result.total + " have been completed."
             ],
             ['p.para',
              "Note that queries may take up to and hour, and validation takes "+
@@ -154,9 +161,16 @@ function getStatus() {
              " which you can bookmark and come back to later for the results."
             ],
             ['p.para',
-             "It has been " + Math.floor(result.elapsed/60) + " minutes and " + 
-             Math.floor(result.elapsed % 60) + " seconds since scanning started, and "+
-             result.progress + " steps out of " + result.total + " have been completed."
+             "If instead you wish to be notified when the scanner is available," +
+             "leave your e-mail address (nobody will see it, and it will be " +
+             "deleted after sending notification):",
+             ['input',
+              {class:"field", type:"text", size:"30", value:"", id:"email"},
+             ],
+             ['button',
+              {onclick:"addMailer($('email'))"},
+              "submit"
+             ]
             ]
          ])
          $("status").innerHTML = $("status").innerHTML
@@ -205,19 +219,31 @@ function listBatches() {
          hideBlock("batches");
       } else {
          $("batches").innerHTML = "";
-         graft($("batches"), ['h2.heading', "Results" ])
+         graft($("batches"),
+               ['h2.heading',
+                "Results"
+               ]
+              )
+         graft($("batches"),
+               ['p.para',
+                "To delete your batch, enter the deletion code you chose:",
+                ['input',
+                 {class:"field", type:"text", size:"8", value:"", id:"delete_code"}
+                ],
+               ]
+              )
          for (var x = 0; x < result.length; x++) {
             var batch = result[x];
             graft($("batches"),[
                'p.item',
                ['button.delete',
-                {onclick: "deleteBatch('" + batch +"');"},
+                {onclick: "deleteBatch('" + batch +"', $('delete_code'));"},
                 "Delete"
                ],
                ['a',
                 {href: g.outdir + "/" + batch + "/index.html"},
                 ['b',
-                 batchIdToDate(batch)
+                 batch
                 ]
                ]
             ])
@@ -229,15 +255,15 @@ function listBatches() {
    g.service.listBatches(listing_callback);
 }
 
-/* Convert 'YYYYmmdd-HHMMSS' to 'YYYY/mm/dd HH:MM:SS' */
-function batchIdToDate(batchid) {
-   var b = batchid;
-   if (b.match(/^\d{8}-\d{6}$/)) {
-      return "".concat(b.substring(0,4),"/",b.substring(4,6),"/",b.substring(6,8)," ",
-                       b.substring(9,11),":",b.substring(11,13),":",b.substring(13,15));
-   } else {
-      return batchid;
+/* Add an e-mail address to the list to be alerted when the scanner is available */
+function addMailer(email) {
+   var mailer_callback = function(result, err) {
+      if (err != null) {
+         alert("Failed to add e-mail address: \n\n" + err.faultString);
+         return;
+      }
    }
+   g.service.addMailer(email, query_callback);
 }
 
 /* Convert a string of newline-separated PubMed IDs into a list of integers */

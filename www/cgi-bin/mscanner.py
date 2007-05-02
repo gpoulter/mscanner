@@ -10,6 +10,7 @@ Query medline with a corpus of citations.
 __docformat__ = "restructuredtext en"
 from datetime import datetime
 from DocXMLRPCServer import DocCGIXMLRPCRequestHandler
+import md5
 import os
 from path import path
 import re
@@ -19,30 +20,33 @@ import time
 import unittest
 from xmlrpclib import Fault
 
-mtree = True
+mtree = False
 
 if mtree:
     source = path("/export/home/medscan/source")
+    mailer = source.parent / "data" / "cache" / "emails.txt"
     output = path("/export/apps/medline/htdocs/output")
     python = path("/export/home/medscan/local32/bin/python")
+    lastlog = path("/tmp/mscanner-lastlog.txt")
 else:
     source = path("C:/Documents and Settings/Graham/My Documents/data/mscanner/source")
-    output = path("C:/cygwin/srv/www/htdocs/mscanner/output")
+    mailer = path("C:/Documents and Settings/Graham/My Documents/data/mscanner/data/cache")
+    output = path("C:/Documents and Settings/Graham/My Documents/data/mscanner/data/output")
+    lastlog = path("C:/cygwin/tmp/mscanner-lastlog.txt")
     python = "C:/Python24/python.exe"
     
 bin = source / "bin"
 pidfile = source.parent / "data" / "cache" / "mscanner.pid"
-lastlog = path("/tmp/mscanner-lastlog.txt")
 
 def check_batchid(batchid):
     """
-    Check that a given string is of the YYYYmmdd-HHMMSS form
+    Check that a given string batch ID matches the batch ID regexp
 
-    :param batchid: String for to check
+    :param batchid: String to check
 
     :raise Fault(2): Batch ID is invalid
     """
-    if not re.match(r"^[A-Za-z0-9-]+$", batchid):
+    if not re.match(r"^[A-Za-z0-9_.-]+$", batchid):
         raise Fault(2, "Invalid batch id %s" % batchid)
 
 def readpid():
@@ -56,7 +60,7 @@ def readpid():
     lines = pidfile.lines()
     return int(lines[0]), int(lines[1]), int(lines[2]), lines[3].strip(), float(lines[4])
 
-def generate_batch(positives):
+def initialise_batch_dir(batchid, delcode, positives):
     """
     Creates a batch directory and returns the batch ID
 
@@ -67,14 +71,15 @@ def generate_batch(positives):
     :return: The new batch id
     """
     # Create batch dir
-    batchid = datetime.now().strftime("%Y%m%d-%H%M%S")
+    #batchid = datetime.now().strftime("%Y%m%d-%H%M%S")
     bdir = output / batchid
     if bdir.exists():
-        raise Fault(2, "Output for %s already exists" % batchid)
+        raise Fault(2, "A batch with title %s already exists" % batchid)
     bdir.mkdir()
     # Output positive PMIDs (catch errors in script)
     (bdir / "positives.txt").write_lines([str(p) for p in positives])
-    return batchid
+    # Write hash of deletion code (checked in deleteBatch)
+    (bdir / "delcode").write_bytes(md5.new(delcode).hexdigest())
 
 class MScannerService:
 
@@ -154,31 +159,45 @@ class MScannerService:
         for d in output.dirs():
             try:
                 check_batchid(d.basename())
-                # Delete broken batches (nothing is running)
+                # Delete broken batches which are not in-progress
                 if (d / "index.html").isfile():
                     result.append(str(d.basename()))
-                else:
-                    if not pidfile.isfile():
-                        d.rmtree()
+                elif not pidfile.isfile():
+                    d.rmtree()
             except Fault:
                 continue
         return result
 
-    def deleteBatch(self, batchid):
+    def addMailer(self, email):
+        """Queue an e-mail alert when scanner is available
+
+        :param email: E-mail address to be alerted
+        """
+        mailer.write_lines(email, append=True)
+
+    def deleteBatch(self, batchid, delcode):
         """Delete a batch
 
         :param batchid: ID of the batch to delete
 
+        :param delcode: Deletion code of the batch (fails if incorrect)
+
         :raise Fault(3): Batch ID is invalid
         """
         check_batchid(batchid)
-        todel = output / batchid
-        if not todel.isdir():
-            raise Fault(2, "Directory %s does not exist" % todel)
-        todel.rmtree(todel)
+        dir_to_rm = output / batchid
+        if not dir_to_rm.isdir():
+            raise Fault(2, "Directory %s does not exist" % dir_to_rm)
+        if md5.new(delcode).hexdigest() != (dir_to_rm / "delcode").bytes():
+            raise Fault(2, "Deletion code %s is incorrect" % delcode)
+        todel.rmtree(dir_to_rm)
 
-    def query(self, positives, pseudocount, limit, threshold):
+    def query(self, batchid, delcode, positives, pseudocount, limit, threshold):
         """Query Medline with a corpus of citations
+
+        :param batchid: Title for the batch (used as directory name)
+
+        :param delcode: Deletion code for the batch (stop malicious deletions)
 
         :param positives: List of integer PubMed IDs
 
@@ -194,8 +213,6 @@ class MScannerService:
         :raise Fault(2): One or more parameters are invalid
 
         :raise Fault(3): The scanner service is busy
-
-        :return: Batch ID for the query
         """
         if pidfile.isfile():
             raise Fault(3, "Scanner is busy")
@@ -212,7 +229,7 @@ class MScannerService:
         if not isinstance(threshold, float) and not isinstance(threshold, int):
             raise Fault(2, "Threshold needs to be a number")
         # Run query
-        batchid = generate_batch(positives)
+        initialise_batch_dir(batchid, delcode, positives)
         try:
             lastlog.remove()
         except:
@@ -221,10 +238,13 @@ class MScannerService:
             [python, bin / "query.py", batchid, str(pseudocount), str(limit), str(threshold)],
             stdout=lastlog.open("w"), stderr=subprocess.STDOUT)
         lastlog.chmod(0666)
-        return batchid
 
-    def validate(self, positives, negatives, nfolds, pseudocount):
+    def validate(self, batchid, delcode, positives, negatives, nfolds, pseudocount, alpha):
         """Validate query corpus for performance statistics and tuning
+
+        :param batchid: Title for the batch (used as directory name)
+
+        :param delcode: Deletion code for the batch (stop malicious deletions)
 
         :param positives: List of integer PubMed IDs
 
@@ -234,14 +254,14 @@ class MScannerService:
         :param nfolds: Number of validation folds to use (between 2
         and 10).
 
-        :param pseudocount: Float with the Bayesian pseudocount vlaue
-        to use (betwen 0.0 and 1.0)
+        :param pseudocount: Bayesian pseudocount (betwen 0.0 and 1.0)
+
+        :param alpha: Alpha-parameter for F-Measure tradeoff (between
+        0.0 and 1.0, where alpha=0.5 maximises standard F-Measure)
 
         :raise Fault(2): One or more parameters are invalid
 
         :raise Fault(3): If the scanner service is busy
-
-        :return: Batch ID for the validation task
         """
         if pidfile.isfile():
             raise Fault(3, "Scanner is busy")
@@ -257,44 +277,47 @@ class MScannerService:
             raise Fault(2, "Number of folds is < 2 or > 10")
         if not isinstance(pseudocount, float) or pseudocount < 0.0 or pseudocount > 1.0:
             raise Fault(2, "Pseudocount is < 0.0 or > 1.0")
+        if not isinstance(alpha, float) or alpha < 0.0 or alpha > 1.0:
+            raise Fault(2, "F-Measure alpha is < 0.0 or > 1.0")
         # Run validation
-        batchid = generate_batch(positives)
+        initialise_batch_dir(batchid, delcode, positives)
         try:
             lastlog.remove()
         except:
             pass
         subprocess.Popen(
-            [python, bin / "validate.py", batchid, str(negatives), str(nfolds), str(pseudocount)],
+            [python, bin / "validate.py", batchid, str(negatives), str(nfolds), str(pseudocount), str(alpha)],
             stdout=lastlog.open("w"), stderr=subprocess.STDOUT)
         lastlog.chmod(0666)
-        return batchid
 
 class MedscanTests(unittest.TestCase):
     def test(self):
         s = MScannerService()
         #self.assertEqual(listBatches(), [])
-        self.assertRaises(Fault, s.deleteBatch, "noexist")
-        self.assertRaises(Fault, s.deleteBatch, "11223344-112233")
+        self.assertRaises(Fault, s.deleteBatch, "noexist", "abc")
         self.assertEqual(s.getStatus("11223344-112233"), dict(batchid="11223344-112233", status="notfound"))
         # Test query
-        batchid = s.query("11809184\n12069159\n9744524\n1960624\n", 0.1, 5)
+        s.query("test-query", "abc", [11809184,12069159,9744524,1960624], pseudocount=0.1, limit=5, threshold=0)
         time.sleep(2)
-        self.assertEqual(s.getStatus(batchid)["status"], "busy")
+        self.assertEqual(s.getStatus("test-query")["status"], "busy")
         id, status = os.waitpid(int(pidfile.lines()[0].strip()),0)
-        self.assertEqual(s.getStatus(batchid), dict(batchid=batchid, status="done"))
+        self.assertEqual(s.getStatus("test-query"), dict(batchid="test-query", status="done"))
         self.assertEqual(s.getStatus(""), dict(status="free"))
-        deleteBatch(batchid)
+        self.assertRaises(Fault, s.deleteBatch, "test-query", "def")
+        deleteBatch("test-query", "abc")
         # Test validation
-        batchid = s.validate("11809184\n12069159\n9744524\n1960624\n", 50, 5, 0.9, 0.1)
+        batchid = s.validate("test-valid", "def", [11809184,12069159,9744524,1960624],
+                             negatives=50, nfolds=5, pseudocount=0.1, alpha=0.5)
         time.sleep(1)
         self.assertEqual(s.getStatus(batchid)["status"], "busy")
         id, status = os.waitpid(int(pidfile.lines()[0].strip()),0)
         self.assertEqual(s.getStatus(batchid), dict(batchid=batchid, status="done"))
         self.assertEqual(s.getStatus(""), dict(status="free"))
-        deleteBatch(batchid)
+        deleteBatch("test-valid", "def")
 
 if __name__ == "__main__":
-    #unittest.main()
+    unittest.main()
+    sys.exit(0)
     handler= DocCGIXMLRPCRequestHandler()
     handler.set_server_title("MScanner")
     handler.set_server_name("MScanner: Query medline using a corpus of citations")

@@ -2,157 +2,92 @@
 
 """Query the MEDLINE database with a set of positive articles
 
-CGI script may call with batchid, pseudocount, result limit and score
-threshold as arguments.
+query.py dataset pseudocount limit threshold positives_path
 
                                    
+"""
 
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or (at
-your option) any later version.
+__license__ = """ This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your option)
+any later version.
 
-This program is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-General Public License for more details.
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 http://www.gnu.org/copyleft/gpl.html
 """
 
-import cPickle
-from itertools import chain
-import logging as log
-import numpy as nx
-import os
 from path import path
 import sys
-import time
 
-from mscanner import configuration
-from mscanner import dbshelve
-from mscanner.dbexport import exportDefault
-from mscanner.featuredb import FeatureDatabase, FeatureStream
-from mscanner.featuremap import FeatureMapping
-from mscanner.genedrug import getGeneDrugFilter
-from mscanner.scoring import FeatureScoreInfo, filterDocuments, writeReport
-from mscanner.utils import countFeatures, runMailer, StatusFile, readPMIDs, writePMIDScores
-
-def do_query(configvars):
-    # Perform query
-    c = configvars
-    log.debug("Peforming query for dataset %s", c.dataset)
-    statfile = StatusFile(c.statfile, dataset=c.dataset, start=c.timestamp)
-    try:
-        # Load article information
-        log.debug("Loading article database and verifying input PMIDs")
-        featdb = FeatureDatabase(c.featuredb, 'r')
-        featmap = FeatureMapping(c.featuremap)
-        artdb = dbshelve.open(c.articledb, 'r')
-        input_pmids = set(readPMIDs(c.reportdir / c.posname, include=featdb))
-        narticles = int(c.narticles.text())
-        statfile.total = narticles - len(input_pmids)
-
-        # Calculate feature score information
-        log.debug("Calculating feature scores")
-        pos_counts = countFeatures(len(featmap), featdb, input_pmids)
-        neg_counts = nx.array(featmap.counts, nx.int32) - pos_counts
-        feature_info = FeatureScoreInfo(
-            pos_counts,  neg_counts,
-            len(input_pmids), narticles - len(input_pmids),
-            c.pseudocount, featmap, c.exclude_types, c.dodaniel, c.cutoff)
-
-        # Load saved results
-        if (c.reportdir / c.index_html).isfile():
-            log.info("Loading saved results")
-            inputs = readPMIDs(c.reportdir / c.posname, withscores=True)
-            results = readPMIDs(c.reportdir / c.result_scores, withscores=True)
-        # Recalculate results
-        else:
-            log.info("Recalculating results")
-            # Calculate and write result scores
-            featstream = FeatureStream(file(c.featurestream, "rb"))
-            results = filterDocuments(featstream, feature_info.scores, input_pmids, c.limit, c.threshold, statfile)
-            writePMIDScores(c.reportdir / c.result_scores, results)
-            # Calculate and write input scores
-            inputs = [ (pmid,nx.sum(feature_info.scores[featdb[pmid]])) for pmid in input_pmids ]
-            writePMIDScores(c.reportdir / c.posname, inputs)
-
-        # Write result report
-        log.debug("Writing report")
-        writeReport(inputs, results, feature_info, c, artdb)
-
-        # Export to database
-        if c.outputdb is not None:
-            log.debug("Getting gene-drug associations on results")
-            gdfilter = getGeneDrugFilter(c.genedrug, c.drugtable, c.gapscore)
-            gdarticles = []
-            for pmid, score in chain(results, inputs):
-                a = artdb[str(pmid)]
-                a.genedrug = gdfilter(a)
-                if len(a.genedrug) > 0:
-                    gdarticles.append(a)
-            log.debug("Exporting database")
-            exportDefault(c.outputdb, gdarticles)
+from mscanner.configuration import rc, initLogger
+from mscanner.queryenv import QueryEnvironment
+from mscanner.utils import runMailer
             
-    finally:
-        log.debug("Cleaning up")
-        featdb.close()
-        artdb.close()
-        del statfile
-        runMailer(c.smtp_server, c.emails_path)
+def heparin_tests():
+    env = QueryEnvironment()
+    env.loadInput(rc.corpora / "pubfinder-heparin.txt")
+    rc.limit = 500 # don't need a lot of results
+    rc.threshold = 0 # lenient threshold
+    rc.pseudocount = 0 # per-feature pseudocounts
+    for dataset, pseudocount, cutoff in [ 
+        ("heparin-ps_const",    0.01, True),
+        ("heparin-ps_per",      0.0,  False),
+        ("heparin-ps_constcut", 0.01, True),
+        ("heparin-ps_percut",   0.0,  True) ]:
+        rc.dataset = dataset
+        rc.pseudocount = pseudocount
+        rc.cutoff = cutoff
+        env.standardQuery()
+
+def query_tests(datasets):
+    env = QueryEnvironment()
+    rc.limit = 1000 # don't need a lot of results
+    rc.threshold = 0
+    rc.pseudocount = 0 # per-feature pseudocounts
+    for dataset, input_name in [
+        ("pg04",        "pharmgkb-2004.txt"),
+        ("pg07",        "pharmgkb-070205.txt"),
+        ("radiology",   "daniel-radiology.txt"),
+        ("mscannerbib", "mscanner-bibliography.txt"),
+        ("gdsmall",     "genedrug-small.txt") ]:
+        if dataset not in datasets:
+            continue
+        rc.dataset = dataset
+        env.standardQuery(rc.corpora / input_name)
         
-def choose_query(configvars, dataset):
-    c = configvars
-    c.dataset = dataset
-    c.reportdir = c.query_output / c.dataset
-    if dataset == "pg04":
-        pos = "pharmgkb-2004.txt"
-    elif dataset == "pg07":
-        pos = "pharmgkb-070205.txt"
-    elif dataset == "aids":
-        pos = "aids-bioethics-Oct06.txt"
-    elif dataset == "radiology":
-        pos = "daniel-radiology.txt"
-    elif dataset == "mscanner":
-        pos = "mscanner-bibliography.txt"
-    elif dataset == "gdsmall":
-        pos = "genedrug-small.txt"
-    elif dataset == "heparin-ps_const":
-        pos = "pubfinder-heparin.txt"
-        c.pseudocount = 0.01
-        c.cutoff = False
-    elif dataset == "heparin-ps_per":
-        pos = "pubfinder-heparin.txt"
-        c.pseudocount = 0
-        c.cutoff = False
-    elif dataset == "heparin-ps_constcut":
-        pos = "pubfinder-heparin.txt"
-        c.pseudocount = 0.01
-        c.cutoff = True
-    elif dataset == "heparin-ps_percut":
-        pos = "pubfinder-heparin.txt"
-        c.pseudocount = 0
-        c.cutoff = True
-    else:
-        raise ValueError("Invalid query dataset " + dataset)
-    if not isinstance(pos, path):
-        pos = c.corpora / pos
-    if not c.reportdir.isdir():
-        c.reportdir.mkdir()
-        pos.copy(c.reportdir / c.posname)
+def pharmdemo():
+    rc.dataset = "pharmdemo"
+    rc.pseudocount = 0
+    rc.threshold = 0
+    rc.limit = 10000
+    rc.pharmdemo = True
+    env = QueryEnvironment()
+    env.standardQuery(rc.corpora / "pharmdemo.txt")
+        
+def scriptmain(*args):
+    """Meant to be called with *sys.argv[1:]"""
+    if len(args) == 0:
+        print "Please give dataset code or CGI parameters"
+        sys.exit(0)
+    elif len(args) == 1:
+        query_tests(set([args[0]]))
+    elif len(args) > 1:
+        rc.dataset = args[0]
+        rc.pseudocount = float(args[1])
+        rc.limit = int(args[2])
+        rc.threshold = float(args[3])
+        input_path = path(sys.args[4])
+        try:
+            env = QueryEnvironment()
+            env.standardQuery(input_path)
+        finally:
+            runMailer(rc.smtpserver, rc.emails_path)
     
 if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        raise ValueError("Please give dataset code or full parameters")
-    elif len(sys.argv) == 2:
-        choose_query(configuration, sys.argv[1])
-    elif len(sys.argv) > 2:
-        c = configuration
-        c.dataset = sys.argv[1]
-        c.pseudocount = float(sys.argv[2])
-        c.limit = int(sys.argv[3])
-        c.threshold = float(sys.argv[4])
-        c.reportdir = c.query_output / c.dataset
-        path(sys.argv[5]).copy(c.reportdir / c.posname)
-    do_query(configuration)
+    initLogger()
+    scriptmain(*sys.argv[1:])
+    #pharmdemo()
+    #heparin_tests()

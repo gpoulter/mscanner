@@ -2,11 +2,12 @@
 
 """Calculate performance statistics
 
-CGI script may provide batchid, number of negatives, number of folds,
-pseudocount, and alpha as parameters.
+validate.py dataset numnegs nfolds pseudocount alpha positives_path
 
                                    
+"""
 
+__license__ = """
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
@@ -20,174 +21,113 @@ General Public License for more details.
 http://www.gnu.org/copyleft/gpl.html
 """
 
-from itertools import chain, izip
-import logging as log
-import numpy as nx
 from path import path
 import sys
 
-from mscanner import configuration
-from mscanner.dbexport import writeGeneDrugCountsCSV
-from mscanner.featuredb import FeatureDatabase
-from mscanner.featuremap import FeatureMapping
-from mscanner.genedrug import getGeneDrugFilter
-from mscanner.utils import getArticles, readPMIDs, StatusFile, runMailer, writePMIDScores
-from mscanner import validation
+from mscanner.configuration import rc, initLogger
+from mscanner.utils import runMailer
+from mscanner.validenv import ValidationEnvironment
 
-def do_validation(configvars):
-    c = configvars
-    statfile = StatusFile(c.statfile, dataset=c.dataset, total=c.nfolds, start=c.timestamp)
-    try:
-        # Load up info about features and articles
-        featmap = FeatureMapping(c.featuremap)
-        featdb = FeatureDatabase(c.featuredb, 'r')
-
-        # Load already-calculated scores
-        if (c.reportdir / c.index_html).isfile():
-            log.info("Using cached results for %s", c.dataset)
-            positives, pscores = zip(*readPMIDs(c.reportdir / c.posname, withscores=True))
-            negatives, nscores = zip(*readPMIDs(c.reportdir / c.negname, withscores=True))
-            positives = nx.array(positives, nx.int32)
-            pscores = nx.array(pscores, nx.float32)
-            negatives = nx.array(negatives, nx.int32)
-            nscores = nx.array(nscores, nx.float32)
-
-        # Recalculate scores
-        else:
-            log.info("Recalculating results for %s", c.dataset)
-            log.info("Reading positives")
-            positives = list(readPMIDs(c.reportdir / c.posname, include=featdb))
-            log.info("Reading negatives")
-            negatives = list(readPMIDs(c.reportdir / c.negname, exclude=set(positives)))
-            positives = nx.array(positives, nx.int32)
-            negatives = nx.array(negatives, nx.int32)
-            log.info("Done reading")
-            # Get which document ids have gene-drug assocations
-            genedrug_articles = None
-            if c.dogenedrug:
-                log.debug("Getting gene-drug associations") 
-                genedrug_articles = set()
-                pos_arts = getArticles(c.articledb, c.reportdir / c.posname)
-                neg_arts = getArticles(c.articledb, c.reportdir / c.negname)
-                gdfilter = getGeneDrugFilter(c.genedrug, c.drugtable, c.gapscore)
-                for art in chain(pos_arts, neg_arts):
-                    gdresult = gdfilter(art)
-                    art.genedrug = gdresult
-                    if len(gdresult) > 0:
-                        genedrug_articles.add(art.pmid)
-                writeGeneDrugCountsCSV(dbexport.countGeneDrug(pos_arts))
-            val = validation.Validator(
-                featmap = featmap,
-                featdb = featdb,
-                pos = positives,
-                neg = negatives,
-                nfold = c.nfolds,
-                pseudocount = c.pseudocount,
-                daniel = c.dodaniel,
-                genedrug_articles = genedrug_articles,
-                mask = featmap.featureTypeMask(c.exclude_types)
-                )
-            pscores, nscores = val.validate(statfile)
-            writePMIDScores(c.reportdir / c.posname, izip(positives, pscores))
-            writePMIDScores(c.reportdir / c.negname, izip(negatives, nscores))
-
-        # Output performance statistics
-        log.debug("Writing performance statistics")
-        validation.report(positives, negatives, pscores, nscores, featmap, featdb, c)
+def chooseValidation(datasets):
+    env = ValidationEnvironment()
+    rc.alpha = 0.5
+    rc.cutoff = False
+    rc.dodaniel = False
+    rc.nfolds = 10
+    rc.pseudocount = 0
+    for dataset, pos, neg in [
+        ("aids-vs-500k", "aids-bioethics-Oct06.txt", "medline07-500k.txt"),
+        ("pg07-vs-500k", "pharmgkb-070205.txt", "medline07-500k.txt"),
+        ("radiology-vs-500k", "daniel-radiology.txt", "medline07-500k.txt"),
+        ("random10k-vs-500k", "random10k-06.txt", "medline07-500k.txt"), 
+        ("gdsmall-vs-medline", "genedrug-small.txt", None) ]:
+        if dataset not in datasets:
+            continue
+        rc.dataset = dataset
+        pos = rc.corpora / pos
+        neg = (rc.corpora / neg) if neg else rc.articlelist
+        env.standardValidation(pos, neg)
         
-    finally:
-        log.debug("Cleaning up")
-        del statfile
-        runMailer(c.smtp_server, c.emails_path)
+def methodTests():
+    env = ValidationEnvironment()
+    rc.exclude_types = ["issn"]
+    rc.dataset = "aids-noissn"
+    pos = "aids-bioethics-Oct06.txt"
+    neg = "medline07-500k.txt"
+    env.standardValidation(rc.corpora / pos, rc.corpora / neg)
 
-def choose_validation(configvars, dataset):
-    c = configvars
-    c.dataset = dataset
-    c.reportdir = c.valid_output / c.dataset
-    # Primary results
-    if dataset == "aids-vs-500k":
-        pos = "aids-bioethics-Oct06.txt"
-        neg = "medline07-500k.txt"
-    elif dataset == "pg07-vs-500k":
-        pos = "pharmgkb-070205.txt"
-        neg = "medline07-500k.txt"
-    elif dataset == "radiology-vs-500k":
-        pos = "daniel-radiology.txt"
-        neg = "medline07-500k.txt"
-    elif dataset == "random10k-vs-500k":
-        pos = "random10k-06.txt"
-        neg = "medline07-500k.txt"
-    elif dataset == "aids-vs-500k-noissn":
-        pos = "aids-bioethics-Oct06.txt"
-        neg = "medline07-500k.txt"
-        c.exclude_types = ["issn"]
-    # Comparing with Daniel on PG04
-    elif dataset == "pg04-vs-30k":
-        pos = "pharmgkb-2004.txt"
-        neg = "medline07-30k.txt"
-    elif dataset == "pg04-vs-30k-dan":
-        pos = "pharmgkb-2004.txt"
-        neg = "medline07-30k.txt"
-        c.exclude_types = ["issn"]
-        c.nfolds = 10
-        c.dodaniel = True
-    elif dataset == "pg04-vs-500k":
-        pos = "pharmgkb-2004.txt"
-        neg = "medline07-500k.txt"    
-    # Comparing with Daniel on PG07
-    elif dataset == "pg07-vs-30k":
-        pos = "pharmgkb-070205.txt"
-        neg = "medline07-30k.txt"
-    elif dataset == "pg07-vs-500k-dan":
-        pos = "pharmgkb-070205.txt"
-        neg = "medline07-500k.txt"
-        c.exclude_types = ["issn"]
-        c.nfolds = 10
-        c.dodaniel = True
-    elif dataset == "pg07-vs-500k-noissn":
-        pos = "pharmgkb-070205.txt"
-        neg = "medline07-500k.txt"
-        c.exclude_types = ["issn"]
-    # Other experiments
-    elif dataset == "mscanner-vs-500k":
-        pos = "mscanner-bibliography.txt"
-        neg = "medline07-500k.txt"
-    elif dataset == "pg07-vs-med07":
-        pos = "pharmgkb-070205.txt"
-        neg = articlelist
-    elif dataset == "gdsmall-vs-sample":
-        pos = "genedrug-small.txt"
-        neg = c.articlelist
-    elif dataset == "gdsmall-vs-sample-dan":
-        pos = "genedrug-small.txt"
-        neg = c.articlelist
-        c.exclude_types=["issn"]
-        c.nfolds = 10
-        c.dodaniel = True
-    else:
-        raise ValueError("Invalid validation dataset " + c.dataset)
-    if not isinstance(pos, path):
-        pos = c.corpora / pos
-    if not isinstance(neg, path):
-        neg = c.corpora / neg
-    if not c.reportdir.isdir():
-        c.reportdir.mkdir()
-        pos.copy(c.reportdir / c.posname)
-        neg.copy(c.reportdir / c.negname)
+def compareDaniel():
+    pg04 = rc.corpora / "pharmgkb-2004.txt"
+    m30k = rc.corpora / "medline07-30k.txt"
+    m500k = rc.corpora / "medline07-500k.txt"
+    pg07 = rc.corpora / "pharmgkb-070205.txt"
+    env = ValidationEnvironment()
+    rc.alpha = 0.5
+    rc.pseudocount = 0
+    rc.nfolds = 10
 
+    rc.dataset = "pg04-vs-30k"
+    rc.dodaniel = False
+    rc.exclude_types = None
+    env.standardValidation(pg04, m30k)
+
+    rc.dataset = "pg04-vs-30k-dan"
+    rc.exclude_types = ["issn"]
+    rc.dodaniel = True
+    env.standardValidation(pg04, m30k)
+    
+    rc.dataset == "pg04-vs-500k"
+    rc.dodaniel = False
+    rc.exclude_types = None
+    env.standardValidation(pg04, m500k)
+    
+    rc.dataset = "pg07-vs-30k"
+    rc.dodaniel = False
+    rc.exclude_types = None
+    env.standardValidation(pg07, m30k)
+
+    rc.dataset == "pg07-vs-500k-dan"
+    rc.dodaniel = True
+    rc.exclude_types = ["issn"]
+    env.standardValidation(pg07, m30k)
+    
+    rc.dataset == "pg07-vs-500k-noissn"
+    rc.dodaniel = False
+    rc.exclude_types = ["issn"]
+    env.standardValidation(pg07, m500k)
+        
+    #elif dataset == "mscanner-vs-500k":
+    #    pos = "mscanner-bibliography.txt"
+    #    neg = "medline07-500k.txt"
+    #elif dataset == "pg07-vs-med07":
+    #    pos = "pharmgkb-070205.txt"
+    #    neg = articlelist
+    #elif dataset == "gdsmall-vs-sample":
+    #    pos = "genedrug-small.txt"
+    #    neg = c.articlelist
+
+def scriptmain(*args):
+    """Meant to be called with *sys.argv[1:]"""
+    if len(args) == 0:
+        raise ValueError("Please give dataset code or CGI parameters")
+    elif len(args) == 1:
+        chooseValidation(set([args[0]]))
+    elif len(args) > 1:
+        rc.dataset = sys.argv[0]
+        rc.numnegs = int(sys.argv[1])
+        rc.nfolds = int(sys.argv[2])
+        rc.pseudocount = float(sys.argv[3])
+        rc.alpha = float(sys.argv[4])
+        positives_path = path(sys.argv[5])
+        negatives_path = rc.valid_report_dir / rc.report_negatives
+        negatives_path.write_lines(
+            random.sample(rc.articlelist.lines(), rc.numnegs))
+        try:
+            env = ValidationEnvironment()
+            env.standardValidation(positives_path, negatives_path)
+        finally:
+            runMailer(rc.smtpserver, rc.emails_path)
+    
 if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        raise ValueError("Please give dataset code")
-    elif len(sys.argv) == 2:
-        choose_validation(configuration, sys.argv[1])
-    elif len(sys.argv) > 2:
-        c = configuration
-        c.dataset = sys.argv[1]
-        c.numnegs = int(sys.argv[2])
-        c.nfolds = int(sys.argv[3])
-        c.pseudocount = float(sys.argv[4])
-        c.alpha = float(sys.argv[5])
-        c.reportdir = c.valid_output / c.dataset
-        path(sys.argv[6]).copy(c.reportdir / c.posname)
-        (c.reportdir / c.negname).write_lines(random.sample(c.articlelist.lines(), c.numnegs))
-    do_validation(configuration)
+    initLogger()
+    scriptmain(*sys.argv[1:])

@@ -2,6 +2,7 @@ from bsddb import db
 from path import path
 import tempfile
 import unittest
+
 from mscanner import dbshelve
 
 class ShelfTests(unittest.TestCase):

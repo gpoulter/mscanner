@@ -118,7 +118,7 @@ def plotArticleScoreHistogram(g, fname, pdata, ndata, threshold):
     """Plot histograms for pos/neg scores, with line to mark threshold""" 
     py, px = n.histogram(pdata, bins=bincount(pdata), normed=True)
     ny, nx = n.histogram(ndata, bins=bincount(ndata), normed=True)
-    g.reset()
+    #g.reset()
     g.title("Score Histograms")
     g.xlabel("Article Score")
     g.ylabel("Histogram Mass")

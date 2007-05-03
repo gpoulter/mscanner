@@ -18,6 +18,7 @@ from pylab import *
 import scipy
 from subprocess import call
 
+from mscanner.configuration import rc
 from mscanner.utils import readPMIDs
 from mscanner.validation import PerformanceStats
 from mscanner.plotting import bincount, kernelPDF, calculateOverlap
@@ -56,8 +57,8 @@ def getFeatScores(dataset):
 def getStats(dataset, title, alpha=0.5, with_fscores=False):
     """Read statistics based on score data"""
     print "Reading dataset %s" % dataset
-    pscores = array([s[1] for s in readPMIDs(indir/dataset/"positives.txt", withscores=True)])
-    nscores = array([s[1] for s in readPMIDs(indir/dataset/"negatives.txt", withscores=True)])
+    pscores = array([s[1] for s in readPMIDs(indir/dataset/rc.report_positives, withscores=True)])
+    nscores = array([s[1] for s in readPMIDs(indir/dataset/rc.report_negatives, withscores=True)])
     stats = PerformanceStats(pscores, nscores, alpha)
     stats.title = title
     return stats

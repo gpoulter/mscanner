@@ -2,11 +2,13 @@
 
 Validator -- Perform cross-validation for article scores
 PerformanceStats -- Calculate statistics from article scores
-classDictionary() -- Convert dictionary to an object
-report() -- Produce performance report
 
                                    
+"""
 
+from __future__ import division
+
+__license__ = """
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
@@ -20,24 +22,17 @@ General Public License for more details.
 http://www.gnu.org/copyleft/gpl.html
 """
 
-from __future__ import division
 import warnings
 warnings.simplefilter('ignore', FutureWarning)
 
-import codecs
-import cPickle
-from Gnuplot import Gnuplot
 import logging as log
 import numpy as nx
-from path import path
 from scipy.integrate import trapz
-import sys
-import time
 
-import scoring
-import plotting
-from utils import countFeatures, Storage
-from gcheetah import TemplateMapper
+from mscanner import statusfile
+from mscanner.scoring import calculateFeatureScores
+from mscanner.storage import Storage
+from mscanner.utils import countFeatures
 
 class Validator:
     """Cross-validated calculation of article scores"""
@@ -82,12 +77,12 @@ class Validator:
         else:
             return False
 
-    def validate(self, statfile=lambda x,y:x):
+    def validate(self):
         """Carry out validation.  0 folds is taken to mean leave-out-one validation"""
         if self.nfold:
-            return self.crossValidate(statfile)
+            return self.crossValidate()
         else:
-            return self.leaveOutOneValidate(statfile)
+            return self.leaveOutOneValidate()
 
     @staticmethod
     def partitionSizes(nitems, nparts):
@@ -99,7 +94,7 @@ class Validator:
         starts[1:] = nx.cumsum(sizes[:-1])
         return starts, sizes
 
-    def crossValidate(self, statfile=lambda x,y:x):
+    def crossValidate(self):
         """Perform n-fold validation and return the raw performance measures
         """
         pdocs = len(self.pos)
@@ -115,22 +110,22 @@ class Validator:
         pcounts = countFeatures(self.numfeats, self.featdb, self.pos)
         ncounts = countFeatures(self.numfeats, self.featdb, self.neg)
         for fold, (pstart,psize,nstart,nsize) in enumerate(zip(pstarts,psizes,nstarts,nsizes)):
-            statfile(fold, self.nfold)
+            statusfile.update(fold, self.nfold)
             log.debug("pstart = %d, psize = %s; nstart = %d, nsize = %d", pstart, psize, nstart, nsize)
             # Modifiy the feature counts by subtracting out the test fold
             temp_pcounts = pcounts - countFeatures(self.numfeats, self.featdb, self.pos[pstart:pstart+psize])
             temp_ncounts = ncounts - countFeatures(self.numfeats, self.featdb, self.neg[nstart:nstart+nsize])
             # Calculate the resulting feature scores
-            termscores, pfreqs, nfreqs = scoring.calculateFeatureScores(
+            termscores, pfreqs, nfreqs = calculateFeatureScores(
                 temp_pcounts, temp_ncounts, pdocs-psize, ndocs-nsize,
                 self.pseudocount, self.mask, self.daniel)
             # Calculate the article scores for the test fold
             pscores[pstart:pstart+psize] = [nx.sum(termscores[self.featdb[d]]) for d in self.pos[pstart:pstart+psize]]
             nscores[nstart:nstart+nsize] = [nx.sum(termscores[self.featdb[d]]) for d in self.neg[nstart:nstart+nsize]]
-        statfile(None, self.nfold)
+        statusfile.update(None, self.nfold)
         return pscores, nscores
     
-    def leaveOutOneValidate(self, statfile=lambda x,y:x):
+    def leaveOutOneValidate(self):
         """Carries out leave-out-one validation, returning the resulting scores.
 
         @note: Does not support 'daniel' scoring method
@@ -155,7 +150,7 @@ class Validator:
         marker = 0
         for idx, doc in enumerate(self.pos):
             if idx == marker:
-                statfile(marker, pdocs+ndocs)
+                statusfile.update(marker, pdocs+ndocs)
                 marker += int((pdocs+ndocs)/20)
             f = [fid for fid in self.featdb[doc] if mask is None or not mask[fid]]
             pscores[idx] = nx.sum(nx.log(((pcounts[f]-1+ps[f])/(pdocs-1+2*ps[f]))/((ncounts[f]+ps[f])/(ndocs+2*ps[f]))))
@@ -165,7 +160,7 @@ class Validator:
                 marker += int((pdocs+ndocs)/20)
             f = [fid for fid in self.featdb[doc] if mask is None or not mask[fid]]
             nscores[idx] = nx.sum(nx.log(((pcounts[f]+ps[f])/(pdocs+2*ps[f]))/((ncounts[f]-1+ps[f])/(ndocs-1+2*ps[f]))))
-        statfile(None, pdocs+ndocs)
+        statusfile.update(None, pdocs+ndocs)
         return pscores, nscores
 
 class PerformanceStats:
@@ -336,49 +331,3 @@ class PerformanceStats:
         self.tuned = Storage(locals())
         del self.tuned.self
         return self.tuned 
-
-def report(pos, neg, pscores, nscores, featmap, featdb, configuration):
-    """Write a full validation report
-    
-    @param pos: IDs of positive articles
-    @param neg: IDs of negative articles
-    
-    @param pscores: Scores of positive articles
-    @param nscores: Scores of negative articles
-
-    @param featmap: Mapping feature ID <-> feature string
-    @param featdb: Mapping doc ID -> list of feature IDs
-    @param configuration: Configuration module to source parameters
-    """
-    c = configuration
-    rd = c.reportdir
-    p = PerformanceStats(pscores, nscores, c.alpha)
-    gp = Gnuplot(debug=1)
-    feature_info = scoring.FeatureScoreInfo(
-        pos_counts = countFeatures(len(featmap), featdb, pos),
-        neg_counts = countFeatures(len(featmap), featdb, neg),
-        pdocs = len(pos),
-        ndocs = len(neg),
-        pseudocount = c.pseudocount,
-        featmap = featmap,
-        exclude_types = c.exclude_types,
-        daniel = c.dodaniel
-        )
-    feature_info.writeFeatureScoresCSV(codecs.open(rd/c.term_scores, "wb", "utf-8"))
-    overlap = None
-    ##overlap, iX, iY = plotting.plotArticleScoreDensity(gp, rd/c.artscores_img, p.pscores, p.nscores, p.tuned.threshold)
-    ##plotting.plotFeatureScoreDensity(gp, rd/c.featscores_img, feature_info.scores)
-    plotting.plotArticleScoreHistogram(gp, rd/c.artscores_img, p.pscores, p.nscores, p.tuned.threshold)
-    plotting.plotFeatureScoreHistogram(gp, rd/c.featscores_img, feature_info.scores)
-    plotting.plotROC(gp, rd/c.roc_img, p.FPR, p.TPR, p.tuned.FPR)
-    plotting.plotPrecisionRecall(gp, rd/c.prcurve_img, p.TPR, p.PPV, p.tuned.TPR)
-    plotting.plotPrecisionRecallFmeasure(gp, rd/c.fmeasure_img, p.pscores, p.TPR, p.PPV, p.FM, p.FMa, p.tuned.threshold)
-    #Write main index file for validation output
-    mapper = TemplateMapper(root=c.templates)
-    tpl = mapper.validation(
-        c = configuration,
-        overlap = overlap,
-        p = p,
-        t = p.tuned,
-        f = feature_info)
-    (rd / c.index_html).write_text(str(tpl))

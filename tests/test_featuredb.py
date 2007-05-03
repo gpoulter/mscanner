@@ -27,16 +27,17 @@ class FeatureDatabaseTests(unittest.TestCase):
         self.failIf(2 in d)
         self.assertRaises(ValueError, d.setitem, 4, array([3.3,4]))
 
-class TempFileTestCase(unittest.TestCase):
-    def setUp(self):
-        self.fn = path(tempfile.mktemp())
-    def tearDown(self):
-        self.fn.remove()
-
-class FeatureStreamTests(TempFileTestCase):
+class FeatureStreamTests(unittest.TestCase):
     """
     Test FeatureStream
     """
+    def setUp(self):
+        self.fn = path(tempfile.mktemp())
+        
+    def tearDown(self):
+        if self.fn.isfile():
+            self.fn.remove()
+        
     def test(self):
         f = file(self.fn, "ab")
         fs = FeatureStream(f)

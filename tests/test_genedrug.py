@@ -5,7 +5,7 @@ import tempfile
 import unittest
 
 from mscanner.article import Article
-from mscanner import genedrug
+from mscanner.pharmdemo import genedrug
 
 pp = pprint.PrettyPrinter()
 

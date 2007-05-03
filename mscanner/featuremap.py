@@ -3,7 +3,9 @@
 FeatureMapping -- Mapping between string features and 16-bit feature IDs
 
                                    
+"""
 
+__license__ = """
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
@@ -19,8 +21,6 @@ http://www.gnu.org/copyleft/gpl.html
 
 import codecs
 import numpy as nx
-
-from utils import makeBackup, removeBackup
 
 class FeatureMapping:
     """Curates a database of string features, providing methods to map
@@ -45,6 +45,8 @@ class FeatureMapping:
         @param featfile: Path to text file with list of terms
         """
         self.featfile = featfile
+        if self.featfile is not None:
+            self.featfile_new = featfile+".new"
         self.numdocs = 0
         self.features = []
         self.feature_ids = {}
@@ -73,13 +75,16 @@ class FeatureMapping:
 
     def dump(self):
         """Write the feature mapping to disk"""
-        makeBackup(self.featfile)
-        f = codecs.open(self.featfile, "wb", "utf-8")
+        if self.featfile is None:
+            return
+        f = codecs.open(self.featfile_new, "wb", "utf-8")
         f.write("%s\n" % self.numdocs)
         for (feat, ftype), count in zip(self.features, self.counts):
             f.write(feat+"\t"+ftype+"\t"+str(count)+"\n")
         f.close()
-        removeBackup(self.featfile)
+        if self.featfile.isfile():
+            self.featfile.remove()
+        self.featfile_new.rename(self.featfile)
 
     def __getitem__(self, key):
         """Given a feature ID, returns (feature, feature type), given 

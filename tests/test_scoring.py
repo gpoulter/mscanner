@@ -51,18 +51,18 @@ class ScoringTests(unittest.TestCase):
         self.assertEqual(scoring.filterDocuments(docs.iteritems(), fscores, [], 2, 0 ), [ (2,110.0), (1,101.0) ])
         self.assertEqual(scoring.filterDocuments(docs.iteritems(), fscores, [], 10, 102.0 ), [ (2,110.0) ])
 
-    def test_writeReport(self):
-        pfreqs = nx.array([1,1,2])
-        nfreqs = nx.array([1,1,0])
-        pdocs = 2
-        ndocs = 1
-        articles = {
-            "1111": Article(1111,"T","A",meshterms=set(["A","B"])),
-            "2222": Article(2222,"T","A",meshterms=set(["A","C"])),
-            "3333": Article(3333,"T","A",meshterms=set(["B","C"])),
-            }
-        scores = [(3333,3.5), (2222,2.0), (1111,1.0)]
-        featmap = [("A","T"), ("B","T"), ("C","Q")]
+    #def test_writeReport(self):
+    #    pfreqs = nx.array([1,1,2])
+    #    nfreqs = nx.array([1,1,0])
+    #    pdocs = 2
+    #    ndocs = 1
+    #    articles = {
+    #        "1111": Article(1111,"T","A",meshterms=set(["A","B"])),
+    #        "2222": Article(2222,"T","A",meshterms=set(["A","C"])),
+    #        "3333": Article(3333,"T","A",meshterms=set(["B","C"])),
+    #        }
+    #    scores = [(3333,3.5), (2222,2.0), (1111,1.0)]
+    #    featmap = [("A","T"), ("B","T"), ("C","Q")]
 
 if __name__ == "__main__":
     unittest.main()

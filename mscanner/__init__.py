@@ -1,3 +1,17 @@
-__all__ = [ "article", "dbexport", "dbshelve", "featuredb", 
-            "featuremap", "gcheetah", "genedrug", "medline", "plotting",
-            "scoring", "utils", "validation" ]
+__all__ = [ 
+    "article", 
+    "configuration",
+    "dbshelve", 
+    "featuredb", 
+    "featuremap", 
+    "gcheetah", 
+    "medline", 
+    "pharmdemo",
+    "plotting",
+    "queryenv", 
+    "scoring", 
+    "storage",
+    "utils", 
+    "validation",
+    "validenv",
+]

@@ -7,11 +7,7 @@ import unittest
 
 from mscanner.validation import Validator, PerformanceStats
 
-logging.basicConfig(
-    level    = logging.DEBUG,
-    datefmt  = "%H:%M:%S",
-    format   = "%(asctime)-9s %(levelname)-8s %(message)s",
-)
+logging.basicConfig(level=0)
 
 class PerformanceStatisticTest(unittest.TestCase):
 

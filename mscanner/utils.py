@@ -1,25 +1,23 @@
 """Handle Articles, processed files, features, feature occurrence counts
 
-countFeatures() -- Get feature occurrence counts over a set of documents
-getArticles() -- Retrieve Articles from a DB, caching results in a Pickle
-readPMIDs() -- Get PMIDs (and scores too) from a text file
-makeBackup() -- Create a .recovery file
-removeBackup() -- Remove a .recovery file
-StatusFile -- Post program status to a file (cheap IPC...)
+countFeatures() -- Count occurrences of features in a set of articles
 FileTracker -- Track processed files (to avoid re-parsing), with on-disk persistence
-Storage -- Dictionary which supports d.foo attribute access
+getArticles() -- Retrieve Articles from a DB, caching results in a Pickle
+preserve_cwd -- Decorator to preserve working directory
+readPMIDs() -- Get PMIDs (and scores too) from a text file
+runMailer() -- Send e-mails to people listed in a file
+writePMIDScores() -- Write PMIDs and scores to a text file
 
                                    
 
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or (at
-your option) any later version.
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation; either version 2 of the License, or (at your option) any later
+version.
 
-This program is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-General Public License for more details.
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 http://www.gnu.org/copyleft/gpl.html
 """
@@ -28,12 +26,26 @@ import cPickle
 import dbshelve
 import logging as log
 import os
-import time
 from path import path
 import numpy as nx
 
+def preserve_cwd(f):
+    """Python decorator to preserve the current working directory"""
+    def preserver(*a, **kw):
+        try:
+            cwd = os.getcwd()
+            return f(*a, **kw)
+        finally:
+            os.chdir(cwd)
+    def decorator_update(dest, src):
+        dest.__name__ = src.__name__
+        dest.__doc__ = src.__doc__
+        dest.__dict__.update(src.__dict__)
+    decorator_update(preserver, f)
+    return preserver
+
 def countFeatures(nfeats, featdb, docids):
-    """Givent number of features,
+    """Count occurrenes of each feature in a set of articles
 
     @param nfeats: Number of distinct features (size of array)
 
@@ -51,10 +63,10 @@ def countFeatures(nfeats, featdb, docids):
 def readPMIDs(filename, include=None, exclude=None, withscores=False):
     """Read PubMed IDs one per line from filename.
 
-    @param filename: Path to file containing one PubMed ID per line,
-    with optional score after the PubMed ID. File format ignores blank
-    lines and lines starting with #, and only parses the line up to
-    the first whitespace character.
+    @param filename: Path to file containing one PubMed ID per line, with
+    optional score after the PubMed ID. File format ignores blank lines and
+    lines starting with #, and only parses the line up to the first whitespace
+    character.
 
     @param include: Only return members of this set
 
@@ -62,7 +74,8 @@ def readPMIDs(filename, include=None, exclude=None, withscores=False):
     
     @param withscores: Also read the score after the PubMed ID on each line.
     
-    @returns: An iterator over PubMed ID, or (PubMed ID, Score) if withscores==True
+    @returns: An iterator over PubMed ID, or 
+    (PubMed ID, Score) if withscores==True
     """
     if not isinstance(filename,path) or not filename.exists():
         raise ValueError("File %s does not exist" % filename)
@@ -89,7 +102,8 @@ def readPMIDs(filename, include=None, exclude=None, withscores=False):
             yield pmid
         count += 1
     if count == 0:
-        raise RuntimeError("Did not succeed in reading any PMIDs from %s" % filename)
+        raise RuntimeError("Did not succeed in reading any PMIDs from %s" %
+                           filename)
 
 def writePMIDScores(filename, pairs):
     """Write PubMed IDs and their scores to a file
@@ -99,7 +113,7 @@ def writePMIDScores(filename, pairs):
     oscores = sorted(pairs, key=lambda x:x[1], reverse=True)
     filename.write_lines("%-10d %f" % x for x in oscores)
 
-def runMailer(smtp_server, mailer):
+def runMailer(smtpserver, mailer):
     """Read e-mail addresses from mail file and send them a
     message saying MScanner is available.
 
@@ -109,7 +123,7 @@ def runMailer(smtp_server, mailer):
         return
     import smtplib
     import logging
-    server = smtplib.SMTP(smtp_server)
+    server = smtplib.SMTP(smtpserver)
     server.set_debuglevel(0)
     fromaddr = "nobody@mscanner.stanford.edu"
     for email in mailer.lines(retain=False):
@@ -145,9 +159,9 @@ def getArticles(article_db_path, pmidlist_path):
     @return: List of Article objects in the order given in the text
     file.
 
-    @note: The first time it is called for a given pmidlist_path, the
-    results are cached in a .pickle appended to pmidlist_path, and
-    later calls simply use the cached results.
+    @note: The first time it is called for a given pmidlist_path, the results
+    are cached in a .pickle appended to pmidlist_path, and later calls simply
+    use the cached results. 
     """
     cache_path = path(pmidlist_path + ".pickle")
     if cache_path.isfile():
@@ -159,88 +173,6 @@ def getArticles(article_db_path, pmidlist_path):
     artdb.close()
     return articles
 
-def makeBackup(filepath):
-    """Make a .recovery backup of a file.
-
-    @raise RuntimeError: if the backup already exists.
-    """
-    if filepath == "None": return
-    oldfile = filepath+".recover"
-    if oldfile.exists():
-        raise RuntimeError("Recovery required: %s exists" % oldfile)
-    if filepath.exists():
-        filepath.rename(oldfile)
-
-def removeBackup(filepath):
-    """Remove the .recovery backup of a file.
-
-    @raise RuntimeError: if the backup does not exist.
-    """
-    if filepath == "None": return
-    if not filepath.exists():
-        raise RuntimeError("Recovery required: %s does not exist (backup removal requested)" % filepath)
-    oldfile = filepath+".recover"
-    if oldfile.exists():
-        oldfile.remove()
-
-class StatusFile:
-    """Class to manage a status file, for one way posting of program
-    status to listeners."""
-
-    def __init__(self, filename, readonly=False, progress=0, total=0, dataset="", start=None):
-        """Create status file with PID, progress, total, dataset and start time"""
-        self.filename = filename
-        if filename.exists():
-            self.read()
-        else:
-            self.pid = os.getpid()
-            self.progress = progress
-            self.total = total
-            self.dataset = dataset
-            if start is None:
-                self.start = time.time()
-            else:
-                self.start = start
-            self.write()
-
-    def __del__(self):
-        """Remove status file on deletion"""
-        if hasattr(self,"filename") and self.filename.isfile():
-            self.filename.remove()
-
-    def __str__(self):
-        """Return status file contents"""
-        return "%d\n%d\n%d\n%s\n%s\n" % (
-            self.pid, self.progress, self.total, self.dataset, str(self.start))
-    
-    def read(self):
-        _ = self
-        if not self.filename.isfile():
-            raise RuntimeError("Status file does not exist")
-        lines = self.filename.lines()
-        self.pid = int(lines[0])
-        self.progress = int(lines[1])
-        self.total = int(lines[2])
-        self.dataset = lines[3].strip()
-        self.start = float(lines[4])
-
-    def write(self):
-        """Write status file to disk"""
-        self.filename.write_text(str(self))
-        
-    def update(self, progress, total=None):
-        """Update progress of status file.  If progress is None, set to total."""
-        if total is not None:
-            self.total = total
-        if progress is None:
-            self.progress = self.total
-        else:
-            self.progress = progress
-        log.info("Completed %d out of %d", self.progress, self.total)
-        self.write()
-
-    __call__ = update
-    
 class FileTracker(set):
     """Class which tracks processed files.
 
@@ -250,6 +182,7 @@ class FileTracker(set):
     def __init__(self, trackfile=None):
         """Initialise, specifying path to write the list of files"""
         self.trackfile = trackfile
+        self.trackfile_new = trackfile+".new"
         if isinstance(trackfile,path) and trackfile.isfile():
             self.update(trackfile.lines(retain=False))
 
@@ -257,9 +190,8 @@ class FileTracker(set):
         """Write the list of tracked files, one per line"""
         if self.trackfile is None:
             return
-        makeBackup(self.trackfile)
-        self.trackfile.write_lines(sorted(self))
-        removeBackup(self.trackfile)
+        self.trackfile_new.write_lines(sorted(self))
+        self.trackfile_new.rename(self.trackfile)
 
     def add(self, fname):
         """Add a file to the tracker"""
@@ -269,24 +201,3 @@ class FileTracker(set):
         """Given a list of files return sorted list of those not in the tracker"""
         return sorted(f for f in files if f.basename() not in self)
 
-class Storage(dict):
-    """A Storage object is a dictionary, except `obj.foo` can be used in
-    addition to `obj['foo']`, and raises AttributeError when used in that
-    manner. """
-    def __getattr__(self, key): 
-        try:
-            return self[key]
-        except KeyError, k:
-            raise AttributeError, k
-
-    def __setattr__(self, key, value): 
-        self[key] = value
-
-    def __delattr__(self, key):
-        try:
-            del self[key]
-        except KeyError, k:
-            raise AttributeError, k
-
-    def __repr__(self):     
-        return '<Storage ' + dict.__repr__(self) + '>'

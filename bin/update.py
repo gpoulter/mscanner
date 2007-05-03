@@ -30,9 +30,10 @@ import logging as log
 import sys
 
 from mscanner import article
-from mscanner import configuration as c
+from mscanner import statusfile
+from mscanner.configuration import rc
 from mscanner.featuremap import FeatureMapping
-from mscanner.utils import StatusFile, runMailer
+from mscanner.utils import runMailer
 from mscanner.medline import MedlineCache
 
 if __name__ == "__main__":
@@ -44,18 +45,18 @@ if __name__ == "__main__":
     
     # Initialise database
     medcache = MedlineCache(
-            FeatureMapping(c.featuremap),
-            c.db_home,
-            c.articledb,
-            c.featuredb,
-            c.featurestream,
-            c.articlelist,
-            c.processed,
-            c.narticles,
-            c.use_transactions,
+            FeatureMapping(rc.featuremap),
+            rc.db_env_home,
+            rc.articledb,
+            rc.featuredb,
+            rc.featurestream,
+            rc.articlelist,
+            rc.processed,
+            rc.narticles,
+            rc.use_transactions,
             )
     
-    statfile = StatusFile(c.statfile, dataset="UPDATING DATABASE", start=c.timestamp)
+    statusfile.start(dataset="UpdatingDatabase")
     try: 
         # Load articles from a pickle
         if len(sys.argv) == 2:
@@ -64,12 +65,11 @@ if __name__ == "__main__":
             dbenv = medcache.makeDBEnv()
             medcache.putArticleList(articles, dbenv)
             dbenv.close()
-            
         # Parse articles from XML directory
         else:
-            log.info("Starting update from %s" % c.medline.relpath())
-            medcache.updateCacheFromDir(c.medline, c.save_delay)
+            log.info("Starting update from %s" % rc.medline.relpath())
+            medcache.updateCacheFromDir(rc.medline, rc.save_delay)
     finally:
         log.debug("Cleaning up")
-        del statfile
-        runMailer(c.smtp_server, c.emails_path)
+        statusfile.close()
+        runMailer(rc.smtpserver, rc.emails_path)

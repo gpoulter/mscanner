@@ -18,10 +18,11 @@ General Public License for more details.
 http://www.gnu.org/copyleft/gpl.html
 """
 
-import logging as log
-from path import path
 import warnings
 warnings.simplefilter("ignore", UserWarning)
+
+import logging as log
+from path import path
 from Cheetah.Template import Template
 
 class FileTransaction(file):

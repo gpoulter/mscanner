@@ -1,7 +1,5 @@
 """Module implementing the Article object
 
-Article -- Stores attributes of an article
-
                                    
 
 This program is free software; you can redistribute it and/or modify
@@ -20,9 +18,15 @@ http://www.gnu.org/copyleft/gpl.html
 import pprint
 
 class Article:
-    """A simple wrapper for parsed Medline articles.
+    """Stores an instance of a Medline citation.
     
-    Instance variables are same as the constructor parameters.
+    Instance variables are same as the constructor parameters. 
+    
+    The class is simple, to avoid the "God Object" problem where all of the
+    functionality is subsumed by a single object. Article could have
+    calculateScore(), classify() and various other methods which actually belong
+    in scoring.py and validation.py according to functional decomposition. Also,
+    when working with the scores we don't need anything else taking up memory.
 
     """
     def __init__(self,

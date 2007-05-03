@@ -4,7 +4,7 @@ import tempfile
 import unittest
 
 from mscanner.article import Article
-from mscanner import dbexport
+from mscanner.pharmdemo import dbexport
 
 articles=[
     Article(

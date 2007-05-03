@@ -11,7 +11,7 @@ c - Configuration variables
 
 <head>
 
-  <title>MScanner validation results: $c.dataset</title>
+  <title>MScanner validation results: $rc.dataset</title>
 
   <script type="text/javascript">
     #include raw $_inc("hider.js")
@@ -48,7 +48,7 @@ c - Configuration variables
 <body>
 
 <div class="header">
- <h1>MScanner validation results: $c.dataset</h1>
+ <h1>MScanner validation results: $rc.dataset</h1>
 </div>
 
 <div class="body">
@@ -76,15 +76,15 @@ c - Configuration variables
     <tr>
       <th>Timestamp</th>
       #import time
-      <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($c.timestamp))</td>
+      <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($timestamp))</td>
       $help(None)
     </tr>
 
     <tr>
       <th>Pseudocount</th>
       <td>
-        #if isinstance($c.pseudocount, float)
-        #echo "%f" % $c.pseudocount
+        #if isinstance($rc.pseudocount, float)
+        #echo "%f" % $rc.pseudocount
         #else #per-feature #end if#
       </td>
       $help("h_pseudocount")
@@ -103,7 +103,7 @@ c - Configuration variables
 
     <tr>
       <th>Feature Scores</th>
-      <td><a href="$c.term_scores">$c.term_scores</a></td>
+      <td><a href="$rc.report_term_scores">$rc.report_term_scores</a></td>
       $help("h_csv")
     </tr>
     $hr("h_csv", """CSV spreadsheet with the support scores for the
@@ -113,14 +113,14 @@ c - Configuration variables
 
     <tr>
       <th>Positive PMIDs</th>
-      <td><a href="$c.posname">$c.posname</a></td>
+      <td><a href="$rc.report_positives">$rc.report_positives</a></td>
       $help("h_positives")
     </tr>
     $hr("h_positives", """PubMed IDs for positive training documents.""")
 
     <tr>
       <th>Negative PMIDs</th>
-      <td><a href="$c.negname">$c.negname</a></td>
+      <td><a href="$rc.report_negatives">$rc.report_negatives</a></td>
       $help("h_negatives")
     </tr>
     $hr("h_negatives", """PubMed IDs for negative training documents
@@ -129,7 +129,7 @@ c - Configuration variables
 
     <tr>
       <th>Number of folds</th>
-      <td>$c.nfolds</td>
+      <td>$rc.nfolds</td>
       $help("h_nfolds")
     </tr>
     $hr("h_nfolds", """Number of partitions to split the positive
@@ -142,7 +142,7 @@ c - Configuration variables
 
     <tr>
       <th>F-Measure Alpha</th>
-      <td>$c.alpha</td>
+      <td>$rc.alpha</td>
       $help("h_alpha")
     </tr>
     $hr("h_alpha", """The weight of precision in the &alpha;-weighted
@@ -456,15 +456,15 @@ c - Configuration variables
   </div>
   <script type="text/javascript">hide('h_graphs')</script>
 
-  <img src="$c.artscores_img" alt="Article Score Densities"/>
+  <img src="$rc.report_artscores_img" alt="Article Score Densities"/>
   
-  <img src="$c.featscores_img" alt="Feature Score Density"/>
+  <img src="$rc.report_featscores_img" alt="Feature Score Density"/>
   
-  <img src="$c.roc_img" alt="ROC Curve"/>
+  <img src="$rc.report_roc_img" alt="ROC Curve"/>
   
-  <img src="$c.prcurve_img" alt="Precision-Recall Curve"/>
+  <img src="$rc.report_prcurve_img" alt="Precision-Recall Curve"/>
   
-  <img src="$c.fmeasure_img" alt="Precision and Recall vs Threshold"/>
+  <img src="$rc.report_fmeasure_img" alt="Precision and Recall vs Threshold"/>
 
 </div>
 

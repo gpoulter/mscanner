@@ -1,50 +1,63 @@
 import numpy as nx
-from path import path
-import tempfile
 import unittest
+import tempfile
 
 from mscanner.utils import *
 
-class TempFileTestCase(unittest.TestCase):
-    def setUp(self):
-        self.fn = path(tempfile.mktemp())
-    def tearDown(self):
-        self.fn.remove()
+def usetempfile(function):
+    """Given a function taking arguments of 'self' and a path,
+    return a function taking only self, with the wrapped function given
+    a temporary file"""
+    import tempfile
+    from path import path
+    def tempfile_wrapper(self):
+        try:
+            fpath = path(tempfile.mktemp())
+            return function(self, fpath)
+        finally:
+            if fpath.isfile():
+                fpath.remove()
+    return tempfile_wrapper
 
-class FileTrackerTests(TempFileTestCase):
-    """Test for FileTracker class
+class UtilsTests(unittest.TestCase):
+    
+    def testDirectoryPreserver(self):
+        """For utils.preserve_wd()"""
+        origwd = os.getcwd()
+        tmpdir = tempfile.gettempdir()
+        @preserve_cwd
+        def dirchange1():
+            os.chdir(tmpdir)
+            assert os.getcwd() == tmpdir
+        dirchange1()
+        assert os.getcwd() == origwd
+        
+    def testCountFeatures(self):
+        """For utils.countFeatures()"""
+        featdb = {1:[1,2], 2:[2,3], 3:[3,4]}
+        counts = countFeatures(5, featdb, [1,2,3])
+        self.assert_(nx.all(counts == [0,1,2,2,1]))
 
-    Tests add, toprocess, dump, __init__
-    """
-    def test(self):
-        t = FileTracker(self.fn)
+    @usetempfile
+    def testFileTracker(self, fn):
+        """For utils.FileTracker.(__init__, add, toprocess, dump)"""
+        t = FileTracker(fn)
         t.add(path("hack/a.xml"))
         t.add(path("cough/b.xml"))
         self.assertEqual(t.toprocess([path("foo/a.xml"), path("blah/c.xml")]), ["blah/c.xml"])
         t.dump()
         del t
-        t = FileTracker(self.fn)
+        t = FileTracker(fn)
         self.assertEqual(t, set(['a.xml', 'b.xml']))
-        
-       
-class ArticleTests(TempFileTestCase):
-    """Tests for article module functions
 
-    Tests: countFeatures, readPMIDFile, getArticles
-    """
-    def testCountFeatures(self):
-        self.fn.touch()
-        featdb = {1:[1,2], 2:[2,3], 3:[3,4]}
-        counts = countFeatures(5, featdb, [1,2,3])
-        self.assert_(nx.all(counts == [0,1,2,2,1]))
-
-    def testReadPMIDFile(self):
-        self.fn.write_lines(["# comment", "1 10", "2 20 blah", "3 30", "4 40", "5 50"])
+    @usetempfile
+    def testReadPMIDs(self, fn):
+        fn.write_lines(["# comment", "1 10", "2 20 blah", "3 30", "4 40", "5 50"])
         includes = [1,2,3,4]
         excludes = [1]
-        pmids = list(readPMIDs(self.fn, includes, excludes, withscores=False))
+        pmids = list(readPMIDs(fn, includes, excludes, withscores=False))
         self.assertEqual(pmids, [2,3,4])
-        pairs = list(readPMIDs(self.fn, includes, excludes, withscores=True))
+        pairs = list(readPMIDs(fn, includes, excludes, withscores=True))
         self.assertEqual(pairs, [(2,20.0),(3,30.0),(4,40.0)])
 
 if __name__ == "__main__":

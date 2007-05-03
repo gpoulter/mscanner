@@ -5,17 +5,19 @@ import unittest
 
 from mscanner.featuremap import FeatureMapping
 
-class TempFileTestCase(unittest.TestCase):
+class FeatureMappingTests(unittest.TestCase):
+    """For FeatureMapping class"""
+
     def setUp(self):
         self.fn = path(tempfile.mktemp())
-    def tearDown(self):
-        self.fn.remove()
 
-class FeatureMappingTests(TempFileTestCase):
-    """Test for FeatureMapping class
-    """
+    def tearDown(self):
+        if self.fn.isfile():
+            self.fn.remove()
 
     def test(self):
+        """For FeatureMapping.(__init__, addArticle, dump, load,
+        featureTypeMask)"""
         fm = FeatureMapping(self.fn)
         self.assert_(nx.all(fm.addArticle(Q=["A","B"], T=["A","C"]) == [0,1,2,3]))
         self.assertEqual([fm[i] for i in [0,1,2,3,]], [("A","Q"), ("B","Q"),("A","T"),("C","T")])

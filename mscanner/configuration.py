@@ -4,16 +4,14 @@ Configuration options are stored in the "rc" variable in this module, which is a
 utils.RCStorage object.
 
 @note: The reason for things like pseudocount being here is that they only
-change between invocations. Within the program, pseudocount is really
-a constant and it would be a pain to make sure that the same value
-gets passed five layers down through the call graph. Everyone who uses 
-pseudocount et al knows that in configuration.rc.pseudocount lies the 
-Single Point of Truth regarding its value.
+change between invocations. Within the program, pseudocount is really a
+constant and it would be a pain to make sure that the same value gets passed
+down through the call graph. Everyone who uses pseudocount et al knows that in
+configuration.rc.pseudocount lies the Single Point of Truth regarding its
+value.
 
-@note: No rc paramater can appear on the right-hand side of any other 
-rc parameter, as
-that would violate the configurability of the rc file.  Instead, any resource
-which depends on other resources is to be a zero-parameter function.
+@note: For parameters which depend on others, prefix with lambda:
+so that the dependency is updated dynamically.
 
                                    
 """

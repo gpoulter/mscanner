@@ -1,7 +1,9 @@
 """Module implementing the Article object
 
                                    
+"""
 
+__license__ = """
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
@@ -24,9 +26,10 @@ class Article:
     
     The class is simple, to avoid the "God Object" problem where all of the
     functionality is subsumed by a single object. Article could have
-    calculateScore(), classify() and various other methods which actually belong
-    in scoring.py and validation.py according to functional decomposition. Also,
-    when working with the scores we don't need anything else taking up memory.
+    calculateScore(), classify() and various other methods which actually
+    belong in scoring.py and validation.py according to functional
+    decomposition. Also, when we are just working with feature and score
+    vectors, we don't need the whole citation taking up space.
 
     """
     def __init__(self,
@@ -56,12 +59,8 @@ class Article:
         self.journal = journal
         self.issn = issn
         self.year = year 
-        self.meshterms = meshterms
-        if meshterms is None:
-            self.meshterms = list()
-        self.authors = authors
-        if authors is None:
-            self.authors = list()
+        self.meshterms = meshterms if meshterms else list()
+        self.authors = authors if authors else list()
 
     def __repr__(self):
         pp = pprint.PrettyPrinter()

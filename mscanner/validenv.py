@@ -31,7 +31,7 @@ from mscanner import statusfile
 from mscanner.configuration import rc
 from mscanner.featuredb import FeatureDatabase
 from mscanner.featuremap import FeatureMapping
-from mscanner.gcheetah import TemplateMapper, FileTransaction
+from mscanner.gcheetah import TemplateMapper
 from mscanner.scoring import FeatureScoreInfo
 from mscanner.utils import (countFeatures, getArticles, readPMIDs, 
                             runMailer, writePMIDScores, preserve_cwd)
@@ -73,28 +73,50 @@ class ValidationEnvironment:
         except AttributeError:
             pass
 
+    @preserve_cwd
     def standardValidation(self, pospath, negpath):
+        os.chdir(rc.valid_report_dir)
         statusfile.start(total=rc.nfolds)
         if not rc.valid_report_dir.exists():
             rc.valid_report_dir.makedirs()
-        self.loadInputs(pospath, negpath)
-        self.performValidation()
+        if rc.report_positives.isfile() and \
+           rc.report_negatives.isfile():
+            self.loadSavedScores()
+        else:
+            self.loadInputs(pospath, negpath)
+            self.performValidation()
         self.writeReport()
         statusfile.close()
         
-    @preserve_cwd
     def loadInputs(self, pospath, negpath):
         """Sets self.positives and self.negatives"""
-        log.info("Reading input positives")
+        log.info("Reading positive PubMed IDs")
         positives = list(readPMIDs(pospath, include=self.featdb))
-        log.info("Reading input negatives")
+        log.info("Reading negative PubMed IDs")
         negatives = list(readPMIDs(negpath, exclude=set(positives)))
         self.positives = nx.array(positives, nx.int32)
         self.negatives = nx.array(negatives, nx.int32)
         return self.positives, self.negatives
         
     @preserve_cwd
+    def loadSavedScores(self):
+        """Sets self.(positives, pscores, negatives, nscores),
+        
+        @note: writePMIDScores put them on disk in decreasing order of score
+        """
+        log.info("Loading result scores for %s", rc.dataset)
+        os.chdir(rc.valid_report_dir)
+        positives, pscores = zip(*readPMIDs(rc.report_positives, withscores=True))
+        negatives, nscores = zip(*readPMIDs(rc.report_negatives, withscores=True))
+        self.positives = nx.array(positives, nx.int32)
+        self.pscores = nx.array(pscores, nx.float32)
+        self.negatives = nx.array(negatives, nx.int32)
+        self.nscores = nx.array(nscores, nx.float32)
+        return self.positives, self.pscores, self.negatives, self.nscores
+
+    @preserve_cwd
     def performValidation(self):
+        """Sets self.pscores, self.nscores"""
         # Get which document ids have gene-drug assocations
         os.chdir(rc.valid_report_dir)
         log.info("Performing cross-validation for for %s", rc.dataset)
@@ -134,62 +156,61 @@ class ValidationEnvironment:
         writeGeneDrugCountsCSV(countGeneDrug(pos_arts))
 
     @preserve_cwd
-    def loadSavedScores(self):
-        """Sets self.(positives, pscores, negatives, nscores)"""
-        log.info("Loading result scores for %s", rc.dataset)
-        os.chdir(rc.valid_report_dir)
-        positives, pscores = zip(*readPMIDs(rc.report_positives, withscores=True))
-        negatives, nscores = zip(*readPMIDs(rc.report_negatives, withscores=True))
-        self.positives = nx.array(positives, nx.int32)
-        self.pscores = nx.array(pscores, nx.float32)
-        self.negatives = nx.array(negatives, nx.int32)
-        self.nscores = nx.array(nscores, nx.float32)
-        return self.positives, self.pscores, self.negatives, self.nscores
-
-    @preserve_cwd
     def writeReport(self):
         """Write an HTML validation report
         
         @note: sets self.performance and self.feature_info
         """
         os.chdir(rc.valid_report_dir)
+        # Calculate feature score information
         self.feature_info = FeatureScoreInfo(
-            pos_counts = countFeatures(len(self.featmap), self.featdb, self.positives),
-            neg_counts = countFeatures(len(self.featmap), self.featdb, self.negatives),
+            pos_counts = countFeatures(
+                len(self.featmap), self.featdb, self.positives),
+            neg_counts = countFeatures(
+                len(self.featmap), self.featdb, self.negatives),
             pdocs = len(self.positives),
             ndocs = len(self.negatives),
             pseudocount = rc.pseudocount,
             featmap = self.featmap,
             exclude_types = rc.exclude_types,
-            daniel = rc.dodaniel
+            daniel = rc.dodaniel,
+            cutoff = rc.cutoff
             )
-        self.feature_info.writeFeatureScoresCSV(codecs.open(rc.report_term_scores, "wb", "utf-8"))
+        if not rc.report_term_scores.exists():
+            self.feature_info.writeFeatureScoresCSV(
+                codecs.open(rc.report_term_scores, "wb", "utf-8"))
         overlap = None
         gp = Gnuplot(debug=1)
-        gp.reset()
         self.performance = PerformanceStats(self.pscores, self.nscores, rc.alpha)
         p = self.performance
-        ##overlap, iX, iY = plotting.plotArticleScoreDensity(gp, 
-        ##rc.report_artscores_img, p.pscores, p.nscores, p.tuned.threshold)
+        ##overlap, iX, iY = plotting.plotArticleScoreDensity(
+        ##  gp, rc.report_artscores_img, p.pscores, p.nscores, p.tuned.threshold)
         ##plotting.plotFeatureScoreDensity(
         ##  gp, rc.report_featscores_img, elf.feature_info.scores)
-        plotting.plotArticleScoreHistogram(
+        if not rc.report_artscores_img.exists():
+            plotting.plotArticleScoreHistogram(
             gp, rc.report_artscores_img, p.pscores, p.nscores, p.tuned.threshold)
-        plotting.plotFeatureScoreHistogram(
+        if not rc.report_featscores_img.exists():
+            plotting.plotFeatureScoreHistogram(
             gp, rc.report_featscores_img, self.feature_info.scores)
-        plotting.plotROC(
+        if not rc.report_roc_img.exists():
+            plotting.plotROC(
             gp, rc.report_roc_img, p.FPR, p.TPR, p.tuned.FPR)
-        plotting.plotPrecisionRecall(
+        if not rc.report_prcurve_img.exists():
+            plotting.plotPrecisionRecall(
             gp, rc.report_prcurve_img, p.TPR, p.PPV, p.tuned.TPR)
-        plotting.plotPrecisionRecallFmeasure(
+        if not rc.report_fmeasure_img.exists():
+            plotting.plotPrecisionRecallFmeasure(
             gp, rc.report_fmeasure_img, p.pscores, p.TPR, p.PPV, 
             p.FM, p.FMa, p.tuned.threshold)
-        #Write main index file for validation output
-        mapper = TemplateMapper(root=c.templates)
+        #Write index file for validation output
+        mapper = TemplateMapper(root=rc.templates)
         tpl = mapper.validation(
             rc = rc,
-            overlap = overlap,
+            f = self.feature_info,
             p = self.performance,
             t = self.performance.tuned,
-            f = self.feature_info)
+            overlap = overlap,
+            timestamp = statusfile.timestamp
+        )
         rc.report_index.write_text(str(tpl))

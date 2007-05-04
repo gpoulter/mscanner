@@ -1,8 +1,9 @@
 """Calculate term and document scores
 
 calculateFeatureScores() -- Calculate scores of features
-FeatureScoreInfo -- Contains all information about feature scores
-filterDocuments() -- Return list of (docid,score) pairs given documents and term scores
+FeatureScoreInfo -- Class holding information concerning feature score
+filterDocuments() -- Return list of (docid,score) pairs given documents and
+term scores
 
                                    
 """

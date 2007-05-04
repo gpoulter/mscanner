@@ -109,19 +109,25 @@ class Validator:
         nscores = nx.zeros(ndocs, nx.float32)
         pcounts = countFeatures(self.numfeats, self.featdb, self.pos)
         ncounts = countFeatures(self.numfeats, self.featdb, self.neg)
-        for fold, (pstart,psize,nstart,nsize) in enumerate(zip(pstarts,psizes,nstarts,nsizes)):
+        for fold, (pstart,psize,nstart,nsize) in \
+            enumerate(zip(pstarts,psizes,nstarts,nsizes)):
             statusfile.update(fold, self.nfold)
-            log.debug("pstart = %d, psize = %s; nstart = %d, nsize = %d", pstart, psize, nstart, nsize)
+            log.debug("pstart = %d, psize = %s; nstart = %d, nsize = %d", 
+                      pstart, psize, nstart, nsize)
             # Modifiy the feature counts by subtracting out the test fold
-            temp_pcounts = pcounts - countFeatures(self.numfeats, self.featdb, self.pos[pstart:pstart+psize])
-            temp_ncounts = ncounts - countFeatures(self.numfeats, self.featdb, self.neg[nstart:nstart+nsize])
+            temp_pcounts = pcounts - countFeatures(
+                self.numfeats, self.featdb, self.pos[pstart:pstart+psize])
+            temp_ncounts = ncounts - countFeatures(
+                self.numfeats, self.featdb, self.neg[nstart:nstart+nsize])
             # Calculate the resulting feature scores
             termscores, pfreqs, nfreqs = calculateFeatureScores(
                 temp_pcounts, temp_ncounts, pdocs-psize, ndocs-nsize,
                 self.pseudocount, self.mask, self.daniel)
             # Calculate the article scores for the test fold
-            pscores[pstart:pstart+psize] = [nx.sum(termscores[self.featdb[d]]) for d in self.pos[pstart:pstart+psize]]
-            nscores[nstart:nstart+nsize] = [nx.sum(termscores[self.featdb[d]]) for d in self.neg[nstart:nstart+nsize]]
+            pscores[pstart:pstart+psize] = [
+                nx.sum(termscores[self.featdb[d]]) for d in self.pos[pstart:pstart+psize]]
+            nscores[nstart:nstart+nsize] = [
+                nx.sum(termscores[self.featdb[d]]) for d in self.neg[nstart:nstart+nsize]]
         statusfile.update(None, self.nfold)
         return pscores, nscores
     
@@ -152,30 +158,32 @@ class Validator:
             if idx == marker:
                 statusfile.update(marker, pdocs+ndocs)
                 marker += int((pdocs+ndocs)/20)
-            f = [fid for fid in self.featdb[doc] if mask is None or not mask[fid]]
-            pscores[idx] = nx.sum(nx.log(((pcounts[f]-1+ps[f])/(pdocs-1+2*ps[f]))/((ncounts[f]+ps[f])/(ndocs+2*ps[f]))))
+            f = [fid for fid in self.featdb[doc] if not mask or not mask[fid]]
+            pscores[idx] = nx.sum(nx.log(((
+                pcounts[f]-1+ps[f])/(pdocs-1+2*ps[f]))/((ncounts[f]+ps[f])/(ndocs+2*ps[f]))))
         for idx, doc in enumerate(self.neg):
             if pdocs+idx == marker:
                 statfile(marker, pdocs+ndocs)
                 marker += int((pdocs+ndocs)/20)
-            f = [fid for fid in self.featdb[doc] if mask is None or not mask[fid]]
-            nscores[idx] = nx.sum(nx.log(((pcounts[f]+ps[f])/(pdocs+2*ps[f]))/((ncounts[f]-1+ps[f])/(ndocs-1+2*ps[f]))))
+            f = [fid for fid in self.featdb[doc] if not mask or not mask[fid]]
+            nscores[idx] = nx.sum(nx.log(((
+                pcounts[f]+ps[f])/(pdocs+2*ps[f]))/((ncounts[f]-1+ps[f])/(ndocs-1+2*ps[f]))))
         statusfile.update(None, pdocs+ndocs)
         return pscores, nscores
 
 class PerformanceStats:
     """Calculates and stores performance statistics.
 
-    @ivar P, N, A, alpha, pscores, nscores: Input variables
+    @ivar P, N, A, alpha, pscores, nscores: Input parameters
     
-    @ivar TP, FN, FP, FN, TPR, FPR, PPV, FM, FMa: Performance graph data
+    @ivar TP, FN, FP, FN, TPR, FPR, PPV, FM, FMa: Performance vectors
     
     @ivar ROC_area, PR_area: Integral statistics
     
     @ivar tuned: Tuned performance statistics (see tunedStatistics)
     """
 
-    def __init__(self, pscores, nscores, alpha=0.5):
+    def __init__(self, pscores, nscores, alpha):
         """Initialies the performance statistics. Parameters are kept
         as instance variables.
 
@@ -187,97 +195,98 @@ class PerformanceStats:
         precision in FM_alpha.  Defaults to 0.5, producing harmonic
         mean of recall and precision (F-Measure)
         """
-        _ = self
-        _.alpha = alpha
-        _.pscores = pscores.copy()
-        _.nscores = nscores.copy()
-        _.pscores.sort()
-        _.nscores.sort()
-        _.P = len(_.pscores)
-        _.N = len(_.nscores)
-        _.A = _.P + _.N
-        _.makeCountVectors()
-        _.makeRatioVectors()
-        _.makeCurveAreas()
-        _.maxFMeasurePoint()
-        _.breakEvenPoint()
-        _.tunedStatistics()
+        s = self
+        s.alpha = alpha
+        s.pscores = pscores.copy()
+        s.nscores = nscores.copy()
+        s.pscores.sort()
+        s.nscores.sort()
+        s.P = len(s.pscores)
+        s.N = len(s.nscores)
+        s.A = s.P + s.N
+        s.makeCountVectors()
+        s.makeRatioVectors()
+        s.makeCurveAreas()
+        s.maxFMeasurePoint()
+        s.breakEvenPoint()
+        s.tunedStatistics()
 
     def makeCountVectors(self):
         """Calculates arrays of TP, TN, FP, FN by iterating over pscores"""
-        _ = self
-        z = nx.zeros(_.P, nx.float32)
-        _.TP = z.copy() # true positives
-        _.TN = z.copy() # true negatives
-        _.FP = z.copy() # false positives
-        _.FN = z.copy() # false negatives
+        s = self
+        z = nx.zeros(s.P, nx.float32)
+        s.TP = z.copy() # true positives
+        s.TN = z.copy() # true negatives
+        s.FP = z.copy() # false positives
+        s.FN = z.copy() # false negatives
         TN = 1
-        for xi in xrange(_.P):
-            threshold = _.pscores[xi]
-            while (_.nscores[TN-1] < threshold) and (TN < _.N):
+        for xi in xrange(s.P):
+            threshold = s.pscores[xi]
+            while (s.nscores[TN-1] < threshold) and (TN < s.N):
                 TN += 1
-            while (_.nscores[TN-1] >= threshold) and (TN > 0):
+            while (s.nscores[TN-1] >= threshold) and (TN > 0):
                 TN -= 1
             # xi+1 is how many positives we called negative
             FN = xi
             # TP+FN = P
-            TP = _.P - FN
+            TP = s.P - FN
             # TN+FP = N
-            FP = _.N - TN
-            _.TP[xi] = TP
-            _.TN[xi] = TN
-            _.FP[xi] = FP
-            _.FN[xi] = FN
-        return _.TP, _.TN, _.FP, _.FN
+            FP = s.N - TN
+            s.TP[xi] = TP
+            s.TN[xi] = TN
+            s.FP[xi] = FP
+            s.FN[xi] = FN
+        return s.TP, s.TN, s.FP, s.FN
 
     def makeRatioVectors(self):
         """Calculate arrays of TPR, FPR, PPV, FM, FMa"""
-        _ = self
-        z = nx.zeros(_.P, nx.float32)
+        s = self
+        z = nx.zeros(s.P, nx.float32)
         # TPR is recall
-        _.TPR = _.TP / _.P
+        s.TPR = s.TP / s.P
         # FPR is 1-specificity
-        _.FPR = _.FP / _.N
+        s.FPR = s.FP / s.N
         # PPV is precision
-        _.PPV = _.TP / (_.TP + _.FP) 
-        _.PPV[_.TP+_.FP == 0] = 1.0
+        s.PPV = s.TP / (s.TP + s.FP) 
+        s.PPV[s.TP+s.FP == 0] = 1.0
         # FM is F-Measure
-        _.FM = 2 * _.TPR * _.PPV / (_.TPR + _.PPV) 
+        s.FM = 2 * s.TPR * s.PPV / (s.TPR + s.PPV) 
         # FMa is the alpha-weighted F-Measures
-        _.FMa = 1 / (_.alpha / _.PPV + (1 - _.alpha) / _.TPR)
-        return _.TPR, _.FPR, _.PPV, _.FM, _.FMa
+        s.FMa = 1 / (s.alpha / s.PPV + (1 - s.alpha) / s.TPR)
+        return s.TPR, s.FPR, s.PPV, s.FM, s.FMa
 
     def makeCurveAreas(self):
-        """Calculate areas under ROC and precision-recall curves"""
-        _ = self
-        # Note that trapz expects y, x TPR is decreasing, so we reverse the
-        # vectors to present it in standard increasing form. ROC_area is
-        # calculated as 1 - remaining area, since TPR covers 0.0 to 1.0 but FPR
-        # does not, meaning we must use TPR on the x-axis instead of FPR.
-        _.ROC_area = 1.0 - trapz(_.FPR[::-1], _.TPR[::-1])
-        _.PR_area = trapz(_.PPV[::-1], _.TPR[::-1])
-        return _.ROC_area, _.PR_area
+        """Calculate areas under ROC and precision-recall curves
+        
+        @note: trapz expects y, x. TPR is decreasing, so we reverse the vectors
+        to present it in standard increasing form. ROC_area is calculated as 1
+        - remaining area, since TPR covers 0.0 to 1.0 but FPR does not, meaning
+        we must use TPR on the x-axis instead of FPR. """
+        s = self
+        s.ROC_area = 1.0 - trapz(s.FPR[::-1], s.TPR[::-1])
+        s.PR_area = trapz(s.PPV[::-1], s.TPR[::-1])
+        return s.ROC_area, s.PR_area
     
     def breakEvenPoint(self):
         """Calculate the threshold resulting in the break-even point
         where precision equals recall.  Returns index into pscores,
         and the recall/precision of the break-even point.
         """
-        _ = self
-        diff = nx.absolute(nx.subtract(_.TPR, _.PPV))
-        _.bep_index = nx.nonzero(diff == nx.min(diff))[0][0]
-        _.breakeven = 0.5*(_.TPR[_.bep_index]+_.PPV[_.bep_index])
-        return _.bep_index, _.breakeven
+        s = self
+        diff = nx.absolute(nx.subtract(s.TPR, s.PPV))
+        s.bep_index = nx.nonzero(diff == nx.min(diff))[0][0]
+        s.breakeven = 0.5*(s.TPR[s.bep_index]+s.PPV[s.bep_index])
+        return s.bep_index, s.breakeven
 
     def maxFMeasurePoint(self):
         """Calculate the threshold which results in the highest
         alpha-weighted F-Measure.  Returns the index into pscores for
         the threshold, and the threshold maximising F-Measure.
         """
-        _ = self
-        _.fmax_index = nx.nonzero(_.FMa == nx.max(_.FMa))[0][0]
-        _.threshold = self.pscores[_.fmax_index]
-        return _.fmax_index, _.threshold
+        s = self
+        s.fmax_index = nx.nonzero(s.FMa == nx.max(s.FMa))[0][0]
+        s.threshold = self.pscores[s.fmax_index]
+        return s.fmax_index, s.threshold
 
     def tunedStatistics(self):
         """Object contains performance statistics for a particular tuned threshold.

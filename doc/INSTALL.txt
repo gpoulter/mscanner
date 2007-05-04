@@ -20,12 +20,7 @@ Dependencies
 ============
 
 `Python <http://www.python.org>`_
- The Python programming language, version 2.4 or greater.
-
-`PyRXP <http://www.reportlab.org/pyrxp.html>`_
- Extremely fast XML parser (one call to the RXP library, implemented
- in C), used for parsing Medline citations from XML.  On Windows,
- download the DLLs; on posix systems compile from source.
+ The Python programming language, version 2.5 or higher.
 
 `path module <http://www.jorendorff.com/articles/python/path/>`_
  The Python "path" module provides convenient path manipulation
@@ -36,12 +31,6 @@ Dependencies
  validation. It in turn requires `Gnuplot <http://www.gnuplot.info/>`_
  to be installed.
 
-`PySQLite <http://pysqlite.org/>`_ or `cx_Oracle <http://sourceforge.net/projects/cx-oracle/>`_
- These packages are supported for exporting results to a database.  If
- you don't install one of them, you can export as SQL text, or just
- use the flat-file output that is produced by default.  PySQLite is
- included in Python 2.5 and later.
-
 `Epydoc <http://epydoc.sourceforge.net/>`_
  Generates API documentation for MScanner.
 
@@ -51,6 +40,9 @@ Dependencies
  instead of a histogram during validation. SciPy in turn requires
  NumPy as well as ATLAS or LAPACK and BLAS.  No worries on Windows,
  and Linux distributions should install the dependencies automagically.
+
+`cx_Oracle <http://sourceforge.net/projects/cx-oracle/>`_
+ Only for exporting to PharmDemo.
 
 Input Data
 ==========

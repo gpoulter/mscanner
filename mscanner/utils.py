@@ -9,7 +9,9 @@ runMailer() -- Send e-mails to people listed in a file
 writePMIDScores() -- Write PMIDs and scores to a text file
 
                                    
+"""
 
+__license__ = """
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
 Foundation; either version 2 of the License, or (at your option) any later
@@ -107,6 +109,8 @@ def readPMIDs(filename, include=None, exclude=None, withscores=False):
 
 def writePMIDScores(filename, pairs):
     """Write PubMed IDs and their scores to a file
+    
+    @note: The pairs are sorted in decreasing order of score when written.
     
     @pairs: Iteratable over (PubMed ID, Score) pairs
     """

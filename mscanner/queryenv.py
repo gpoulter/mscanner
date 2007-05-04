@@ -33,7 +33,8 @@ from mscanner.featuredb import FeatureDatabase, FeatureStream
 from mscanner.featuremap import FeatureMapping
 from mscanner.gcheetah import TemplateMapper, FileTransaction
 from mscanner.scoring import FeatureScoreInfo, filterDocuments
-from mscanner.utils import countFeatures, runMailer, readPMIDs, writePMIDScores, preserve_cwd
+from mscanner.utils import (countFeatures, runMailer, readPMIDs, 
+                            writePMIDScores, preserve_cwd)
 
 class QueryEnvironment:
     """Class for managing MScanner analysis without passing around lots of
@@ -76,6 +77,7 @@ class QueryEnvironment:
         statusfile.update(0, self.narticles - len(self.input_pmids))
         return self.input_pmids
 
+    @preserve_cwd
     def standardQuery(self, pmids_path=None):
         """All-in-one for the most common operation
 
@@ -87,7 +89,12 @@ class QueryEnvironment:
         if pmids_path is not None:
             self.loadInput(pmids_path)
         self.calculateFeatureScores()
-        self.performQuery()
+        os.chdir(rc.query_report_dir)
+        if rc.report_result_scores.exists() \
+           and rc.report_positives.exists():
+            self.loadSavedResults()
+        else:
+            self.performQuery()
         self.writeReport()
         statusfile.close()
         
@@ -100,26 +107,22 @@ class QueryEnvironment:
         self.feature_info = FeatureScoreInfo(
             pos_counts,  
             neg_counts,
-            len(self.input_pmids), 
-            self.narticles - len(self.input_pmids),
-            rc.pseudocount, 
-            self.featmap, 
-            rc.exclude_types, 
-            rc.dodaniel, 
-            rc.cutoff)
+            pdocs = len(self.input_pmids), 
+            ndocs = self.narticles - len(self.input_pmids),
+            pseudocount = rc.pseudocount, 
+            featmap = self.featmap, 
+            exclude_types = rc.exclude_types, 
+            daniel = rc.dodaniel, 
+            cutoff = rc.cutoff)
     
     @preserve_cwd
     def loadSavedResults(self):
-        """Either load results from the report directory, or recalculate them if
-        necessary (sets self.inputs and self.results)
-        """
+        """Sets self.inputs and self.results by reading PMIDs from the report
+        directory instead of actually querying."""
         os.chdir(rc.query_report_dir)
-        if rc.report_index.isfile():
-            log.info("Loading saved results for dataset %s", rc.dataset)
-            self.inputs = readPMIDs(rc.report_positives, withscores=True)
-            self.results = readPMIDs(rc.report_result_scores, withscores=True)
-        else:
-            self.performQuery()
+        log.info("Loading saved results for dataset %s", rc.dataset)
+        self.inputs = list(readPMIDs(rc.report_positives, withscores=True))
+        self.results = list(readPMIDs(rc.report_result_scores, withscores=True))
         
     @preserve_cwd
     def performQuery(self, save_results=True):
@@ -165,8 +168,8 @@ class QueryEnvironment:
         """Write the HTML report for the query results
         """
         def writeCitations(mode, scores, fname, perfile):
-            """Because 10000 citations in one HTML file is impossible to work with,
-            I wrote this function which splits the results up into multiple files 
+            """Because 10000 citations in one HTML file is impossible to work
+            with, function splits the results up into multiple files
             
             @param mode: 'input' or 'output'
     
@@ -177,11 +180,12 @@ class QueryEnvironment:
     
             @param perfile: Number of citations per file (the very last file may
             have up to 2*perfile-1 citations)
+            
+            @note: Needed citations are first copied to an in-memory dict to
+            work around a bug on mtree.stanford.edu where template takes
+            forever to execute. This may be due to Cheetah doing something
+            which takes forever on 22GB database. 
             """
-            # Workaround for a mysterious bug on mtree.stanford.edu where template
-            # takes forever to execute - unless we first copy the article objects out
-            # of the database and into a dict. This may be due to Cheetah doing
-            # something that works on a small dict but takes forever on 22GB database.
             articles = dict()
             for pmid, score in scores:
                 articles[str(pmid)] = self.artdb[str(pmid)]
@@ -218,10 +222,12 @@ class QueryEnvironment:
         self.feature_info.writeFeatureScoresCSV(codecs.open(rc.report_term_scores, "wb", "utf-8"))
         log.debug("Writing input citations")
         self.inputs.sort(key=lambda x:x[1], reverse=True)
-        writeCitations("input", self.inputs, rc.report_input_citations, rc.citations_per_file)
+        writeCitations("input", self.inputs, 
+                       rc.report_input_citations, rc.citations_per_file)
         log.debug("Writing output citations")
         self.results.sort(key=lambda x:x[1], reverse=True)
-        writeCitations("output", self.results, rc.report_result_citations, rc.citations_per_file)
+        writeCitations("output", self.results, 
+                       rc.report_result_citations, rc.citations_per_file)
         log.debug("Writing index file")
         index = mapper.results(
             rc = rc, 

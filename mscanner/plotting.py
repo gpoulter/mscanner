@@ -3,7 +3,11 @@ precision-recall curves, ROC curves, and precision/recall/fmeasure as
 a function of threshold.
 
                                    
+"""
 
+from __future__ import division
+
+__license__ = """
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
@@ -17,7 +21,6 @@ General Public License for more details.
 http://www.gnu.org/copyleft/gpl.html
 """
 
-from __future__ import division
 from itertools import chain
 import numpy as n
 from pprint import pprint
@@ -118,7 +121,7 @@ def plotArticleScoreHistogram(g, fname, pdata, ndata, threshold):
     """Plot histograms for pos/neg scores, with line to mark threshold""" 
     py, px = n.histogram(pdata, bins=bincount(pdata), normed=True)
     ny, nx = n.histogram(ndata, bins=bincount(ndata), normed=True)
-    #g.reset()
+    g.reset()
     g.title("Score Histograms")
     g.xlabel("Article Score")
     g.ylabel("Histogram Mass")

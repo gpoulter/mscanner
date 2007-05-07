@@ -2,30 +2,34 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 
-#*
-p - Global performance stats object
-t - Tuned performance stats object
-f - Feature information object
-c - Configuration variables
+#* TEMPLATE PARAMETERS
+$f -- Feature information object
+$linkpath -- Include JS and CSS remotely at this location
+$overlap -- None, or degree of overlap between pos and neg distributions
+$p -- PerformanceStats object
+$rc -- Configuration variables
+$timestamp -- time.time() for start of the operation
 *#
+
+## Store tuned performance stats in t
+#set $t = $p.tuned
 
 <head>
 
   <title>MScanner validation results: $rc.dataset</title>
 
+  #if $getVar("linkpath", None)
+  <script type="text/javascript" src="$linkpath/hider.js"></script>
+  <link rel="stylesheet" type="text/css" href="$linkpath/style.css"/>
+  #else
+  <style type="text/css">
+    #include raw $_inc("style.css")
+  </style>
   <script type="text/javascript">
     #include raw $_inc("hider.js")
   </script>
-
-  <style type="text/css">
-    td.tp { background-color: #FF3333; }
-    td.fn { background-color: #FFCCCC; }
-    td.tn { background-color: #3333FF; }
-    td.fp { background-color: #CCCCFF; }
-
-    #include raw $_inc("style.css")
-  </style>
-
+  #end if
+  
 </head>
 
 #def help(name)
@@ -77,8 +81,9 @@ c - Configuration variables
       <th>Timestamp</th>
       #import time
       <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($timestamp))</td>
-      $help(None)
+      $help("h_timestamp")
     </tr>
+    $hr("h_timestamp", """Date and time at which the query was submitted.""")
 
     <tr>
       <th>Pseudocount</th>
@@ -95,7 +100,7 @@ c - Configuration variables
 
     <tr>
       <th>Score threshold</th>
-      <td>$t.threshold</td>
+      <td>#echo "%.2f" % $p.threshold #</td>
       $help("h_threshold")
     </tr>
     $hr("h_threshold", """The score threshold which maximises

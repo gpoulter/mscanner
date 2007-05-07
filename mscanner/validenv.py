@@ -31,7 +31,7 @@ from mscanner import statusfile
 from mscanner.configuration import rc
 from mscanner.featuredb import FeatureDatabase
 from mscanner.featuremap import FeatureMapping
-from mscanner.gcheetah import TemplateMapper
+from mscanner.gcheetah import TemplateMapper, FileTransaction
 from mscanner.scoring import FeatureScoreInfo
 from mscanner.utils import (countFeatures, getArticles, readPMIDs, 
                             runMailer, writePMIDScores, preserve_cwd)
@@ -116,25 +116,26 @@ class ValidationEnvironment:
 
     @preserve_cwd
     def performValidation(self):
-        """Sets self.pscores, self.nscores"""
+        """Sets self.validator, self.pscores, self.nscores"""
         # Get which document ids have gene-drug assocations
         os.chdir(rc.valid_report_dir)
         log.info("Performing cross-validation for for %s", rc.dataset)
         self.genedrug_articles = None
         if rc.dogenedrug:
             self.doGeneDrug()
-        val = Validator(
+        self.validator = Validator(
             featmap = self.featmap,
             featdb = self.featdb,
             pos = self.positives,
             neg = self.negatives,
             nfold = rc.nfolds,
             pseudocount = rc.pseudocount,
+            alpha = rc.alpha,
             daniel = rc.dodaniel,
             genedrug_articles = self.genedrug_articles,
             mask = self.featmap.featureTypeMask(rc.exclude_types)
             )
-        self.pscores, self.nscores = val.validate()
+        self.pscores, self.nscores = self.validator.validate()
         writePMIDScores(rc.report_positives, izip(self.positives, self.pscores))
         writePMIDScores(rc.report_negatives, izip(self.negatives, self.nscores))
         
@@ -181,15 +182,19 @@ class ValidationEnvironment:
                 codecs.open(rc.report_term_scores, "wb", "utf-8"))
         overlap = None
         gp = Gnuplot(debug=1)
-        self.performance = PerformanceStats(self.pscores, self.nscores, rc.alpha)
+        if hasattr(self, "validator"):
+            self.performance = self.validator.getPerformance()
+        else:
+            self.performance = PerformanceStats(
+                self.pscores, self.nscores, rc.alpha)
         p = self.performance
-        ##overlap, iX, iY = plotting.plotArticleScoreDensity(
-        ##  gp, rc.report_artscores_img, p.pscores, p.nscores, p.tuned.threshold)
-        ##plotting.plotFeatureScoreDensity(
-        ##  gp, rc.report_featscores_img, elf.feature_info.scores)
+        ##overlap, iX, iY = plotting.plotArticleScoreDensity(gp,
+        ##  rc.report_artscores_img, p.pscores, p.nscores, p.tuned.threshold)
+        ##plotting.plotFeatureScoreDensity(gp,
+        ##  rc.report_featscores_img, elf.feature_info.scores)
         if not rc.report_artscores_img.exists():
-            plotting.plotArticleScoreHistogram(
-            gp, rc.report_artscores_img, p.pscores, p.nscores, p.tuned.threshold)
+            plotting.plotArticleScoreHistogram(gp, 
+            rc.report_artscores_img, p.pscores, p.nscores, p.tuned.threshold)
         if not rc.report_featscores_img.exists():
             plotting.plotFeatureScoreHistogram(
             gp, rc.report_featscores_img, self.feature_info.scores)
@@ -206,11 +211,10 @@ class ValidationEnvironment:
         #Write index file for validation output
         mapper = TemplateMapper(root=rc.templates)
         tpl = mapper.validation(
-            rc = rc,
             f = self.feature_info,
-            p = self.performance,
-            t = self.performance.tuned,
+            linkpath = rc.templates.relpath().replace('\\','/'),
             overlap = overlap,
-            timestamp = statusfile.timestamp
-        )
-        rc.report_index.write_text(str(tpl))
+            p = self.performance,
+            rc = rc,
+            timestamp = statusfile.timestamp,
+        ).respond(FileTransaction(rc.report_index, "w"))

@@ -1,19 +1,32 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 
+#* TEMPLATE PARAMETERS
+$f -- FeatureScoreInfo object
+$linkpath -- Include JS and CSS remotely at this location
+$lowest_score -- Score of lowest-scoring article
+$num_results -- Number of results
+$rc -- RCStorage object with configuration parameters
+$timestamp -- time.time() for start of the operation
+*#
+
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 
 <head>
 
   <title>MScanner query results: $rc.dataset</title>
 
+  #if $getVar("linkpath", None) 
+  <script type="text/javascript" src="$linkpath/hider.js"></script>
+  <link rel="stylesheet" type="text/css" href="$linkpath/style.css"/>
+  #else
   <script type="text/javascript">
     #include raw $_inc("hider.js")
   </script>
-
   <style type="text/css">
     #include raw $_inc("style.css")
   </style>
-
+  #end if
+  
 </head>
 
 #def help(name)
@@ -61,7 +74,7 @@
      <tr>
        <th>Timestamp</th>
        #import time
-       <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($rc.timestamp))</td>
+       <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($timestamp))</td>
        $help(None)
      </tr>
 

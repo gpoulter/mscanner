@@ -35,11 +35,22 @@ from mscanner.storage import Storage
 from mscanner.utils import countFeatures
 
 class Validator:
-    """Cross-validated calculation of article scores"""
+    """Cross-validated calculation of article scores
+    
+    Constructor arguments are also saved as instance variables.
+    
+    From calling validate():
+      @ivar pscores: Scores of positive articles after validation
+      @ivar nscores: Scores of negative articles after validation
+    
+    From calling getPerformance():
+      @ivar performance: PerformanceStats object
+    """
 
     def __init__(
         self, featmap, featdb, pos, neg, nfold,
         pseudocount = 0.01,
+        alpha = 0.5,
         daniel = False,
         genedrug_articles = None,
         mask = None,
@@ -52,9 +63,14 @@ class Validator:
         @param neg: Array of negative doc ids
         @param nfold: Number of folds in cross-validation
         @param pseudocount, daniel: Parameters for scoring.calculateFeatureScores
+        @param alpha: For maximising alpha-weighted F-Measure
         @param genedrug_articles: Set of doc ids with gene-drug co-occurrences
         @param mask: Features to exclude for scoring purposes
         @param norandom: If True forgoes randomisation in cross-validation for test purposes
+        
+        @note: If pseudocount is 0/False/None, we instead use the background
+        medline frequency (n.b. not negative corpus frequency) of each 
+        feature as its individual pseudocount.
         """
         self.featmap = featmap
         self.numfeats = len(featmap)
@@ -65,6 +81,7 @@ class Validator:
         self.pseudocount = pseudocount
         if not pseudocount:
             self.pseudocount = nx.array(featmap.counts, nx.float32) / featmap.numdocs
+        self.alpha = alpha
         self.daniel = daniel
         self.genedrug_articles = genedrug_articles
         self.mask = mask
@@ -78,11 +95,26 @@ class Validator:
             return False
 
     def validate(self):
-        """Carry out validation.  0 folds is taken to mean leave-out-one validation"""
+        """Carry out validation. 
+        
+        @return: self.pscores and self.nscores
+        
+        @note: self.nfolds==0 is taken to mean leave-out-one validation.
+        """
         if self.nfold:
             return self.crossValidate()
         else:
             return self.leaveOutOneValidate()
+        
+    def getPerformance(self):
+        """Return PerformanceStats object for this run 
+        
+        @note: Only call after validate()
+        
+        @return: self.performance
+        """
+        self.performance = PerformanceStats(self.pscores, self.nscores, self.alpha)
+        return self.performance
 
     @staticmethod
     def partitionSizes(nitems, nparts):
@@ -96,6 +128,8 @@ class Validator:
 
     def crossValidate(self):
         """Perform n-fold validation and return the raw performance measures
+
+        @return: self.pscores and self.nscores
         """
         pdocs = len(self.pos)
         ndocs = len(self.neg)
@@ -105,8 +139,8 @@ class Validator:
             nx.random.shuffle(self.neg)
         pstarts, psizes = self.partitionSizes(pdocs, self.nfold)
         nstarts, nsizes = self.partitionSizes(ndocs, self.nfold)
-        pscores = nx.zeros(pdocs, nx.float32)
-        nscores = nx.zeros(ndocs, nx.float32)
+        self.pscores = nx.zeros(pdocs, nx.float32)
+        self.nscores = nx.zeros(ndocs, nx.float32)
         pcounts = countFeatures(self.numfeats, self.featdb, self.pos)
         ncounts = countFeatures(self.numfeats, self.featdb, self.neg)
         for fold, (pstart,psize,nstart,nsize) in \
@@ -124,31 +158,27 @@ class Validator:
                 temp_pcounts, temp_ncounts, pdocs-psize, ndocs-nsize,
                 self.pseudocount, self.mask, self.daniel)
             # Calculate the article scores for the test fold
-            pscores[pstart:pstart+psize] = [
+            self.pscores[pstart:pstart+psize] = [
                 nx.sum(termscores[self.featdb[d]]) for d in self.pos[pstart:pstart+psize]]
-            nscores[nstart:nstart+nsize] = [
+            self.nscores[nstart:nstart+nsize] = [
                 nx.sum(termscores[self.featdb[d]]) for d in self.neg[nstart:nstart+nsize]]
         statusfile.update(None, self.nfold)
-        return pscores, nscores
+        return self.pscores, self.nscores
     
     def leaveOutOneValidate(self):
         """Carries out leave-out-one validation, returning the resulting scores.
-
+        
         @note: Does not support 'daniel' scoring method
+        
+        @return: self.pscores and self.nscores
         """
         pcounts = countFeatures(self.numfeats, self.featdb, self.pos)
         ncounts = countFeatures(self.numfeats, self.featdb, self.neg)
-        pscores = nx.zeros(len(self.pos), nx.float32)
-        nscores = nx.zeros(len(self.neg), nx.float32)
+        self.pscores = nx.zeros(len(self.pos), nx.float32)
+        self.nscores = nx.zeros(len(self.neg), nx.float32)
         pdocs = len(self.pos)
         ndocs = len(self.neg)
-        mask = None
-        #mask = (pcounts<=1) & (ncounts<=1)
-        if self.mask is not None:
-            if mask is None:
-                mask = self.mask
-            else:
-                mask |= self.mask
+        mask = self.mask
         if isinstance(self.pseudocount, float):
             ps = nx.zeros(self.numfeats, nx.float32) + self.pseudocount
         else:
@@ -159,26 +189,34 @@ class Validator:
                 statusfile.update(marker, pdocs+ndocs)
                 marker += int((pdocs+ndocs)/20)
             f = [fid for fid in self.featdb[doc] if not mask or not mask[fid]]
-            pscores[idx] = nx.sum(nx.log(((
+            self.pscores[idx] = nx.sum(nx.log(((
                 pcounts[f]-1+ps[f])/(pdocs-1+2*ps[f]))/((ncounts[f]+ps[f])/(ndocs+2*ps[f]))))
         for idx, doc in enumerate(self.neg):
             if pdocs+idx == marker:
                 statfile(marker, pdocs+ndocs)
                 marker += int((pdocs+ndocs)/20)
             f = [fid for fid in self.featdb[doc] if not mask or not mask[fid]]
-            nscores[idx] = nx.sum(nx.log(((
+            self.nscores[idx] = nx.sum(nx.log(((
                 pcounts[f]+ps[f])/(pdocs+2*ps[f]))/((ncounts[f]-1+ps[f])/(ndocs-1+2*ps[f]))))
         statusfile.update(None, pdocs+ndocs)
-        return pscores, nscores
+        return self.pscores, self.nscores
 
 class PerformanceStats:
     """Calculates and stores performance statistics.
 
-    @ivar P, N, A, alpha, pscores, nscores: Input parameters
+    @ivar alpha, pscores, nscores: Input parameters
+    
+    @ivar P, N, A: Number of positive, negative articles (A=P+N)
     
     @ivar TP, FN, FP, FN, TPR, FPR, PPV, FM, FMa: Performance vectors
     
     @ivar ROC_area, PR_area: Integral statistics
+    
+    @ivar bep_index, breakeven: Index and value of breakeven point (where
+    precision=recall)
+    
+    @ivar threshold_index, threshold: Index of and score value of the
+    tuned threshold (cutoff for classification citations positive).
     
     @ivar tuned: Tuned performance statistics (see tunedStatistics)
     """
@@ -212,7 +250,10 @@ class PerformanceStats:
         s.tunedStatistics()
 
     def makeCountVectors(self):
-        """Calculates arrays of TP, TN, FP, FN by iterating over pscores"""
+        """Calculates confusion matrix counts by iterating over pscores
+        
+        @return: self.(TP, TN, FP, FN)
+        """
         s = self
         z = nx.zeros(s.P, nx.float32)
         s.TP = z.copy() # true positives
@@ -239,7 +280,10 @@ class PerformanceStats:
         return s.TP, s.TN, s.FP, s.FN
 
     def makeRatioVectors(self):
-        """Calculate arrays of TPR, FPR, PPV, FM, FMa"""
+        """Calculate performance using vector algebra
+        
+        @return: self.(TPR, FPR, PPV, FM, FMa)
+        """
         s = self
         z = nx.zeros(s.P, nx.float32)
         # TPR is recall
@@ -258,6 +302,8 @@ class PerformanceStats:
     def makeCurveAreas(self):
         """Calculate areas under ROC and precision-recall curves
         
+        @return: self.(ROC_area, PR_area)
+        
         @note: trapz expects y, x. TPR is decreasing, so we reverse the vectors
         to present it in standard increasing form. ROC_area is calculated as 1
         - remaining area, since TPR covers 0.0 to 1.0 but FPR does not, meaning
@@ -271,6 +317,8 @@ class PerformanceStats:
         """Calculate the threshold resulting in the break-even point
         where precision equals recall.  Returns index into pscores,
         and the recall/precision of the break-even point.
+        
+        @return: self.(bep_index, breakeven)
         """
         s = self
         diff = nx.absolute(nx.subtract(s.TPR, s.PPV))
@@ -282,30 +330,38 @@ class PerformanceStats:
         """Calculate the threshold which results in the highest
         alpha-weighted F-Measure.  Returns the index into pscores for
         the threshold, and the threshold maximising F-Measure.
+        
+        @return: self.(threshold_index, threshold)
         """
         s = self
-        s.fmax_index = nx.nonzero(s.FMa == nx.max(s.FMa))[0][0]
-        s.threshold = self.pscores[s.fmax_index]
-        return s.fmax_index, s.threshold
+        s.threshold_index = nx.nonzero(s.FMa == nx.max(s.FMa))[0][0]
+        s.threshold = self.pscores[s.threshold_index]
+        return s.threshold_index, s.threshold
 
     def tunedStatistics(self):
-        """Object contains performance statistics for a particular tuned threshold.
+        """Return Storage object with performance statistics for the
+        tuned threshold.
     
-        Instance variables include:
-        threshold,
-        TP, FP, TN, FN,
-        P, N, A, T, F,
-        TPR, FNR, TNR, FPR, PPV, NPV,
-        accuracy, prevalence,
-        recall, precision,
-        fmeasure, fmeasure_alpha, fmeasure_max,
-        enrichment
+        @return: Storage object with these keys:
+          P, N, A, T, F    (summary of input)
+          TP, FP, TN, FN   (confusion matrix)
+          TPR, FNR, TNR, FPR
+          PPV, NPV
+          accuracy         (T/A)
+          enrichment       (precision/prevalence)
+          error            (F/A)
+          fmeasure         (harmonic mean of TPR and PPV [alpha=0.5])
+          fmeasure_alpha   (alpha-weighted F measure [alpha!=0.5])
+          fmeasure_max     (maximum of standard F measure [alpha=0.5])
+          precision        (PPV)
+          prevalence       (P/A)
+          recall           (TPR)
+          specificity      (TNR)
         """
-        threshold = self.threshold
-        TP = self.TP[self.fmax_index]
-        TN = self.TN[self.fmax_index]
-        FP = self.FP[self.fmax_index]
-        FN = self.FN[self.fmax_index]
+        TP = self.TP[self.threshold_index]
+        TN = self.TN[self.threshold_index]
+        FP = self.FP[self.threshold_index]
+        FN = self.FN[self.threshold_index]
         P = self.P
         N = self.N
         A = self.A
@@ -313,25 +369,28 @@ class PerformanceStats:
         F = FP + FN
         TPR, FNR, TNR, FPR, PPV, NPV = 0, 0, 0, 0, 0, 0
         if TP + FN != 0:
-            TPR = TP / (TP + FN) # TPR = TP/P = sensitivity = recall
-            FNR = FN / (TP + FN) # FNR = FN/P = 1 - TP/P = 1-sensitivity = 1-recall
+            TPR = TP / (TP + FN) # TPR=TP/P = sensitivity = recall
+            FNR = FN / (TP + FN) # FNR=FN/P = 1-TP/P = 1-sensitivity = 1-recall
         if TN + FP != 0:
-            TNR = TN / (TN + FP) # TNR = TN/N = specificity
-            FPR = FP / (TN + FP) # FPR = FP/N = 1 - TN/N = 1-specificity
+            TNR = TN / (TN + FP) # TNR=TN/N = specificity
+            FPR = FP / (TN + FP) # FPR=FP/N = 1 - TN/N = 1-specificity
         if TP + FP != 0:
-            PPV = TP / (TP + FP) # PPV = precision
+            PPV = TP / (TP + FP) # PPV=precision
         if TN + FN != 0:
             NPV = TN / (TN + FN) # NPV
         accuracy, prevalence = 0, 0
         if A != 0:
             accuracy = (TP + TN) / A   # acc  = T/A
             prevalence = (TP + FN) / A # prev = P/A
+        error = 1 - accuracy
         recall = TPR
+        specificity = TNR
         precision = PPV
         fmeasure, fmeasure_alpha, fmeasure_max = 0, 0, 0
         if recall > 0 and precision > 0:
             fmeasure = 2 * recall * precision / (recall + precision)
-            fmeasure_alpha = 1.0 / (self.alpha / precision + (1 - self.alpha) / recall)
+            fmeasure_alpha = 1.0 / ( (self.alpha / precision) + 
+                                     ((1 - self.alpha) / recall))
             fmeasure_max = max(self.FM)
         enrichment = 0
         if prevalence > 0:

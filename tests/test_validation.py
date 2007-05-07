@@ -48,6 +48,7 @@ class ValidatorTest(unittest.TestCase):
             neg = nx.array([4, 5, 6, 7]),
             nfold = 4,
             pseudocount = 0.1,
+            alpha = 0.5,
             randomise = False)
         pscores, nscores = val.validate()
         cpscores = nx.array([-2.39789534,  1.03609192,  1.03609192,  3.43398714])
@@ -65,6 +66,7 @@ class ValidatorTest(unittest.TestCase):
             neg = nx.array([4, 5, 6, 7]),
             nfold = 0,
             pseudocount = 0.1,
+            alpha = 0.5,
             randomise = False)
         pscores, nscores = val.validate()
         cpscores = nx.array([-2.14126396, 1.30037451, 1.30037451, 1.30037451])

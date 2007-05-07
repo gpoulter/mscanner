@@ -1,5 +1,11 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 
+#* TEMPLATE PARAMETERS
+$linkpath -- Include JS and CSS remotely at this location
+$timestamp -- time.time() for start of the operation
+
+*#
+
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 
 <head>
@@ -12,20 +18,21 @@
     #end if
   </title>
 
-  ##<script type="text/javascript" src="../../../source/mscanner/templates/citations.js"></script>
-  ##<script type="text/javascript" src="../../../source/mscanner/templates/fileutils.js"></script>
-  ##<script type="text/javascript" src="../../../source/mscanner/templates/hider.js"></script>
-
+  #if $getVar("linkpath", None)
+  <script type="text/javascript" src="$linkpath/hider.js"></script>
+  <script type="text/javascript" src="$linkpath/fileutils.js"></script>
+  <script type="text/javascript" src="$linkpath/citations.js"></script>
+  <link rel="stylesheet" type="text/css" href="$linkpath/style.css" />
+  #else
   <script type="text/javascript">
     #include raw $_inc("hider.js")
     #include raw $_inc("fileutils.js")
     #include raw $_inc("citations.js")
   </script>
-
-  ##<link rel="stylesheet" type="text/css" href="../../../source/mscanner/templates/style.css" />
   <style type="text/css">
     #include raw $_inc("style.css")
   </style>
+  #end if
 
 </head>
 
@@ -114,97 +121,7 @@ href="http://www.javascriptkit.com/jsref/regexp.shtml">Regular expressions</a>
 
 </fieldset>
 
-<table id="citations" class="cite">
-
-#set $ncols = 4
-#if $articles
-#set $ncols += 5
-#end if
-
-<colgroup>
-  <col class="classification"></col>
-  <col class="rank"></col>
-  <col class="score"></col>
-  <col class="pmid"></col>
-  #if $articles
-  <col class="year"></col>
-  <col class="author"></col>
-  <col class="abstract"></col>
-  <col class="title"></col>
-  <col class="journal"></col>
-  #end if
-</colgroup>
-
-<thead>
-  <tr>
-    <th title="Classification">C</th>
-    <th title="Rank">R</th>
-    <th>Score</th>
-    <th>PMID</th>
-    #if $articles
-    <th>Year</th>
-    <th title="Author">Au</th>
-    <th title="Abstract">Ab</th>
-    <th>Title</th>
-    <th>Journal</th>
-    #end if
-  </tr>
-</thead>
-
-<tbody>
-#for idx, (pmid, score) in enumerate($scores)
-#set $pmid = str(pmid)
-#if $articles
-#set $art = $articles[pmid]
-#else 
-#set $art = None
-#end if
-<tr id="#echo pmid#" class="main">
-<td id="c_#echo pmid#" onclick="classify('#echo pmid#')"></td>
-<td>#echo idx+$startfrom#</td>
-<td id="s_#echo pmid#">#echo "%.2f" % score#</td>
-<td>
-<a href="http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;db=pubmed&amp;dopt=AbstractPlus&amp;list_uids=#echo pmid#">#echo pmid#</a>
-</td>
-#if art
-<td>#echo art.year#</td>
-<td#if art.authors# onclick="toggle('au_#echo pmid#')">+#else#>-#end if#</td>
-<td#if art.abstract# onclick="toggle('ab_#echo pmid#')">+#else#>-#end if#</td>
-<td id="t_#echo pmid#" class="title"> #echo art.title.encode("ascii","xmlcharrefreplace")# </td>
-<td>
-#if art.issn 
-<a href="http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?CMD=search&amp;DB=journals&amp;term=#echo art.issn#">
-#if art.journal##echo art.journal##else##echo art.issn##end if#
-</a>
-#end if
-</td>
-#end if
-</tr>
-#if art
-<tr class="author" id="au_#echo pmid#"#if not art.authors# style="display:none;"#end if#>
-#if art.authors
-<td colspan="#echo ncols#">
-#for initials, lastname in art.authors##slurp
-#if initials##echo initials.encode("ascii","xmlcharrefreplace")##end if# #slurp
-#if lastname##echo lastname.encode("ascii","xmlcharrefreplace")##end if#, #slurp
-#end for#
-##<script type="text/javascript">hide('au_#echo pmid#')</script>
-</td>
-#end if
-</tr>
-<tr class="abstract" id="ab_#echo pmid#"#if not art.abstract# style="display:none;"#end if#>
-#if art.abstract
-<td colspan="#echo ncols#" >
-#echo art.abstract.encode("ascii","xmlcharrefreplace")
-##<script type="text/javascript">hide('ab_#echo pmid#')</script>
-</td>
-#end if
-</tr>
-#end if
-#end for
-</tbody>
-  
-</table>
+$cite_table
 
 </div>
 

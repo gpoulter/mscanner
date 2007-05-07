@@ -1,12 +1,13 @@
-/* #EEEEEE; = light gray */
-/* #CCCCCC; = middle gray */
-/* #BBBBBB; = darker gray */
-
-/* #C2D7EE; = light blue */
-/* #A3C2E2; = middle blue */
-
-/* #FFFFDD; = light yellow */
-/* #EEEEFF; = light mauve */
+/* Palette Guide
+EEEEEE= light gray
+CCCCCC= middle gray
+BBBBBB= darker gray
+C2D7EE= light blue
+A3C2E2= middle blue
+93B2D2= pastel blue
+FFFFDD= light yellow
+EEEEFF= light mauve
+*/
 
 @media print {
     background-color: white;
@@ -59,8 +60,7 @@ dt {
     font-weight: bold;
 }
 
-/* ALL TABLES */
-
+/* General table properties */
 table, thead, tbody {
     border: 2px solid black;
 }
@@ -80,8 +80,8 @@ td, th {
     padding: 0.5ex;
 }
 
-/* RESULTS TABLES */
 
+/* Results info in results.tmpl */
 table.results col.label {
     width: 11em;
 }
@@ -103,20 +103,14 @@ table.results tr.help td {
     padding: 1ex;
 }
 
-/* MATRIX TABLES */
 
-table.matrix col {
-    width: 25%;
-}
-
-/* FEATURE STATS TABLE */
-
+/* Feature Info Table in features.tmpl */
 table.features col.label {
     width: 20em;
 }
 
-/* CITATIONS */
 
+/* Main table in citations.tmpl */
 fieldset.cite {
     width: auto;
     max-width: 95%;
@@ -145,6 +139,7 @@ table.cite tr.abstract td {
     text-align: justify;
 }
 
+/* Column widths in citations.tmpl  */
 table.cite col.classification { width: 1em; }
 table.cite col.rank { width: 1em; }
 table.cite col.score { width: 3em;}
@@ -154,3 +149,12 @@ table.cite col.author{ width: 1em; }
 table.cite col.abstract { width: 1em; }
 table.cite col.title { }
 table.cite col.journal { width: 10em; }
+
+
+/* Confusion Matrix in validation.tmpl */
+table.matrix col { width: 25%; }
+td.tp { background-color: #FF3333; }
+td.fn { background-color: #FFCCCC; }
+td.tn { background-color: #3333FF; }
+td.fp { background-color: #CCCCFF; }
+

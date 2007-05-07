@@ -31,11 +31,7 @@ http://www.gnu.org/copyleft/gpl.html
 """
 
 from path import path
-import time
-
 from mscanner.storage import RCStorage
-
-__all__ = ["rc", "defaults" "initLogger"]
 
 rc = RCStorage()
 
@@ -136,8 +132,6 @@ rc.pseudocount = 0.01
 rc.cutoff = False
 ## Types of features to exclude
 rc.exclude_types = []
-## Time at which this file was imported
-rc.timestamp = time.time()
 ## Server for sending e-mails
 rc.smtpserver = "smtp.uct.ac.za" # "smtp.stanford.edu"
 ## Whether to use Daniel's 10^-8 pseudocounts

@@ -1,17 +1,19 @@
+#extends page
+
 #def title
 MScanner: Retrieve Medline citations using examples
-#end def
+#end def title
 
-#def head
-<title>$title</title>
-#end def
+#def header
+<div class="header">
+  <h1>$title</h1>
+  <p class="trim">Retrieve Medline citations using a set of examples</p>
+</div>
+#end def header
 
-#def heading
-<h1 class="trim">MScanner</h1>
-<p class="trim">Retrieve Medline citations using a set of examples</p>
-#end def
+#def contents
+<div class="contents">
 
-#def content
 <div class="text">
 
 <p>Maintaining a comprehensive database of the literature on a particular
@@ -19,12 +21,11 @@ subject is a difficult task, even using tools based on keyword searching.
 MScanner instead trains a probablistic classifier from a set of example
 citations (referenced by PubMed IDs). The output includes a ranked list of
 PubMed IDs and scores, and a page of abstracts for the results. Mscanner can be
-used for updating database literature annotations or to extend or update sets of
-related articles such as text mining corpora or individual's collections of
+used for updating database literature annotations or to extend or update sets
+of related articles such as text mining corpora or individual's collections of
 subject-specific articles.</p>
 
-<p>
-MScanner aggregates the journal and Medical Subject Heading (MeSH) terms of
+<p>MScanner aggregates the journal and Medical Subject Heading (MeSH) terms of
 all of the example citations and uses a Naive Bayes classifier to locate
 citations which have the most similar distribution of features to the examples.
 Medline citations have 15 features on average. Since random inputs, or other
@@ -32,18 +33,28 @@ poorly coherent sets of examples, yield poor performance we have implemented
 cross validated performance statistics including distributions of feature and
 article scores, precision versus recall curves, and a graph which shows how the
 score cutoff was chosen. MScanner achieves areas under the ROC curves of
-approximately 0.98 to 0.99 using a variety of test data sets, which is excellent
-for many purposes.
-</p>
+approximately 0.98 to 0.99 using a variety of test data sets, which is
+excellent for many purposes. </p>
 
 #if not $getVar("status")
+
 <p class="alert">
-  Good news: MScanner is not busy right now, you may submit a <a href="/form">query</a>.
+  Good news: MScanner is not busy right now, you may submit a <a
+  href="/form">query</a>.
 </p>
+
 #else
-#include $_inc("statusblock.tmpl")
-<p class="trim" style="text-align:center;">(there is an option to notify by e-mail when MScanner is ready)</p>
+
+#include $inc("statusblock.tmpl")
+
+<p class="trim" style="text-align:center;">
+  (there is an option to notify by e-mail when MScanner is ready)
+</p>
+
 #end if
 
-</div>
-#end def
+</div><!--text-->
+
+</div><!--body-->
+
+#end def contents

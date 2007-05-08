@@ -25,16 +25,18 @@ warnings.simplefilter("ignore", UserWarning)
 
 import logging as log
 from path import path
+import sys
 from Cheetah.Template import Template
 
 class FileTransaction(file):
-    """Transaction for template which outputs to file.  Cheetah
-    default uses DummyTransaction which creates a huge list and joins
-    them up, which is way slow for large files.
+    """Transaction for template which outputs to file.  
+    
+    @note: Cheetah defaults to DummyTransaction which creates a 
+    huge list and joins them up to output a string.  This is way slow for 
+    large files (list append is O(N^2))
 
-    Call the template instance's 'respond' method with a
-    FileTransaction instead of converting the template instance to a
-    string.
+    @note: With an instance of Template, call respond() with a FileTransaction
+    instance, so the template uses FileTransaction.writeln() directly. 
     """
     
     def __init__(self, *pargs, **kwargs):
@@ -56,48 +58,75 @@ class TemplateMapper:
     either importing template modules from a package or compiling
     files in the template directory."""
 
-    def __init__(self, root=path("templates"), ext=".tmpl", module=None, gvars={}, template_cls=Template, kwargs={}):
+    def __init__(self, root=path("templates"), ext=".tmpl", module=None, gvars={}, template_class=Template, kwargs={}):
         """Initialise template mapper.
-
+        
         @param gvars: Global variables dictionary
-        @param root: Path to template directory
+        
+        @param root: Path to root template directory
+        
         @param ext: Template extension
-        @param module: Templates are modules under this module instead of re-compiling
-        @param kwargs: Keyword arguments to pass to __init__ of the template class 
+        
+        @param module: Root modulue for templates (root is then not used)
+        
+        @param kwargs: Keyword args for tmpl_class.__init__()
         """
+        self.root = path(root)
         self.gvars = gvars
         self.gvars["_inc"] = lambda x: str(self.root / x)
-        self.root = path(root)
+        self.gvars["_log"] = lambda x: sys.stderr.write(x)
         self.ext = ext
         self.module = module
-        self.template_cls = template_cls
+        self.template_class = template_class
         self.kwargs = kwargs
 
     def __getattr__(self, name):
-        """Use attribute access to obtain a callable template object"""
+        """Attribute access creates a callable template object"""
+        # Instantiate using self.root / name
         if self.module is None:
-            return self.CallableTemplate(self.root / name + self.ext, self.gvars, self.template_cls)
+            return self.CallableTemplate(
+                template=self.root / name + self.ext, 
+                default_search=self.gvars,
+                template_class=self.template_class)
+        # Instantiate using self.module.name.name
         else:
-            return self.CallableTemplate(getattr(getattr(self.module, name), name), self.gvars, self.template_cls)
+            return self.CallableTemplate(
+                template=getattr(getattr(self.module, name), name), 
+                default_search=self.gvars,
+                template_class=self.template_class)
 
     class CallableTemplate:
         
-        def __init__(self, template, gvars={}, template_cls=Template, kwargs={}):
-            """Initialise callable template with set of global variables"""
+        def __init__(self, template, default_search={}, template_class=Template, kwargs={}):
+            """Initialise callable template with set of global variables
+
+            @param template: path, string, or Template subclass
+            
+            @param default_search: Default search dictionary
+            
+            @param template_class: What to instantiate if template is path/string
+            
+            @param kwargs: Keyword arguments for Template constructor
+            """
             self.template = template
-            self.gvars = gvars
-            self.template_cls = template_cls
+            self.default_search = default_search
+            self.template_class = template_class
             self.kwargs = kwargs
 
         def __call__(self, *pvars, **kvars):
-            """Call template with self.gvars for globals, pvars adding to
-            the searchlist, and kvars forming a dictionary of parameters."""
-            slist = list(pvars) + [kvars, self.gvars]
+            """Call template with self.gvars for globals.
+            
+            @param *pvars: Dictionaries to add to the searchlist
+            @param **kvars: Keywords to add to search list."""
+            slist = list(pvars) + [kvars, self.default_search]
             if isinstance(self.template, path):
-                return self.template_cls(file=str(self.template), searchList=slist, **self.kwargs)
+                return self.template_class(
+                    file=str(self.template), searchList=slist, **self.kwargs)
             elif isinstance(self.template, basestring):
-                return self.template_cls(self.template, searchList=slist, **self.kwargs)
+                return self.template_class(
+                    source=self.template, searchList=slist, **self.kwargs)
             elif issubclass(self.template, Template):
-                return self.template(searchList=slist, **self.kwargs)
+                return self.template(
+                    searchList=slist, **self.kwargs)
             else:
                 raise ValueError("Unrecognised template")

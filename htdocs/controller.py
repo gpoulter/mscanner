@@ -5,7 +5,9 @@ Web.Py controller for the MScanner web interface.  The templates are
 the view, and the command-line scripts are the model.
 
                                    
+"""
 
+__license__ = """
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
@@ -24,22 +26,21 @@ from web.utils import Storage
 import time
 import platform
 
-from mscanner.utils import TemplateMapper
+from templates import front, form, output, status
 
-windows = platform.system() == "Windows"
+windows = (platform.system() == "Windows")
 web.webapi.internalerror = web.debugerror
 
 urls = (
-    '/', 'front',
-    '/form', 'form',
-    '/status', 'status',
-    '/output/(.*)', 'output',
-    '/hello/(.*)', 'hello'
+    '/', 'web_front',
+    '/form', 'web_form',
+    '/status', 'web_status',
+    '/output/(.*)', 'web_output',
 )
 
 testing = Storage(
     form = Storage(
-    batch = "",
+    dataset = "",
     code = "",
     pseudocount = 0.01,
     positives = "",
@@ -50,46 +51,68 @@ testing = Storage(
     alpha = 0.5),
 
     status = Storage(
-    batch = "TESTING",
-    start = time.time()-300.0,
+    dataset = "TESTING",
+    timestamp = time.time()-300.0,
     progress = 10,
     total = 20
     ),
 
     errors = [ "Error A", "Error B" ],
     
-    batches = [ Storage(batch="ABC", start=time.time()),
-                Storage(batch="DEF", start=time.time()-200) ]
+    datasets = [ Storage(dataset="ABC", timestamp=time.time()),
+                Storage(dataset="DEF", timestamp=time.time()-200) ]
+)
+
+defaults = dict(
+    baseurl = "",
+    inc = lambda x: "templates/" + x,
     )
 
-r = TemplateMapper(dict(root=""))
-
-class front:
+class web_front:
+    """Front page of the site"""
     def GET(self):
-        print r.page(r.front(status=testing.status))
+        t = front.front(searchList=defaults)
+        t.status = testing.status
+        print t
 
-class form:
+class web_form:
+    """Main submission form for queries or validation"""
     def GET(self):
-        print r.page(r.form(testing.form, status=None, errors=None))
+        t = form.form(searchList=[defaults, testing.form])
+        t.status = None
+        t.errors = None
+        print t
     def POST(self):
-        i = web.input("batch", "code", "pseudocount", "positives",
+        i = web.input("dataset", "code", "pseudocount", "positives",
                       "threshold", "limit", "nfold", "negatives", "alpha")
-        
-        print r.page(r.form(testing.form, status=testing.status))
+        t = form.form(searchList=[defaults, testing.form])
+        t.status = testing.status
+        print t
 
-class status:
+class web_status:
+    """Status page"""
     def GET(self):
-        print r.page(r.status(status=testing.status, output="BLAH BLAH\nBLAH"))
+        t = status.status(searchList=defaults)
+        t.status = testing.status
+        t.output = "BLAH BLAH BLAH"
+        print t
     def POST(self):
-        i = web.input("batch", "code")
-        print r.page(r.status(status=testing.status, output="BLAH BLAH\nBLAH"))
+        i = web.input("dataset", "code")
+        t = status.status(searchList=defaults)
+        t.status = testing.status
+        t.output = "BLAH BLAH BLAH"
+        print t
 
-class output:
+class web_output:
+    """Page with index of outputs"""
     def GET(self, name):
-        print r.page(r.output(batches=testing.batches))
-        print name
+        t = output.output(searchList=defaults)
+        t.datasets = testing.datasets
+        print t
     def POST(self):
-        print r.page(r.output(batches=testing.batches))
+        t = output.output(searchList=defaults)
+        t.datasets = testing.datasets
+        print t
 
 if __name__ == "__main__":
     #output().GET()

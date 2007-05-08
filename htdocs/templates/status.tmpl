@@ -1,8 +1,10 @@
+#extends page
+
 #def title
 Detailed Status Report
-#end def
+#end def title
 
-#def content
+#def contents
 
 #if $status is None
 <h2>MScanner is not busy at the moment</h2>
@@ -17,7 +19,7 @@ cross validation task.</p>
 <div class="status">
 
 <div style="margin:1em 0 1em 0;" width="20em">
-#include $_inc("statusblock.tmpl")
+#include $inc("statusblock.tmpl")
 </div>
 
 <form action="" method="post">
@@ -30,8 +32,8 @@ cross validation task.</p>
     below. The output location will be</p>
     <p>
       <input type="text" size="60" name="output" readonly="readonly"
-             value="http://mscanner.stanford.edu/static/output/$status.batch" />
-      or bookmark <a href="/static/output/$status.batch">this link</a>
+             value="http://mscanner.stanford.edu/static/output/$status.dataset" />
+      or bookmark <a href="/static/output/$status.dataset">this link</a>
     </p>
   </fieldset>
   <fieldset>
@@ -75,8 +77,8 @@ $output
 
 </div>
 
-#end if
+#end if log_contents
 
-#end if
+#end if status_is_not_None
 
-#end def
+#end def contents

@@ -34,7 +34,7 @@ div.header {
 div.header > h1 {
     margin: 0;
 }
-div.body {
+div.contents {
     background-color: #F6F9FE;
     padding: 1em;
     width: 100%;
@@ -129,10 +129,10 @@ form.output td.del {
     background-color: #BBBBBB; 
     text-align: center;
 }
-form.output td.batch {
+form.output td.dataset {
     background-color: #CCCCCC; 
     width: 15em;
 }
-form.output td.start {
+form.output td.timestamp {
     background-color: #DDDDDD; 
 }

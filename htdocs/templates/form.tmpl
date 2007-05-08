@@ -1,38 +1,48 @@
+#extends page
+
 #def title
 Submit Query or Validation #slurp
 #end def
 
 #def head
-<script type="text/javascript" src="$root/static/mootools.js"></script>
+<head>
 
-<script type="text/javascript">
-var help = new Object();
+  <title>$title</title>
+  $stdheaders
 
-window.onload = function() {
-  var names = [
-    "h_batch",
-    "h_code",
-    "h_pseudocount",
-    "h_positives",
-    "h_threshold",
-    "h_limit",
-    "h_nfold",
-    "h_negatives",
-    "h_alpha"
-  ];
-  for (var i = 0; i < names.length; i++) {
-    help[names[i]] = new Fx.Slide(names[i], {duration: 500})
-    help[names[i]].hide() 
-  }
-}
+  <script type="text/javascript" src="$baseurl/static/mootools.js"></script>
 
-function example() {
-   $('batch').value = "example-radiology-query"
-   $('positives').value = "10390570\n10555669\n10587123\n10658726\n10702822\n10747308\n11092485\n11812973\n12216754\n12438060\n12708922\n12828616\n12945936\n14510633\n14628859\n14700161\n14752189\n14914750\n15256634\n15310152\n15351243\n15405683\n15480032\n15520901\n15717221\n15718419\n1592926\n16009818\n16019460\n16154823\n16189163\n16272860\n16299797\n16344746\n16415460\n16488085\n1727362\n1899742\n1928554\n1950868\n1984330\n2406785\n2731700\n2806818\n3275982\n3279735\n3416282\n3840980\n3871147\n4040300\n5327041\n5368340\n6497634\n6783686\n6856834\n7034554\n7480744\n8190956\n8208972\n8316667\n8372948\n8615251\n8911169\n8988207\n8988208\n9754100\n9922200\n9922201\n"
-}
-</script>
-#end def
+  <script type="text/javascript">
+    var help = new Object();
+    
+    window.onload = function() {
+      var names = [
+        "h_dataset",
+        "h_code",
+        "h_pseudocount",
+        "h_positives",
+        "h_threshold",
+        "h_limit",
+        "h_nfold",
+        "h_negatives",
+        "h_alpha"
+      ];
+      for (var i = 0; i < names.length; i++) {
+        help[names[i]] = new Fx.Slide(names[i], {duration: 500})
+        help[names[i]].hide() 
+      }
+    }
+    
+    function example() {
+       $('dataset').value = "example-radiology-query"
+       $('positives').value = "10390570\n10555669\n10587123\n10658726\n10702822\n10747308\n11092485\n11812973\n12216754\n12438060\n12708922\n12828616\n12945936\n14510633\n14628859\n14700161\n14752189\n14914750\n15256634\n15310152\n15351243\n15405683\n15480032\n15520901\n15717221\n15718419\n1592926\n16009818\n16019460\n16154823\n16189163\n16272860\n16299797\n16344746\n16415460\n16488085\n1727362\n1899742\n1928554\n1950868\n1984330\n2406785\n2731700\n2806818\n3275982\n3279735\n3416282\n3840980\n3871147\n4040300\n5327041\n5368340\n6497634\n6783686\n6856834\n7034554\n7480744\n8190956\n8208972\n8316667\n8372948\n8615251\n8911169\n8988207\n8988208\n9754100\n9922200\n9922201\n"
+    }
+  </script>
+  
+</head>
+#end def head
 
+## Set the "disabled" attribute on form items if necessary
 #def disabled
 #if $status#disabled="disabled"#end if##slurp
 #end def
@@ -58,14 +68,18 @@ function example() {
 </tr>
 #end def
 
+## Generate input field 'name', of 'size' characters, defaulting to 'value'
 #def h_input(name, size, value)
 <input name="$name" id="$name" type="text" size="$size" value="$value" $disabled />
 #end def
 
+## Generate textarea 'name', filled with 'value'
 #def h_textarea(name, rows, cols, value)
 <textarea name="$name" id="$name" rows="$rows" cols="$cols" $disabled>$value</textarea>
 #end def
 
+## Generate dropdown 'name', with keys/values in the list titled 'options',
+## and with 'value' selected as the default.
 #def h_option(name, options, value)
 <select name="$name" id="$name" $disabled>
 #for f in options
@@ -74,7 +88,9 @@ function example() {
 </select>
 #end def
 
-#def content
+#def contents
+<div class="contents">
+
 <form class="query" action="" method="post">
   
   #if $getVar('errors',None)
@@ -103,7 +119,7 @@ function example() {
     <legend>Standard Options</legend>
 
     <table>
-      $form_row("Batch Name", "batch", $h_input("batch",30,$batch),
+      $form_row("Batch Name", "dataset", $h_input("dataset",30,$dataset),
       """To help identify your results, provide a name for your
       submission so that you can identify it later.  The title may
       only consist of lowercase alphanumerics plus _.-, up to a
@@ -193,4 +209,7 @@ function example() {
   <button type="button" onclick="javascript:example()" $disabled>Example Query</button>
 
 </form>
-#end def
+
+</div><!--contents-->
+
+#end def contents

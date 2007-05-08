@@ -241,6 +241,8 @@ def citationTable(startfrom, scores, articles):
     @param scores: List of (PMID, score) in decreasing order of score
     @param articles: Mapping from PMID to Article object
     
+    @return: HTML for the <table> of citations
+    
     @note: The philosophy here is to use Cheetah when there is more HTML than
     logic, and ElementTree when there is more logic than HTML. The old
     Cheetah template was getting cluttered from all the logic.  This 

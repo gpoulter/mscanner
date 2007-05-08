@@ -1,2 +1,0 @@
-#!/bin/bash
-xsltproc.exe ~/bin/de-xhtml.xsl index.xhtml > index.html

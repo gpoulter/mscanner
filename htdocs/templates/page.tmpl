@@ -1,24 +1,36 @@
+#block doctype
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+#end block
 
+#def title
+Sample Title
+#end def
+
+#block html
 <html>
 
+#block head
 <head>
-  <title>$title</title>
-  <link rel="stylesheet" type="text/css" href="$root/static/mscanner.css"/>
-  <link rel="shortcut icon" href="$root/favicon.png" type="image/x-icon"/>
-  $getVar('head', '')
+<title>$title</title>
+
+#block stdheaders
+<link rel="stylesheet" type="text/css" href="$baseurl/static/mscanner.css"/>
+<link rel="shortcut icon" href="$baseurl/favicon.png" type="image/x-icon"/>
+#end block stdheaders
+
 </head>
+#end block head
 
+#block body
 <body>
-  
-<div class="header">
-#if $getVar('heading', False)
-$heading
-#else
-<h1>$title</h1>
-#end if
-</div>
 
+#block header
+<div class="header">
+  <h1>$title</h1>
+</div>
+#end block header
+
+#block topmenu
 <div class="topmenu">
   <table>
     <tr>
@@ -37,15 +49,22 @@ $heading
     </tr>
   </table>
 </div>
+#end block topmenu
 
-<div class="body">
-$content
+#block contents
+<div class="contents">
+TESTING
 </div>
+#end block contents
 
+#block footer
 <div class="footer">
                                       
 </div>
+#end block footer
 
 </body>
-  
+#end block body
+
 </html>
+#end block html

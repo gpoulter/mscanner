@@ -1,8 +1,10 @@
+#extends page
+
 #def title
 MScanner Output
 #end def
 
-#def content
+#def contents
 #import time
 <form class="output" action="" method="post">
 
@@ -14,20 +16,20 @@ MScanner Output
       <tr>
         <th>Selection</th>
         <th>Batch Name</th>
-        <th>Start Date</th>
+        <th>Timestamp</th>
       </tr>
     </thead>
     <tbody>
-      #for d in $batches
+      #for d in $datasets
       <tr>
         <td class="del">
-          <input type="radio" name="selection" value="$d.batch"/>
+          <input type="radio" name="selection" value="$d.dataset"/>
         </td>
-        <td class="batch">
-          <a href="/static/output/$d.batch/" target="_blank">$d.batch</a>
+        <td class="dataset">
+          <a href="/static/output/$d.dataset/" target="_blank">$d.dataset</a>
         </td>
-        <td class="start">
-          $time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($d.start))
+        <td class="timestamp">
+          $time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($d.timestamp))
         </td>
       </tr>
       #end for

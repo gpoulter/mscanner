@@ -18,7 +18,7 @@ from pylab import *
 import scipy
 from subprocess import call
 
-from mscanner.configuration import rc
+from mscanner.configuration import rc as mrc
 from mscanner.utils import readPMIDs
 from mscanner.validation import PerformanceStats
 from mscanner.plotting import bincount, kernelPDF, calculateOverlap
@@ -54,11 +54,16 @@ def getFeatScores(dataset):
     f.readline()
     return array([float(s.split(",",1)[0]) for s in f])
 
-def getStats(dataset, title, alpha=0.5, with_fscores=False):
-    """Read statistics based on score data"""
+def getStats(dataset, title, alpha=0.5):
+    """Read statistics based on score data
+    
+    @param dataset: Subdirectory name for the data set
+    @param title: Name to put on the graphs (typically same as dataset)
+    @param alpha: What alpha to use when recalcing performance
+    """
     print "Reading dataset %s" % dataset
-    pscores = array([s[1] for s in readPMIDs(indir/dataset/rc.report_positives, withscores=True)])
-    nscores = array([s[1] for s in readPMIDs(indir/dataset/rc.report_negatives, withscores=True)])
+    pscores = array([s[1] for s in readPMIDs(indir/dataset/mrc.report_positives, withscores=True)])
+    nscores = array([s[1] for s in readPMIDs(indir/dataset/mrc.report_negatives, withscores=True)])
     stats = PerformanceStats(pscores, nscores, alpha)
     stats.title = title
     return stats
@@ -87,8 +92,10 @@ def plotArticleScoreDensity(fname, statlist):
         title(s.title)
         line_pos, = plot(px, py, color='red', label=r"$\rm{Positive}$")
         line_neg, = plot(nx, ny, color='blue', label=r"$\rm{Negative}$")
-        line_threshold = axvline(s.threshold, color='green', linewidth=0.5, label=r"$\rm{Threshold}$")
-        patch_overlap, = fill(iX, iY, facecolor='magenta', alpha=0.7, label=r"$\rm{Overlap}$")
+        line_threshold = axvline(s.threshold, color='green', linewidth=0.5, 
+                                 label=r"$\rm{Threshold}$")
+        patch_overlap, = fill(iX, iY, facecolor='magenta', alpha=0.7, 
+                              label=r"$\rm{Overlap}$")
         if idx == 0 or idx == 2:
             ylabel("Density")
         if idx == 2 or idx == 3:
@@ -202,9 +209,9 @@ def test_plots():
     #pg04alpha.title = pg04.title
     #plotPRF("test_prf", pg04alpha)
 
-def custom_plots(fnames):
-    statlist = [getStats(f,f) for f in fnames]
-    fscores = [getFeatScores(f) for f in fnames]
+def custom_plots(subdirs):
+    statlist = [getStats(d,d) for d in subdirs]
+    fscores = [getFeatScores(d) for d in subdirs]
     #plotArticleScoreDensity("cus_density", stats)
     #plotROC("cus_roc", statlist)
     #plotPR("cus_pr", statlist)
@@ -222,7 +229,7 @@ if __name__ == "__main__":
     if data is None:
         print __doc__
         sys.exit(1)
-    if data== "bmc":
+    elif data== "bmc":
         publication_plots()
     elif data == "test":
         test_plots()

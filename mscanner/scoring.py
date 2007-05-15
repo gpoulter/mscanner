@@ -1,9 +1,10 @@
 """Calculate term and document scores
 
-calculateFeatureScores() -- Calculate scores of features
-FeatureScoreInfo -- Class holding information concerning feature score
-filterDocuments() -- Return list of (docid,score) pairs given documents and
-term scores
+FeatureInfo -- Feature score calculation
+iterScores() -- Iterate over document scores
+filterDocuments() -- Filter iterScores() output for top N
+partitionList() -- Split list into train/test partitions
+retrievalTest() -- Count gold standard docs as a function of rank
 
                                    
 """
@@ -22,213 +23,296 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 http://www.gnu.org/copyleft/gpl.html
 """
 
-import codecs
 import heapq
-import logging as log
 import numpy as nx
-import os
-from path import path
-import time
 
 from mscanner import statusfile
 from mscanner.featuremap import FeatureMapping
+from mscanner.utils import selfupdate
 from mscanner.storage import Storage
-from mscanner.gcheetah import FileTransaction, TemplateMapper
 
-class FeatureScoreInfo:
+class FeatureInfo:
     """Class to calculate and store all information about the
     features, their distribution, and their scores
+
+    Passed to constructor:
     
-    @ivar scores: Array of feature scores
-
-    @ivar mask: Boolean array to mask out features of types in exclude_feats
+    @ivar pos_counts: Array of feature counts in positive documents. 
     
-    @ivar pos_occurrences: Total feature occurrences in positives
-
-    @ivar neg_occurrences: Total feature occurrences in negatives
-
-    @ivar feats_per_pos: Number of features per positive article
-
-    @ivar feats_per_neg: Number of features per negative article
-
-    @ivar distinct_feats: Number of distinct features
-
-    @ivar pos_distinct_feats: Number of of distinct features in positives
-
-    @ivar neg_distinct_feats: Number of of distinct features in negatives
+    @ivar neg_counts: Array of feature counts in negatives documents
     
-    """
+    @ivar pdocs: Number of positive documents
+    
+    @ivar ndocs: Number of negative documents
 
-    def __init__(self, pos_counts, neg_counts, pdocs, ndocs,
-                 pseudocount, featmap, exclude_types=None, 
-                 daniel=False, cutoff=False):
-        """Parameters are as for calculateFeatureScores, and are also kept as
-        instance variables.
-
-        @param featmap: Mapping between Feature ID and (feature string, feature
-        type)
-
-        @param exclude_types: Types of features to exclude (their scores are set
-        to zero).
-        
-        @param pseudocount: Either a float which is the pseudocount for any
-        feature. If "not pseudocount" (false/0/None), case we create an array of
-        per-feature pseudocount, with each being the Medline frequency of the
-        feature.
-        
-        @param pos_counts, neg_count, pdocs, ndocs, daniel, cutoff: Passed on
-        direct to calculateFeatureScores.
-  
-        """
-        isinstance(featmap, FeatureMapping)
-        self.pos_counts = pos_counts
-        self.neg_counts = neg_counts
-        self.pdocs = pdocs
-        self.ndocs = ndocs
-        self.pseudocount = pseudocount
-        if not pseudocount:
-            self.pseudocount = nx.array(featmap.counts, nx.float32) / featmap.numdocs
-        self.featmap = featmap
-        self.exclude_types = exclude_types
-        self.daniel = daniel
-        self.cutoff = cutoff
-        self.num_feats = len(self.featmap)
-        self.mask = self.featmap.featureTypeMask(self.exclude_types)
-        self.recalculateFeatureScores()
-        self.recalculateFeatureStats()
-
-    def recalculateFeatureScores(self):
-        """Recalculate scores for features, and return the array of scores"""
-        self.scores, self.pfreqs, self.nfreqs = calculateFeatureScores(
-            self.pos_counts, self.neg_counts,
-            self.pdocs, self.ndocs,
-            self.pseudocount, self.mask, self.daniel, self.cutoff)
-        return self.scores
-
-    def recalculateFeatureStats(self):
-        """Recalculate statistics about the feature database"""
-        self.pos_occurrences = int(nx.sum(self.pos_counts)) 
-        self.feats_per_pos = 0.0
-        if self.pdocs > 0:
-            self.feats_per_pos = self.pos_occurrences / self.pdocs 
-        self.neg_occurrences = int(nx.sum(self.neg_counts))
-        self.feats_per_neg = 0.0
-        if self.ndocs > 0:
-            self.feats_per_neg = self.neg_occurrences / self.ndocs 
-        self.pos_distinct_feats = len(nx.nonzero(self.pos_counts)[0]) 
-        self.neg_distinct_feats = len(nx.nonzero(self.neg_counts)[0]) 
-
-    def writeFeatureScoresCSV(self, stream):
-        """Write features scores as CSV to an output stream"""
-        stream.write(u"score,positives,negatives,pseudocount,numerator,denominator,termid,type,term\n")
-        _ = self
-        if isinstance(self.pseudocount, float):
-            pseudocount = nx.zeros_like(_.scores) + self.pseudocount
-        else:
-            pseudocount = self.pseudocount
-        for t, score in sorted(enumerate(_.scores), key=lambda x:x[1], reverse=True):
-            if _.mask and _.mask[t]:
-                continue
-            stream.write(
-                u'%.3f,%d,%d,%.2e,%.2e,%.2e,%d,%s,"%s"\n' % 
-                (_.scores[t], _.pos_counts[t], _.neg_counts[t], 
-                 pseudocount[t], _.pfreqs[t], _.nfreqs[t],
-                 t, _.featmap[t][1], _.featmap[t][0]))
-
-def calculateFeatureScores(
-    pos_counts, neg_counts, pdocs, ndocs, pseudocount, 
-    mask=None, daniel=False, cutoff=False):
-    """Return feature support scores based on relative frequency in positives vs
-    negatives
-
-    @param pos_counts: Array of feature counts in positive documents. 
-    @param neg_counts: Array of feature counts in negatives documents
-
-    @param pdocs: Number of positive documents
-    @param ndocs: Number of negative documents
-
-    @param pseudocount: Float with the global pseudocount for
-    any term, e.g. if 0.1, we add 0.1 occurrences across of the term, and add
-    0.2 (2*0.1) to the number of articles so that
-    P(term|positive)+P(~term|positive)=1.  May instead be an array of floats
-    specifying a different pseudocount for each feature.
-
-    @param mask: Optional boolean array specifiying features to mask to zero
-
-    @param daniel: If true, use the JAMIA paper's smoothing heuristic
+    @ivar pseudocount: Either a float which is the pseudocount for all
+    features, or numpy array of per-feature counts, or None which triggers
+    once-off creation of per-features counts equal to Medline frequency if
+    Bayesian calculation is in use.
+    
+    @ivar mask: Boolean array for masking some features scores to zero
+    
+    @ivar daniel: If true, use the JAMIA paper's smoothing heuristic
     of 10^-8 for terms found in positive but not negative (and visa
     versa).
     
-    @param cutoff: If true, any features whose positive count is zero but
+    @ivar cutoff: If true, any features whose positive count is zero but
     nonetheless obtain a positive score (due to pseudocount priors), has its
     score set to zero.
     
-    @note: Features where pos_counts[i] and neg_counts[i] are both zero 
-    have scores set to zero (disabled in favour of cutoff).
+    Added by constructor:
+    
+    @ivar getFrequencies: Method to calculate pfreq, nfreq
+    
+    @ivar postmask: Method for custom masking after scores are known
+    
+    @ivar featmap: featuremap.FeatureMapping object
+    
+    Calculated by getFeatureScores():
+    
+    @ivar pfreqs: Probability of each feature given positive article
+    
+    @ivar pfreqs: Probability of each feature given negative article
 
-    @return: Array of feature scores (zeros for masked features),
-    array of feature frequencies in positives, and array of
-    feature frequencies of negatives.
+    @ivar scores: Array of feature scores
+
     """
-    # Daniel = Rubin2005 smoothing heuristic
-    if daniel:
-        pfreqs = pos_counts / float(pdocs)
-        nfreqs = neg_counts / float(ndocs)
+
+    def __init__(self, 
+                 featmap, 
+                 pos_counts=None, 
+                 neg_counts=None, 
+                 pdocs=None, 
+                 ndocs=None,
+                 pseudocount=None, 
+                 mask=None,
+                 daniel=False, 
+                 cutoff=False):
+        """Initialise FeatureInfo object (parameters are instance variables)
+        """
+        if daniel:
+            getFrequencies = self.getFrequenciesRubin05
+        else:
+            getFrequencies = self.getFrequenciesBayes
+        if cutoff:
+            postmask = self.maskRarePositives
+        else:
+            postmask = None
+        selfupdate()
+        
+    def __len__(self):
+        """Length is the number of features"""
+        return len(self.featmap)
+        
+    def updateFeatureScores(self, pos_counts, neg_counts, pdocs, ndocs):
+        """Change the feature counts and number of documents (and clear
+        old score calculations)."""
+        selfupdate()
+        try:
+            del self.scores
+            del self.stats
+        except AttributeError:
+            pass
+        return self.getFeatureScores()
+
+    def getFeatureScores(self):
+        """Calculate feature probabilities, and then calculate log likelihood
+        support score of each feature.
+        
+        @return: Array of feature scores
+        """
+        pfreqs, nfreqs = self.getFrequencies()
+        scores = nx.log(pfreqs / nfreqs)
+        if self.mask is not None:
+            pfreqs[self.mask] = 0
+            nfreqs[self.mask] = 0
+            scores[self.mask] = 0
+        selfupdate()
+        if self.postmask:
+            self.postmask()
+        return scores
+
+    def getFrequenciesRubin05(s):
+        """Uses Daniel Rubin's frequency smoothing heuristic, which
+        replaces zero-frequency with 1e-8"""
+        pfreqs = s.pos_counts / float(s.pdocs)
+        nfreqs = s.neg_counts / float(s.ndocs)
         pfreqs[pfreqs == 0.0] = 1e-8
         nfreqs[nfreqs == 0.0] = 1e-8
-    # Use Bayesian pseudocount vector, or zero-offset psuedocount float
-    else:
-        pfreqs = (pos_counts+pseudocount) / (2*pseudocount+pdocs)
-        nfreqs = (neg_counts+pseudocount) / (2*pseudocount+ndocs)
-    # Log likelihood scores
-    scores = nx.log(pfreqs / nfreqs)
-    # Cutoff removes positive-scoring rare features
-    if cutoff:
-        scores[(scores > 0) & (pos_counts == 0)] = 0
-    # Remove masked features from consideration
-    if mask:
-        pfreqs[mask] = 0
-        nfreqs[mask] = 0
-        scores[mask] = 0
-    # Set "prior scores" for not-encountered features to zero?
-    if False:
-        dmask = (pos_counts + neg_counts == 0)
-        pfreqs[dmask] = 0
-        nfreqs[dmask] = 0
-        scores[dmask] = 0
-    return scores, pfreqs, nfreqs
+        return pfreqs, nfreqs
 
-def filterDocuments(docs, featscores, exclude=[], limit=10000, threshold=0.0):
-    """Return scores for documents given features and feature scores
+    def getFrequenciesBayes(s):
+        """Use Bayesian pseudocount vector, or a psuedocount float
+         as a zero offset"""
+        if s.pseudocount is None:
+            s.pseudocount = nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
+        pfreqs = (s.pos_counts+s.pseudocount) / (2*s.pseudocount+s.pdocs)
+        nfreqs = (s.neg_counts+s.pseudocount) / (2*s.pseudocount+s.ndocs)
+        return pfreqs, nfreqs
 
+    def maskRarePositives(s):
+        """Removes positive-scoring features which fail to occur in the
+        positive set"""
+        s.scores[(s.scores > 0) & (s.pos_counts == 0)] = 0
+        
+    def maskLessThanThree(s):
+        """Remove features occurring 2 or fewer times in total"""
+        s.scores[(s.pos_counts + s.neg_counts) <= 2] = 0
+
+    def getFeatureStats(self):
+        """Recalculate statistics about the feature database
+        
+        Returns Storage object with the following keys:
+    
+        @ivar pos_occurrences: Total feature occurrences in positives
+    
+        @ivar neg_occurrences: Total feature occurrences in negatives
+    
+        @ivar feats_per_pos: Number of features per positive article
+    
+        @ivar feats_per_neg: Number of features per negative article
+    
+        @ivar distinct_feats: Number of distinct features
+    
+        @ivar pos_distinct_feats: Number of of distinct features in positives
+    
+        @ivar neg_distinct_feats: Number of of distinct features in negatives
+        
+        """
+        s = Storage()
+        s.pdocs = self.pdocs
+        s.ndocs = self.ndocs
+        s.num_feats = len(self)
+        s.pos_occurrences = int(nx.sum(self.pos_counts)) 
+        s.feats_per_pos = 0.0
+        if self.pdocs > 0:
+            s.feats_per_pos = s.pos_occurrences / s.pdocs 
+        s.neg_occurrences = int(nx.sum(self.neg_counts))
+        s.feats_per_neg = 0.0
+        if self.ndocs > 0:
+            s.feats_per_neg = s.neg_occurrences / s.ndocs 
+        s.pos_distinct_feats = len(nx.nonzero(self.pos_counts)[0]) 
+        s.neg_distinct_feats = len(nx.nonzero(self.neg_counts)[0]) 
+        return s
+
+    def writeScoresBinary(self, stream):
+        """Write feature scores as binary representation to stream"""
+        stream.write(self.scores.tostring())
+
+    def writeScoresCSV(self, stream):
+        """Write features scores as CSV to an output stream"""
+        if not hasattr(self, "scores"):
+            self.getFeatureScores()
+        stream.write(u"score,positives,negatives,pseudocount,"\
+                     u"numerator,denominator,termid,type,term\n")
+        if isinstance(self.pseudocount, float):
+            pseudocount = nx.zeros_like(self.scores) + self.pseudocount
+        else:
+            pseudocount = self.pseudocount
+        s = self
+        for t, score in sorted(
+            enumerate(s.scores), key=lambda x:x[1], reverse=True):
+            if s.mask is not None and s.mask[t]:
+                continue
+            stream.write(
+                u'%.3f,%d,%d,%.2e,%.2e,%.2e,%d,%s,"%s"\n' % 
+                (s.scores[t], s.pos_counts[t], s.neg_counts[t], 
+                 pseudocount[t], s.pfreqs[t], s.nfreqs[t],
+                 t, s.featmap[t][1], s.featmap[t][0]))
+
+def iterScores(docs, featscores, exclude=None):
+    """Iterate over docs, yielding scores (calculated using featscores array),
+    while skipping over members of exclude, and making status updates
+    every 100,000 articles
+    
     @param docs: Iterator over (integer doc ID, array of feature ID) pairs
 
     @param featscores: Array of feature scores (mapping feature ID to score)
     
-    @param exclude: Set of doc IDs to exclude from scoring
+    @param exclude: PMIDs to exclude from scoring
+    
+    @return: Iteration of (score, PMID) pairs
+    """
+    marker = 0
+    for idx, (docid, features) in enumerate(docs):
+        if idx == marker:
+            statusfile.update(idx)
+            marker += 100000
+        if exclude is None or docid not in exclude:
+            yield nx.sum(featscores[features]), docid
+    statusfile.update(None)    
+
+def countFeatures(nfeats, featdb, docids):
+    """Count occurrenes of each feature in a set of articles
+
+    @param nfeats: Number of distinct features (size of array)
+
+    @param featdb: Mapping from document ID to list of feature IDs
+
+    @param docids: List of document IDs whose features are to be counted
+
+    @return: Array of length nfeats, with occurrence count of each feature
+    """
+    counts = nx.zeros(nfeats, nx.int32)
+    for docid in docids:
+        counts[featdb[docid]] += 1
+    return counts
+
+def filterDocuments(scores, limit, threshold=None):
+    """Return scores for documents given features and feature scores
+
+    @param scores: Iterator over (score, pmid) pairs
 
     @param limit: Maximum number of results to return.
 
     @param threshold: Cutoff score for including an article in the results
 
-    @return: Generator over (docid,score) pairs
+    @return: List of (score, PMID) pairs in decreasing order of score
     """
     results = [(-100000, 0)] * limit
     ndocs = 0
-    marker = 0
-    for idx, (docid, features) in enumerate(docs):
-        if docid in exclude:
-            continue
-        if idx == marker:
-            statusfile.update(idx)
-            marker += 100000
-        score = nx.sum(featscores[features])
-        if score >= threshold:
-            #print idx, docid, score
+    for score, docid in scores:
+        if threshold is None or score >= threshold:
             ndocs += 1
             if score >= results[0][0]:
                 heapq.heapreplace(results, (score,docid))
-    statusfile.update(None)
     if ndocs < limit:
         limit = ndocs
-    return [(docid,score) for score,docid in heapq.nlargest(limit, results)]
+    return heapq.nlargest(limit, results)
+
+def partitionList(pmids, subset_size=0.1, randomise=True):
+    """Split list of objects into into two partitions
+    
+    @param pmids: List of PubMed IDs
+    
+    @param testsize: Amount to use for training (float for proportion,
+    int for exact number)
+    
+    @param randomise: Set to False to disable random for debugging
+    
+    @return: Set of training IDs, and set of testing IDs
+    """
+    if randomise:
+        import random
+        random.shuffle(pmids)
+    if isinstance(subset_size, float):
+        subset_size = int(subset_size * len(pmids))
+    return set(pmids[:subset_size]), set(pmids[subset_size:])
+
+def retrievalTest(results, test):
+    """Returns number of 
+
+    @param results: List of result PubMed IDs
+    
+    @param test: Set of gold-standard articles to look for in query results
+
+    @return: Array with of cumulative number of gold-standard articles at each 
+    rank.
+    """
+    assert isinstance(test, set)
+    TP_total = nx.zeros(len(results), nx.int32)
+    for idx, pmid in enumerate(results):
+        TP_total[idx] = TP_total[idx-1] if idx > 0 else 0
+        if pmid in test:
+            TP_total[idx] += 1
+    return TP_total

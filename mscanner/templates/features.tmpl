@@ -1,5 +1,5 @@
 #* TEMPLATE PARAMETERS
-$f -- FeatureScoreInfo object
+$stats -- Information from FeatureInfo.getFeatureStats()
 *#
 
 <h2>Feature Statistics</h2>
@@ -20,23 +20,23 @@ $f -- FeatureScoreInfo object
   <tbody>
     <tr>
       <th>Number of documents</th>
-      <td>$f.pdocs</td>
-      <td>$f.ndocs</td>
+      <td>$stats.pdocs</td>
+      <td>$stats.ndocs</td>
     </tr>
     <tr>
       <th>Number of distinct features</th>
-      <td>$f.pos_distinct_feats</td>
-      <td>$f.neg_distinct_feats</td>
+      <td>$stats.pos_distinct_feats</td>
+      <td>$stats.neg_distinct_feats</td>
     </tr>
     <tr>
       <th>Total feature occurrences</th>
-      <td>$f.pos_occurrences</td>
-      <td>$f.neg_occurrences</td>
+      <td>$stats.pos_occurrences</td>
+      <td>$stats.neg_occurrences</td>
     </tr>
     <tr>
       <th>Terms per document</th>
-      <td>#echo "%.3f" % $f.feats_per_pos #</td>
-      <td>#echo "%.3f" % $f.feats_per_neg #</td>
+      <td>#echo "%.3f" % $stats.feats_per_pos #</td>
+      <td>#echo "%.3f" % $stats.feats_per_neg #</td>
     </tr>
   </tbody>
 </table>

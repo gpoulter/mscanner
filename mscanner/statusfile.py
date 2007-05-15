@@ -76,7 +76,7 @@ def start(filename=None, total=0, dataset="", progress=0, timestamp=None):
     s.dataset = dataset if dataset else rc.dataset
     s.timestamp = timestamp if timestamp else time.time()
     s.owner = True
-    s.update(progress, total)
+    s.update(progress, total, dolog=False)
     
 def close():
     """Remove status file"""
@@ -96,7 +96,7 @@ def contents():
     return "%d\n%d\n%d\n%s\n%s\n" % (
         s.pid, s.progress, s.total, s.dataset, str(s.timestamp))
 
-def update(progress=None, total=None):
+def update(progress=None, total=None, dolog=True):
     """Update progress of status file.  If progress is None, set to total."""
     if s.filename is not None and not s.owner:
         raise IOError("Cannot update status file which we do not own")
@@ -105,7 +105,8 @@ def update(progress=None, total=None):
     if progress is None:
         s.progress = s.total
     else:
-        s.progress = progress    
-    log.info("Completed %d out of %d", s.progress, s.total)
+        s.progress = progress
+    if dolog:
+        log.info("Completed %d out of %d", s.progress, s.total)
     if s.filename is not None:
         s.filename.write_text(contents())

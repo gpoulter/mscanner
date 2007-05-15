@@ -26,10 +26,13 @@ class FeatureMapping:
     """Curates a database of string features, providing methods to map
     between a feature string and an integer feature ID.
 
-    @note: The type of a feature could be 'mesh', 'qual', 'issn',
-    'year', or 'author'.  A given feature string could have more than
-    one type.
-
+    @note: The feature types used so far have been 'mesh', 'qual', 'issn',
+    'year', abd 'author'. A given feature string could have more than one type.
+    
+    @note: In certain places just the counts array will suffice.
+    
+    Set by constructor:
+    
     @ivar numdocs: Number of documents used in creating the mapping
 
     @ivar features: List which effectively maps id:(feature,type)

@@ -3,12 +3,12 @@
 Configuration options are stored in the "rc" variable in this module, which is a
 utils.RCStorage object.
 
-@note: The reason for things like pseudocount being here is that they only
-change between invocations. Within the program, pseudocount is really a
-constant and it would be a pain to make sure that the same value gets passed
-down through the call graph. Everyone who uses pseudocount et al knows that in
-configuration.rc.pseudocount lies the Single Point of Truth regarding its
-value.
+@note: Some RC parameters, like directory paths, provide configuration
+for things which tend not to change between invocations and data sets.
+Others, like pseudocount or path to the input file, are an easy
+way to provide centralised defaults for those options.  Instantiated
+objects, like FeatureInfo, keep their own pseudocount etc.
+in the instance (passed via __init__), which may differ from the RC one.
 
 @note: For parameters which depend on others, prefix with lambda:
 so that the dependency is updated dynamically.
@@ -95,18 +95,28 @@ rc.pharmdemo = False
 
 ### Report File Names
 
+## Path to index file
+rc.report_index = path("index.html")
+
+## Name of input score file
+rc.report_input_scores = path("input_scores.txt")
 ## Name of result score file
 rc.report_result_scores = path("result_scores.txt")
 ## Name of file with citation records for the input
 rc.report_input_citations = path("input_citations.html")
 ## Name of file with citation records for the output
 rc.report_result_citations = path("result_citations.html")
-## Path of file with positive input PMIDs (and their scores)
+## Name of file with cumulative count of retrieved test PMIDs
+rc.report_retrieval_stats = path("retrieval_stats.txt")
+## Name of file with list of testing PMIDs
+rc.report_retrieval_test_pmids = path("retrieval_test.txt")
+## Name of retrieval vs rank graph
+rc.report_retrieval_graph = path("retrieval.png")
+
+## Path of file with positive PMIDs and scores
 rc.report_positives = path("positives.txt")
-## Name of file with negative input PMIDs (and their scores)
+## Name of file with negative PMIDs and scores
 rc.report_negatives = path("negatives.txt")
-## Path to index file
-rc.report_index = path("index.html")
 ## Name of term score file
 rc.report_term_scores = path("term_scores.csv")
 ## Name of histogram file
@@ -136,6 +146,8 @@ rc.exclude_types = []
 rc.smtpserver = "smtp.uct.ac.za" # "smtp.stanford.edu"
 ## Whether to use Daniel's 10^-8 pseudocounts
 rc.dodaniel = False
+## Proportion of data to use in retrieval test
+rc.retrieval_test_prop = 0.1
 
 #### Web-configurable parameters
 

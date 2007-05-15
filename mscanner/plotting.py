@@ -21,20 +21,20 @@ General Public License for more details.
 http://www.gnu.org/copyleft/gpl.html
 """
 
+from Gnuplot import Data, Gnuplot
 from itertools import chain
 import numpy as n
 from pprint import pprint
 from scipy.interpolate import interp1d
 from scipy.integrate import trapz
-from Gnuplot import Data
 
 def bincount(data):
     """Return best number of histogram bins for the data (expects data sorted
     increasing order) using $\frac{R}{2*IQR*N^{-1/3}}"""
-    N = len(data)
-    IQR = data[3*N//4] - data[N//4]
-    R = data[-1] - data[0]
-    bins = R//(2*IQR*N**(-1/3))
+    N = len(data) # Number of data points
+    IQR = data[3*N//4] - data[N//4] # Inter-Quartile Range
+    R = data[-1] - data[0] # Range
+    bins = R//(2*IQR*N**(-1/3)) # Number of bins
     #print N, IQR, R, bins
     return min(150,max(10, bins))
     
@@ -81,119 +81,124 @@ def kernelPDF(values, npoints=512):
     density = stats.kde.gaussian_kde(n.array(values)).evaluate(points)
     return points, density
 
-def plotArticleScoreDensity(g, fname, pdata, ndata, threshold):
-    """Plot probability density for pos/neg scores, with line to mark threshold
-
-    @param g: gnuplot object
-    @param fname: Filename to plot to
-    @param pdata: Scores of positive documents
-    @param ndata: Scores of negative documents
-    @param threshold: Threshold score for counting a document positive
-    """ 
-    px, py = kernelPDF(pdata)
-    nx, ny = kernelPDF(ndata)
-    overlap = calculateOverlap(px, py, nx, ny)
-    g.reset()
-    g.title("Article Score Densities")
-    g.ylabel("Probability Density")
-    g.xlabel("Article score")
-    g("set terminal png")
-    g("set output '%s'" % fname)
-    threshold_height = max(chain(py, ny))
-    g.plot(Data([threshold, threshold], [0, threshold_height], title="threshold", with="lines"),
-           Data(px, py, title="Positives", with="lines"),
-           Data(nx, ny, title="Negatives", with="lines"))
-    return overlap
-
-def plotFeatureScoreDensity(g, fname, scores):
-    """Plots probability density function for feature scores
-    """
-    x, y = kernelPDF(scores, npoints=1024)
-    g.reset()
-    g.title("Feature Score Density")
-    g.xlabel("Feature Score")
-    g.ylabel("Probability Density")
-    g("set terminal png")
-    g("set output '%s'" % fname)
-    g.plot(Data(x, y, with="lines"))
-
-def plotArticleScoreHistogram(g, fname, pdata, ndata, threshold):
-    """Plot histograms for pos/neg scores, with line to mark threshold""" 
-    py, px = n.histogram(pdata, bins=bincount(pdata), normed=True)
-    ny, nx = n.histogram(ndata, bins=bincount(ndata), normed=True)
-    g.reset()
-    g.title("Score Histograms")
-    g.xlabel("Article Score")
-    g.ylabel("Histogram Mass")
-    g("set terminal png")
-    g("set output '%s'" % fname)
-    g("set style fill solid 0.4")
-    g("set arrow from %f,0 to %f,%f nohead" % (threshold,threshold,max(chain(py,ny))))
-    g.plot(Data(px, py, title="Positives", with="boxes"),
-           Data(nx, ny, title="Negatives", with="boxes"))
+class Plotter(Gnuplot):
     
-def plotFeatureScoreHistogram(g, fname, scores):
-    """Plot histogram for individual feature scores"""
-    sscores = scores.copy()
-    sscores.sort()
-    y, x = n.histogram(scores, bins=bincount(sscores))
-    g.reset()
-    g.title("Feature Score Histogram")
-    g.xlabel("Feature Score")
-    g.ylabel("Histogram Mass")
-    g("set logscale y")
-    g("set terminal png")
-    g("set output '%s'" % fname)
-    g("set style fill solid 1.0")
-    g.plot(Data(x, y, with="boxes"))
-
-def plotROC(g, roc, FPR, TPR, marker_FPR):
-    """ROC curve (TPR vs FPR)
-
-    @param g: gnuplot object
-
-    @param roc: Path to output file for ROC curve
-    """
-    g.reset()
-    g.title("ROC curve (TPR vs FPR)")
-    g.ylabel("True Positive Rate (TPR)")
-    g.xlabel("False Positive Rate (FPR)")
-    g("set terminal png")
-    g("set output '%s'" % roc)
-    g.plot(Data(FPR, TPR, title="TPR", with="lines"),
-           Data([marker_FPR, marker_FPR], [0,0.99], title="threshold", with="lines"))
-
-def plotPrecisionRecall(g, p_vs_r, TPR, PPV, marker_TPR):
-    """Precision vs recall graph
-
-    @param g: gnuplot object
-
-    @param p_vs_r: Path to output file for precision-recall curve
-    """
-    g.reset()
-    g.title("Precision vs Recall")
-    g.ylabel("Precision")
-    g.xlabel("Recall")
-    g("set terminal png")
-    g("set output '%s'" % p_vs_r)
-    g.plot(Data(TPR, PPV, title="Precision", with="lines", smooth="csplines"),
-           Data([marker_TPR, marker_TPR], [0,0.99], title="threshold", with="lines"))
-
-def plotPrecisionRecallFmeasure(g, pr_vs_score, pscores, TPR, PPV, FM, FMa, threshold):
-    """Precision, Recall, F-Measure vs threshold graph
-
-    @param g: gnuplot object
-
-    @parav pr_vs_score: Path to output file for precision,recall vs threshold
-    """
-    g.reset()
-    g.title("Precision and Recall vs Threshold")
-    g.ylabel("Precision, Recall, F-Measure, F-Measure Alpha")
-    g.xlabel("Threshold Score")
-    g("set terminal png")
-    g("set output '%s'" % pr_vs_score)
-    g.plot(Data(pscores, TPR, title="Recall", with="lines"),
-           Data(pscores, PPV, title="Precision", with="lines"),
-           Data(pscores, FM, title="F1 Measure", with="lines"),
-           Data(pscores, FMa, title="F Measure", with="lines"),
-           Data([threshold, threshold], [0,0.99], title="threshold", with="lines"))
+    def plotArticleScoreDensity(g, fname, pdata, ndata, threshold):
+        """Plot probability density for pos/neg scores, with line to mark threshold
+    
+        @param g: gnuplot object
+        @param fname: Filename to plot to
+        @param pdata: Scores of positive documents
+        @param ndata: Scores of negative documents
+        @param threshold: Threshold score for counting a document positive
+        """ 
+        px, py = kernelPDF(pdata)
+        nx, ny = kernelPDF(ndata)
+        overlap = calculateOverlap(px, py, nx, ny)
+        g.reset()
+        g.title("Article Score Densities")
+        g.ylabel("Probability Density")
+        g.xlabel("Article score")
+        g("set terminal png")
+        g("set output '%s'" % fname)
+        threshold_height = max(chain(py, ny))
+        g.plot(Data([threshold, threshold], [0, threshold_height], title="threshold", with="lines"),
+               Data(px, py, title="Positives", with="lines"),
+               Data(nx, ny, title="Negatives", with="lines"))
+        return overlap
+    
+    def plotFeatureScoreDensity(g, fname, scores):
+        """Plots probability density function for feature scores
+        """
+        x, y = kernelPDF(scores, npoints=1024)
+        g.reset()
+        g.title("Feature Score Density")
+        g.xlabel("Feature Score")
+        g.ylabel("Probability Density")
+        g("set terminal png")
+        g("set output '%s'" % fname)
+        g.plot(Data(x, y, with="lines"))
+    
+    def plotArticleScoreHistogram(g, fname, pdata, ndata, threshold):
+        """Plot histograms for pos/neg scores, with line to mark threshold""" 
+        py, px = n.histogram(pdata, bins=bincount(pdata), normed=True)
+        ny, nx = n.histogram(ndata, bins=bincount(ndata), normed=True)
+        g.reset()
+        g.title("Score Histograms")
+        g.xlabel("Article Score")
+        g.ylabel("Histogram Mass")
+        g("set terminal png")
+        g("set output '%s'" % fname)
+        g("set style fill solid 0.4")
+        g("set arrow from %f,0 to %f,%f nohead" % (threshold,threshold,max(chain(py,ny))))
+        g.plot(Data(px, py, title="Positives", with="boxes"),
+               Data(nx, ny, title="Negatives", with="boxes"))
+        
+    def plotFeatureScoreHistogram(g, fname, scores):
+        """Plot histogram for individual feature scores"""
+        sscores = scores.copy()
+        sscores.sort()
+        y, x = n.histogram(scores, bins=bincount(sscores))
+        g.reset()
+        g.title("Feature Score Histogram")
+        g.xlabel("Feature Score")
+        g.ylabel("Histogram Mass")
+        g("set logscale y")
+        g("set terminal png")
+        g("set output '%s'" % fname)
+        g("set style fill solid 1.0")
+        g.plot(Data(x, y, with="boxes"))
+    
+    def plotROC(g, fname, FPR, TPR, marker_FPR):
+        """ROC curve (TPR vs FPR)
+    
+        @param roc: Path to output file for ROC curve
+        """
+        g.reset()
+        g.title("ROC curve (TPR vs FPR)")
+        g.ylabel("True Positive Rate (TPR)")
+        g.xlabel("False Positive Rate (FPR)")
+        g("set terminal png")
+        g("set output '%s'" % fname)
+        g.plot(Data(FPR, TPR, title="TPR", with="lines"),
+               Data([marker_FPR, marker_FPR], [0,0.99], title="threshold", with="lines"))
+    
+    def plotPrecisionRecall(g, fname, TPR, PPV, marker_TPR):
+        """Precision vs recall graph
+    
+        @param p_vs_r: Path to output file for precision-recall curve
+        """
+        g.reset()
+        g.title("Precision vs Recall")
+        g.ylabel("Precision")
+        g.xlabel("Recall")
+        g("set terminal png")
+        g("set output '%s'" % fname)
+        g.plot(Data(TPR, PPV, title="Precision", with="lines", smooth="csplines"),
+               Data([marker_TPR, marker_TPR], [0,0.99], title="threshold", with="lines"))
+    
+    def plotPrecisionRecallFmeasure(g, fname, pscores, TPR, PPV, FM, FMa, threshold):
+        """Precision, Recall, F-Measure vs threshold graph
+    
+        @parav pr_vs_score: Path to output file for precision,recall vs threshold
+        """
+        g.reset()
+        g.title("Precision and Recall vs Threshold")
+        g.ylabel("Precision, Recall, F-Measure, F-Measure Alpha")
+        g.xlabel("Threshold Score")
+        g("set terminal png")
+        g("set output '%s'" % fname)
+        g.plot(Data(pscores, TPR, title="Recall", with="lines"),
+               Data(pscores, PPV, title="Precision", with="lines"),
+               Data(pscores, FM, title="F1 Measure", with="lines"),
+               Data(pscores, FMa, title="F Measure", with="lines"),
+               Data([threshold, threshold], [0,0.99], title="threshold", with="lines"))
+    
+    def plotRetrievalGraph(g, fname, nretrieved, total):
+        g.reset()
+        g.title("Retrieval Test")
+        g.ylabel("Proportion Retrieved (recall)")
+        g.xlabel("Rank")
+        g("set terminal png")
+        g("set output '%s'" % fname)
+        g.plot(Data(range(0,len(nretrieved)), nretrieved / total))

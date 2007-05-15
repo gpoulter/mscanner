@@ -3,10 +3,9 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 
 #* TEMPLATE PARAMETERS
-$f -- Feature information object
-$linkpath -- Include JS and CSS remotely at this location
+$linkpath -- None, or where to link for JS/CSS instead of #include
 $overlap -- None, or degree of overlap between pos and neg distributions
-$p -- PerformanceStats object
+$p -- PerformanceStats instance (with p.tuned)
 $rc -- Configuration variables
 $timestamp -- time.time() for start of the operation
 *#
@@ -305,33 +304,50 @@ $timestamp -- time.time() for start of the operation
       <dd>
         Proportion of training data which was positive
       </dd>
+      
       <dt>Accuracy</dt>
       <dd>
         Proportion of correct classifications
       </dd>
+
       <dt>Error Rate</dt>
       <dd>
         Proportion of incorrect classifications (1-Accuracy).
       </dd>
-      <dt>Precision / Positive Predictive Value</dt>
+
+      <dt>Precision | Positive Predictive Value</dt>
       <dd>
         Proportion of classifier positives which are true positives.
       </dd>
+
       <dt>Negative Predictive Value</dt>
       <dd>
-        Proportion of classifier negatives which are true
-        negatives.
+        Proportion of classifier negatives which are true negatives.
       </dd>
-      <dt>Recall / True Positive Rate</dt>
+
+      <dt>Recall | True Positive Rate | Sensitivity</dt>
       <dd>
-        Proportion of positives which were classified as positive.
+        Proportion of positives which were correctly classified as positive.
       </dd>
+
+      <dt>Specificity | True Negative Rate</dt>
+      <dd>
+        Proportion of negatives which were correctly classified as negative
+      </dd>
+
+      <dt>FP/TP Ratio</dt>
+      <dd>
+        Ratio of false positives to true positives.  Related to precision by 
+        <i>1/(x+1)</i>, if the TP/FP ratio is <i>x</i>.
+      </dd>
+
       <dt>Break-even Point</dt>
       <dd>
         Value at the threshold where Recall = Precision =
         F1-measure.  Typically the F-Measure at break-even is slightly
         lower than the maximum F1-Measure.
       </dd>
+
       <dt>&alpha;-Weighted F-Measure</dt>
       <dd>
         The threshold is chosen to maximise this quantity. 0 &lt;=
@@ -339,16 +355,19 @@ $timestamp -- time.time() for start of the operation
         &alpha;=0.5 precision and recall are weighted equally
         (identical to F1-Measure).
       </dd>
+
       <dt>F1-Measure</dt>
       <dd>
         Harmonic mean of recall and precision at the threshold
         corresponding to the maximum &alpha;-weighted F-Measure.
       </dd>
+
       <dt>Maximum F1-Measure</dt>
       <dd>
         Maximum possible value of F1-Measure (can be achieved using
         &alpha;=0.5).
       </dd>
+
       <dt>Enrichment</dt>
       <dd>
         Precision over prevalence.  This is is how much better this
@@ -364,47 +383,53 @@ $timestamp -- time.time() for start of the operation
       <col class="longlabel"></col>
       <col class="value"></col>
     </colgroup>
-    <tbody>
     <tr>
-      <th><b>Prevalence</b> <span class="footnote">(=P/A)</span></th>
+      <th><b>Prevalence</b> 
+      <span class="footnote">(P/A)</span></th>
       <td>#echo "%.5f" % $t.prevalence #</td>
     </tr>
     <tr>
-      <th><b>Accuracy</b> <span class="footnote">(=T/A)</span></th>
+      <th><b>Accuracy</b> 
+      <span class="footnote">(T/A)</span></th>
       <td>#echo "%.5f" % $t.accuracy #</td>
     </tr>
     <tr>
-      <th><b>Error Rate</b> <span class="footnote">(=F/A=1-Accuracy)</span></th>
+      <th><b>Error Rate</b> 
+      <span class="footnote">(F/A=1-Accuracy)</span></th>
       <td>#echo "%.5f" % (1-$t.accuracy) #</td>
     </tr>
     <tr>
-      <th><b>Positive Predictive Value</b> <span class="footnote">(= PPV = TP/(TP+FP))</span></th>
-      <td>#echo "%.5f" % $t.PPV #</td>
-    </tr>
-    <tr>
-      <th><b>Negative Preditive Value</b> <span class="footnote">(= NPV = TN/(TN+FN))</span></th>
-      <td>#echo "%.5f" % $t.NPV #</td>
-    </tr>
-    </tbody>
-    <tbody>
-    <tr>
-      <th><b>Recall</b> <span class="footnote">(= &rho; = TPR = sensitivity = TP/P)</span></th>
+      <th><b>Recall | Sensitivity | True Positive Rate</b> 
+      <span class="footnote">(&rho;=TPR=TP/P)</span></th>
       <td>#echo "%.5f" % $t.recall #</td>
     </tr>
     <tr>
-      <th><b>Precision</b> <span class="footnote">(= &pi; = PPV = TP/(TP+FP))</span></th>
-      <td>#echo "%.5f" % $t.precision #</td>
+      <th><b>Precision | Positive Predictive Value</b> 
+      <span class="footnote">(PPV=TP/(TP+FP))</span></th>
+      <td>#echo "%.5f" % $t.PPV #</td>
     </tr>
     <tr>
-      <th><b>Break-Even</b> <span class="footnote">(where precision=recall)</span></th>
+      <th><b>Negative Preditive Value</b> 
+      <span class="footnote">(NPV=TN/(TN+FN))</span></th>
+      <td>#echo "%.5f" % $t.NPV #</td>
+    </tr>
+    <tr>
+      <th><b>FP/TP Ratio</b></th>
+      <td>#echo "%.5f" % t.fp_tp_ratio #</td>
+    </tr>
+    <tr>
+      <th><b>Break-Even</b> 
+      <span class="footnote">(value at precision=recall)</span></th>
       <td>#echo "%.5f" % $p.breakeven #</td>
     </tr>
     <tr>
-      <th><b>Weighted F-Measure</b> <span class="footnote">(1/(&alpha;/&pi;+(1-&alpha;)/&rho;))</span></th>
+      <th><b>Weighted F-Measure</b> 
+      <span class="footnote">(1/(&alpha;/&pi;+(1-&alpha;)/&rho;))</span></th>
       <td>#echo "%.5f" % $t.fmeasure_alpha #</td>
     </tr>
     <tr>
-      <th><b>F1-Measure</b> <span class="footnote">(2*&rho;*&pi;/(&rho;+&pi;))</span></th>
+      <th><b>F1-Measure</b> 
+      <span class="footnote">(2*&rho;*&pi;/(&rho;+&pi;))</span></th>
       <td>#echo "%.5f" % $t.fmeasure #</td>
     </tr>
     <tr>
@@ -412,10 +437,10 @@ $timestamp -- time.time() for start of the operation
       <td>#echo "%.5f" % $t.fmeasure_max #</td>
     </tr>
     <tr>
-      <th><b>Enrichment</b> <span class="footnote">(= precision/prevalence)</span></th>
+      <th><b>Enrichment</b> 
+      <span class="footnote">(= precision/prevalence)</span></th>
       <td>#echo "%.5f" % $t.enrichment #</td>
     </tr>
-    </tbody>
   </table>
 
   <h2>Performance graphs

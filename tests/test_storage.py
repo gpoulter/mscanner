@@ -5,13 +5,16 @@ class StorageModuleTests(unittest.TestCase):
     
     def testStorage(self):
         """For Storage, RCStorage and RCStorageProxy"""
+        # Storage
         s1 = Storage(a = 1, b = 2)
         s1.a = 5
         self.assertEqual(s1.a, 5)
+        # RCStorage
         s2 = RCStorage(a = 1)
         s2.b = lambda: s2.a + 1
         self.assertEqual(s2.a, 1)
         self.assertEqual(s2.b, 2)
+        # RCStorageProxy
         s3 = RCStorageProxy(s2)
         self.assertEqual(s3.b, 2)
         s3.a = 3

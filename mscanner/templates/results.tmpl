@@ -1,7 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 
 #* TEMPLATE PARAMETERS
-$f -- FeatureScoreInfo object
 $linkpath -- Include JS and CSS remotely at this location
 $lowest_score -- Score of lowest-scoring article
 $num_results -- Number of results
@@ -115,7 +114,7 @@ $timestamp -- time.time() for start of the operation
 
      <tr>
        <th>Input PubMed IDs</th>
-       <td><a href="$rc.report_positives">$rc.report_positives</a></td>
+       <td><a href="$rc.report_input_scores">$rc.report_input_scores</a></td>
        $help("h_positives")
      </tr>
      $hr("h_positives", """PubMed IDs for the examples.""")

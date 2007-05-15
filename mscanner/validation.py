@@ -30,66 +30,48 @@ import numpy as nx
 from scipy.integrate import trapz
 
 from mscanner import statusfile
-from mscanner.scoring import calculateFeatureScores
+from mscanner.scoring import FeatureInfo, countFeatures
 from mscanner.storage import Storage
-from mscanner.utils import countFeatures
+from mscanner.utils import selfupdate
 
 class Validator:
     """Cross-validated calculation of article scores
     
-    Constructor arguments are also saved as instance variables.
+    Passed through constructor:
+    @ivar featdb: Mapping from doc id to list of feature ids
+    @ivar featinfo: FeatureInfo instance for stuff about features
+    @ivar positives: Array of positive PMIDs for validation
+    @ivar negatives: Array of negative PMIDs for validation
+    @ivar nfolds: Number of validation folds (0 for leave-out-one)
+    @ivar alpha: For Validator.getPerformance() PerformanceStatistics
+    @ivar postfilter: Check score threshold AND membership of postfilter
     
     From calling validate():
-      @ivar pscores: Scores of positive articles after validation
-      @ivar nscores: Scores of negative articles after validation
+    @ivar pscores: Scores of positive articles after validation
+    @ivar nscores: Scores of negative articles after validation
     
     From calling getPerformance():
-      @ivar performance: PerformanceStats object
+    @ivar performance: PerformanceStats object
     """
 
-    def __init__(
-        self, featmap, featdb, pos, neg, nfold,
-        pseudocount = 0.01,
+    def __init__(self, 
+        featdb, 
+        featinfo,
+        positives, 
+        negatives, 
+        nfolds,
         alpha = 0.5,
-        daniel = False,
-        genedrug_articles = None,
-        mask = None,
-        randomise = True,
+        postfilter = None,
         ):
-        """Initialise validator
-        @param featmap: FeatureMapping instance (for fixed pseudocount only len()is used)
-        @param featdb: Mapping of doc id to list of feature ids
-        @param pos: Array of positive doc ids
-        @param neg: Array of negative doc ids
-        @param nfold: Number of folds in cross-validation
-        @param pseudocount, daniel: Parameters for scoring.calculateFeatureScores
-        @param alpha: For maximising alpha-weighted F-Measure
-        @param genedrug_articles: Set of doc ids with gene-drug co-occurrences
-        @param mask: Features to exclude for scoring purposes
-        @param norandom: If True forgoes randomisation in cross-validation for test purposes
-        
-        @note: If pseudocount is 0/False/None, we instead use the background
-        medline frequency (n.b. not negative corpus frequency) of each 
-        feature as its individual pseudocount.
-        """
-        self.featmap = featmap
-        self.numfeats = len(featmap)
-        self.featdb = featdb
-        self.pos = pos
-        self.neg = neg
-        self.nfold = nfold
-        self.pseudocount = pseudocount
-        if not pseudocount:
-            self.pseudocount = nx.array(featmap.counts, nx.float32) / featmap.numdocs
-        self.alpha = alpha
-        self.daniel = daniel
-        self.genedrug_articles = genedrug_articles
-        self.mask = mask
-        self.randomise = randomise
+        selfupdate()
 
     def articleIsPositive(self, docid, score, threshold):
-        """Classifies an article as positive or negative based on score threshold"""
-        if self.genedrug_articles and docid in self.genedrug_articles:
+        """Classifies an article as positive or negative based on score
+        threshold
+        
+        @note: if self.positivestfilter is a non-empty set, we additionally
+        check that the article is a member before classifying it positive. """
+        if self.positivestfilter and docid in self.positivestfilter:
             return score >= threshold
         else:
             return False
@@ -101,7 +83,7 @@ class Validator:
         
         @note: self.nfolds==0 is taken to mean leave-out-one validation.
         """
-        if self.nfold:
+        if self.nfolds:
             return self.crossValidate()
         else:
             return self.leaveOutOneValidate()
@@ -113,8 +95,7 @@ class Validator:
         
         @return: self.performance
         """
-        self.performance = PerformanceStats(self.pscores, self.nscores, self.alpha)
-        return self.performance
+        return PerformanceStats(self.pscores, self.nscores, self.alpha)
 
     @staticmethod
     def partitionSizes(nitems, nparts):
@@ -126,72 +107,78 @@ class Validator:
         starts[1:] = nx.cumsum(sizes[:-1])
         return starts, sizes
 
-    def crossValidate(self):
+    def crossValidate(self, randomise=True):
         """Perform n-fold validation and return the raw performance measures
-
+        
+        @param randomise: Randomise validation splits (set False for debugging)
+        
         @return: self.pscores and self.nscores
         """
-        pdocs = len(self.pos)
-        ndocs = len(self.neg)
+        pdocs = len(self.positives)
+        ndocs = len(self.negatives)
         log.info("%d pos and %d neg articles", pdocs, ndocs)
-        if self.randomise:
-            nx.random.shuffle(self.pos)
-            nx.random.shuffle(self.neg)
-        pstarts, psizes = self.partitionSizes(pdocs, self.nfold)
-        nstarts, nsizes = self.partitionSizes(ndocs, self.nfold)
+        if randomise:
+            nx.random.shuffle(self.positives)
+            nx.random.shuffle(self.negatives)
+        pstarts, psizes = self.partitionSizes(pdocs, self.nfolds)
+        nstarts, nsizes = self.partitionSizes(ndocs, self.nfolds)
         self.pscores = nx.zeros(pdocs, nx.float32)
         self.nscores = nx.zeros(ndocs, nx.float32)
-        pcounts = countFeatures(self.numfeats, self.featdb, self.pos)
-        ncounts = countFeatures(self.numfeats, self.featdb, self.neg)
+        pcounts = countFeatures(len(self.featinfo), self.featdb, self.positives)
+        ncounts = countFeatures(len(self.featinfo), self.featdb, self.negatives)
         for fold, (pstart,psize,nstart,nsize) in \
             enumerate(zip(pstarts,psizes,nstarts,nsizes)):
-            statusfile.update(fold, self.nfold)
+            statusfile.update(fold, self.nfolds)
             log.debug("pstart = %d, psize = %s; nstart = %d, nsize = %d", 
                       pstart, psize, nstart, nsize)
-            # Modifiy the feature counts by subtracting out the test fold
-            temp_pcounts = pcounts - countFeatures(
-                self.numfeats, self.featdb, self.pos[pstart:pstart+psize])
-            temp_ncounts = ncounts - countFeatures(
-                self.numfeats, self.featdb, self.neg[nstart:nstart+nsize])
-            # Calculate the resulting feature scores
-            termscores, pfreqs, nfreqs = calculateFeatureScores(
-                temp_pcounts, temp_ncounts, pdocs-psize, ndocs-nsize,
-                self.pseudocount, self.mask, self.daniel)
+            # Get new feature scores
+            termscores = self.featinfo.updateFeatureScores(
+                pos_counts = pcounts - countFeatures(
+                    len(self.featinfo), self.featdb, 
+                    self.positives[pstart:pstart+psize]), 
+                neg_counts = ncounts - countFeatures(
+                    len(self.featinfo), self.featdb, 
+                    self.negatives[nstart:nstart+nsize]),
+                pdocs = pdocs-psize, 
+                ndocs = ndocs-nsize)
             # Calculate the article scores for the test fold
             self.pscores[pstart:pstart+psize] = [
-                nx.sum(termscores[self.featdb[d]]) for d in self.pos[pstart:pstart+psize]]
+                nx.sum(termscores[self.featdb[d]]) for d in 
+                self.positives[pstart:pstart+psize]]
             self.nscores[nstart:nstart+nsize] = [
-                nx.sum(termscores[self.featdb[d]]) for d in self.neg[nstart:nstart+nsize]]
-        statusfile.update(None, self.nfold)
+                nx.sum(termscores[self.featdb[d]]) for d in 
+                self.negatives[nstart:nstart+nsize]]
+        statusfile.update(None, self.nfolds)
         return self.pscores, self.nscores
     
     def leaveOutOneValidate(self):
         """Carries out leave-out-one validation, returning the resulting scores.
         
-        @note: Does not support 'daniel' scoring method
+        @note: Is only able to perform Bayesian pseudocount feature score
+        calculation.
         
         @return: self.pscores and self.nscores
         """
-        pcounts = countFeatures(self.numfeats, self.featdb, self.pos)
-        ncounts = countFeatures(self.numfeats, self.featdb, self.neg)
-        self.pscores = nx.zeros(len(self.pos), nx.float32)
-        self.nscores = nx.zeros(len(self.neg), nx.float32)
-        pdocs = len(self.pos)
-        ndocs = len(self.neg)
-        mask = self.mask
-        if isinstance(self.pseudocount, float):
-            ps = nx.zeros(self.numfeats, nx.float32) + self.pseudocount
+        pcounts = countFeatures(len(self.featinfo), self.featdb, self.positives)
+        ncounts = countFeatures(len(self.featinfo), self.featdb, self.negatives)
+        self.pscores = nx.zeros(len(self.positives), nx.float32)
+        self.nscores = nx.zeros(len(self.negatives), nx.float32)
+        pdocs = len(self.positives)
+        ndocs = len(self.negatives)
+        mask = self.featinfo.mask
+        if isinstance(self.featinfo.pseudocount, float):
+            ps = nx.zeros(len(self.featinfo), nx.float32) + self.featinfo.pseudocount
         else:
-            ps = self.pseudocount
+            ps = self.featinfo.pseudocount
         marker = 0
-        for idx, doc in enumerate(self.pos):
+        for idx, doc in enumerate(self.positives):
             if idx == marker:
                 statusfile.update(marker, pdocs+ndocs)
                 marker += int((pdocs+ndocs)/20)
             f = [fid for fid in self.featdb[doc] if not mask or not mask[fid]]
             self.pscores[idx] = nx.sum(nx.log(((
                 pcounts[f]-1+ps[f])/(pdocs-1+2*ps[f]))/((ncounts[f]+ps[f])/(ndocs+2*ps[f]))))
-        for idx, doc in enumerate(self.neg):
+        for idx, doc in enumerate(self.negatives):
             if pdocs+idx == marker:
                 statfile(marker, pdocs+ndocs)
                 marker += int((pdocs+ndocs)/20)
@@ -200,7 +187,7 @@ class Validator:
                 pcounts[f]+ps[f])/(pdocs+2*ps[f]))/((ncounts[f]-1+ps[f])/(ndocs-1+2*ps[f]))))
         statusfile.update(None, pdocs+ndocs)
         return self.pscores, self.nscores
-
+    
 class PerformanceStats:
     """Calculates and stores performance statistics.
 
@@ -218,7 +205,9 @@ class PerformanceStats:
     @ivar threshold_index, threshold: Index of and score value of the
     tuned threshold (cutoff for classification citations positive).
     
-    @ivar tuned: Tuned performance statistics (see tunedStatistics)
+    Set by tunedStatistics():
+    
+    @ivar tuned: Tuned performance statistics
     """
 
     def __init__(self, pscores, nscores, alpha):
@@ -357,13 +346,14 @@ class PerformanceStats:
           prevalence       (P/A)
           recall           (TPR)
           specificity      (TNR)
+          fp_tp_ratio      (FP/TP)
         """
-        TP = self.TP[self.threshold_index]
-        TN = self.TN[self.threshold_index]
-        FP = self.FP[self.threshold_index]
-        FN = self.FN[self.threshold_index]
-        P = self.P
-        N = self.N
+        TP = int(self.TP[self.threshold_index])
+        TN = int(self.TN[self.threshold_index])
+        FP = int(self.FP[self.threshold_index])
+        FN = int(self.FN[self.threshold_index])
+        P = self.P  # P = TP + FN
+        N = self.N  # N = TN + FP
         A = self.A
         T = TP + TN
         F = FP + FN
@@ -378,14 +368,13 @@ class PerformanceStats:
             PPV = TP / (TP + FP) # PPV=precision
         if TN + FN != 0:
             NPV = TN / (TN + FN) # NPV
-        accuracy, prevalence = 0, 0
-        if A != 0:
-            accuracy = (TP + TN) / A   # acc  = T/A
-            prevalence = (TP + FN) / A # prev = P/A
+        accuracy = T / A if A != 0 else 0
+        prevalence = P / A if A != 0 else 0
         error = 1 - accuracy
         recall = TPR
         specificity = TNR
         precision = PPV
+        fp_tp_ratio = FP/TP if TP != 0 else 0
         fmeasure, fmeasure_alpha, fmeasure_max = 0, 0, 0
         if recall > 0 and precision > 0:
             fmeasure = 2 * recall * precision / (recall + precision)

@@ -1,9 +1,13 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 
 #* TEMPLATE PARAMETERS
+$cite_table -- HTML for citation table
+$dataset -- Name of data set
 $linkpath -- Include JS and CSS remotely at this location
+$mode -- 'input' or 'output'
 $timestamp -- time.time() for start of the operation
-
+$num_citations -- Number of citations in the report
+$prev_file/this_file/next_file -- Names of files to link to
 *#
 
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
@@ -60,7 +64,7 @@ Next File: <a href="$next_file">$next_file</a>
 </p>
 
 <p>
-  This report contains $len($scores) citations,
+  This report contains $num_citations citations,
   #if $mode == "input"
   which are input citations (examples of relevant articles) used to train the classifier.
   #else

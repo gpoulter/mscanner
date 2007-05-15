@@ -5,13 +5,15 @@ from random import seed
 import tempfile
 import unittest
 
+from mscanner.scoring import FeatureInfo
 from mscanner.validation import Validator, PerformanceStats
 
 logging.basicConfig(level=0)
 
 class PerformanceStatisticTest(unittest.TestCase):
-
+    """Tests for PerformanceStats class"""
     def test(self):
+
         p = PerformanceStats(
             pscores = nx.array([-2,0,1,2,3,4,5,6,7], dtype=nx.float32),
             nscores = nx.array([-3,-2,-1,0,4,5], dtype=nx.float32),
@@ -20,8 +22,8 @@ class PerformanceStatisticTest(unittest.TestCase):
 
 class ValidatorTest(unittest.TestCase):
     """
-    Tests Validator: partition, validate, report
-    Implicitly tests Validator: plot*, makeHistogram, articleIsPositive
+    Tests for Validator class (and implicitly, that the plotting module
+    at least functions)
     """
     def setUp(self):
         self.prefix = path(tempfile.mkdtemp(prefix="valid-"))
@@ -41,16 +43,16 @@ class ValidatorTest(unittest.TestCase):
         
     def testCrossValid(self):
         """Test that cross-validated scores are correctly calculated"""
+        featinfo = FeatureInfo([2,5,7], pseudocount = 0.1)
         val = Validator(
-            featmap = [7,5,2],
             featdb = {0:[0,1,2], 1:[0,1], 2:[0,1], 3:[0,1], 4:[1,2], 5:[1,2], 6:[1,2], 7:[0,1,2]},
-            pos = nx.array([0, 1, 2, 3]),
-            neg = nx.array([4, 5, 6, 7]),
-            nfold = 4,
-            pseudocount = 0.1,
+            featinfo = featinfo,
+            positives = nx.array([0, 1, 2, 3]),
+            negatives = nx.array([4, 5, 6, 7]),
+            nfolds = 4,
             alpha = 0.5,
-            randomise = False)
-        pscores, nscores = val.validate()
+        )
+        pscores, nscores = val.crossValidate(randomise=False)
         cpscores = nx.array([-2.39789534,  1.03609192,  1.03609192,  3.43398714])
         cnscores = nx.array([-3.43398714, -1.03609192, -1.03609192,  2.39789534])
         self.assert_(nx.allclose(pscores,cpscores,rtol=1e-3))
@@ -59,15 +61,15 @@ class ValidatorTest(unittest.TestCase):
     def testLeaveOutOne(self):
         """Test of leave-out-one cross validation.  Manually calculate
         scores on the articles to see if they are correct"""
+        featinfo = FeatureInfo([2,5,7], pseudocount = 0.1)
         val = Validator(
-            featmap = [7,5,2],
             featdb = {0:[0,1,2], 1:[0,1], 2:[0,1], 3:[0,1], 4:[1,2], 5:[1,2], 6:[1,2], 7:[0,1,2]},
-            pos = nx.array([0, 1, 2, 3]),
-            neg = nx.array([4, 5, 6, 7]),
-            nfold = 0,
-            pseudocount = 0.1,
+            featinfo = featinfo,
+            positives = nx.array([0, 1, 2, 3]),
+            negatives = nx.array([4, 5, 6, 7]),
+            nfolds = None,
             alpha = 0.5,
-            randomise = False)
+        )
         pscores, nscores = val.validate()
         cpscores = nx.array([-2.14126396, 1.30037451, 1.30037451, 1.30037451])
         cnscores = nx.array([-1.30037451, -1.30037451, -1.30037451,  2.14126396])

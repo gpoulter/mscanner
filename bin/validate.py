@@ -2,7 +2,13 @@
 
 """Calculate performance statistics
 
-validate.py dataset numnegs nfolds pseudocount alpha positives_path
+Usage as backend for CGI:
+
+  validate.py dataset numnegs nfolds pseudocount alpha positives_path
+
+Usage for experiments (executable python string):
+
+  validate.py 'paperTests("aids-vs-500k")'
 
                                    
 """
@@ -28,27 +34,35 @@ from mscanner.configuration import rc, initLogger
 from mscanner.utils import runMailer
 from mscanner.validenv import ValidationEnvironment
 
-def chooseValidation(datasets):
+dataset_map = {
+    "aids-vs-500k": ("aids-bioethics-Oct06.txt", "medline07-500k.txt"),
+    "pg07-vs-500k": ("pharmgkb-070205.txt", "medline07-500k.txt"),
+    "radiology-vs-500k": ("daniel-radiology.txt", "medline07-500k.txt"),
+    "random10k-vs-500k": ("random10k-06.txt", "medline07-500k.txt"), 
+    "gdsmall-vs-sample": ("genedrug-small.txt", rc.articlelist) ,
+    }
+
+def paperTests(*datasets):
+    """Cross-validation tests for the publication"""
     env = ValidationEnvironment()
     rc.alpha = 0.5
     rc.cutoff = False
     rc.dodaniel = False
     rc.nfolds = 10
-    rc.pseudocount = 0
-    for dataset, pos, neg in [
-        ("aids-vs-500k", "aids-bioethics-Oct06.txt", "medline07-500k.txt"),
-        ("pg07-vs-500k", "pharmgkb-070205.txt", "medline07-500k.txt"),
-        ("radiology-vs-500k", "daniel-radiology.txt", "medline07-500k.txt"),
-        ("random10k-vs-500k", "random10k-06.txt", "medline07-500k.txt"), 
-        ("gdsmall-vs-medline", "genedrug-small.txt", None) ]:
-        if dataset not in datasets:
-            continue
+    rc.pseudocount = None
+    for dataset in datasets:
+        if dataset not in dataset_map:
+            raise ValueError("Invalid Data Set %s" % dataset)
         rc.dataset = dataset
-        pos = rc.corpora / pos
-        neg = (rc.corpora / neg) if neg else rc.articlelist
+        pos, neg = dataset_map[dataset]
+        if not isinstance(pos, path):
+            pos = rc.corpora / pos
+        if not isinstance(neg, path):
+            neg = rc.corpora / neg
         env.standardValidation(pos, neg)
         
-def methodTests():
+def issnTest():
+    """Checking the difference when ISSN features are excluded"""
     env = ValidationEnvironment()
     rc.exclude_types = ["issn"]
     rc.dataset = "aids-noissn"
@@ -57,6 +71,8 @@ def methodTests():
     env.standardValidation(rc.corpora / pos, rc.corpora / neg)
 
 def compareDaniel():
+    """Make comparisons against the Rubin2005 method.
+    """
     pg04 = rc.corpora / "pharmgkb-2004.txt"
     m30k = rc.corpora / "medline07-30k.txt"
     m500k = rc.corpora / "medline07-500k.txt"
@@ -65,7 +81,8 @@ def compareDaniel():
     rc.alpha = 0.5
     rc.pseudocount = 0
     rc.nfolds = 10
-
+    
+    # Compare on PG04
     rc.dataset = "pg04-vs-30k"
     rc.dodaniel = False
     rc.exclude_types = None
@@ -81,6 +98,7 @@ def compareDaniel():
     rc.exclude_types = None
     env.standardValidation(pg04, m500k)
     
+    # Compare daniel vs default on 
     rc.dataset = "pg07-vs-30k"
     rc.dodaniel = False
     rc.exclude_types = None
@@ -95,23 +113,15 @@ def compareDaniel():
     rc.dodaniel = False
     rc.exclude_types = ["issn"]
     env.standardValidation(pg07, m500k)
-        
-    #elif dataset == "mscanner-vs-500k":
-    #    pos = "mscanner-bibliography.txt"
-    #    neg = "medline07-500k.txt"
-    #elif dataset == "pg07-vs-med07":
-    #    pos = "pharmgkb-070205.txt"
-    #    neg = articlelist
-    #elif dataset == "gdsmall-vs-sample":
-    #    pos = "genedrug-small.txt"
-    #    neg = c.articlelist
 
 def scriptmain(*args):
-    """Meant to be called with *sys.argv[1:]"""
+    """Meant to be called with *sys.argv[1:], such that 
+    the positional arguments of this function are the arguments to
+    the program."""
     if len(args) == 0:
         raise ValueError("Please give dataset code or CGI parameters")
     elif len(args) == 1:
-        chooseValidation(set([args[0]]))
+        eval(args[0])
     elif len(args) > 1:
         rc.dataset = sys.argv[0]
         rc.numnegs = int(sys.argv[1])

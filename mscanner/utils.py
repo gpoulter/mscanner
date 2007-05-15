@@ -1,12 +1,12 @@
 """Handle Articles, processed files, features, feature occurrence counts
 
-countFeatures() -- Count occurrences of features in a set of articles
-FileTracker -- Track processed files (to avoid re-parsing), with on-disk persistence
-getArticles() -- Retrieve Articles from a DB, caching results in a Pickle
 preserve_cwd -- Decorator to preserve working directory
+countFeatures() -- Count occurrences of features in a set of articles
 readPMIDs() -- Get PMIDs (and scores too) from a text file
-runMailer() -- Send e-mails to people listed in a file
 writePMIDScores() -- Write PMIDs and scores to a text file
+runMailer() -- Send e-mails to people listed in a file
+getArticles() -- Retrieve Articles from a DB, caching results in a Pickle
+FileTracker -- Track processed files (to avoid re-parsing), with on-disk persistence
 
                                    
 """
@@ -25,15 +25,17 @@ http://www.gnu.org/copyleft/gpl.html
 """
 
 import cPickle
-import dbshelve
 import logging as log
+import numpy as nx
 import os
 from path import path
-import numpy as nx
+
+from mscanner import dbshelve
 
 def preserve_cwd(f):
-    """Python decorator to preserve the current working directory"""
-    def preserver(*a, **kw):
+    """Decorator which saves working directory before callijng the function,
+    and restores it afterwards."""
+    def cwd_preserver(*a, **kw):
         try:
             cwd = os.getcwd()
             return f(*a, **kw)
@@ -43,24 +45,48 @@ def preserve_cwd(f):
         dest.__name__ = src.__name__
         dest.__doc__ = src.__doc__
         dest.__dict__.update(src.__dict__)
-    decorator_update(preserver, f)
-    return preserver
+    decorator_update(cwd_preserver, f)
+    return cwd_preserver
 
-def countFeatures(nfeats, featdb, docids):
-    """Count occurrenes of each feature in a set of articles
+def selfupdate(onlyargs=False, exclude=[]):
+    """Call in any method to set instance attributes from local variables.
+    
+    @param onlyargs: If True, use only named arguments
+    
+    @param exclude: Names of other variables to exclude.
 
-    @param nfeats: Number of distinct features (size of array)
-
-    @param featdb: Mapping from document ID to list of feature IDs
-
-    @param docids: List of document IDs whose features are to be counted
-
-    @return: Array of length nfeats, with occurrence count of each feature
+    @note: Instance to update is assumed to be first argument of the caller.
+    
+    @note: Equivalent to vars(self).update(vars()); del self.self
     """
-    counts = nx.zeros(nfeats, nx.int32)
-    for docid in docids:
-        counts[featdb[docid]] += 1
-    return counts
+    import inspect
+    # Get caller frame (must be disposed of!)
+    cf = inspect.currentframe().f_back 
+    try:
+        # Instance is first argument to the caller
+        instance = cf.f_locals[cf.f_code.co_varnames[0]]
+        # Get names of variables to use
+        if onlyargs:
+            varnames = cf.f_code.co_varnames[1:cf.f_code.co_argcount]
+        else:
+            varnames = cf.f_code.co_varnames[1:]
+        # Update instance with those names
+        for var in varnames:
+            if var not in exclude:
+                setattr(instance, var, cf.f_locals[var])
+    finally:
+        del cf
+        
+def update(instance, variables, exclude=['self']):
+    """Update instance attributes
+    
+    @param instance: Instance to update via setattr()
+    @param variables: Dictionary of variables
+    @param exclude: Variables to exclude, defaults to ['self']
+    """
+    for k, v in variables.iteritems():
+        if k not in exclude:
+            setattr(instance, k, v)
 
 def readPMIDs(filename, include=None, exclude=None, withscores=False):
     """Read PubMed IDs one per line from filename.
@@ -77,7 +103,7 @@ def readPMIDs(filename, include=None, exclude=None, withscores=False):
     @param withscores: Also read the score after the PubMed ID on each line.
     
     @returns: An iterator over PubMed ID, or 
-    (PubMed ID, Score) if withscores==True
+    (Score, PubMed ID) if withscores==True
     """
     if not isinstance(filename,path) or not filename.exists():
         raise ValueError("File %s does not exist" % filename)
@@ -99,7 +125,7 @@ def readPMIDs(filename, include=None, exclude=None, withscores=False):
             log.warn("PMID %d is a member of exclude" % pmid)
             continue
         if withscores:
-            yield pmid, float(splits[1])
+            yield float(splits[1]), pmid
         else:
             yield pmid
         count += 1
@@ -108,18 +134,13 @@ def readPMIDs(filename, include=None, exclude=None, withscores=False):
                            filename)
 
 def writePMIDScores(filename, pairs):
-    """Write PubMed IDs and their scores to a file
-    
-    @note: The pairs are sorted in decreasing order of score when written.
-    
-    @pairs: Iteratable over (PubMed ID, Score) pairs
-    """
-    oscores = sorted(pairs, key=lambda x:x[1], reverse=True)
-    filename.write_lines("%-10d %f" % x for x in oscores)
+    """Write (score, PMID) pairs to file, in decreasing order of score."""
+    filename.write_lines("%-10d %f" % (p,s) for s,p in \
+                         sorted(pairs, reverse=True))
 
 def runMailer(smtpserver, mailer):
-    """Read e-mail addresses from mail file and send them a
-    message saying MScanner is available.
+    """Read e-mail addresses from mail file and send them a message saying
+    MScanner is available.
 
     @param mailer: Path object to file of e-mail addresses
     """
@@ -141,8 +162,8 @@ a service for classifying Medline citations given a set of examples
 MScanner has completed the last submission and at the time of sending
 this email is available for query or validation operations.
 
-This is a once-off notification and MScanner keeps no record of e-mail
-addresses.
+This is a once-off notification. The list of e-mails to notify
+is erased immediately after sending.
 """
         try:
             server.sendmail(fromaddr, email, msg)

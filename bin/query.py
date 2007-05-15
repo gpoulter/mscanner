@@ -2,7 +2,13 @@
 
 """Query the MEDLINE database with a set of positive articles
 
+Usage as a backend to the web interface:
+
 query.py dataset pseudocount limit threshold positives_path
+
+For experiments, use a Python snippet:
+
+query.py 'query("pg04","pg07")'
 
                                    
 """
@@ -26,7 +32,9 @@ from mscanner.configuration import rc, initLogger
 from mscanner.queryenv import QueryEnvironment
 from mscanner.utils import runMailer
             
-def heparin_tests():
+def heparin():
+    """When performing cross-validation with a large number
+    of positiv"""
     env = QueryEnvironment()
     env.loadInput(rc.corpora / "pubfinder-heparin.txt")
     rc.limit = 500 # don't need a lot of results
@@ -42,23 +50,35 @@ def heparin_tests():
         rc.cutoff = cutoff
         env.standardQuery()
 
-def query_tests(datasets):
+ds_map = {
+    "pg04"        : "pharmgkb-2004.txt",
+    "pg07"        : "pharmgkb-070205.txt",
+    "radiology"   : "daniel-radiology.txt",
+    "mscannerbib" : "mscanner-bibliography.txt",
+    "gdsmall"     : "genedrug-small.txt",
+}
+
+def query(*datasets):
+    """Perform queries with per-feature pseudocount"""
     env = QueryEnvironment()
     rc.limit = 1000 # don't need a lot of results
     rc.threshold = 0
-    rc.pseudocount = 0 # per-feature pseudocounts
-    for dataset, input_name in [
-        ("pg04",        "pharmgkb-2004.txt"),
-        ("pg07",        "pharmgkb-070205.txt"),
-        ("radiology",   "daniel-radiology.txt"),
-        ("mscannerbib", "mscanner-bibliography.txt"),
-        ("gdsmall",     "genedrug-small.txt") ]:
-        if dataset not in datasets:
-            continue
+    rc.pseudocount = None # per-feature pseudocounts
+    for dataset in datasets:
         rc.dataset = dataset
-        env.standardQuery(rc.corpora / input_name)
+        env.standardQuery(rc.corpora / ds_map[dataset])
         
+def retrieval(*datasets):
+    """Carry out retrieval tests (adds -retrieval to the data set)"""
+    env = QueryEnvironment()
+    rc.limit = 1000
+    rc.pseudocount = None # per-feature pseudocounts
+    for dataset in datasets:
+        rc.dataset = dataset+"-retrieval"
+        env.testRetrieval(rc.corpora / ds_map[dataset])
+
 def pharmdemo():
+    """Special query which exports to the PharmDemo database for PharmGKB"""
     rc.dataset = "pharmdemo"
     rc.pseudocount = 0
     rc.threshold = 0
@@ -73,7 +93,7 @@ def scriptmain(*args):
         print "Please give dataset code or CGI parameters"
         sys.exit(0)
     elif len(args) == 1:
-        query_tests(set([args[0]]))
+        eval(args[0])
     elif len(args) > 1:
         rc.dataset = args[0]
         rc.pseudocount = float(args[1])
@@ -89,5 +109,3 @@ def scriptmain(*args):
 if __name__ == "__main__":
     initLogger()
     scriptmain(*sys.argv[1:])
-    #pharmdemo()
-    #heparin_tests()

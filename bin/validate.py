@@ -71,8 +71,7 @@ def issnTest():
     env.standardValidation(rc.corpora / pos, rc.corpora / neg)
 
 def compareDaniel():
-    """Make comparisons against the Rubin2005 method.
-    """
+    """Make comparisons against the Rubin2005 method."""
     pg04 = rc.corpora / "pharmgkb-2004.txt"
     m30k = rc.corpora / "medline07-30k.txt"
     m500k = rc.corpora / "medline07-500k.txt"

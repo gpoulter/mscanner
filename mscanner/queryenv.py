@@ -38,8 +38,8 @@ from mscanner.gcheetah import TemplateMapper, FileTransaction
 from mscanner.plotting import Plotter
 from mscanner.scoring import (FeatureInfo, countFeatures, iterScores, 
                               filterDocuments, partitionList, retrievalTest)
-from mscanner.utils import (runMailer, readPMIDs, 
-                            writePMIDScores, preserve_cwd)
+from mscanner.utils import (runMailer, readPMIDs, writePMIDScores,
+                            preserve_cwd)
 
 class QueryEnvironment:
     """Class for managing MScanner analysis without passing around lots of
@@ -112,7 +112,7 @@ class QueryEnvironment:
         
         @note: re-calculates things which use RC parameters that may
         have changed since the last run.
-
+        
         @param pmids_path: Path to list of input PMIDs. If None, we assume
         loadInput() has already been called. """
         statusfile.start()
@@ -170,7 +170,7 @@ class QueryEnvironment:
         
         @note: Writes files with the input PMIDs and scores, result PMIDs
         and scores, test pmids, and cumulative number of test PMIDs
-        as a function of rank.
+         as a function of rank.
         
         @return: Array with cumulative test PMIDs as function of rank
         """
@@ -223,6 +223,10 @@ class QueryEnvironment:
     @preserve_cwd
     def writeReport(self):
         """Write the HTML report for the query results
+        
+        @note: Writing of citation files is optimised by doing all of the
+        self.artdb lookups beforehand.  Somehow, performing the lookups
+        while busy with the template code is terribly slow. 
         """
         # Set up template and directory
         log.debug("Writing report for data set %s", rc.dataset)

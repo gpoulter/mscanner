@@ -142,22 +142,29 @@ class ValidationEnvironment:
         writePMIDScores(rc.report_negatives, izip(self.nscores, self.negatives))
 
     def getResults(self):
-        """Calculate results by creating a Validator instance"""
+        """Calculate results by creating a Validator instance
+        
+        @note: We perform all the self.featdb lookups beforehand (and only
+        once) - somehow performing them while busy with validation is terribly
+        slow. """
+        s = self
         log.info("Performing cross-validation for for %s", rc.dataset)
         self.validator = Validator(
-            featdb = self.featdb,
-            featinfo = self.featinfo,
-            positives = self.positives,
-            negatives = self.negatives,
+            featdb = dict((k,s.featdb[k]) for k in 
+                          chain(s.positives,s.negatives)),
+            featinfo = s.featinfo,
+            positives = s.positives,
+            negatives = s.negatives,
             nfolds = rc.nfolds,
             alpha = rc.alpha,
-            postfilter = self.postfilter,
+            postfilter = s.postfilter,
             )
         self.pscores, self.nscores = self.validator.validate()
         
     @preserve_cwd
     def doGeneDrug(self):
-        from mscanner.pharmdemo.dbexport import writeGeneDrugCountsCSV, countGeneDrug
+        from mscanner.pharmdemo.dbexport import (writeGeneDrugCountsCSV, 
+                                                 countGeneDrug)
         from mscanner.pharmdemo.genedrug import getGeneDrugFilter
         log.info("Getting gene-drug associations") 
         os.chdir(rc.valid_report_dir)
@@ -195,30 +202,35 @@ class ValidationEnvironment:
         self.performance = PerformanceStats(
             self.pscores, self.nscores, rc.alpha)
         p = self.performance
-        # Write images
+        # Graph Plotting
         plotter = Plotter()
         overlap = None
         ##overlap, iX, iY = plotter.plotArticleScoreDensity(
         ##  rc.report_artscores_img, p.pscores, p.nscores, p.threshold)
         ##plotter.plotFeatureScoreDensity(
         ##  rc.report_featscores_img, elf.feature_info.scores)
+        # Article Scores
         if not rc.report_artscores_img.exists():
             plotter.plotArticleScoreHistogram(
             rc.report_artscores_img, p.pscores, p.nscores, p.threshold)
+        # Feature Scores
         if not rc.report_featscores_img.exists():
             plotter.plotFeatureScoreHistogram(
             rc.report_featscores_img, self.featinfo.scores)
+        # ROC
         if not rc.report_roc_img.exists():
             plotter.plotROC(
             rc.report_roc_img, p.FPR, p.TPR, p.tuned.FPR)
+        # Precision-Recall
         if not rc.report_prcurve_img.exists():
             plotter.plotPrecisionRecall(
             rc.report_prcurve_img, p.TPR, p.PPV, p.tuned.TPR)
+        # F-Measure
         if not rc.report_fmeasure_img.exists():
             plotter.plotPrecisionRecallFmeasure(
             rc.report_fmeasure_img, p.pscores, p.TPR, p.PPV, 
             p.FM, p.FMa, p.threshold)
-        # Write index file for validation output
+        # Index file
         mapper = TemplateMapper(root=rc.templates)
         tpl = mapper.validation(
             stats = self.featinfo.getFeatureStats(),

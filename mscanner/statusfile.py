@@ -17,7 +17,9 @@ Format is as follows:
 @var total: The total number of steps until finishing
 
 @note: This is implemented as a module instead of an instantiable class,
-because there is only supposed to be one status file active at a time.
+because there is only supposed to be one status file active at a time. A module
+is the pythonic version of a singleton (if you think you might ever need
+more than one instance, use an ordinary class).
 
                                    
 """

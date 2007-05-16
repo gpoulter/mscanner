@@ -22,9 +22,7 @@ General Public License for more details.
 http://www.gnu.org/copyleft/gpl.html
 """
 
-import warnings
-warnings.simplefilter('ignore', FutureWarning)
-
+from itertools import chain, izip
 import logging as log
 import numpy as nx
 from scipy.integrate import trapz
@@ -55,10 +53,10 @@ class Validator:
     """
 
     def __init__(self, 
-        featdb, 
+        featdb,
         featinfo,
-        positives, 
-        negatives, 
+        positives,
+        negatives,
         nfolds,
         alpha = 0.5,
         postfilter = None,

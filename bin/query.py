@@ -32,24 +32,6 @@ from mscanner.configuration import rc, initLogger
 from mscanner.queryenv import QueryEnvironment
 from mscanner.utils import runMailer
             
-def heparin():
-    """When performing cross-validation with a large number
-    of positiv"""
-    env = QueryEnvironment()
-    env.loadInput(rc.corpora / "pubfinder-heparin.txt")
-    rc.limit = 500 # don't need a lot of results
-    rc.threshold = 0 # lenient threshold
-    rc.pseudocount = 0 # per-feature pseudocounts
-    for dataset, pseudocount, cutoff in [ 
-        ("heparin-ps_const",    0.01, True),
-        ("heparin-ps_per",      0.0,  False),
-        ("heparin-ps_constcut", 0.01, True),
-        ("heparin-ps_percut",   0.0,  True) ]:
-        rc.dataset = dataset
-        rc.pseudocount = pseudocount
-        rc.cutoff = cutoff
-        env.standardQuery()
-
 ds_map = {
     "pg04"        : "pharmgkb-2004.txt",
     "pg07"        : "pharmgkb-070205.txt",
@@ -76,6 +58,24 @@ def retrieval(*datasets):
     for dataset in datasets:
         rc.dataset = dataset+"-retrieval"
         env.testRetrieval(rc.corpora / ds_map[dataset])
+
+def heparin():
+    """When performing cross-validation with a large number
+    of positiv"""
+    env = QueryEnvironment()
+    env.loadInput(rc.corpora / "pubfinder-heparin.txt")
+    rc.limit = 500 # don't need a lot of results
+    rc.threshold = 0 # lenient threshold
+    rc.pseudocount = 0 # per-feature pseudocounts
+    for dataset, pseudocount, cutoff in [ 
+        ("heparin-ps_const",    0.01, True),
+        ("heparin-ps_per",      0.0,  False),
+        ("heparin-ps_constcut", 0.01, True),
+        ("heparin-ps_percut",   0.0,  True) ]:
+        rc.dataset = dataset
+        rc.pseudocount = pseudocount
+        rc.cutoff = cutoff
+        env.standardQuery()
 
 def pharmdemo():
     """Special query which exports to the PharmDemo database for PharmGKB"""

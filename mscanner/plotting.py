@@ -201,4 +201,4 @@ class Plotter(Gnuplot):
         g.xlabel("Rank")
         g("set terminal png")
         g("set output '%s'" % fname)
-        g.plot(Data(range(0,len(nretrieved)), nretrieved / total))
+        g.plot(Data(range(0,len(nretrieved)), nretrieved / total), with="lines")

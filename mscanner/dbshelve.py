@@ -52,8 +52,14 @@ def open(filename, flags='c', mode=0660, dbenv=None, txn=None, dbname=None, comp
     return Shelf(database, txn, compress)
 
 class Shelf(DictMixin):
-    """A shelf to hold pickled objects, built upon a bsddb DB object.  It
+    """A shelf for pickled objects, built upon a bsddb DB object. It
     automatically pickles/unpickles data objects going to/from the DB.
+    
+    @note: A key-value dictionary is a table indexed by a single key, with the
+    value being a representation of the other columns. Use a more general
+    database table when indexing by more than one column may be necessary,
+    or re-invent tables using dictionaries (as in FeatureMapping).
+    
     """
 
     def __init__(self, database, txn=None, do_compression=True):

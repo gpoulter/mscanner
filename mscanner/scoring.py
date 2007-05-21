@@ -27,54 +27,57 @@ import heapq
 import numpy as nx
 
 from mscanner import statusfile
-from mscanner.featuremap import FeatureMapping
 from mscanner.utils import selfupdate
 from mscanner.storage import Storage
 
 class FeatureInfo:
     """Class to calculate and store all information about the
     features, their distribution, and their scores
+    
+    @note: FeatureInfo models a table with columns (pos_counts, neg_counts,
+    pfreqs, nfreqs, mask, scores), and links to a FeatureMapping table (id,
+    name, type, count) for Medline occurrence counts.
 
-    Passed to constructor:
+    Passed via constructor:
     
-    @ivar pos_counts: Array of feature counts in positive documents. 
+        @ivar pos_counts: Array of feature counts in positive documents. 
+        
+        @ivar neg_counts: Array of feature counts in negatives documents
+        
+        @ivar pdocs: Number of positive documents
+        
+        @ivar ndocs: Number of negative documents
     
-    @ivar neg_counts: Array of feature counts in negatives documents
-    
-    @ivar pdocs: Number of positive documents
-    
-    @ivar ndocs: Number of negative documents
-
-    @ivar pseudocount: Either a float which is the pseudocount for all
-    features, or numpy array of per-feature counts, or None which triggers
-    once-off creation of per-features counts equal to Medline frequency if
-    Bayesian calculation is in use.
-    
-    @ivar mask: Boolean array for masking some features scores to zero
-    
-    @ivar daniel: If true, use the JAMIA paper's smoothing heuristic
-    of 10^-8 for terms found in positive but not negative (and visa
-    versa).
-    
-    @ivar cutoff: If true, any features whose positive count is zero but
-    nonetheless obtain a positive score (due to pseudocount priors), has its
-    score set to zero.
+        @ivar pseudocount: Either a float which is the pseudocount for all
+        features, or numpy array of per-feature counts, or None which triggers
+        once-off creation of per-features counts equal to Medline frequency if
+        Bayesian calculation is in use.
+        
+        @ivar mask: Boolean array for masking some features scores to zero
+        
+        @ivar daniel: If true, use the JAMIA paper's smoothing heuristic
+        of 10^-8 for terms found in positive but not negative (and visa
+        versa).
+        
+        @ivar cutoff: If true, any features whose positive count is zero but
+        nonetheless obtain a positive score (due to pseudocount priors), has
+        its score set to zero.
     
     Added by constructor:
     
-    @ivar getFrequencies: Method to calculate pfreq, nfreq
+        @ivar getFrequencies: Method to calculate pfreq, nfreq
+        
+        @ivar postmask: Method for custom masking after scores are known
+        
+        @ivar featmap: featuremap.FeatureMapping object
     
-    @ivar postmask: Method for custom masking after scores are known
+    Set by getFeatureScores() and updateFeatureScores():
     
-    @ivar featmap: featuremap.FeatureMapping object
-    
-    Calculated by getFeatureScores():
-    
-    @ivar pfreqs: Probability of each feature given positive article
-    
-    @ivar pfreqs: Probability of each feature given negative article
-
-    @ivar scores: Array of feature scores
+        @ivar pfreqs: Probability of each feature given positive article
+        
+        @ivar pfreqs: Probability of each feature given negative article
+        
+        @ivar scores: Array of feature scores
 
     """
 
@@ -162,7 +165,7 @@ class FeatureInfo:
     def getFeatureStats(self):
         """Recalculate statistics about the feature database
         
-        Returns Storage object with the following keys:
+        Returns a Storage dictionary with the following keys:
     
         @ivar pos_occurrences: Total feature occurrences in positives
     

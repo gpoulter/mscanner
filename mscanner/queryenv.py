@@ -47,19 +47,19 @@ class QueryEnvironment:
     names.
 
     From constructor:
-    @ivar featmap: FeatureMapping instance between feature names and IDs
-    @ivar featdb: Mapping from PubMed ID to list of features
-    @ivar artdb: Mapping from PubMed ID to Article object
+        @ivar featmap: FeatureMapping instance between feature names and IDs
+        @ivar featdb: Mapping from PubMed ID to list of features
+        @ivar artdb: Mapping from PubMed ID to Article object
     
     From loadInput():
-    @ivar input_pmids: Set of PubMed IDs as input to the query
+        @ivar input_pmids: Set of PubMed IDs as input to the query
     
     From standardQuery():
-    @ivar featinfo: Object containing feature scores and statistics
+        @ivar featinfo: Object containing feature scores and statistics
     
     From loadResults() or getResults()
-    @ivar inputs: List of (pmid, score) for input PMIDs
-    @ivar results: List of (pmid, score) for result PMIDs
+        @ivar inputs: List of (pmid, score) for input PMIDs
+        @ivar results: List of (pmid, score) for result PMIDs
     """
     
     def __init__(self):

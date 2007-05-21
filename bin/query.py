@@ -33,6 +33,7 @@ from mscanner.queryenv import QueryEnvironment
 from mscanner.utils import runMailer
             
 ds_map = {
+    "aids"        : "aids-bioethics-Oct06.txt",
     "pg04"        : "pharmgkb-2004.txt",
     "pg07"        : "pharmgkb-070205.txt",
     "radiology"   : "daniel-radiology.txt",

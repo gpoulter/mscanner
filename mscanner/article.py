@@ -24,13 +24,24 @@ class Article:
     
     Instance variables are same as the constructor parameters. 
     
-    The class is simple, to avoid the "God Object" problem where all of the
-    functionality is subsumed by a single object. Article could have
-    calculateScore(), classify() and various other methods which actually
-    belong in scoring.py and validation.py according to functional
-    decomposition. Also, when we are just working with feature and score
-    vectors, we don't need the whole citation taking up space.
+    @note: Article models a row
+    (pmid,title,abstract,journal,issn,year,meshterms,authors), which 
+    is stored in Berkeley DB to model a table keyed by PMID.
 
+    @note: We avoided the OOP "God Object" problem where one class subsumes all
+    behaviours which operate on its own instances in concert with other data
+    source (such as Article.getScore(featurescores) and a million other
+    methods).
+
+    Passed via constructor:
+        @ivar pmid: Integer PubMed ID or MEDLINE UI of the article.
+        @ivar title: Title of the article
+        @ivar abstract: Abstract of the article
+        @ivar journal: Medline abbreviated journal title
+        @ivar issn: ISSN code for the journal
+        @ivar year: Year of publication
+        @ivar meshterms: Set of Mesh terms associated with article.
+        @ivar authors: Set of (initials,lastname) pairs of article authors
     """
     def __init__(self,
                  pmid=None,
@@ -42,16 +53,7 @@ class Article:
                  meshterms=None,
                  authors=None):
         """
-        Initialise a new article with the given parameters.
-        
-        @param pmid: Integer PubMed ID or MEDLINE UI of the article.
-        @param title: Title of the article
-        @param abstract: Abstract of the article
-        @param journal: Medline abbreviated journal title
-        @param issn: ISSN code for the journal
-        @param year: Year of publication
-        @param meshterms: Set of Mesh terms associated with article.
-        @param authors: Set of (initials,lastname) pairs of article authors
+        Initialise a new article with the given parameters.        
         """
         self.pmid = pmid
         self.title = title
@@ -59,14 +61,21 @@ class Article:
         self.journal = journal
         self.issn = issn
         self.year = year 
-        self.meshterms = meshterms if meshterms else list()
-        self.authors = authors if authors else list()
+        self.meshterms = meshterms if meshterms else []
+        self.authors = authors if authors else []
 
     def __repr__(self):
         pp = pprint.PrettyPrinter()
-        astr = "Article(pmid=%d,\ntitle=%s,\nabstract=%s,\njournal=%s\nissn=%s\nyear=%s\nmeshterms=%s\nauthors=%s)\n"
-        return astr % (
-            self.pmid,
+        s = "Article(pmid=%s,\n"+\
+          "title=%s,\n"+\
+          "abstract=%s,\n"+\
+          "journal=%s\n"+\
+          "issn=%s\n"+\
+          "year=%s\n"+\
+          "meshterms=%s\n"+\
+          "authors=%s)\n"
+        return s % (
+            str(self.pmid),
             repr(self.title),
             repr(self.abstract),
             repr(self.journal),
@@ -74,4 +83,3 @@ class Article:
             repr(self.year),
             pp.pformat(self.meshterms),
             pp.pformat(self.authors))
-

@@ -65,27 +65,37 @@ def parse(source):
                 yield result
             root.clear()
 
-class MedlineCache:
-    """Manages the database of medline abstracts.  Function is to
-    update the cache with new articles, and retrieve articles from the
-    cache.
+class MedlineCache:    
+    """Class for updating the Article DB, FeatureMapping,
+    FeatureDatabase, FeatureStream, PMID list, and FileTracker.
+    
+    @note: Databases are opened and closed for each putArticles() transaction
+    to limit the impact of interruptions (how do I make it atomic?)
+    
+    Passed through constructor:
+        @ivar featmap: A FeatureMapping object for mapping string features to IDs
+        @ivar db_env_home: Path to DB home directory 
+        @ivar article_db: Path to article database
+        @ivar feature_db: Path to feature database
+        @ivar feature_stream: Path to feature stream file
+        @ivar article_list: Path to list of article PMIDs
+        @ivar narticles_path: Path to file containing the total number of PMIDs
+        @ivar processed_path: Path to list of processed files
+        @ivar use_transactions: If false, disable transaction engine
     """
 
     def __init__(
-        self, featmap, db_env_home,
-        article_db, feature_db, feature_stream, article_list,
-        processed_path, narticles_path, use_transactions=True):
-        """Initialse a cache of the results of parsing medline.
-
-        @param featmap: A FeatureMapping object for mapping string features to IDs
-        @param db_env_home: Path to DB home directory 
-        @param article_db: Path to article database
-        @param feature_db: Path to feature database
-        @param feature_stream: Path to feature stream file
-        @param article_list: Path to list of article PMIDs
-        @param narticles_path: Path to file containing the total number of PMIDs
-        @param processed_path: Path to list of processed files
-        @param use_transactions: If false, disable transaction engine
+        self, 
+        featmap, 
+        db_env_home,
+        article_db, 
+        feature_db, 
+        feature_stream, 
+        article_list,
+        processed_path, 
+        narticles_path, 
+        use_transactions=True):
+        """Initialse the database
         """
         self.db_env_home = db_env_home
         self.featmap = featmap

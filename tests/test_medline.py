@@ -63,6 +63,7 @@ class MedlineCacheTests(unittest.TestCase):
         m.updateCacheFromDir(h, save_delay=1)
         pmids.write_lines(["1", "2"])
         a = utils.getArticles(artdb, pmids)
+        print repr(a)
         self.assertEqual(a[0].pmid, 1)
         self.assertEqual(a[1].pmid, 2)
         self.assertEqual(fmap.counts, [2, 2, 2, 2, 2, 2, 2, 1])

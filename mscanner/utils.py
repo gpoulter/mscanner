@@ -199,7 +199,10 @@ def getArticles(article_db_path, pmidlist_path):
     return articles
 
 class FileTracker(set):
-    """Class which tracks processed files.
+    """A persistent set for tracking of processed files.
+    
+    @note: Overloads "add" to only add basenames, and facilities to 
+    load from and dump to file.
 
     It accepts all paths, but membership is checked according to basename()
     """

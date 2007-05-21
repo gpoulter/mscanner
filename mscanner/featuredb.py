@@ -24,7 +24,13 @@ from path import path
 import struct
 
 class FeatureDatabase:
-    """Persistent mapping from integer key to array objects of numerical values"""
+    """Persistent dictionary with modeling a table with integer key of PubMed
+    ID and values being arrays of Feature IDs.
+    
+    @note: Persistent dictionary is used (unlike FeatureMapping) because all
+    rows will not fit in memory. 
+    
+    """
     
     def __init__(self, filename=None, flags='c', mode=0660, dbenv=None, txn=None, dbname=None, ftype=nx.uint16):
         """Initialise database

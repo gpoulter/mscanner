@@ -28,7 +28,7 @@ import numpy as nx
 from scipy.integrate import trapz
 
 from mscanner import statusfile
-from mscanner.scoring import FeatureInfo, countFeatures
+from mscanner.scoring import countFeatures
 from mscanner.storage import Storage
 from mscanner.utils import selfupdate
 
@@ -36,20 +36,20 @@ class Validator:
     """Cross-validated calculation of article scores
     
     Passed through constructor:
-    @ivar featdb: Mapping from doc id to list of feature ids
-    @ivar featinfo: FeatureInfo instance for stuff about features
-    @ivar positives: Array of positive PMIDs for validation
-    @ivar negatives: Array of negative PMIDs for validation
-    @ivar nfolds: Number of validation folds (0 for leave-out-one)
-    @ivar alpha: For Validator.getPerformance() PerformanceStatistics
-    @ivar postfilter: Check score threshold AND membership of postfilter
+        @ivar featdb: Mapping from doc id to list of feature ids
+        @ivar featinfo: FeatureInfo instance for stuff about features
+        @ivar positives: Array of positive PMIDs for validation
+        @ivar negatives: Array of negative PMIDs for validation
+        @ivar nfolds: Number of validation folds (0 for leave-out-one)
+        @ivar alpha: For Validator.getPerformance() PerformanceStatistics
+        @ivar postfilter: Check score threshold AND membership of postfilter
     
-    From calling validate():
-    @ivar pscores: Scores of positive articles after validation
-    @ivar nscores: Scores of negative articles after validation
+    Updated by validate():
+        @ivar pscores: Scores of positive articles after validation
+        @ivar nscores: Scores of negative articles after validation
     
-    From calling getPerformance():
-    @ivar performance: PerformanceStats object
+    Updated by getPerformance():
+        @ivar performance: PerformanceStats object
     """
 
     def __init__(self, 
@@ -61,6 +61,8 @@ class Validator:
         alpha = 0.5,
         postfilter = None,
         ):
+        pscores = None
+        nscores = None
         selfupdate()
 
     def articleIsPositive(self, docid, score, threshold):
@@ -174,20 +176,26 @@ class Validator:
                 statusfile.update(marker, pdocs+ndocs)
                 marker += int((pdocs+ndocs)/20)
             f = [fid for fid in self.featdb[doc] if not mask or not mask[fid]]
-            self.pscores[idx] = nx.sum(nx.log(((
-                pcounts[f]-1+ps[f])/(pdocs-1+2*ps[f]))/((ncounts[f]+ps[f])/(ndocs+2*ps[f]))))
+            self.pscores[idx] = nx.sum(nx.log(
+                ((pcounts[f]-1+ps[f])/(pdocs-1+2*ps[f]))/
+                ((ncounts[f]+ps[f])/(ndocs+2*ps[f]))))
         for idx, doc in enumerate(self.negatives):
             if pdocs+idx == marker:
                 statfile(marker, pdocs+ndocs)
                 marker += int((pdocs+ndocs)/20)
             f = [fid for fid in self.featdb[doc] if not mask or not mask[fid]]
-            self.nscores[idx] = nx.sum(nx.log(((
-                pcounts[f]+ps[f])/(pdocs+2*ps[f]))/((ncounts[f]-1+ps[f])/(ndocs-1+2*ps[f]))))
+            self.nscores[idx] = nx.sum(nx.log(
+                ((pcounts[f]+ps[f])/(pdocs+2*ps[f]))/
+                ((ncounts[f]-1+ps[f])/(ndocs-1+2*ps[f]))))
         statusfile.update(None, pdocs+ndocs)
         return self.pscores, self.nscores
     
 class PerformanceStats:
-    """Calculates and stores performance statistics.
+    """Stores performance statistics based on cross-validated article scores.
+    
+    @note: Effectively a table of (pscores, nscores, TP, FN, FP, TN, TPR,
+    FPR, PPV, FM, FMa) with some scalar attributes.  Potential to
+    store it in PyTables.
 
     @ivar alpha, pscores, nscores: Input parameters
     

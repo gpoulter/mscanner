@@ -35,8 +35,9 @@ class FileTransaction(file):
     huge list and joins them up to output a string.  This is way slow for 
     large files (list append is O(N^2))
 
-    @note: With an instance of Template, call respond() with a FileTransaction
-    instance, so the template uses FileTransaction.writeln() directly. 
+    @note: Usage is Template().respond(FileTransaction("name","wb")) so the
+    template uses writeln() directly. 
+    
     """
     
     def __init__(self, *pargs, **kwargs):

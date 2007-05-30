@@ -23,6 +23,7 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 http://www.gnu.org/copyleft/gpl.html
 """
 
+import logging as log
 import numpy as nx
 
 from mscanner import statusfile
@@ -106,8 +107,8 @@ class FeatureInfo:
         return len(self.featmap)
         
     def updateFeatureScores(self, pos_counts, neg_counts, pdocs, ndocs):
-        """Change the feature counts and number of documents (and clear
-        old score calculations)."""
+        """Change the feature counts and number of documents, clear
+        old score calculations, and calculate new scores."""
         selfupdate()
         try:
             del self.scores
@@ -235,6 +236,7 @@ def iterScores(docs, featscores, exclude=None):
     
     @return: Iteration of (score, PMID) pairs
     """
+    log.debug("Calculating article scores")
     marker = 0
     for idx, (docid, features) in enumerate(docs):
         if idx == marker:

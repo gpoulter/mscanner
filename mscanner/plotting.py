@@ -22,6 +22,7 @@ http://www.gnu.org/copyleft/gpl.html
 """
 
 from Gnuplot import Data, Gnuplot
+import logging as log
 import numpy as n
 
 def bincount(data):
@@ -91,6 +92,7 @@ class Plotter(Gnuplot):
         @param threshold: Threshold score for counting a document positive
         """ 
         from itertools import chain
+        log.debug("Plotting article score density to %s", fname)
         px, py = kernelPDF(pdata)
         nx, ny = kernelPDF(ndata)
         overlap = calculateOverlap(px, py, nx, ny)
@@ -109,6 +111,7 @@ class Plotter(Gnuplot):
     def plotFeatureScoreDensity(g, fname, scores):
         """Plots probability density function for feature scores
         """
+        log.debug("Plotting feature score density to %s", fname)
         x, y = kernelPDF(scores, npoints=1024)
         g.reset()
         g.title("Feature Score Density")
@@ -120,6 +123,7 @@ class Plotter(Gnuplot):
     
     def plotArticleScoreHistogram(g, fname, pdata, ndata, threshold):
         """Plot histograms for pos/neg scores, with line to mark threshold""" 
+        log.debug("Plotting article score histogram to %s", fname)
         from itertools import chain
         py, px = n.histogram(pdata, bins=bincount(pdata), normed=True)
         ny, nx = n.histogram(ndata, bins=bincount(ndata), normed=True)
@@ -140,6 +144,7 @@ class Plotter(Gnuplot):
         
     def plotFeatureScoreHistogram(g, fname, scores):
         """Plot histogram for individual feature scores"""
+        log.debug("Plotting feature score histogram to %s", fname)
         sscores = scores.copy()
         sscores.sort()
         y, x = n.histogram(scores, bins=bincount(sscores))
@@ -158,6 +163,7 @@ class Plotter(Gnuplot):
     
         @param roc: Path to output file for ROC curve
         """
+        log.debug("Plotting ROC curve to %s", fname)
         g.reset()
         g.title("ROC curve (TPR vs FPR)")
         g.ylabel("True Positive Rate (TPR)")
@@ -172,6 +178,7 @@ class Plotter(Gnuplot):
     
         @param p_vs_r: Path to output file for precision-recall curve
         """
+        log.debug("Plotting Precision-Recall curve to %s", fname)
         g.reset()
         g.title("Precision vs Recall")
         g.ylabel("Precision")
@@ -184,6 +191,7 @@ class Plotter(Gnuplot):
     def plotPrecisionRecallFmeasure(g, fname, pscores, TPR, PPV, FM, FMa, threshold):
         """Precision, Recall, F-Measure vs threshold graph
         """
+        log.debug("Plotting F-Measure curve to %s", fname)
         g.reset()
         g.title("Precision and Recall vs Threshold")
         g.ylabel("Precision, Recall, F-Measure, F-Measure Alpha")
@@ -200,6 +208,7 @@ class Plotter(Gnuplot):
         """Graph of proportion of testing set retrieved, versus result rank
         
         """
+        log.debug("Plotting Retrieval curve to %s", fname)
         g.reset()
         g.title("Retrieval Test")
         g.ylabel("Proportion Retrieved (recall)")

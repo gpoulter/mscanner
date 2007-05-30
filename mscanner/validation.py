@@ -373,10 +373,13 @@ class PerformanceStats:
         r5 = r1 * r2 + 0.5 * r1 * r3
         r6 = r3 * (r4**2 + r4*r1 + (r1**2)/3)
         r7 = r1 * (r2**2 + r2*r3 + (r3**2)/3)
-        W = r5.sum() / (s.N*s.P)
-        Q2 = r6.sum() / (s.P*s.N*s.N)
-        Q1 = r7.sum() / (s.N*s.P*s.P)
-        W_stderr = nx.sqrt((W*(1-W)+(s.P-1)*(Q1-W**2)+(s.N-1)*(Q2-W**2))/(s.P*s.N))
+        N = float(s.N)
+        P = float(s.P)
+        W = r5.sum() / (N*P)
+        Q2 = r6.sum() / (P * N**2)
+        Q1 = r7.sum() / (N * P**2)
+        W_stderr = nx.sqrt((W*(1-W)+(P-1)*(Q1-W**2)+(N-1)*(Q2-W**2))/(P*N))
+        print W, Q1, Q2, W_stderr
         s.W = W
         s.W_stderr = W_stderr
         return W, W_stderr

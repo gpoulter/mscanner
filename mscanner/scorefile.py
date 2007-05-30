@@ -66,8 +66,10 @@ def readPMIDs(filename, include=None, exclude=None, withscores=False):
             yield pmid
         count += 1
     if count == 0:
-        raise RuntimeError("Did not succeed in reading any PMIDs from %s" %
-                           filename)
+        raise ValueError("Did not succeed in reading any non-excluded PMIDs"+\
+                         "from %s" % filename)
+    else:
+        log.debug("Got %d PubMed IDs from %s", count, filename.basename())
 
 def writePMIDScores(filename, pairs):
     """Write (score, PMID) pairs to filename, in decreasing

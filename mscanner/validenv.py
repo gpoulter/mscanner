@@ -189,6 +189,7 @@ class ValidationEnvironment:
         """
         os.chdir(rc.valid_report_dir)
         # Calculate feature score information
+        log.debug("Calculating output feature scores")
         self.featinfo.updateFeatureScores(
             pos_counts = countFeatures(
                 len(self.featmap), self.featdb, self.positives),

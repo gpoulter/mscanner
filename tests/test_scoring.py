@@ -3,9 +3,9 @@ from path import path
 import tempfile
 import unittest
 
+from mscanner import scoring
 from mscanner.article import Article
 from mscanner.featuremap import FeatureMapping
-from mscanner import scoring
 
 class ScoringTests(unittest.TestCase):
     """Tests for scoring module functions"""

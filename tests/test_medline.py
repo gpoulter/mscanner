@@ -5,8 +5,9 @@ import unittest
 
 from mscanner.article import Article
 from mscanner.featuremap import FeatureMapping
-from mscanner.medline import *
-from mscanner import utils
+from mscanner.medline import parse, MedlineCache, FileTracker
+from mscanner.scorefile import getArticles
+from mscanner.support.utils import usetempfile
 
 class ArticleParserTests(unittest.TestCase):
     """
@@ -62,7 +63,7 @@ class MedlineCacheTests(unittest.TestCase):
         xml.write_text(xmltext)
         m.updateCacheFromDir(h, save_delay=1)
         pmids.write_lines(["1", "2"])
-        a = utils.getArticles(artdb, pmids)
+        a = getArticles(artdb, pmids)
         print repr(a)
         self.assertEqual(a[0].pmid, 1)
         self.assertEqual(a[1].pmid, 2)
@@ -72,6 +73,20 @@ class MedlineCacheTests(unittest.TestCase):
                 (u'Q4', 'qual'), (u'Q5', 'qual'), (u'Q7', 'qual'), 
                 (u'T1', 'mesh'), (u'T2', 'mesh'), (u'T3', 'mesh'), (u'T6', 'mesh'), 
                 (u'0301-4851', 'issn')])
+        
+class FileTrackerTest(unittest.TestCase):
+
+    @usetempfile
+    def testFileTracker(self, fn):
+        """For FileTracker.(__init__, add, toprocess, dump)"""
+        t = FileTracker(fn)
+        t.add(path("hack/a.xml"))
+        t.add(path("cough/b.xml"))
+        self.assertEqual(t.toprocess([path("foo/a.xml"), path("blah/c.xml")]), ["blah/c.xml"])
+        t.dump()
+        del t
+        t = FileTracker(fn)
+        self.assertEqual(t, set(['a.xml', 'b.xml']))
             
 xmltext = u'''<?xml version="1.0"?>
 <!DOCTYPE MedlineCitationSet PUBLIC "-//NLM//DTD Medline Citation, 1st January 2007//EN"

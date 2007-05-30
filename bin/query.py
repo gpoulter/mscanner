@@ -30,7 +30,7 @@ import sys
 
 from mscanner.configuration import rc, initLogger
 from mscanner.queryenv import QueryEnvironment
-from mscanner.utils import runMailer
+from mscanner.statusfile import runMailer
             
 ds_map = {
     "aids"        : "aids-bioethics-Oct06.txt",

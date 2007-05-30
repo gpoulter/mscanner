@@ -31,7 +31,7 @@ from path import path
 import sys
 
 from mscanner.configuration import rc, initLogger
-from mscanner.utils import runMailer
+from mscanner.statusfile import runMailer
 from mscanner.validenv import ValidationEnvironment
 
 dataset_map = {

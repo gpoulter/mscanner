@@ -10,21 +10,23 @@ from mscanner.validation import Validator, PerformanceStats
 
 logging.basicConfig(level=0)
 
-class PerformanceStatisticTest(unittest.TestCase):
+class PerformanceStatisticsTest(unittest.TestCase):
     """Tests for PerformanceStats class"""
     def test(self):
-
         p = PerformanceStats(
-            pscores = nx.array([-2,0,1,2,3,4,5,6,7], dtype=nx.float32),
-            nscores = nx.array([-3,-2,-1,0,4,5], dtype=nx.float32),
+            pscores = nx.array([1,2,3,4,4,5,5], dtype=nx.float32),
+            nscores = nx.array([0,0,1,1,2,4,5], dtype=nx.float32),
             alpha = 0.5
-            )
+        )
+        print "HI"
+        import pprint
+        pp = pprint.PrettyPrinter()
+        print pp.pformat(p.__dict__)
 
 class ValidatorTest(unittest.TestCase):
-    """
-    Tests for Validator class (and implicitly, that the plotting module
-    at least functions)
-    """
+    """ Tests for Validator class (and implicitly, that the plotting module at
+    least functions) """
+
     def setUp(self):
         self.prefix = path(tempfile.mkdtemp(prefix="valid-"))
         print self.prefix
@@ -45,7 +47,8 @@ class ValidatorTest(unittest.TestCase):
         """Test that cross-validated scores are correctly calculated"""
         featinfo = FeatureInfo([2,5,7], pseudocount = 0.1)
         val = Validator(
-            featdb = {0:[0,1,2], 1:[0,1], 2:[0,1], 3:[0,1], 4:[1,2], 5:[1,2], 6:[1,2], 7:[0,1,2]},
+            featdb = {0:[0,1,2], 1:[0,1], 2:[0,1], 3:[0,1], 4:[1,2], 
+                      5:[1,2], 6:[1,2], 7:[0,1,2]},
             featinfo = featinfo,
             positives = nx.array([0, 1, 2, 3]),
             negatives = nx.array([4, 5, 6, 7]),
@@ -67,7 +70,7 @@ class ValidatorTest(unittest.TestCase):
             featinfo = featinfo,
             positives = nx.array([0, 1, 2, 3]),
             negatives = nx.array([4, 5, 6, 7]),
-            nfolds = None,
+            nfolds = None, # Triggers leave-out-one
             alpha = 0.5,
         )
         pscores, nscores = val.validate()
@@ -77,4 +80,7 @@ class ValidatorTest(unittest.TestCase):
         self.assert_(nx.allclose(nscores,cnscores,rtol=1e-3))
 
 if __name__ == "__main__":
+    t = unittest.defaultTestLoader.loadTestsFromTestCase(
+        PerformanceStatisticsTest)
     unittest.main()
+    #unittest.main()

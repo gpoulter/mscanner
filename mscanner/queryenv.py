@@ -22,24 +22,22 @@ General Public License for more details.
 http://www.gnu.org/copyleft/gpl.html
 """
 
-import codecs
-from contextlib import closing
 from itertools import chain
 import logging as log
 import numpy as nx
 import os
 
-from mscanner import dbshelve
 from mscanner import statusfile
 from mscanner.configuration import rc
 from mscanner.featuredb import FeatureDatabase, FeatureStream
 from mscanner.featuremap import FeatureMapping
-from mscanner.gcheetah import TemplateMapper, FileTransaction
 from mscanner.plotting import Plotter
+from mscanner.scorefile import readPMIDs, writePMIDScores
 from mscanner.scoring import (FeatureInfo, countFeatures, iterScores, 
                               filterDocuments, partitionList, retrievalTest)
-from mscanner.utils import (runMailer, readPMIDs, writePMIDScores,
-                            preserve_cwd)
+from mscanner.support import dbshelve
+from mscanner.support.gcheetah import TemplateMapper, FileTransaction
+from mscanner.support.utils  import preserve_cwd
 
 class QueryEnvironment:
     """Class for managing MScanner analysis without passing around lots of
@@ -70,7 +68,6 @@ class QueryEnvironment:
         self.artdb = dbshelve.open(rc.articledb, 'r')
         
     def __del__(self):
-        log.info("Cleaning up")
         statusfile.close()
         self.featdb.close()
         self.artdb.close()
@@ -78,6 +75,7 @@ class QueryEnvironment:
     def clearResults(self):
         """Get rid of old results, that we may query again"""
         try:
+            statusfile.close()
             del self.featinfo
             del self.inputs
             del self.results
@@ -130,6 +128,7 @@ class QueryEnvironment:
             self.getResults()
             self.saveResults()
         self.writeReport()
+        log.info("Cleaning up")
         statusfile.close()
         
     @preserve_cwd
@@ -236,6 +235,7 @@ class QueryEnvironment:
         os.chdir(rc.query_report_dir)
         # Feature Scores
         log.debug("Writing feature scores")
+        import codecs
         self.featinfo.writeScoresCSV(
             codecs.open(rc.report_term_scores, "wb", "utf-8"))
         # Input Citations

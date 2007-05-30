@@ -1,10 +1,9 @@
-from cStringIO import StringIO
 from numpy import *
+from path import path
 import tempfile
 import unittest
-import os
 
-from mscanner.featuredb import *
+from mscanner.featuredb import FeatureDatabase, FeatureStream
 
 class FeatureDatabaseTests(unittest.TestCase):
     """

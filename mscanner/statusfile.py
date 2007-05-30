@@ -21,6 +21,10 @@ because there is only supposed to be one status file active at a time. A module
 is the pythonic version of a singleton (if you think you might ever need
 more than one instance, use an ordinary class).
 
+ADDITIONAL FUNCTION
+
+runMailer() -- Send e-mails to people listed in a file
+
                                    
 """
 
@@ -53,7 +57,7 @@ timestamp = 0
 progress = 0
 total = 0
 
-def read(filename):
+def read(filename=None):
     """Attempt to read the status file. Returns True if successful, and False if
     the status file does not exist"""
     s.filename = filename if filename else rc.statfile
@@ -112,3 +116,38 @@ def update(progress=None, total=None, dolog=True):
         log.info("Completed %d out of %d", s.progress, s.total)
     if s.filename is not None:
         s.filename.write_text(contents())
+        
+def runMailer(smtpserver, mailer):
+    """Read e-mail addresses from mail file and send them a message saying
+    MScanner is available.
+
+    @param mailer: Path object to file of e-mail addresses
+    """
+    if not mailer.isfile():
+        return
+    import smtplib
+    import logging
+    server = smtplib.SMTP(smtpserver)
+    server.set_debuglevel(0)
+    fromaddr = "nobody@mscanner.stanford.edu"
+    for email in mailer.lines(retain=False):
+        logging.debug("Sending availability alert to %s", email)
+        msg = "From: %s\r\nTo: %s\r\n\r\n" % (fromaddr, email)
+        msg += """
+Someone requested that an alert be sent to this address when MScanner,
+a service for classifying Medline citations given a set of examples
+(http://mscanner.stanford.edu) completed its current request.
+
+MScanner has completed the last submission and at the time of sending
+this email is available for query or validation operations.
+
+This is a once-off notification. The list of e-mails to notify
+is erased immediately after sending.
+"""
+        try:
+            server.sendmail(fromaddr, email, msg)
+        except Exception:
+            logging.debug("Failed to send to %s", email)
+    server.quit()
+    mailer.remove()
+

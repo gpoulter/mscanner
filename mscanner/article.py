@@ -17,8 +17,6 @@ General Public License for more details.
 http://www.gnu.org/copyleft/gpl.html
 """
 
-import pprint
-
 class Article:
     """Stores an instance of a Medline citation.
     
@@ -65,6 +63,7 @@ class Article:
         self.authors = authors if authors else []
 
     def __repr__(self):
+        import pprint
         pp = pprint.PrettyPrinter()
         s = "Article(pmid=%s,\n"+\
           "title=%s,\n"+\

@@ -33,7 +33,6 @@ from mscanner import article
 from mscanner import statusfile
 from mscanner.configuration import rc
 from mscanner.featuremap import FeatureMapping
-from mscanner.utils import runMailer
 from mscanner.medline import MedlineCache
 
 if __name__ == "__main__":
@@ -72,4 +71,4 @@ if __name__ == "__main__":
     finally:
         log.debug("Cleaning up")
         statusfile.close()
-        runMailer(rc.smtpserver, rc.emails_path)
+        statusfile.runMailer(rc.smtpserver, rc.emails_path)

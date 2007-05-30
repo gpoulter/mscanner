@@ -27,7 +27,7 @@ import re
 import unittest
 import xmlrpclib
 
-from mscanner import dbshelve
+from mscanner.support import dbshelve
 
 def parseDrugs(text):
     """Return a drug dictionary from specially formatted table

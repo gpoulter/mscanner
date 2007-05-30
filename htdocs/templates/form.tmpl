@@ -127,8 +127,9 @@ Submit Query or Validation #slurp
       
       $form_row("Deletion Code", "code", $h_input("code",8,$code),
       """To prevent random people from cancelling your submission or
-      deleting your output you should specify a code (if blank, anyone
-      can delete your output).  <br /><br />Preventing others from
+      deleting your output you should specify a short easy-to-remember code 
+      (if blank, anyone  can delete your output).  It will only be used once: 
+      to delete the output. <br/><br/>Preventing others from
       <i>viewing</i> your output requires your downloading it and then
       deleting it from the output page (output is a plain directory,
       so this application can't limit access)""")

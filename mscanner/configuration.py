@@ -31,7 +31,7 @@ http://www.gnu.org/copyleft/gpl.html
 """
 
 from path import path
-from mscanner.storage import RCStorage
+from mscanner.support.storage import RCStorage
 
 rc = RCStorage()
 

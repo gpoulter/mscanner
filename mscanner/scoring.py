@@ -23,12 +23,10 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 http://www.gnu.org/copyleft/gpl.html
 """
 
-import heapq
 import numpy as nx
 
 from mscanner import statusfile
-from mscanner.utils import selfupdate
-from mscanner.storage import Storage
+from mscanner.support.utils  import selfupdate
 
 class FeatureInfo:
     """Class to calculate and store all information about the
@@ -182,6 +180,7 @@ class FeatureInfo:
         @ivar neg_distinct_feats: Number of of distinct features in negatives
         
         """
+        from mscanner.support.storage import Storage
         s = Storage()
         s.pdocs = self.pdocs
         s.ndocs = self.ndocs
@@ -272,6 +271,7 @@ def filterDocuments(scores, limit, threshold=None):
 
     @return: List of (score, PMID) pairs in decreasing order of score
     """
+    import heapq
     results = [(-100000, 0)] * limit
     ndocs = 0
     for score, docid in scores:

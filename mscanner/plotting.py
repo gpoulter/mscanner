@@ -22,11 +22,7 @@ http://www.gnu.org/copyleft/gpl.html
 """
 
 from Gnuplot import Data, Gnuplot
-from itertools import chain
 import numpy as n
-from pprint import pprint
-from scipy.interpolate import interp1d
-from scipy.integrate import trapz
 
 def bincount(data):
     """Return best number of histogram bins for the data (expects data sorted
@@ -46,6 +42,8 @@ def calculateOverlap(px, py, nx, ny):
     from min(nx) to max(px), then find highest where pY and nY intersect,
     then create a curve using pY up to intersection, and nY thereafter. Then
     calculate the area underneath using trapezoidal rule."""
+    from scipy.interpolate import interp1d
+    from scipy.integrate import trapz
     X = n.linspace(n.min(nx), n.max(px), 1000)
     p_interp = interp1d(px, py, bounds_error=False, fill_value=0.0)
     n_interp = interp1d(nx, ny, bounds_error=False, fill_value=0.0)
@@ -92,6 +90,7 @@ class Plotter(Gnuplot):
         @param ndata: Scores of negative documents
         @param threshold: Threshold score for counting a document positive
         """ 
+        from itertools import chain
         px, py = kernelPDF(pdata)
         nx, ny = kernelPDF(ndata)
         overlap = calculateOverlap(px, py, nx, ny)
@@ -121,18 +120,23 @@ class Plotter(Gnuplot):
     
     def plotArticleScoreHistogram(g, fname, pdata, ndata, threshold):
         """Plot histograms for pos/neg scores, with line to mark threshold""" 
+        from itertools import chain
         py, px = n.histogram(pdata, bins=bincount(pdata), normed=True)
         ny, nx = n.histogram(ndata, bins=bincount(ndata), normed=True)
         g.reset()
+        g("set terminal png")
+        g("set output '%s'" % fname)
         g.title("Score Histograms")
         g.xlabel("Article Score")
         g.ylabel("Histogram Mass")
-        g("set terminal png")
-        g("set output '%s'" % fname)
-        g("set style fill solid 0.4")
-        g("set arrow from %f,0 to %f,%f nohead" % (threshold,threshold,max(chain(py,ny))))
+        #g("set arrow from %f,0 to %f,%f nohead lw 4 " % (
+        #    threshold, threshold, max(chain(py,ny))))
+        g("set style fill solid 1.0")
+        threshold_height = max(chain(py, ny))
         g.plot(Data(px, py, title="Positives", with="boxes"),
-               Data(nx, ny, title="Negatives", with="boxes"))
+               Data(nx, ny, title="Negatives", with="boxes"),
+               Data([threshold, threshold], [0, threshold_height], 
+                    title="threshold", with="lines lw 3"))
         
     def plotFeatureScoreHistogram(g, fname, scores):
         """Plot histogram for individual feature scores"""
@@ -179,8 +183,6 @@ class Plotter(Gnuplot):
     
     def plotPrecisionRecallFmeasure(g, fname, pscores, TPR, PPV, FM, FMa, threshold):
         """Precision, Recall, F-Measure vs threshold graph
-    
-        @parav pr_vs_score: Path to output file for precision,recall vs threshold
         """
         g.reset()
         g.title("Precision and Recall vs Threshold")
@@ -195,10 +197,13 @@ class Plotter(Gnuplot):
                Data([threshold, threshold], [0,0.99], title="threshold", with="lines"))
     
     def plotRetrievalGraph(g, fname, nretrieved, total):
+        """Graph of proportion of testing set retrieved, versus result rank
+        
+        """
         g.reset()
         g.title("Retrieval Test")
         g.ylabel("Proportion Retrieved (recall)")
         g.xlabel("Rank")
         g("set terminal png")
         g("set output '%s'" % fname)
-        g.plot(Data(range(0,len(nretrieved)), nretrieved / total), with="lines")
+        g.plot(Data(range(0,len(nretrieved)), nretrieved / total, with="lines"))

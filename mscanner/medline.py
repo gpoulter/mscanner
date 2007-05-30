@@ -1,6 +1,10 @@
 """For updating the databases of articles and features (feature
 mapping, db of article->features and stream of article->features).
 
+parse() -- Turn Medline XML
+MedlineCache -- For consistent updating of the database/features
+FileTracker -- Track processed files (to avoid re-parsing), with persistence
+
                                    
 """
 
@@ -19,19 +23,15 @@ http://www.gnu.org/copyleft/gpl.html
 """
 
 from bsddb import db
-import cPickle
 import gzip
 import logging as log
-import numpy as nx
-import os
 from path import path
 import xml.etree.cElementTree as ET
 
-from article import Article
-import dbshelve
-from featuredb import FeatureDatabase, FeatureStream
-from featuremap import FeatureMapping
-from utils import FileTracker
+from mscanner.support import dbshelve
+from mscanner.article import Article
+from mscanner.featuredb import FeatureDatabase, FeatureStream
+from mscanner.featuremap import FeatureMapping
 
 def parse(source):
     """Convert XML file into Article objects
@@ -209,3 +209,36 @@ class MedlineCache:
             tracker.dump()
             log.info("Completed file %d out of %d (%s)", idx+1, len(toprocess), filename.name)
         dbenv.close()
+        
+class FileTracker(set):
+    """A persistent set for tracking of processed files.
+    
+    @note: Overloads "add" to only add basenames, and facilities to 
+    load from and dump to file.
+
+    It accepts all paths, but membership is checked according to basename()
+    """
+
+    def __init__(self, trackfile=None):
+        """Initialise, specifying path to write the list of files"""
+        self.trackfile = trackfile
+        self.trackfile_new = trackfile+".new"
+        if isinstance(trackfile,path) and trackfile.isfile():
+            self.update(trackfile.lines(retain=False))
+
+    def dump(self):
+        """Write the list of tracked files, one per line"""
+        if self.trackfile is None:
+            return
+        self.trackfile_new.write_lines(sorted(self))
+        self.trackfile_new.rename(self.trackfile)
+
+    def add(self, fname):
+        """Add a file to the tracker"""
+        set.add(self, fname.basename())
+
+    def toprocess(self, files):
+        """Given a list of files return sorted list of those not in the tracker"""
+        return sorted(f for f in files if f.basename() not in self)
+
+

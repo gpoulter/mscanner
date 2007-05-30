@@ -155,14 +155,23 @@ $timestamp -- time.time() for start of the operation
     to 1.0 trades recall for increased precision.""")
 
     <tr>
-      <th>Area under ROC curve</th>
-      <td>#echo "%.5f" % $p.ROC_area #</td>
+      <th>Area under ROC curve A(z)</th>
+      <td>#echo "%.5f" % $p.W #</td>
       $help("h_roc")
     </tr>
     $hr("h_roc", """Global measure of classifier performance which is
     independent of the prevalence in the input data and the choice of
     decision threshold.  Worst case is 0.5 (true positives increase at
     same rate as false positives), and best case is 1.0.""")
+
+    <tr>
+      <th>Standard Error of A(z)</th>
+      <td>#echo "%.5f" % $p.W_stderr #</td>
+      $help("h_roc_stderr")
+    </tr>
+    $hr("h_roc_stderr", """Since A(z) is equal to the Wilcoxon statistic W for the 
+    data, we use the method of Hanley1982 to calculate the standard error
+    of the area under the ROC curve.""")
 
     <tr>
       <th>Area under PR curve</th>

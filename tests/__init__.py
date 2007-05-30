@@ -11,6 +11,7 @@ def suite():
         "test_genedrug",
         "test_medline",
         "test_scoring",
+        "test_scorefile",
         "test_statusfile",
         "test_storage",
         "test_utils",

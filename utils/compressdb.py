@@ -1,6 +1,6 @@
 #!env python
 
-import dbshelve
+from mscanner.support import dbshelve
 
 if __name__ == "__main__":
     print "OPENING"

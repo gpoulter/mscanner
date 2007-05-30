@@ -19,7 +19,7 @@ import scipy
 from subprocess import call
 
 from mscanner.configuration import rc as mrc
-from mscanner.utils import readPMIDs
+from mscanner.scorefile  import readPMIDs
 from mscanner.validation import PerformanceStats
 from mscanner.plotting import bincount, kernelPDF, calculateOverlap
 

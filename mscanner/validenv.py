@@ -19,7 +19,6 @@ General Public License for more details.
 http://www.gnu.org/copyleft/gpl.html
 """
 
-import codecs
 from itertools import chain, izip
 import logging as log
 import numpy as nx
@@ -29,11 +28,11 @@ from mscanner import statusfile
 from mscanner.configuration import rc
 from mscanner.featuredb import FeatureDatabase
 from mscanner.featuremap import FeatureMapping
-from mscanner.gcheetah import TemplateMapper, FileTransaction
 from mscanner.plotting import Plotter
+from mscanner.scorefile import getArticles, readPMIDs, writePMIDScores
 from mscanner.scoring import FeatureInfo, countFeatures
-from mscanner.utils import (getArticles, readPMIDs, runMailer, writePMIDScores,
-                            preserve_cwd)
+from mscanner.support.gcheetah import TemplateMapper, FileTransaction
+from mscanner.support.utils  import preserve_cwd
 from mscanner.validation import Validator, PerformanceStats
 
 class ValidationEnvironment:
@@ -69,7 +68,6 @@ class ValidationEnvironment:
         self.postfilter = None
         
     def __del__(self):
-        log.debug("Cleaning up")
         statusfile.close()
 
     def reset(self):
@@ -91,24 +89,27 @@ class ValidationEnvironment:
         @param pospath: Location of input positive PMIDs
         @param negpath: Location of input negative PMIDs
         """
-        # Report directory
-        if not rc.valid_report_dir.exists():
-            rc.valid_report_dir.makedirs()
-        os.chdir(rc.valid_report_dir)
-        statusfile.start(total=rc.nfolds)
-        # Load saved results
-        if rc.report_positives.isfile() and \
-           rc.report_negatives.isfile():
-            self.loadResults()
-        # Calculate new results
-        else:
-            self.loadInputs(pospath, negpath)
-            if rc.dogenedrug:
-                self.doGeneDrug()
-            self.getResults()
-            self.saveResults()
-        self.writeReport()
-        statusfile.close()
+        try:
+            # Report directory
+            if not rc.valid_report_dir.exists():
+                rc.valid_report_dir.makedirs()
+            os.chdir(rc.valid_report_dir)
+            statusfile.start(total=rc.nfolds)
+            # Load saved results
+            if rc.report_positives.isfile() and \
+               rc.report_negatives.isfile():
+                self.loadResults()
+            # Calculate new results
+            else:
+                self.loadInputs(pospath, negpath)
+                if rc.dogenedrug:
+                    self.doGeneDrug()
+                self.getResults()
+                self.saveResults()
+            self.writeReport()
+        finally:
+            log.debug("Cleaning up")
+            statusfile.close()
         
     def loadInputs(self, pospath, negpath):
         """Load PubMed IDs from files"""
@@ -137,6 +138,7 @@ class ValidationEnvironment:
     @preserve_cwd
     def saveResults(self):
         """Save validation scores to disk"""
+        log.info("Saving result scores")
         os.chdir(rc.valid_report_dir)
         writePMIDScores(rc.report_positives, izip(self.pscores, self.positives))
         writePMIDScores(rc.report_negatives, izip(self.nscores, self.negatives))
@@ -196,7 +198,9 @@ class ValidationEnvironment:
             ndocs = len(self.negatives),
             )
         # Write term scores
+        log.debug("Writing term scores")
         if not rc.report_term_scores.exists():
+            import codecs
             self.featinfo.writeScoresCSV(
                 codecs.open(rc.report_term_scores, "wb", "utf-8"))
         self.performance = PerformanceStats(
@@ -209,28 +213,30 @@ class ValidationEnvironment:
         ##  rc.report_artscores_img, p.pscores, p.nscores, p.threshold)
         ##plotter.plotFeatureScoreDensity(
         ##  rc.report_featscores_img, elf.feature_info.scores)
-        # Article Scores
+        log.debug("Drawing graphs")
+        # Article Score Histogram
         if not rc.report_artscores_img.exists():
             plotter.plotArticleScoreHistogram(
             rc.report_artscores_img, p.pscores, p.nscores, p.threshold)
-        # Feature Scores
+        # Feature Score Histogram
         if not rc.report_featscores_img.exists():
             plotter.plotFeatureScoreHistogram(
             rc.report_featscores_img, self.featinfo.scores)
-        # ROC
+        # ROC Curve
         if not rc.report_roc_img.exists():
             plotter.plotROC(
             rc.report_roc_img, p.FPR, p.TPR, p.tuned.FPR)
-        # Precision-Recall
+        # Precision-Recall Curve
         if not rc.report_prcurve_img.exists():
             plotter.plotPrecisionRecall(
             rc.report_prcurve_img, p.TPR, p.PPV, p.tuned.TPR)
-        # F-Measure
+        # F-Measure Curve
         if not rc.report_fmeasure_img.exists():
             plotter.plotPrecisionRecallFmeasure(
-            rc.report_fmeasure_img, p.pscores, p.TPR, p.PPV, 
+            rc.report_fmeasure_img, p.uscores, p.TPR, p.PPV, 
             p.FM, p.FMa, p.threshold)
         # Index file
+        log.debug("Writing index.html")
         mapper = TemplateMapper(root=rc.templates)
         tpl = mapper.validation(
             stats = self.featinfo.getFeatureStats(),

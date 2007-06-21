@@ -40,14 +40,11 @@ class Validator:
         @ivar negatives: Array of negative PMIDs for validation
         @ivar nfolds: Number of validation folds (0 for leave-out-one)
         @ivar alpha: For Validator.getPerformance() PerformanceStatistics
-        @ivar postfilter: Check score threshold AND membership of postfilter
+        @ivar postfilter: Check membership of this as well as score threshold
     
     Updated by validate():
         @ivar pscores: Scores of positive articles after validation
         @ivar nscores: Scores of negative articles after validation
-    
-    Updated by getPerformance():
-        @ivar performance: PerformanceStats object
     """
 
     def __init__(self, 
@@ -55,7 +52,7 @@ class Validator:
         featinfo,
         positives,
         negatives,
-        nfolds,
+        nfolds = 10,
         alpha = 0.5,
         postfilter = None,
         ):
@@ -153,8 +150,9 @@ class Validator:
     def leaveOutOneValidate(self):
         """Carries out leave-out-one validation, returning the resulting scores.
         
-        @note: Is only able to perform Bayesian pseudocount feature score
-        calculation.
+        @note: Updates self.pscores, self.nscores
+        
+        @note: Feature scores by Bayesian pseudocount only - no other methods.
         
         @return: self.pscores and self.nscores
         """
@@ -257,7 +255,7 @@ class PerformanceStats:
         s.N = len(s.nscores)
         s.A = s.P + s.N
         s.getCountVectors()
-        s.getRatioVectors()
+        s.getRatioVectors(s.alpha)
         s.getCurveAreas()
         s.getROCError()
         s.getMaxFMeasurePoint()
@@ -311,13 +309,14 @@ class PerformanceStats:
             s.FN[idx] = FN
         return s.TP, s.TN, s.FP, s.FN
 
-    def getRatioVectors(self):
+    def getRatioVectors(self, alpha):
         """Calculate performance using vector algebra
+
+        @param alpha: Weight of precision in calculating FMa
         
         @return: self.(TPR, FPR, PPV, FM, FMa)
         """
         s = self
-        z = nx.zeros(s.vlen, nx.float32)
         # TPR is recall
         s.TPR = s.TP / s.P
         # FPR is 1-specificity
@@ -328,7 +327,7 @@ class PerformanceStats:
         # FM is F-Measure
         s.FM = 2 * s.TPR * s.PPV / (s.TPR + s.PPV) 
         # FMa is the alpha-weighted F-Measures
-        s.FMa = 1 / (s.alpha / s.PPV + (1 - s.alpha) / s.TPR)
+        s.FMa = 1 / (alpha / s.PPV + (1 - alpha) / s.TPR)
         return s.TPR, s.FPR, s.PPV, s.FM, s.FMa
 
     def getCurveAreas(self):
@@ -357,9 +356,7 @@ class PerformanceStats:
         Hanley1982.
         
         @note: W, the Wilcoxon statistic, is equal to the trapezoidal
-        rule area.  The reason W tends to be higher than ROC_area is
-        either boundaries in trapezoidal rule, or that ties score 0.5
-        where 
+        rule area under the ROC.
         """
         s = self
         # r1 is number of negatives with each score,
@@ -401,7 +398,8 @@ class PerformanceStats:
         """Return the threshold and its index into uscores that gives the
         greates value for alpha-weighted F-Measure."""
         s = self
-        s.threshold_index = nx.nonzero(s.FMa == nx.max(s.FMa))[0][0]
+        max_FMa = nx.max(s.FMa)
+        s.threshold_index = nx.nonzero(s.FMa == max_FMa)[0][0]
         s.threshold = self.uscores[s.threshold_index]
         return s.threshold, s.threshold_index
 

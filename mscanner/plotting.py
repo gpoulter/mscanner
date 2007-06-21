@@ -26,8 +26,11 @@ import logging as log
 import numpy as n
 
 def bincount(data):
-    """Return best number of histogram bins for the data (expects data sorted
-    increasing order) using $\frac{R}{2*IQR*N^{-1/3}}"""
+    """Return best number of histogram bins for the data using the
+    formula $\frac{R}{2*IQR*N^{-1/3}}.
+
+    @note: Expects data to be sorted increasing order.
+    """
     N = len(data) # Number of data points
     IQR = data[3*N//4] - data[N//4] # Inter-Quartile Range
     R = data[-1] - data[0] # Range

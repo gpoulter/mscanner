@@ -4,7 +4,7 @@
 
 Usage as a backend to the web interface:
 
-query.py dataset pseudocount limit threshold positives_path
+query.py dataset limit threshold positives_path
 
 For experiments, use a Python snippet:
 
@@ -97,7 +97,6 @@ def scriptmain(*args):
         eval(args[0])
     elif len(args) > 1:
         rc.dataset = args[0]
-        rc.pseudocount = float(args[1])
         rc.limit = int(args[2])
         rc.threshold = float(args[3])
         input_path = path(sys.args[4])

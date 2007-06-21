@@ -4,7 +4,7 @@
 
 Usage as backend for CGI:
 
-  validate.py dataset numnegs nfolds pseudocount alpha positives_path
+  validate.py dataset numnegs nfolds alpha positives_path
 
 Usage for experiments (executable python string):
 
@@ -35,21 +35,16 @@ from mscanner.statusfile import runMailer
 from mscanner.validenv import ValidationEnvironment
 
 dataset_map = {
-    "aids-vs-500k": ("aids-bioethics-Oct06.txt", "medline07-500k.txt"),
-    "pg07-vs-500k": ("pharmgkb-070205.txt", "medline07-500k.txt"),
-    "radiology-vs-500k": ("daniel-radiology.txt", "medline07-500k.txt"),
-    "random10k-vs-500k": ("random10k-06.txt", "medline07-500k.txt"), 
+    "aids-vs-100k": ("aids-bioethics-Oct06.txt", "medline07-100k.txt"),
+    "pg07-vs-100k": ("pharmgkb-070205.txt", "medline07-100k.txt"),
+    "radiology-vs-100k": ("daniel-radiology.txt", "medline07-100k.txt"),
+    "random10k-vs-100k": ("random10k-06.txt", "medline07-100k.txt"), 
     "gdsmall-vs-sample": ("genedrug-small.txt", rc.articlelist) ,
     }
 
 def paperTests(*datasets):
     """Cross-validation tests for the publication"""
     env = ValidationEnvironment()
-    rc.alpha = 0.5
-    rc.cutoff = False
-    rc.dodaniel = False
-    rc.nfolds = 10
-    rc.pseudocount = None
     for dataset in datasets:
         if dataset not in dataset_map:
             raise ValueError("Invalid Data Set %s" % dataset)
@@ -62,7 +57,9 @@ def paperTests(*datasets):
         env.standardValidation(pos, neg)
         
 def issnTest():
-    """Checking the difference when ISSN features are excluded"""
+    """Output cross-validatin results on AIDSBio when ISSN features are 
+    excluded.  This will show how much including ISSN helps. 
+    """
     env = ValidationEnvironment()
     rc.exclude_types = ["issn"]
     rc.dataset = "aids-noissn"
@@ -71,47 +68,64 @@ def issnTest():
     env.standardValidation(rc.corpora / pos, rc.corpora / neg)
 
 def compareDaniel():
-    """Make comparisons against the Rubin2005 method."""
+    """Make comparisons against the Rubin2005 method.  
+    
+    @note: We test Daniel's smoothing versus Bayes prior for old and
+    new pharmacogenetics data, against 30k or 500k negatives.
+    
+    """
     pg04 = rc.corpora / "pharmgkb-2004.txt"
     m30k = rc.corpora / "medline07-30k.txt"
     m500k = rc.corpora / "medline07-500k.txt"
     pg07 = rc.corpora / "pharmgkb-070205.txt"
     env = ValidationEnvironment()
-    rc.alpha = 0.5
-    rc.pseudocount = 0
-    rc.nfolds = 10
     
     # Compare on PG04
     rc.dataset = "pg04-vs-30k"
-    rc.dodaniel = False
     rc.exclude_types = None
+    rc.getFrequencies = "getProbabilitiesBayes"
     env.standardValidation(pg04, m30k)
 
     rc.dataset = "pg04-vs-30k-dan"
     rc.exclude_types = ["issn"]
-    rc.dodaniel = True
+    rc.getFrequencies = "getProbabilitiesRubin"
     env.standardValidation(pg04, m30k)
     
-    rc.dataset == "pg04-vs-500k"
-    rc.dodaniel = False
-    rc.exclude_types = None
-    env.standardValidation(pg04, m500k)
-    
-    # Compare daniel vs default on 
+    # Compare daniel vs default on PG07
     rc.dataset = "pg07-vs-30k"
-    rc.dodaniel = False
     rc.exclude_types = None
+    rc.getFrequencies = "getProbabilitiesBayes"
     env.standardValidation(pg07, m30k)
 
     rc.dataset == "pg07-vs-500k-dan"
-    rc.dodaniel = True
     rc.exclude_types = ["issn"]
+    rc.getFrequencies = "getProbabilitiesRubin"
     env.standardValidation(pg07, m30k)
     
     rc.dataset == "pg07-vs-500k-noissn"
-    rc.dodaniel = False
     rc.exclude_types = ["issn"]
+    rc.getFrequencies = "getProbabilitiesBayes"
     env.standardValidation(pg07, m500k)
+    
+def random_bimodality():
+    """Normally Random10K under cross validation against other random
+    citations has multiple modes in the article scores.
+    
+    This tests whether eliminating features that occur only once or
+    twice in the data is effective at removing the bimodality (since
+    such features are hypothesised to cause a spike of negative
+    feature scores in training, and random occurrences in testing
+    citations causes their scores to be shifted left from the mean).    
+    """
+    rc.dataset = "random10k-vs-100k-mod"
+    rc.nfolds = 10
+    rc.getPostMask = "maskLessThanThree"
+    env = ValidationEnvironment()
+    pos = "random10k.txt"
+    neg = "medline07-100k.txt"
+    #pos = "genedrug-small.txt"
+    #neg = rc.articlelist
+    env.standardValidation(rc.corpora / pos, rc.corpora / neg)
 
 def scriptmain(*args):
     """Meant to be called with *sys.argv[1:], such that 
@@ -125,7 +139,6 @@ def scriptmain(*args):
         rc.dataset = sys.argv[0]
         rc.numnegs = int(sys.argv[1])
         rc.nfolds = int(sys.argv[2])
-        rc.pseudocount = float(sys.argv[3])
         rc.alpha = float(sys.argv[4])
         positives_path = path(sys.argv[5])
         negatives_path = rc.valid_report_dir / rc.report_negatives

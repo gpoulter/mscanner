@@ -20,7 +20,6 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 http://www.gnu.org/copyleft/gpl.html
 """
 
-
 import logging as log
 from path import path
 

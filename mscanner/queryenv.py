@@ -45,8 +45,8 @@ class QueryEnvironment:
     names.
 
     From constructor:
-        @ivar featmap: FeatureMapping instance between feature names and IDs
         @ivar featdb: Mapping from PubMed ID to list of features
+        @ivar featmap: FeatureMapping instance between feature names and IDs
         @ivar artdb: Mapping from PubMed ID to Article object
     
     From loadInput():
@@ -61,12 +61,14 @@ class QueryEnvironment:
     """
     
     def __init__(self):
+        """Initialise QueryEnvironment
+        """
         log.info("Loading article databases")
         statusfile.start(dataset="INITIALISATION") 
         self.featdb = FeatureDatabase(rc.featuredb, 'r')
         self.featmap = FeatureMapping(rc.featuremap)
         self.artdb = dbshelve.open(rc.articledb, 'r')
-        
+
     def __del__(self):
         statusfile.close()
         self.featdb.close()
@@ -96,14 +98,16 @@ class QueryEnvironment:
             len(self.featmap), self.featdb, self.input_pmids)
         neg_counts = nx.array(self.featmap.counts, nx.int32) - pos_counts
         return FeatureInfo(
-            self.featmap, 
-            pos_counts, neg_counts,
+            featmap = self.featmap, 
+            pos_counts = pos_counts, 
+            neg_counts = neg_counts,
             pdocs = len(self.input_pmids), 
             ndocs = self.featmap.numdocs - len(self.input_pmids),
             pseudocount = rc.pseudocount, 
             mask = self.featmap.featureTypeMask(rc.exclude_types),
-            daniel = rc.dodaniel, 
-            cutoff = rc.cutoff)
+            getFrequencies = rc.getFrequencies,
+            getPostMask = rc.getPostMask
+        )
     
     def standardQuery(self, pmids_path=None):
         """All-in-one for the most common operation.
@@ -262,10 +266,11 @@ class QueryEnvironment:
         ).respond(FileTransaction(rc.report_index, "w"))
 
 def writeCitations(template, mode, scores, fname, perfile):
-    """Because 10000 citations in one HTML file is impossible to work
-    with, this splits the results up across multiple files.
+    """Because 10000 citations in one HTML file is impossible to work with,
+    writeCitations() takes the results and splits them across multiple files.
     
-    @param template: Template object with respond method
+    @param template: Template class, initialised with parameters and
+    its respond method is called with a FileTransaction.
     
     @param mode: 'input' or 'output'
 

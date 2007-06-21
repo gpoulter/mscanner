@@ -95,9 +95,10 @@ rc.pharmdemo = False
 
 ### Report File Names
 
-## Path to index file
+## Name of index file
 rc.report_index = path("index.html")
 
+## QUERY ONLY
 ## Name of input score file
 rc.report_input_scores = path("input_scores.txt")
 ## Name of result score file
@@ -106,14 +107,17 @@ rc.report_result_scores = path("result_scores.txt")
 rc.report_input_citations = path("input_citations.html")
 ## Name of file with citation records for the output
 rc.report_result_citations = path("result_citations.html")
-## Name of file with cumulative count of retrieved test PMIDs
-rc.report_retrieval_stats = path("retrieval_stats.txt")
+
+## RETRIEVAL TEST ONLY
 ## Name of file with list of testing PMIDs
 rc.report_retrieval_test_pmids = path("retrieval_test.txt")
+## Name of file with cumulative count of retrieved test PMIDs
+rc.report_retrieval_stats = path("retrieval_stats.txt")
 ## Name of retrieval vs rank graph
 rc.report_retrieval_graph = path("retrieval.png")
 
-## Path of file with positive PMIDs and scores
+## VALIDATION ONLY
+## Name of file with positive PMIDs and scores
 rc.report_positives = path("positives.txt")
 ## Name of file with negative PMIDs and scores
 rc.report_negatives = path("negatives.txt")
@@ -130,24 +134,27 @@ rc.report_prcurve_img = path("prcurve.png")
 ## Name of PRF vs threshold file
 rc.report_fmeasure_img = path("fmeasure.png")
 
-#### Global parameters
+#### Non-Path parameters
 
 ## Whether to use transactions while updating
 rc.use_transactions = False
 ## Number of seconds to pause before next file while updating
 rc.save_delay = 2
-## Per-term pseudocount to use
-rc.pseudocount = 0.01
-## Whether to purge negative-only features having positive scores 
-rc.cutoff = False
-## Types of features to exclude
-rc.exclude_types = []
 ## Server for sending e-mails
 rc.smtpserver = "smtp.uct.ac.za" # "smtp.stanford.edu"
-## Whether to use Daniel's 10^-8 pseudocounts
-rc.dodaniel = False
 ## Proportion of data to use in retrieval test
 rc.retrieval_test_prop = 0.1
+
+## Parameters affecting FeatureInfo 
+
+## Per-term pseudocount to use (None for background frequency)
+rc.pseudocount = None
+## Types of features to exclude
+rc.exclude_types = []
+## Method name for calculating feature probabilities
+rc.getFrequencies = "getProbabilitiesBayes"
+## Method name for calculating mask after scores (may be None)
+rc.getPostMask = None
 
 #### Web-configurable parameters
 
@@ -163,8 +170,6 @@ rc.nfolds = 10
 rc.alpha = 0.5
 ## Number of negatives to use
 rc.numnegs = 500000
-## Whether to do a gene-drug co-occurrence filter
-rc.dogenedrug = False
 ## Number of citations per output file
 rc.citations_per_file = 250
 
@@ -181,9 +186,11 @@ def initLogger(console=True, logfile=None):
     rootlog = logging.getLogger()
     rootlog.setLevel(0)
     format = logging.Formatter("%(asctime)-9s %(levelname)-8s %(message)s", "%H:%M:%S")
+    # Configure file logging
     filelog = logging.FileHandler(logfile, "w")
     filelog.setFormatter(format)
     rootlog.addHandler(filelog)
+    # Configure console logging
     if console:
         console = logging.StreamHandler()
         console.setFormatter(format)

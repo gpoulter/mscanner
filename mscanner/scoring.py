@@ -36,9 +36,14 @@ class FeatureInfo:
     @note: FeatureInfo models a table with columns (pos_counts, neg_counts,
     pfreqs, nfreqs, mask, scores), and links to a FeatureMapping table (id,
     name, type, count) for Medline occurrence counts.
+    
+    @note: FeatureInfo can be re-used (e.g. in cross validation) when
+    the data changes - but must be recreated when parameters change.
 
     Passed via constructor:
-    
+        
+        @ivar featmap: featuremap.FeatureMapping object
+        
         @ivar pos_counts: Array of feature counts in positive documents. 
         
         @ivar neg_counts: Array of feature counts in negatives documents
@@ -46,38 +51,28 @@ class FeatureInfo:
         @ivar pdocs: Number of positive documents
         
         @ivar ndocs: Number of negative documents
-    
+        
         @ivar pseudocount: Either a float which is the pseudocount for all
         features, or numpy array of per-feature counts, or None which triggers
         once-off creation of per-features counts equal to Medline frequency if
         Bayesian calculation is in use.
         
         @ivar mask: Boolean array for masking some features scores to zero
+        (this is to exclude features by category, not by score).
         
-        @ivar daniel: If true, use the JAMIA paper's smoothing heuristic
-        of 10^-8 for terms found in positive but not negative (and visa
-        versa).
+        @ivar getFrequencies: Method for calculating feature 
+        probabilities (constructor takes method name).
         
-        @ivar cutoff: If true, any features whose positive count is zero but
-        nonetheless obtain a positive score (due to pseudocount priors), has
-        its score set to zero.
-    
-    Added by constructor:
-    
-        @ivar getFrequencies: Method to calculate pfreq, nfreq
-        
-        @ivar postmask: Method for custom masking after scores are known
-        
-        @ivar featmap: featuremap.FeatureMapping object
-    
+        @ivar getPostMask: Method for calculating mask after feature
+        scores are known (constructor takes method name or None)
+      
     Set by getFeatureScores() and updateFeatureScores():
-    
+        
         @ivar pfreqs: Probability of each feature given positive article
         
         @ivar pfreqs: Probability of each feature given negative article
         
         @ivar scores: Array of feature scores
-
     """
 
     def __init__(self, 
@@ -88,19 +83,13 @@ class FeatureInfo:
                  ndocs=None,
                  pseudocount=None, 
                  mask=None,
-                 daniel=False, 
-                 cutoff=False):
+                 getFrequencies="getProbabilitiesBayes",
+                 getPostMask=None):
         """Initialise FeatureInfo object (parameters are instance variables)
         """
-        if daniel:
-            getFrequencies = self.getFrequenciesRubin05
-        else:
-            getFrequencies = self.getFrequenciesBayes
-        if cutoff:
-            postmask = self.maskRarePositives
-        else:
-            postmask = None
         selfupdate()
+        self.getFrequencies = getattr(self, getFrequencies)
+        self.getPostMask = getattr(self, getPostMask) if getPostMask else None
         
     def __len__(self):
         """Length is the number of features"""
@@ -130,11 +119,11 @@ class FeatureInfo:
             nfreqs[self.mask] = 0
             scores[self.mask] = 0
         selfupdate()
-        if self.postmask:
-            self.postmask()
-        return scores
+        if self.getPostMask:
+            self.scores[self.getPostMask()] = 0
+        return self.scores
 
-    def getFrequenciesRubin05(s):
+    def getProbabilitiesRubin(s):
         """Uses Daniel Rubin's frequency smoothing heuristic, which
         replaces zero-frequency with 1e-8"""
         pfreqs = s.pos_counts / float(s.pdocs)
@@ -143,41 +132,40 @@ class FeatureInfo:
         nfreqs[nfreqs == 0.0] = 1e-8
         return pfreqs, nfreqs
 
-    def getFrequenciesBayes(s):
+    def getProbabilitiesBayes(s):
         """Use Bayesian pseudocount vector, or a psuedocount float
          as a zero offset"""
         if s.pseudocount is None:
             s.pseudocount = nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
-        pfreqs = (s.pos_counts+s.pseudocount) / (2*s.pseudocount+s.pdocs)
-        nfreqs = (s.neg_counts+s.pseudocount) / (2*s.pseudocount+s.ndocs)
+        pfreqs = (s.pos_counts+s.pseudocount) / (s.pdocs+1)
+        nfreqs = (s.neg_counts+s.pseudocount) / (s.ndocs+1)
         return pfreqs, nfreqs
 
     def maskRarePositives(s):
-        """Removes positive-scoring features which fail to occur in the
-        positive set"""
-        s.scores[(s.scores > 0) & (s.pos_counts == 0)] = 0
+        """Postive-scoring features not occurring in the positive set"""
+        return (s.scores > 0) & (s.pos_counts == 0)
         
     def maskLessThanThree(s):
-        """Remove features occurring 2 or fewer times in total"""
-        s.scores[(s.pos_counts + s.neg_counts) <= 2] = 0
+        """Features occurring 2 or fewer times in total"""
+        return (s.pos_counts + s.neg_counts) <= 2
 
     def getFeatureStats(self):
         """Recalculate statistics about the feature database
         
         Returns a Storage dictionary with the following keys:
-    
+        
         @ivar pos_occurrences: Total feature occurrences in positives
-    
+        
         @ivar neg_occurrences: Total feature occurrences in negatives
-    
+        
         @ivar feats_per_pos: Number of features per positive article
-    
+        
         @ivar feats_per_neg: Number of features per negative article
-    
+        
         @ivar distinct_feats: Number of distinct features
-    
+        
         @ivar pos_distinct_feats: Number of of distinct features in positives
-    
+        
         @ivar neg_distinct_feats: Number of of distinct features in negatives
         
         """
@@ -206,8 +194,8 @@ class FeatureInfo:
         """Write features scores as CSV to an output stream"""
         if not hasattr(self, "scores"):
             self.getFeatureScores()
-        stream.write(u"score,positives,negatives,pseudocount,"\
-                     u"numerator,denominator,termid,type,term\n")
+        stream.write(u"score,positives,negatives,numerator,"\
+                     u"denominator,pseudocount,termid,type,term\n")
         if isinstance(self.pseudocount, float):
             pseudocount = nx.zeros_like(self.scores) + self.pseudocount
         else:
@@ -220,7 +208,7 @@ class FeatureInfo:
             stream.write(
                 u'%.3f,%d,%d,%.2e,%.2e,%.2e,%d,%s,"%s"\n' % 
                 (s.scores[t], s.pos_counts[t], s.neg_counts[t], 
-                 pseudocount[t], s.pfreqs[t], s.nfreqs[t],
+                 s.pfreqs[t], s.nfreqs[t], pseudocount[t], 
                  t, s.featmap[t][1], s.featmap[t][0]))
 
 def iterScores(docs, featscores, exclude=None):

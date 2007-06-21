@@ -40,32 +40,26 @@ class ValidationEnvironment:
     based analyses.
     
     From constructor:
-    @ivar featmap: Mapping feature ID <-> feature string
-    @ivar featdb: Mapping doc ID -> list of feature IDs
-    @ivar featinfo: FeatureInfo instance for calculating feature score
-    @ivar postfilter: Only classify positive if members of this
+        @ivar featmap: Mapping feature ID <-> feature string
+        @ivar featdb: Mapping doc ID -> list of feature IDs
+        @ivar featinfo: FeatureInfo instance for calculating feature score
+        @ivar postfilter: Membership test for classifying things as positive
 
     From loadInputs():
-    @ivar positives: IDs of positive articles
-    @ivar negatives: IDs of negative articles
+        @ivar positives: IDs of positive articles
+        @ivar negatives: IDs of negative articles
     
     From standardValidation():
-    @ivar pscores: Scores of positive articles
-    @ivar nscores: Scores of negative articles
-    @ivar performance: Performance statistics based on article scores
+        @ivar pscores: Scores of positive articles
+        @ivar nscores: Scores of negative articles
+        @ivar performance: Performance statistics based on article scores
     """
     
     def __init__(self):
         log.info("Loading article databases")
         self.featdb = FeatureDatabase(rc.featuredb, 'r')
         self.featmap = FeatureMapping(rc.featuremap)
-        self.featinfo = FeatureInfo(
-            self.featmap, 
-            pseudocount = rc.pseudocount,
-            mask = self.featmap.featureTypeMask(rc.exclude_types),
-            daniel = rc.dodaniel, 
-            cutoff = rc.cutoff)
-        self.postfilter = None
+        self.postFilterFunction = None
         
     def __del__(self):
         statusfile.close()
@@ -90,11 +84,19 @@ class ValidationEnvironment:
         @param negpath: Location of input negative PMIDs
         """
         try:
+            statusfile.start(total=rc.nfolds)
+            # FeatureInfo for this validation run
+            self.featinfo = FeatureInfo(
+                featmap = self.featmap, 
+                pseudocount = rc.pseudocount, 
+                mask = self.featmap.featureTypeMask(rc.exclude_types),
+                getFrequencies = rc.getFrequencies,
+                getPostMask = rc.getPostMask
+            )
             # Report directory
             if not rc.valid_report_dir.exists():
                 rc.valid_report_dir.makedirs()
             os.chdir(rc.valid_report_dir)
-            statusfile.start(total=rc.nfolds)
             # Load saved results
             if rc.report_positives.isfile() and \
                rc.report_negatives.isfile():
@@ -102,15 +104,13 @@ class ValidationEnvironment:
             # Calculate new results
             else:
                 self.loadInputs(pospath, negpath)
-                if rc.dogenedrug:
-                    self.doGeneDrug()
                 self.getResults()
                 self.saveResults()
             self.writeReport()
         finally:
             log.debug("Cleaning up")
             statusfile.close()
-        
+            
     def loadInputs(self, pospath, negpath):
         """Load PubMed IDs from files"""
         log.info("Reading positive PubMed IDs")
@@ -151,6 +151,10 @@ class ValidationEnvironment:
         slow. """
         s = self
         log.info("Performing cross-validation for for %s", rc.dataset)
+        # Set up a postfilter (like geneDrugFilter) if necessary
+        s.postfilter = None
+        if s.postFilterFunction:
+            s.postfilter = s.postFilterFunction()
         self.validator = Validator(
             featdb = dict((k,s.featdb[k]) for k in 
                           chain(s.positives,s.negatives)),
@@ -164,7 +168,10 @@ class ValidationEnvironment:
         self.pscores, self.nscores = self.validator.validate()
         
     @preserve_cwd
-    def doGeneDrug(self):
+    def geneDrugFilter(self):
+        """Set self.postFilterFunction to this method, which returns a set of
+        PubMed IDs for input citations having gene-drug co-occurrences in their
+        abstract.s """
         from mscanner.pharmdemo.dbexport import (writeGeneDrugCountsCSV, 
                                                  countGeneDrug)
         from mscanner.pharmdemo.genedrug import getGeneDrugFilter
@@ -173,17 +180,20 @@ class ValidationEnvironment:
         pos_arts = getArticles(rc.articledb, self.positives)
         neg_arts = getArticles(rc.articledb, self.negatives)
         gdfilter = getGeneDrugFilter(rc.genedrug, rc.drugtable, rc.gapscore)
-        self.postfilter = set()
+        postfilter = set()
         for art in chain(pos_arts, neg_arts):
             gdresult = gdfilter(art)
             art.genedrug = gdresult
             if len(gdresult) > 0:
-                self.postfilter.add(art.pmid)
+                postfilter.add(art.pmid)
+        return postfilter
         #writeGeneDrugCountsCSV(countGeneDrug(pos_arts))
 
     @preserve_cwd
     def writeReport(self):
-        """Write an HTML validation report
+        """Write an HTML validation report.  Only redraws figures
+        for which output files do not already exist (likewise for term scores,
+        but the index is always re-written).
         
         @note: sets self.performance and self.feature_info
         """

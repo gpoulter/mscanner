@@ -29,18 +29,21 @@ class ScoringTests(unittest.TestCase):
                                 pseudocount=0.1)
         scores = f.getFeatureScores()
         self.assert_(nx.allclose(
-            scores, nx.array([-0.27193372,  1.02132061,  0.37469345])))
+            scores, nx.array([-0.35894509,  0.93430924,  0.28768207])))
+            #scores, nx.array([-0.27193372,  1.02132061,  0.37469345])))
         # With background-calculated pseudocounts
         featmap.numdocs = 10
         featmap.counts = [3,2,1]
         f = scoring.FeatureInfo(featmap, pfreqs, nfreqs, pdocs, ndocs, 
                                 pseudocount=None)
         scores = f.getFeatureScores()
+        print scores
         self.assert_(nx.allclose(
-            f.scores, nx.array([-0.24512244,  0.95444249,  0.37469344])))
+            f.scores, nx.array([-0.28286278,  0.89381787,  0.28768207])))
+            #f.scores, nx.array([-0.24512244,  0.95444249,  0.37469344])))
         # With cutoff (rare positive scoring features set to zero)
         f = scoring.FeatureInfo(featmap, pfreqs, nfreqs, pdocs, ndocs, 
-                                pseudocount=0.1, cutoff=True)
+                                pseudocount=0.1, getPostMask="maskRarePositives")
         scores = f.getFeatureScores()
         self.assert_(nx.allclose(
             f.scores, nx.array([-0.27193372,  1.02132061,  0.0 ])))

@@ -49,20 +49,20 @@ class FeatureMapping:
      
     Passed via constructor:
     
-    @ivar featfile: Path to text file with list of terms
+        @ivar featfile: Path to text file with list of terms
 
     Set by constructor:
-    
-    @ivar featfile_new: Temporary feature file used while writing
-    
-    @ivar numdocs: Number of documents used in creating the mapping
-
-    @ivar features: List of features[id] == (name,type)
-
-    @ivar feature_ids: Mapping of feature_ids[type][name] == id
-
-    @ivar counts: List of counts[id] == number of occurrences.  For
-    score calculation this is the only column needed.
+        
+        @ivar featfile_new: Temporary feature file used while writing
+        
+        @ivar numdocs: Number of documents used in creating the mapping
+        
+        @ivar features: List of features[id] == (name,type)
+        
+        @ivar feature_ids: Mapping of feature_ids[type][name] == id
+        
+        @ivar counts: List of counts[id] == number of occurrences.  For
+        score calculation this is the only column needed.
     """
 
     def __init__(self, featfile=None):

@@ -72,7 +72,7 @@ def read(filename=None):
     s.timestamp = float(lines[4])
     return True
 
-def start(filename=None, total=0, dataset="", progress=0, timestamp=None):
+def start(filename=None, total=0, dataset=None, progress=0, timestamp=None):
     """Set the status file to beginning of operation.    
     """
     s.filename = filename if filename else rc.statusfile

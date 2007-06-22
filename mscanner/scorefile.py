@@ -43,6 +43,11 @@ def readPMIDs(filename, include=None, exclude=None, withscores=False):
     if not isinstance(filename,path) or not filename.exists():
         raise ValueError("File %s does not exist" % filename)
     count = 0
+    fname, ext = filename.splitext()
+    broken_file = fname+".broken"+ext
+    exclude_file = fname+".exclude"+ext
+    if broken_file.exists(): broken_file.remove()
+    if exclude_file.exists(): exclude_file.remove()
     for line in file(filename, "r"):
         sline = line.strip()
         if sline == "" or sline.startswith("#"):
@@ -50,13 +55,11 @@ def readPMIDs(filename, include=None, exclude=None, withscores=False):
         splits = sline.split()
         pmid = int(splits[0])
         if include is not None and pmid not in include:
-            fname, ext = filename.splitext()
-            (fname+".broken"+ext).write_lines([str(pmid)],append=True)
+            broken_file.write_lines([str(pmid)],append=True)
             log.warn("PMID %d is not a member of include" % pmid)
             continue
         if exclude is not None and pmid in exclude:
-            fname, ext = filename.splitext()
-            (fname+".exclude"+ext).write_lines([str(pmid)],append=True)
+            exclude_file.write_lines([str(pmid)],append=True)
             log.warn("PMID %d is a member of exclude" % pmid)
             continue
         if withscores:

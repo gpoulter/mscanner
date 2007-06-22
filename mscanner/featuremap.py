@@ -30,22 +30,17 @@ class FeatureMapping:
     could have more than one type.
     
     @note: FeatureMapping emulates a table with columns (id,type,name,count)
-    with keys of id and (type,name).
+    with keys of id and (type,name). FeatureInfo and Article also re-invent the
+    table.
 
-    @note: FeatureMapping, FeatureInfo and Article re-invent the database. But
-    why should I be working with a slow persistence mechanism like a DB to
-    access each data item when the code between the single calls to "load" and
-    "save" of the data structure needs to be as fast as possible, and the data
-    fits in memory?
-    
     @note: Article is stored in a Berkeley DB, FeatureMapping written/read as
     tab-separated table, and FeatureInfo is memory-only.  With
     PyTables, all information about dataset can be stored in a DB, removing
     any need to read flat-text output or regenerate FeatureInfo.
     
-    @note: Also, with (score, pmid) tuples using in QueryEnvironment or
-    Validator, or we need just array of score, or array of pmid. Zip allows
-    conversion, but this may be more efficient as a table view.
+    @note: With (score, pmid) tuples using in QueryEnvironment or Validator, or
+    we need just array of score, or array of pmid. Zip allows conversion, but
+    this may be more efficient as a table view.
      
     Passed via constructor:
     

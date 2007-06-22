@@ -79,6 +79,8 @@ rc.corpora = lambda: rc.working / "corpora"
 rc.query_report_dir = lambda: rc.working / "query" / rc.dataset
 ## Path to outputs directory
 rc.valid_report_dir = lambda: rc.working / "validation" / rc.dataset
+## Path to the cscore program
+rc.cscore_path = lambda: rc.sources / "cscore" / "cscore.exe"
 
 ### PharmDemo-specific Configuration
 

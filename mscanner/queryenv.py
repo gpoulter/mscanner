@@ -33,7 +33,8 @@ from mscanner.featuredb import FeatureDatabase, FeatureStream
 from mscanner.featuremap import FeatureMapping
 from mscanner.plotting import Plotter
 from mscanner.scorefile import readPMIDs, writePMIDScores
-from mscanner.scoring import (FeatureInfo, countFeatures, iterScores, 
+from mscanner.scoring import (FeatureInfo, countFeatures, 
+                              iterScores, iterCScores,
                               filterDocuments, partitionList, retrievalTest)
 from mscanner.support import dbshelve
 from mscanner.support.gcheetah import TemplateMapper, FileTransaction
@@ -50,7 +51,7 @@ class QueryEnvironment:
         @ivar artdb: Mapping from PubMed ID to Article object
     
     From loadInput():
-        @ivar input_pmids: Set of PubMed IDs as input to the query
+        @ivar input_pmids: Set (not list!) of PubMed IDs as input to the query
     
     From standardQuery():
         @ivar featinfo: Object containing feature scores and statistics
@@ -154,17 +155,27 @@ class QueryEnvironment:
     def getResults(self):
         """Perform the query to generate input and result scores"""
         log.info("Peforming query for dataset %s", rc.dataset)
-        # Calculate and write scores for each input PMID
+        # Calculate score for each input PMID
         self.inputs = [ 
             (nx.sum(self.featinfo.scores[self.featdb[pmid]]), pmid) 
             for pmid in self.input_pmids ]
         self.inputs.sort(reverse=True)
-        # Calculate and write score for each result PMID
-        feats = FeatureStream(open(rc.featurestream, "rb"))
-        self.results = filterDocuments(
-        iterScores(feats, self.featinfo.scores, self.input_pmids),
-        rc.limit, rc.threshold)
-        feats.close()
+        # Calculate score for each result PMID
+        if True:
+            # Read the feature stream using cscore
+            self.results = filterDocuments(
+                iterCScores(rc.cscore_path, rc.featurestream, 
+                            self.featmap.numdocs, self.featinfo.scores, 
+                            rc.limit+len(self.input_pmids),
+                            self.input_pmids),
+                rc.limit, rc.threshold)
+        else:
+            # Read the feature stream using Python
+            feats = FeatureStream(open(rc.featurestream, "rb"))
+            self.results = filterDocuments(
+                iterScores(feats, self.featinfo.scores, self.input_pmids),
+                rc.limit, rc.threshold)
+            feats.close()
         
     @preserve_cwd
     def testRetrieval(self, pmids_path):
@@ -242,13 +253,13 @@ class QueryEnvironment:
         import codecs
         self.featinfo.writeScoresCSV(
             codecs.open(rc.report_term_scores, "wb", "utf-8"))
-        # Input Citations
+        # Write Input Citations
         log.debug("Writing input citations")
         self.inputs.sort(reverse=True)
         writeCitations(mapper.citations, "input", 
                        [ (s,self.artdb[str(p)]) for s,p in self.inputs],
                        rc.report_input_citations, rc.citations_per_file)
-        # Output Citations
+        # Write Output Citations
         log.debug("Writing output citations")
         self.results.sort(reverse=True)
         writeCitations(mapper.citations, "output",

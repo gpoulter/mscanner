@@ -18,20 +18,19 @@ class ScoringTests(unittest.TestCase):
         self.prefix.rmtree(ignore_errors=True)
         
     def test_FeatureInfo(self):
-        """Implicitly tests calculateFeatureScores"""
         pfreqs = nx.array([1,2,0])
         nfreqs = nx.array([2,1,0])
         pdocs = 2
         ndocs = 3
         featmap = FeatureMapping()
-        # Without masking of unknown features
+        # With constant pseudocount
         f = scoring.FeatureInfo(featmap, pfreqs, nfreqs, pdocs, ndocs, 
                                 pseudocount=0.1)
         scores = f.getFeatureScores()
         self.assert_(nx.allclose(
             scores, nx.array([-0.35894509,  0.93430924,  0.28768207])))
             #scores, nx.array([-0.27193372,  1.02132061,  0.37469345])))
-        # With background-calculated pseudocounts
+        # With background pseudocount
         featmap.numdocs = 10
         featmap.counts = [3,2,1]
         f = scoring.FeatureInfo(featmap, pfreqs, nfreqs, pdocs, ndocs, 
@@ -41,14 +40,16 @@ class ScoringTests(unittest.TestCase):
         self.assert_(nx.allclose(
             f.scores, nx.array([-0.28286278,  0.89381787,  0.28768207])))
             #f.scores, nx.array([-0.24512244,  0.95444249,  0.37469344])))
-        # With cutoff (rare positive scoring features set to zero)
+        # Constant pseudocount and cutoff
         f = scoring.FeatureInfo(featmap, pfreqs, nfreqs, pdocs, ndocs, 
-                                pseudocount=0.1, getPostMask="maskRarePositives")
+                                pseudocount=0.1, 
+                                getFrequencies="getProbabilitiesOldBayes",
+                                getPostMask="maskRarePositives")
         scores = f.getFeatureScores()
         self.assert_(nx.allclose(
             f.scores, nx.array([-0.27193372,  1.02132061,  0.0 ])))
 
-    def testCountFeatures(self):
+    def test_CountFeatures(self):
         """For utils.countFeatures()"""
         featdb = {1:[1,2], 2:[2,3], 3:[3,4]}
         counts = scoring.countFeatures(5, featdb, [1,2,3])

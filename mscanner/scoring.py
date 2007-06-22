@@ -133,12 +133,25 @@ class FeatureInfo:
         return pfreqs, nfreqs
 
     def getProbabilitiesBayes(s):
-        """Use Bayesian pseudocount vector, or a psuedocount float
-         as a zero offset"""
+        """Use a pseudocount vector, or a constant pseudocount to get
+        posterior feature probablilities.
+        
+        """
         if s.pseudocount is None:
             s.pseudocount = nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
         pfreqs = (s.pos_counts+s.pseudocount) / (s.pdocs+1)
         nfreqs = (s.neg_counts+s.pseudocount) / (s.ndocs+1)
+        return pfreqs, nfreqs
+
+    def getProbabilitiesOldBayes(s):
+        """Use a pseudocount vector, or a constant pseudocount to get
+        posterior feature probablilities.   Instead of +1 in the
+        denominator, we use +2*pseudocount.
+        """
+        if s.pseudocount is None:
+            s.pseudocount = nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
+        pfreqs = (s.pos_counts+s.pseudocount) / (s.pdocs+2*s.pseudocount)
+        nfreqs = (s.neg_counts+s.pseudocount) / (s.ndocs+2*s.pseudocount)
         return pfreqs, nfreqs
 
     def maskRarePositives(s):
@@ -148,6 +161,10 @@ class FeatureInfo:
     def maskLessThanThree(s):
         """Features occurring 2 or fewer times in total"""
         return (s.pos_counts + s.neg_counts) <= 2
+    
+    def maskNonPositives(s):
+        """Get rid of any features not represented in the positives"""
+        return s.pos_counts == 0
 
     def getFeatureStats(self):
         """Recalculate statistics about the feature database
@@ -186,10 +203,6 @@ class FeatureInfo:
         s.neg_distinct_feats = len(nx.nonzero(self.neg_counts)[0]) 
         return s
 
-    def writeScoresBinary(self, stream):
-        """Write feature scores as binary representation to stream"""
-        stream.write(self.scores.tostring())
-
     def writeScoresCSV(self, stream):
         """Write features scores as CSV to an output stream"""
         if not hasattr(self, "scores"):
@@ -210,6 +223,22 @@ class FeatureInfo:
                 (s.scores[t], s.pos_counts[t], s.neg_counts[t], 
                  s.pfreqs[t], s.nfreqs[t], pseudocount[t], 
                  t, s.featmap[t][1], s.featmap[t][0]))
+
+def countFeatures(nfeats, featdb, docids):
+    """Count occurrenes of each feature in a set of articles
+
+    @param nfeats: Number of distinct features (size of array)
+
+    @param featdb: Mapping from document ID to list of feature IDs
+
+    @param docids: List of document IDs whose features are to be counted
+
+    @return: Array of length nfeats, with occurrence count of each feature
+    """
+    counts = nx.zeros(nfeats, nx.int32)
+    for docid in docids:
+        counts[featdb[docid]] += 1
+    return counts
 
 def iterScores(docs, featscores, exclude=None):
     """Iterate over docs, yielding scores (calculated using featscores array),
@@ -234,22 +263,38 @@ def iterScores(docs, featscores, exclude=None):
             yield nx.sum(featscores[features]), docid
     statusfile.update(None)    
 
-def countFeatures(nfeats, featdb, docids):
-    """Count occurrenes of each feature in a set of articles
-
-    @param nfeats: Number of distinct features (size of array)
-
-    @param featdb: Mapping from document ID to list of feature IDs
-
-    @param docids: List of document IDs whose features are to be counted
-
-    @return: Array of length nfeats, with occurrence count of each feature
+def iterCScores(progpath, docstream, numdocs, featscores, limit, exclude=None):
+    """The cscore program processes the feature stream to return a binary
+    string of (score, pmid) pairs. This function calls it and converts the
+    output to python objects, and filters occurrences of input citations.
+    
+    @param progpath: Path to the cscore program
+    
+    @param docstream: Path to file containing feature vectors for documents to
+    score (formatted as in mscanner.featuredb.FeatureStream)
+    
+    @param numdocs: Number of documents in the stream of feature vectors.
+    
+    @param featscores: Vector of feature score doubles
+    
+    @param limit: Max results for cscore to return (make equal to
+    real limit + number of input citations, to account for lack of filtering)
+    
+    @param exclude: PMIDs to remove from results
     """
-    counts = nx.zeros(nfeats, nx.int32)
-    for docid in docids:
-        counts[featdb[docid]] += 1
-    return counts
-
+    import struct
+    import subprocess as sp
+    p = sp.Popen([progpath, docstream, str(numdocs), 
+                  str(len(featscores)), str(limit)],
+                  stdout=sp.PIPE, stdin=sp.PIPE)
+    p.stdin.write(featscores.tostring())
+    s = p.stdout.read(8)
+    while s != "":
+        score, docid = struct.unpack("fI", s)
+        if exclude is None or docid not in exclude:
+            yield score, docid
+        s = p.stdout.read(8)
+        
 def filterDocuments(scores, limit, threshold=None):
     """Return scores for documents given features and feature scores
 

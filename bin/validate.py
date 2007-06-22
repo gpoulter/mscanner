@@ -34,16 +34,15 @@ from mscanner.configuration import rc, initLogger
 from mscanner.statusfile import runMailer
 from mscanner.validenv import ValidationEnvironment
 
-dataset_map = {
+def paperTests(*datasets):
+    """Cross-validation tests for the publication"""
+    dataset_map = {
     "aids-vs-100k": ("aids-bioethics-Oct06.txt", "medline07-100k.txt"),
     "pg07-vs-100k": ("pharmgkb-070205.txt", "medline07-100k.txt"),
     "radiology-vs-100k": ("daniel-radiology.txt", "medline07-100k.txt"),
     "random10k-vs-100k": ("random10k-06.txt", "medline07-100k.txt"), 
     "gdsmall-vs-sample": ("genedrug-small.txt", rc.articlelist) ,
     }
-
-def paperTests(*datasets):
-    """Cross-validation tests for the publication"""
     env = ValidationEnvironment()
     for dataset in datasets:
         if dataset not in dataset_map:
@@ -79,34 +78,27 @@ def compareDaniel():
     m500k = rc.corpora / "medline07-500k.txt"
     pg07 = rc.corpora / "pharmgkb-070205.txt"
     env = ValidationEnvironment()
-    
-    # Compare on PG04
+    # New method on on pg04 vs 30k
     rc.dataset = "pg04-vs-30k"
     rc.exclude_types = None
     rc.getFrequencies = "getProbabilitiesBayes"
     env.standardValidation(pg04, m30k)
-
+    # Daniel's method on on pg04 vs 30k
     rc.dataset = "pg04-vs-30k-dan"
     rc.exclude_types = ["issn"]
     rc.getFrequencies = "getProbabilitiesRubin"
     env.standardValidation(pg04, m30k)
-    
-    # Compare daniel vs default on PG07
+    # New method on pg07 vs 30k
     rc.dataset = "pg07-vs-30k"
     rc.exclude_types = None
     rc.getFrequencies = "getProbabilitiesBayes"
+    # Daniel's method on pg07 vs 30k
     env.standardValidation(pg07, m30k)
-
     rc.dataset == "pg07-vs-500k-dan"
     rc.exclude_types = ["issn"]
     rc.getFrequencies = "getProbabilitiesRubin"
     env.standardValidation(pg07, m30k)
-    
-    rc.dataset == "pg07-vs-500k-noissn"
-    rc.exclude_types = ["issn"]
-    rc.getFrequencies = "getProbabilitiesBayes"
-    env.standardValidation(pg07, m500k)
-    
+        
 def random_bimodality():
     """Normally Random10K under cross validation against other random
     citations has multiple modes in the article scores.
@@ -119,7 +111,8 @@ def random_bimodality():
     """
     rc.dataset = "random10k-vs-100k-mod"
     rc.nfolds = 10
-    rc.getPostMask = "maskLessThanThree"
+    #rc.getPostMask = "maskLessThanThree"
+    rc.getPostMask = "maskNonPositives"
     env = ValidationEnvironment()
     pos = "random10k.txt"
     neg = "medline07-100k.txt"

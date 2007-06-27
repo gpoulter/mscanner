@@ -119,6 +119,22 @@ Submit Query or Validation #slurp
     <legend>Standard Options</legend>
 
     <table>
+      $form_row("Input Citations", "positives",
+      $h_textarea("positives",3,10,$positives), """Paste a list of
+      PubMed IDs (not <a
+      href="http://www.ncbi.nlm.nih.gov/entrez/publisher/uidpmid.cgi">Medline
+      UIs</a>) one per line into the text box.  The scanner will be
+      trained to detect further articles like these.  Invalid IDs will
+      be displayed, and filtered out of this box.""")
+    </table>
+
+    <button type="button" onclick="javascript:example()" $disabled>Example PubMed IDs</button>
+
+    <button type="submit">Determine Enriched Terms </button>
+
+    <button type="button" onclick="()" $disabled>Example PubMed IDs</button>
+    
+    <table>
       $form_row("Batch Name", "dataset", $h_input("dataset",30,$dataset),
       """To help identify your results, provide a name for your
       submission so that you can identify it later.  The title may
@@ -133,20 +149,6 @@ Submit Query or Validation #slurp
       <i>viewing</i> your output requires your downloading it and then
       deleting it from the output page (output is a plain directory,
       so this application can't limit access)""")
-
-      $form_row("Pseudocount", "pseudocount",
-      $h_input("pseudocount",8,$pseudocount), """Experts-only option.
-      The pseudocount is related to the prior expectation of observing
-      a term.  The default of 0.01 works well.  Specify 0 and MScanner
-      will use the background pseudocount.""")
-
-      $form_row("Input Citations", "positives",
-      $h_textarea("positives",3,10,$positives), """Paste a list of
-      PubMed IDs (not <a
-      href="http://www.ncbi.nlm.nih.gov/entrez/publisher/uidpmid.cgi">Medline
-      UIs</a>) one per line into the text box.  The scanner will be
-      trained to detect further articles like these.  Invalid IDs will
-      be displayed, and filtered out of this box.""")
     </table>
 
   </fieldset>
@@ -205,9 +207,8 @@ Submit Query or Validation #slurp
 
   </fieldset>
 
-  <button type="submit" $disabled>Submit Batch</button>
+  <button type="submit">Submit Batch</button>
 
-  <button type="button" onclick="javascript:example()" $disabled>Example Query</button>
 
 </form>
 

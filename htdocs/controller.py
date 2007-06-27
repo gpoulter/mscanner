@@ -29,9 +29,6 @@ import platform
 
 from templates import front, form, output, status
 
-# Provides fields for statusblock.tmpl
-from mscanner import statusfile
-
 # In case of windows-specific handling
 windows = (platform.system() == "Windows")
 
@@ -69,8 +66,6 @@ class web_front:
         """Return the front page, with a status box if there is something
         currently running"""
         t = front.front(searchList=defaults)
-        if statusfile.read():
-            t.status = statusfile
         print t
 
 class web_form:
@@ -81,6 +76,7 @@ class web_form:
         t.status = None
         t.errors = None
         print t
+        
     def POST(self):
         """Submit the form.  If errors, return with the same values
         but errors listed at the top.
@@ -109,6 +105,7 @@ class web_status:
         t.status = testdata.status
         t.output = "BLAH BLAH BLAH"
         print t
+        
     def POST(self):
         i = web.input("dataset", "code")
         t = status.status(searchList=defaults)
@@ -122,6 +119,7 @@ class web_output:
         t = output.output(searchList=defaults)
         t.datasets = testdata.datasets
         print t
+        
     def POST(self):
         t = output.output(searchList=defaults)
         t.datasets = testdata.datasets

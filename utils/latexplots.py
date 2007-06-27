@@ -197,6 +197,11 @@ def plotPRF(fname, s):
     legend(loc="upper left")
     custom_show(fname)
 
+def plotRetrievaltest():
+    """Plots retrieval test results for 20% of PharmGKB to see how it
+    retrieves the remaining 80%
+    """
+
 def publication_plots():
     """Draws figures for the BMC paper: including densities, ROC curve, PR curve, and PRF curve.
 

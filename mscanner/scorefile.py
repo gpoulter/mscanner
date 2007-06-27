@@ -23,7 +23,7 @@ http://www.gnu.org/copyleft/gpl.html
 import logging as log
 from path import path
 
-def readPMIDs(filename, include=None, exclude=None, withscores=False):
+def readPMIDs(filename, outbase=None, include=None, exclude=None, withscores=False):
     """Read PubMed IDs one per line from filename.
 
     @param filename: Path to file containing one PubMed ID per line, with
@@ -37,17 +37,14 @@ def readPMIDs(filename, include=None, exclude=None, withscores=False):
     
     @param withscores: Also read the score after the PubMed ID on each line.
     
-    @returns: An iterator over PubMed ID, or 
-    (Score, PubMed ID) if withscores==True
+    @returns: An iterator over PubMed ID, or (Score, PubMed ID) if
+    withscores is True.
     """
     if not isinstance(filename,path) or not filename.exists():
         raise ValueError("File %s does not exist" % filename)
     count = 0
-    fname, ext = filename.splitext()
-    broken_file = fname+".broken"+ext
-    exclude_file = fname+".exclude"+ext
-    if broken_file.exists(): broken_file.remove()
-    if exclude_file.exists(): exclude_file.remove()
+    broken_file = file(outbase+".broken.txt","w") if outbase else None
+    exclude_file = file(outbase+".exclude.txt","w") if outbase else None
     for line in file(filename, "r"):
         sline = line.strip()
         if sline == "" or sline.startswith("#"):
@@ -55,11 +52,11 @@ def readPMIDs(filename, include=None, exclude=None, withscores=False):
         splits = sline.split()
         pmid = int(splits[0])
         if include is not None and pmid not in include:
-            broken_file.write_lines([str(pmid)],append=True)
+            if outbase: broken_file.write(str(pmid)+"\n")
             log.warn("PMID %d is not a member of include" % pmid)
             continue
         if exclude is not None and pmid in exclude:
-            exclude_file.write_lines([str(pmid)],append=True)
+            if outbase: exclude_file.write(str(pmid)+"\n")
             log.warn("PMID %d is a member of exclude" % pmid)
             continue
         if withscores:
@@ -67,6 +64,9 @@ def readPMIDs(filename, include=None, exclude=None, withscores=False):
         else:
             yield pmid
         count += 1
+    if outbase:
+        broken_file.close()
+        exclude_file.close()
     if count == 0:
         raise ValueError("Did not succeed in reading any non-excluded PMIDs"+\
                          "from %s" % filename)

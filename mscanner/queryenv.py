@@ -27,15 +27,13 @@ import logging as log
 import numpy as nx
 import os
 
-from mscanner import statusfile
 from mscanner.configuration import rc
 from mscanner.featuredb import FeatureDatabase, FeatureStream
 from mscanner.featuremap import FeatureMapping
-from mscanner.plotting import Plotter
 from mscanner.scorefile import readPMIDs, writePMIDScores
 from mscanner.scoring import (FeatureInfo, countFeatures, 
                               iterScores, iterCScores,
-                              filterDocuments, partitionList, retrievalTest)
+                              filterDocuments, retrievalTest)
 from mscanner.support import dbshelve
 from mscanner.support.gcheetah import TemplateMapper, FileTransaction
 from mscanner.support.utils  import preserve_cwd
@@ -65,20 +63,17 @@ class QueryEnvironment:
         """Initialise QueryEnvironment
         """
         log.info("Loading article databases")
-        statusfile.start(dataset="INITIALISATION") 
         self.featdb = FeatureDatabase(rc.featuredb, 'r')
         self.featmap = FeatureMapping(rc.featuremap)
         self.artdb = dbshelve.open(rc.articledb, 'r')
 
     def __del__(self):
-        statusfile.close()
         self.featdb.close()
         self.artdb.close()
         
     def clearResults(self):
         """Get rid of old results, that we may query again"""
         try:
-            statusfile.close()
             del self.featinfo
             del self.inputs
             del self.results
@@ -88,8 +83,8 @@ class QueryEnvironment:
     def loadInput(self, pmids_path):
         """Read input PubMed IDs from pmids_path"""
         log.info("Loading input PMIDs from %s", pmids_path.basename())
-        self.input_pmids = set(readPMIDs(pmids_path, include=self.featdb))
-        statusfile.update(0, self.featmap.numdocs - len(self.input_pmids))
+        self.input_pmids = set(readPMIDs(
+            pmids_path, outbase=rc.query_report_dir/"input", include=self.featdb))
         return self.input_pmids
 
     def getFeatureInfo(self):
@@ -118,7 +113,8 @@ class QueryEnvironment:
         
         @param pmids_path: Path to list of input PMIDs. If None, we assume
         loadInput() has already been called. """
-        statusfile.start()
+        import time
+        if rc.timestamp is None: rc.timestamp = time.time() 
         if not rc.query_report_dir.exists():
             rc.query_report_dir.makedirs()
         if pmids_path is not None:
@@ -133,8 +129,8 @@ class QueryEnvironment:
             self.getResults()
             self.saveResults()
         self.writeReport()
-        log.info("Cleaning up")
-        statusfile.close()
+        rc.timestamp = None
+        log.info("FINISHING QUERY %s", rc.dataset)
         
     @preserve_cwd
     def loadResults(self):
@@ -161,7 +157,7 @@ class QueryEnvironment:
             for pmid in self.input_pmids ]
         self.inputs.sort(reverse=True)
         # Calculate score for each result PMID
-        if True:
+        if "use_cscores":
             # Read the feature stream using cscore
             self.results = filterDocuments(
                 iterCScores(rc.cscore_path, rc.featurestream, 
@@ -191,10 +187,15 @@ class QueryEnvironment:
         if not rc.query_report_dir.exists():
             rc.query_report_dir.makedirs()
         os.chdir(rc.query_report_dir)
-        # Set up the input split and query results
+        # Split the input into train and test sections
         self.loadInput(pmids_path)
-        self.input_pmids, self.input_test = \
-            partitionList(list(self.input_pmids), rc.retrieval_test_prop)
+        input = list(self.input_pmids)
+        import random
+        random.shuffle(input)
+        subset_size = int(rc.retrieval_test_prop * len(items))
+        self.input_pmids = set(items[:subset_size])
+        self.input_test = set(items[subset_size:])
+        # Get feature info and result scores
         self.featinfo = self.getFeatureInfo()
         rc.threshold = None
         self.featinfo.getFeatureScores()
@@ -210,18 +211,23 @@ class QueryEnvironment:
         rc.report_retrieval_test_pmids.write_lines(
             [str(x) for x in self.input_test])
         # Graph number of hits versus rank
+        from mscanner.plotting import Plotter
         plotter = Plotter()
         plotter.plotRetrievalGraph(rc.report_retrieval_graph, 
                                    self.cumulative, len(self.input_test))
         return self.cumulative
     
-    def getGDFilterResults(self, export_pharmdemo=True):
+    def getGDFilterResults(self, pmids_path, pharmdemo_db=None):
         """Filter results and input articles for those containing gene-drug co-occurrences
         
         @param export_pharmdemo: If True, export results to PharmDemo database
         """
         from mscanner.pharmdemo.genedrug import getGeneDrugFilter
         from mscanner.pharmdemo.dbexport import exportDefault
+        self.loadInput(pmids_path)
+        self.featinfo = self.getFeatureInfo()
+        self.featinfo.getFeatureScores()
+        self.getResults()
         log.debug("Gene-drug associations on results")
         gdfilter = getGeneDrugFilter(rc.genedrug, rc.drugtable, rc.gapscore)
         self.gdarticles = []
@@ -230,8 +236,8 @@ class QueryEnvironment:
             a.genedrug = gdfilter(a)
             if len(a.genedrug) > 0:
                 self.gdarticles.append(a)
-        if export_pharmdemo:
-            exportDefault(self.gdarticles)
+        if pharmdemo_db is not None:
+            exportDefault(pharmdemo_db, self.gdarticles)
         return self.gdarticles
 
     @preserve_cwd
@@ -273,7 +279,7 @@ class QueryEnvironment:
             lowest_score = self.results[-1][0],
             num_results = len(self.results),
             rc = rc, 
-            timestamp = statusfile.timestamp,
+            timestamp = rc.timestamp,
         ).respond(FileTransaction(rc.report_index, "w"))
 
 def writeCitations(template, mode, scores, fname, perfile):

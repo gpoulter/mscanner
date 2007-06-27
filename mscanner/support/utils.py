@@ -1,8 +1,9 @@
 """Handle Articles, processed files, features, feature occurrence counts
 
-preserve_cwd -- Decorator to preserve working directory
 selfupdate() -- Update instance from method args and locals
 update() -- Update instance dictionary
+randomSample() -- Choose random items from an array
+preserve_cwd -- Decorator to preserve working directory
 usetempfile -- Decorator to call method with a self-destructing temp file
 
                                    
@@ -21,25 +22,6 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 http://www.gnu.org/copyleft/gpl.html
 """
 
-from mscanner.support import dbshelve
-
-def preserve_cwd(f):
-    """Decorator which saves working directory before callijng the function,
-    and restores it afterwards."""
-    def cwd_preserver(*a, **kw):
-        import os
-        try:
-            cwd = os.getcwd()
-            return f(*a, **kw)
-        finally:
-            os.chdir(cwd)
-    def decorator_update(dest, src):
-        dest.__name__ = src.__name__
-        dest.__doc__ = src.__doc__
-        dest.__dict__.update(src.__dict__)
-    decorator_update(cwd_preserver, f)
-    return cwd_preserver
-
 def selfupdate(onlyargs=False, exclude=[]):
     """Call in any method to set instance attributes from local variables.
     
@@ -49,7 +31,7 @@ def selfupdate(onlyargs=False, exclude=[]):
 
     @note: Instance to update is assumed to be first argument of the caller.
     
-    @note: Equivalent to vars(self).update(vars()); del self.self
+    @note: Equivalent to 'vars(self).update(vars()); del self.self'
     """
     import inspect
     # Get caller frame (must be disposed of!)
@@ -80,11 +62,56 @@ def update(instance, variables, exclude=['self']):
         if k not in exclude:
             setattr(instance, k, v)
 
-def usetempfile(function):
-    """Unittest method decorator.  Decorates a method of the
-    form f(self, fname) so that fname is replaced with a temporary
-    file which is deleted at the end of the call. 
+def randomSample(k, pool, exclude):
+    """Choose a random subset of k articles from pool
+
+    @note: This method is only suitable if you have a large pool array (say,
+    15 million items), and don't mind it being scrambled in the process, and
+    need to rule out certain items from being selected.
+    
+    @param k: Number of items to choose from pool
+    @param pool: Array of items to choose from (will be scrambled!)
+    @param exclude: Set of items that may not be chosen
+    @return: A new array of chosen items
     """
+    from random import randint
+    import numpy as nx
+    n = len(pool)
+    assert 0 <= k <= n
+    for i in xrange(k):
+        # Non-selected items are in 0 ... n-i-1
+        # Selected items are n-i ... n
+        dest = n-i-1
+        choice = randint(0, dest) # 0 ... n-i-1 inclusive
+        while pool[choice] in exclude:
+            choice = randint(0, dest)
+        # Move the chosen item to the end, where so it will be
+        # part of the selected items in the next iteration
+        pool[dest], pool[choice] = pool[choice], pool[dest]
+    # Phantom iteration: selected are n-k ... n
+    return nx.array(pool[n-k:])
+
+def preserve_cwd(f):
+    """Decorator which saves working directory before callijng the function,
+    and restores it afterwards."""
+    def cwd_preserver(*a, **kw):
+        import os
+        try:
+            cwd = os.getcwd()
+            return f(*a, **kw)
+        finally:
+            os.chdir(cwd)
+    def decorator_update(dest, src):
+        dest.__name__ = src.__name__
+        dest.__doc__ = src.__doc__
+        dest.__dict__.update(src.__dict__)
+    decorator_update(cwd_preserver, f)
+    return cwd_preserver
+
+def usetempfile(function):
+    """Unittest method decorator. Decorates methods of the form funcname(self,
+    filename) so that filename is replaced with a temporary file which is
+    deleted at the end of the call. """
     import tempfile
     from path import path
     def tempfile_wrapper(self):
@@ -95,5 +122,3 @@ def usetempfile(function):
             if fpath.isfile():
                 fpath.remove()
     return tempfile_wrapper
-
-

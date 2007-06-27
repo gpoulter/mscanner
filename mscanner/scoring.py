@@ -26,7 +26,6 @@ http://www.gnu.org/copyleft/gpl.html
 import logging as log
 import numpy as nx
 
-from mscanner import statusfile
 from mscanner.support.utils  import selfupdate
 
 class FeatureInfo:
@@ -155,13 +154,9 @@ class FeatureInfo:
         return pfreqs, nfreqs
 
     def maskRarePositives(s):
-        """Postive-scoring features not occurring in the positive set"""
+        """Positive-scoring features not occurring in the positive set"""
         return (s.scores > 0) & (s.pos_counts == 0)
         
-    def maskLessThanThree(s):
-        """Features occurring 2 or fewer times in total"""
-        return (s.pos_counts + s.neg_counts) <= 2
-    
     def maskNonPositives(s):
         """Get rid of any features not represented in the positives"""
         return s.pos_counts == 0
@@ -257,11 +252,10 @@ def iterScores(docs, featscores, exclude=None):
     marker = 0
     for idx, (docid, features) in enumerate(docs):
         if idx == marker:
-            statusfile.update(idx)
+            log.debug("Scored %d citations so far", idx)
             marker += 100000
         if exclude is None or docid not in exclude:
             yield nx.sum(featscores[features]), docid
-    statusfile.update(None)    
 
 def iterCScores(progpath, docstream, numdocs, featscores, limit, exclude=None):
     """The cscore program processes the feature stream to return a binary
@@ -317,25 +311,6 @@ def filterDocuments(scores, limit, threshold=None):
     if ndocs < limit:
         limit = ndocs
     return heapq.nlargest(limit, results)
-
-def partitionList(pmids, subset_size=0.1, randomise=True):
-    """Split list of objects into into two partitions
-    
-    @param pmids: List of PubMed IDs
-    
-    @param testsize: Amount to use for training (float for proportion,
-    int for exact number)
-    
-    @param randomise: Set to False to disable random for debugging
-    
-    @return: Set of training IDs, and set of testing IDs
-    """
-    if randomise:
-        import random
-        random.shuffle(pmids)
-    if isinstance(subset_size, float):
-        subset_size = int(subset_size * len(pmids))
-    return set(pmids[:subset_size]), set(pmids[subset_size:])
 
 def retrievalTest(results, test):
     """Returns number of 

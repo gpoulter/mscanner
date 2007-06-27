@@ -31,7 +31,6 @@ from path import path
 import sys
 
 from mscanner.configuration import rc, initLogger
-from mscanner.statusfile import runMailer
 from mscanner.validenv import ValidationEnvironment
 
 def paperTests(*datasets):
@@ -42,8 +41,10 @@ def paperTests(*datasets):
     "radiology-vs-100k": ("daniel-radiology.txt", "medline07-100k.txt"),
     "random10k-vs-100k": ("random10k-06.txt", "medline07-100k.txt"), 
     "gdsmall-vs-sample": ("genedrug-small.txt", rc.articlelist) ,
+    "gdsmall-vs-1k": ("genedrug-small.txt", None),
     }
     env = ValidationEnvironment()
+    rc.numnegs = 1000
     for dataset in datasets:
         if dataset not in dataset_map:
             raise ValueError("Invalid Data Set %s" % dataset)
@@ -51,7 +52,7 @@ def paperTests(*datasets):
         pos, neg = dataset_map[dataset]
         if not isinstance(pos, path):
             pos = rc.corpora / pos
-        if not isinstance(neg, path):
+        if neg is not None and not isinstance(neg, path):
             neg = rc.corpora / neg
         env.standardValidation(pos, neg)
         
@@ -114,35 +115,15 @@ def random_bimodality():
     #rc.getPostMask = "maskLessThanThree"
     rc.getPostMask = "maskNonPositives"
     env = ValidationEnvironment()
-    pos = "random10k.txt"
+    pos = "random10k-06.txt"
     neg = "medline07-100k.txt"
     #pos = "genedrug-small.txt"
     #neg = rc.articlelist
     env.standardValidation(rc.corpora / pos, rc.corpora / neg)
 
-def scriptmain(*args):
-    """Meant to be called with *sys.argv[1:], such that 
-    the positional arguments of this function are the arguments to
-    the program."""
-    if len(args) == 0:
-        raise ValueError("Please give dataset code or CGI parameters")
-    elif len(args) == 1:
-        eval(args[0])
-    elif len(args) > 1:
-        rc.dataset = sys.argv[0]
-        rc.numnegs = int(sys.argv[1])
-        rc.nfolds = int(sys.argv[2])
-        rc.alpha = float(sys.argv[4])
-        positives_path = path(sys.argv[5])
-        negatives_path = rc.valid_report_dir / rc.report_negatives
-        negatives_path.write_lines(
-            random.sample(rc.articlelist.lines(), rc.numnegs))
-        try:
-            env = ValidationEnvironment()
-            env.standardValidation(positives_path, negatives_path)
-        finally:
-            runMailer(rc.smtpserver, rc.emails_path)
-    
 if __name__ == "__main__":
     initLogger()
-    scriptmain(*sys.argv[1:])
+    if len(sys.argv) != 2:
+        print "Please give python expression"
+    else:
+        eval(sys.argv[1])

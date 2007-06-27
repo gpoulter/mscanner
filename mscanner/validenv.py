@@ -32,7 +32,7 @@ from mscanner.plotting import Plotter
 from mscanner.scorefile import getArticles, readPMIDs, writePMIDScores
 from mscanner.scoring import FeatureInfo, countFeatures
 from mscanner.support.gcheetah import TemplateMapper, FileTransaction
-from mscanner.support.utils  import preserve_cwd
+from mscanner.support.utils  import preserve_cwd, randomSample
 from mscanner.validation import Validator, PerformanceStats
 
 class ValidationEnvironment:
@@ -52,6 +52,7 @@ class ValidationEnvironment:
     From standardValidation():
         @ivar pscores: Scores of positive articles
         @ivar nscores: Scores of negative articles
+        @ivar featinfo: Feature score calculator
         @ivar performance: Performance statistics based on article scores
     """
     
@@ -59,30 +60,19 @@ class ValidationEnvironment:
         log.info("Loading article databases")
         self.featdb = FeatureDatabase(rc.featuredb, 'r')
         self.featmap = FeatureMapping(rc.featuremap)
+        self.article_list = nx.array([int(x) for x in rc.articlelist.lines()])
         self.postFilterFunction = None
         
-    def __del__(self):
-        statusfile.close()
-
-    def reset(self):
-        """Remove generated instance variables"""
-        try:
-            del self.positives
-            del self.negatives
-            del self.pscores
-            del self.nscores
-            del self.feature_info
-            del self.performance
-        except AttributeError:
-            pass
-
     @preserve_cwd
-    def standardValidation(self, pospath, negpath):
+    def standardValidation(self, pospath, negpath=None):
         """Loads data, performs validation, and writes report
         
         @param pospath: Location of input positive PMIDs
-        @param negpath: Location of input negative PMIDs
+        @param negpath: Location of input negative PMIDs (or None)
         """
+        # Report directory
+        if not rc.valid_report_dir.exists():
+            rc.valid_report_dir.makedirs()
         try:
             statusfile.start(total=rc.nfolds)
             # FeatureInfo for this validation run
@@ -93,9 +83,6 @@ class ValidationEnvironment:
                 getFrequencies = rc.getFrequencies,
                 getPostMask = rc.getPostMask
             )
-            # Report directory
-            if not rc.valid_report_dir.exists():
-                rc.valid_report_dir.makedirs()
             os.chdir(rc.valid_report_dir)
             # Load saved results
             if rc.report_positives.isfile() and \
@@ -108,17 +95,25 @@ class ValidationEnvironment:
                 self.saveResults()
             self.writeReport()
         finally:
-            log.debug("Cleaning up")
+            log.info("FINISHING VALIDATION %s", rc.dataset)
             statusfile.close()
-            
-    def loadInputs(self, pospath, negpath):
-        """Load PubMed IDs from files"""
+
+    def loadInputs(self, pospath, negpath=None):
+        """Load PubMed IDs from files.  If negpath is None, we generate
+        negatives by random sample of PubMed citations."""
         log.info("Reading positive PubMed IDs")
-        positives = list(readPMIDs(pospath, include=self.featdb))
+        positives = list(readPMIDs(
+            pospath, outbase=rc.valid_report_dir/"positives", include=self.featdb))
         log.info("Reading negative PubMed IDs")
-        negatives = list(readPMIDs(negpath, exclude=set(positives)))
+        if negpath is None:
+            # No negatives provided, take a sample of random citations
+            self.negatives = randomSample(
+                rc.numnegs, self.article_list, set(positives))
+        else:
+            negatives = list(readPMIDs(
+                negpath, outbase=rc.valid_report_dir/"negatives", exclude=set(positives)))
+            self.negatives = nx.array(negatives, nx.int32)
         self.positives = nx.array(positives, nx.int32)
-        self.negatives = nx.array(negatives, nx.int32)
         
     @preserve_cwd
     def loadResults(self):
@@ -128,8 +123,8 @@ class ValidationEnvironment:
         """
         log.info("Loading result scores for %s", rc.dataset)
         os.chdir(rc.valid_report_dir)
-        pscores, positives, = zip(*readPMIDs(rc.report_positives, withscores=True))
-        nscores, negatives= zip(*readPMIDs(rc.report_negatives, withscores=True))
+        pscores, positives = zip(*readPMIDs(rc.report_positives, withscores=True))
+        nscores, negatives = zip(*readPMIDs(rc.report_negatives, withscores=True))
         self.positives = nx.array(positives, nx.int32)
         self.pscores = nx.array(pscores, nx.float32)
         self.negatives = nx.array(negatives, nx.int32)

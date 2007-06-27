@@ -26,7 +26,6 @@ from itertools import chain, izip
 import logging as log
 import numpy as nx
 
-from mscanner import statusfile
 from mscanner.scoring import countFeatures
 from mscanner.support.utils import selfupdate
 
@@ -59,17 +58,6 @@ class Validator:
         pscores = None
         nscores = None
         selfupdate()
-
-    def articleIsPositive(self, docid, score, threshold):
-        """Classifies an article as positive or negative based on score
-        threshold
-        
-        @note: if self.positivestfilter is a non-empty set, we additionally
-        check that the article is a member before classifying it positive. """
-        if self.positivestfilter and docid in self.positivestfilter:
-            return score >= threshold
-        else:
-            return False
 
     def validate(self):
         """Carry out validation. 
@@ -124,9 +112,8 @@ class Validator:
         ncounts = countFeatures(len(s.featinfo), s.featdb, s.negatives)
         for fold, (pstart,psize,nstart,nsize) in \
             enumerate(zip(s.pstarts,s.psizes,s.nstarts,s.nsizes)):
-            statusfile.update(fold, s.nfolds)
-            log.debug("pstart = %d, psize = %s; nstart = %d, nsize = %d", 
-                      pstart, psize, nstart, nsize)
+            log.debug("Fold %d: pstart = %d, psize = %s; nstart = %d, nsize = %d", 
+                      fold, pstart, psize, nstart, nsize)
             # Get new feature scores
             termscores = s.featinfo.updateFeatureScores(
                 pos_counts = pcounts - countFeatures(
@@ -144,7 +131,6 @@ class Validator:
             s.nscores[nstart:nstart+nsize] = [
                 nx.sum(termscores[s.featdb[d]]) for d in 
                 s.negatives[nstart:nstart+nsize]]
-        statusfile.update(None, s.nfolds)
         return s.pscores, s.nscores
     
     def leaveOutOneValidate(self):
@@ -178,17 +164,10 @@ class Validator:
                 ((ncounts[f]+n_mod+ps[f])/(ndocs+n_mod+2*ps[f]))))
         # Get scores for positive articles
         for idx, doc in enumerate(self.positives):
-            if idx == marker:
-                statusfile.update(marker, pdocs+ndocs)
-                marker += int((pdocs+ndocs)/20)
             self.pscores[idx] = score_article(doc, -1, 0)
         # Get scores for negative articles
         for idx, doc in enumerate(self.negatives):
-            if pdocs+idx == marker:
-                statusfile.update(marker, pdocs+ndocs)
-                marker += int((pdocs+ndocs)/20)
             self.nscores[idx] = score_article(doc, 0, -1)
-        statusfile.update(None, pdocs+ndocs)
         return self.pscores, self.nscores
     
 class PerformanceStats:

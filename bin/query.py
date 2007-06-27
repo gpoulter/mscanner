@@ -30,7 +30,6 @@ import sys
 
 from mscanner.configuration import rc, initLogger
 from mscanner.queryenv import QueryEnvironment
-from mscanner.statusfile import runMailer
             
 ds_map = {
     "aids"        : "aids-bioethics-Oct06.txt",
@@ -56,6 +55,7 @@ def retrieval(*datasets):
     env = QueryEnvironment()
     rc.limit = 1000
     rc.pseudocount = None # per-feature pseudocounts
+    rc.retrieval_test_prop = 0.2
     for dataset in datasets:
         rc.dataset = dataset+"-retrieval"
         env.testRetrieval(rc.corpora / ds_map[dataset])
@@ -81,31 +81,14 @@ def heparin():
 def pharmdemo():
     """Special query which exports to the PharmDemo database for PharmGKB"""
     rc.dataset = "pharmdemo"
-    rc.pseudocount = 0
     rc.threshold = 0
     rc.limit = 10000
-    rc.pharmdemo = True
     env = QueryEnvironment()
-    env.standardQuery(rc.corpora / "pharmdemo.txt")
+    env.getGDFilterResults(rc.corpora / "pharmdemo.txt", "/tmp/pharmdemo")
         
-def scriptmain(*args):
-    """Meant to be called with *sys.argv[1:]"""
-    if len(args) == 0:
-        print "Please give dataset code or CGI parameters"
-        sys.exit(0)
-    elif len(args) == 1:
-        eval(args[0])
-    elif len(args) > 1:
-        rc.dataset = args[0]
-        rc.limit = int(args[2])
-        rc.threshold = float(args[3])
-        input_path = path(sys.args[4])
-        try:
-            env = QueryEnvironment()
-            env.standardQuery(input_path)
-        finally:
-            runMailer(rc.smtpserver, rc.emails_path)
-    
 if __name__ == "__main__":
     initLogger()
-    scriptmain(*sys.argv[1:])
+    if len(sys.argv) != 2:
+        print "Please give python expression"
+    else:
+        eval(sys.argv[1])

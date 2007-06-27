@@ -55,6 +55,7 @@ int main (int argc, char **argv) {
     int numcites = atoi (argv[2]); // number of citations
     int numfeats = atoi (argv[3]); // number of features
     int limit = atoi (argv[4]);  // number of results to return
+    FILE *citefile = NULL; // File with citation scores
 
     // Loop variables
     int pi = 0; // PubMed ID index in loop
@@ -72,7 +73,7 @@ int main (int argc, char **argv) {
     fread(featscores, sizeof(double), numfeats, stdin);
 
     // Calculate citation scores
-    FILE *citefile = fopen(cite_filename, "rb");
+    citefile = fopen(cite_filename, "rb");
     for(pi = 0; pi < numcites; pi++) {
 
         // Read feature vector structure

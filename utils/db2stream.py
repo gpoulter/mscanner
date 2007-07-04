@@ -1,8 +1,15 @@
 #!env python
 
-"""Convert feature database to feature stream...
+"""Convert a FeatureDatabase to a FeatureStream
 
 Usage: ./db2stream.py <dbfile> <outputfile>
+
+                                   
+
+@license: This source file is free software. It comes without any warranty, to
+the extent permitted by applicable law. You can redistribute it and/or modify
+it under the Do Whatever You Want Public License. Terms and conditions: 
+   0. Do Whatever You Want
 
 """
 

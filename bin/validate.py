@@ -13,19 +13,17 @@ Usage for experiments (executable python string):
                                    
 """
 
-__license__ = """
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or (at
-your option) any later version.
+__license__ = """This program is free software: you can redistribute it and/or
+modify it under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your option)
+any later version.
 
-This program is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-General Public License for more details.
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-http://www.gnu.org/copyleft/gpl.html
-"""
+You should have received a copy of the GNU General Public License along with
+this program. If not, see <http://www.gnu.org/licenses/>."""
 
 from path import path
 import sys
@@ -112,13 +110,10 @@ def random_bimodality():
     """
     rc.dataset = "random10k-vs-100k-mod"
     rc.nfolds = 10
-    #rc.getPostMask = "maskLessThanThree"
     rc.getPostMask = "maskNonPositives"
     env = ValidationEnvironment()
     pos = "random10k-06.txt"
     neg = "medline07-100k.txt"
-    #pos = "genedrug-small.txt"
-    #neg = rc.articlelist
     env.standardValidation(rc.corpora / pos, rc.corpora / neg)
 
 if __name__ == "__main__":

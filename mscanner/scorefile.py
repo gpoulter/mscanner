@@ -3,25 +3,23 @@
 readPMIDs() -- Get PMIDs (and scores too) from a text file
 writePMIDScores() -- Write PMIDs and scores to a text file
 getArticles() -- Retrieve Articles from a DB, caching results in a Pickle
+readDescriptor() -- Read paramaters from a descriptor file
+writeDescriptor() -- Write paramaters to a descriptor file
 
                                    
 """
 
-__license__ = """
-This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free Software
-Foundation; either version 2 of the License, or (at your option) any later
-version.
+__license__ = """This program is free software: you can redistribute it and/or
+modify it under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your option)
+any later version.
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-http://www.gnu.org/copyleft/gpl.html
-"""
-
-import logging as log
-from path import path
+You should have received a copy of the GNU General Public License along with
+this program. If not, see <http://www.gnu.org/licenses/>."""
 
 def readPMIDs(filename, outbase=None, include=None, exclude=None, withscores=False):
     """Read PubMed IDs one per line from filename.
@@ -40,8 +38,7 @@ def readPMIDs(filename, outbase=None, include=None, exclude=None, withscores=Fal
     @returns: An iterator over PubMed ID, or (Score, PubMed ID) if
     withscores is True.
     """
-    if not isinstance(filename,path) or not filename.exists():
-        raise ValueError("File %s does not exist" % filename)
+    import logging as log
     count = 0
     broken_file = file(outbase+".broken.txt","w") if outbase else None
     exclude_file = file(outbase+".exclude.txt","w") if outbase else None
@@ -76,8 +73,9 @@ def readPMIDs(filename, outbase=None, include=None, exclude=None, withscores=Fal
 def writePMIDScores(filename, pairs):
     """Write (score, PMID) pairs to filename, in decreasing
     order of score."""
-    path(filename).write_lines("%-10d %f" % (p,s) for s,p in \
-                               sorted(pairs, reverse=True))
+    from path import path
+    path(filename).write_lines(
+        "%-10d %f" % (p,s) for s,p in sorted(pairs, reverse=True))
     
 def getArticles(article_db_path, pmidlist_path):
     """Get Article objects given a file of PubMed IDs.
@@ -96,6 +94,7 @@ def getArticles(article_db_path, pmidlist_path):
     use the cached results. 
     """
     import cPickle
+    from path import path
     from mscanner.support import dbshelve
     cache_path = path(pmidlist_path + ".pickle")
     if cache_path.isfile():
@@ -107,3 +106,53 @@ def getArticles(article_db_path, pmidlist_path):
     artdb.close()
     return articles
 
+descriptor_keys = dict(
+    alpha=float,
+    code=str,
+    dataset=str,
+    limit=int,
+    nfolds=int,
+    numnegs=int,
+    operation=str,
+    threshold=float,
+    timestamp=float,
+)
+    
+def readDescriptor(fpath):
+    """Reads a descriptor file, returning a dictionary of parameters.
+
+    @note: Each line is formatted as "#key = value".  The reading stops
+    at the first line that does not start with '#'.   The valid keys
+    are listed in the converter dictionary.
+
+    @note: The same descriptor file can be used as a PubMed ID list,
+    as the PubMed-ID reader ignores lines beginning with '#'.
+    """
+
+    f = file(fpath, "r")
+    line = f.readline()
+    from mscanner.support.storage import Storage
+    result = Storage()
+    while line.startswith("#"):
+        key, value = line[1:].split(" = ",1)
+        value = descriptor_keys[key](value.strip())
+        result[key] = value
+        line = f.readline()
+    f.close()
+    return result
+    
+def writeDescriptor(fpath, pmids, params):
+    """Write parameters and PubMed IDs to the descriptor file.
+    
+    @param fpath: File to write
+    @param pmids: List of PubMed IDs, may be None
+    @param params: Key-value dictionary to write. Values are converted with
+    str().  Only certain keys are written."""
+    f = file(fpath, "w")
+    for key, value in params.iteritems():
+        if key not in descriptor_keys: 
+            continue
+        f.write("#" + key + " = " + str(value).strip() + "\n")
+    if pmids is not None:
+        fpath.write_lines([str(pmid) for pmid in pmids])
+    f.close()

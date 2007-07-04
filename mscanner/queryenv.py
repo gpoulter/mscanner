@@ -8,19 +8,17 @@ scoring take these as function arguments instead)
 
 from __future__ import division, with_statement, absolute_import
 
-__license__ = """
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or (at
-your option) any later version.
+__license__ = """This program is free software: you can redistribute it and/or
+modify it under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your option)
+any later version.
 
-This program is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-General Public License for more details.
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-http://www.gnu.org/copyleft/gpl.html
-"""
+You should have received a copy of the GNU General Public License along with
+this program. If not, see <http://www.gnu.org/licenses/>."""
 
 from itertools import chain
 import logging as log
@@ -188,13 +186,14 @@ class QueryEnvironment:
             rc.query_report_dir.makedirs()
         os.chdir(rc.query_report_dir)
         # Split the input into train and test sections
+        def split_input():
+            input = list(self.input_pmids)
+            import random
+            random.shuffle(input)
+            subset_size = int(rc.retrieval_test_prop * len(items))
+            return set(items[:subset_size]), set(items[subset_size:])
         self.loadInput(pmids_path)
-        input = list(self.input_pmids)
-        import random
-        random.shuffle(input)
-        subset_size = int(rc.retrieval_test_prop * len(items))
-        self.input_pmids = set(items[:subset_size])
-        self.input_test = set(items[subset_size:])
+        self.input_pmids, self.input_test = split_input()
         # Get feature info and result scores
         self.featinfo = self.getFeatureInfo()
         rc.threshold = None
@@ -273,6 +272,7 @@ class QueryEnvironment:
                        rc.report_result_citations, rc.citations_per_file)
         # Index.html
         log.debug("Writing index file")
+        ft = FileTransaction(rc.report_index, "w")
         index = mapper.results(
             stats = self.featinfo.getFeatureStats(),
             linkpath = rc.templates.relpath().replace('\\','/'),
@@ -280,7 +280,8 @@ class QueryEnvironment:
             num_results = len(self.results),
             rc = rc, 
             timestamp = rc.timestamp,
-        ).respond(FileTransaction(rc.report_index, "w"))
+        ).respond(ft)
+        ft.close()
 
 def writeCitations(template, mode, scores, fname, perfile):
     """Because 10000 citations in one HTML file is impossible to work with,

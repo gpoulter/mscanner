@@ -5,26 +5,23 @@ ValidationEnvironment -- Environment for cross-validation
                                    
 """
 
-__license__ = """
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or (at
-your option) any later version.
+__license__ = """This program is free software: you can redistribute it and/or
+modify it under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your option)
+any later version.
 
-This program is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-General Public License for more details.
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-http://www.gnu.org/copyleft/gpl.html
-"""
+You should have received a copy of the GNU General Public License along with
+this program. If not, see <http://www.gnu.org/licenses/>."""
 
 from itertools import chain, izip
 import logging as log
 import numpy as nx
 import os
 
-from mscanner import statusfile
 from mscanner.configuration import rc
 from mscanner.featuredb import FeatureDatabase
 from mscanner.featuremap import FeatureMapping
@@ -71,32 +68,31 @@ class ValidationEnvironment:
         @param negpath: Location of input negative PMIDs (or None)
         """
         # Report directory
+        import time
+        if rc.timestamp is None: rc.timestamp = time.time() 
         if not rc.valid_report_dir.exists():
             rc.valid_report_dir.makedirs()
-        try:
-            statusfile.start(total=rc.nfolds)
-            # FeatureInfo for this validation run
-            self.featinfo = FeatureInfo(
-                featmap = self.featmap, 
-                pseudocount = rc.pseudocount, 
-                mask = self.featmap.featureTypeMask(rc.exclude_types),
-                getFrequencies = rc.getFrequencies,
-                getPostMask = rc.getPostMask
-            )
-            os.chdir(rc.valid_report_dir)
-            # Load saved results
-            if rc.report_positives.isfile() and \
-               rc.report_negatives.isfile():
-                self.loadResults()
-            # Calculate new results
-            else:
-                self.loadInputs(pospath, negpath)
-                self.getResults()
-                self.saveResults()
-            self.writeReport()
-        finally:
-            log.info("FINISHING VALIDATION %s", rc.dataset)
-            statusfile.close()
+        # FeatureInfo for this validation run
+        self.featinfo = FeatureInfo(
+            featmap = self.featmap, 
+            pseudocount = rc.pseudocount, 
+            mask = self.featmap.featureTypeMask(rc.exclude_types),
+            getFrequencies = rc.getFrequencies,
+            getPostMask = rc.getPostMask
+        )
+        os.chdir(rc.valid_report_dir)
+        # Load saved results
+        if rc.report_positives.isfile() and \
+           rc.report_negatives.isfile():
+            self.loadResults()
+        # Calculate new results
+        else:
+            self.loadInputs(pospath, negpath)
+            self.getResults()
+            self.saveResults()
+        self.writeReport()
+        log.info("FINISHING VALIDATION %s", rc.dataset)
+        rc.timestamp = None
 
     def loadInputs(self, pospath, negpath=None):
         """Load PubMed IDs from files.  If negpath is None, we generate
@@ -243,11 +239,13 @@ class ValidationEnvironment:
         # Index file
         log.debug("Writing index.html")
         mapper = TemplateMapper(root=rc.templates)
+        ft = FileTransaction(rc.report_index, "w")
         tpl = mapper.validation(
             stats = self.featinfo.getFeatureStats(),
             linkpath = rc.templates.relpath().replace('\\','/'),
             overlap = overlap,
             p = self.performance,
             rc = rc,
-            timestamp = statusfile.timestamp,
-        ).respond(FileTransaction(rc.report_index, "w"))
+            timestamp = rc.timestamp,
+        ).respond(ft)
+        ft.close()

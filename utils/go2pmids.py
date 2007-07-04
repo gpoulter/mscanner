@@ -5,8 +5,15 @@
 Usage: go2pmids.sh <file1.gz> <file2.gz> ...
 
 Files should be .gz (gzip) files containing GeneOntology annotations.
-The program prints a sorted list of unique PubMed IDs from the to
-standard output.
+The program prints a sorted list of unique PubMed IDs (some of which 
+are Medline UIs or gibberish) to standard output.
+
+                                   
+
+@license: This source file is free software. It comes without any warranty, to
+the extent permitted by applicable law. You can redistribute it and/or modify
+it under the Do Whatever You Want Public License. Terms and conditions: 
+   0. Do Whatever You Want
 """
 
 import sys, os, re, gzip

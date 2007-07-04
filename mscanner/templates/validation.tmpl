@@ -84,26 +84,15 @@ $timestamp -- time.time() for start of the operation
     </tr>
     $hr("h_timestamp", """Date and time at which the query was submitted.""")
 
+    #if isinstance($rc.pseudocount, float)
     <tr>
       <th>Pseudocount</th>
-      <td id="pseudocount">
-        #if isinstance($rc.pseudocount, float)
-        #echo "%f" % $rc.pseudocount
-        #else #per-feature #end if#
-      </td>
+      <td id="pseudocount">$rc.pseudocount</td>
       $help("h_pseudocount")
     </tr>
     $hr("h_pseudocount", """Prior count added to the number of
     occurrences of every term, so that no terms have probabilities of
     zero.""")
-
-    <tr>
-      <th>Score threshold</th>
-      <td id="threshold">#echo "%.2f" % $p.threshold #</td>
-      $help("h_threshold")
-    </tr>
-    $hr("h_threshold", """The score threshold which maximises
-    &alpha;-weighted F-Measure.""")
 
     <tr>
       <th>Feature scores</th>
@@ -185,15 +174,22 @@ $timestamp -- time.time() for start of the operation
     constant, this value increases monotonically with prevalence
     (number of positives over number of negatives).""")
     
-    #if $overlap is not None
     <tr>
-      <th>Score overlap</th>
-      <td>#echo "%.5f" % $overlap #</td>
-      $help("h_overlap")
+      <th>Break-Even <span class="footnote">(where precision=recall)</span></th>
+      <td id="break_even">#echo "%.5f" % $p.breakeven #</td>
+      $help("break_even")
     </tr>
-    $hr("h_overlap", """Area of density overlap between positive and
-    negative score distributions.""")  
-    #end if
+    $hr("break_even", """Shared value at the point where Recall = Precision =
+    F1-measure. Typically the F1-Measure at break-even is slightly lower than
+    the maximum F1-Measure.""")
+
+    <tr>
+      <th>Score threshold</th>
+      <td id="threshold">#echo "%.2f" % $p.threshold #</td>
+      $help("h_threshold")
+    </tr>
+    $hr("h_threshold", """The score threshold which maximises
+    &alpha;-weighted F-Measure.""")
 
   </table>
 
@@ -351,13 +347,6 @@ $timestamp -- time.time() for start of the operation
         <i>1/(x+1)</i>, if the TP/FP ratio is <i>x</i>.
       </dd>
 
-      <dt>Break-even Point</dt>
-      <dd>
-        Value at the threshold where Recall = Precision =
-        F1-measure.  Typically the F-Measure at break-even is slightly
-        lower than the maximum F1-Measure.
-      </dd>
-
       <dt>&alpha;-Weighted F-Measure</dt>
       <dd>
         The threshold is chosen to maximise this quantity. 0 &lt;=
@@ -374,7 +363,7 @@ $timestamp -- time.time() for start of the operation
 
       <dt>Maximum F1-Measure</dt>
       <dd>
-        Maximum possible value of F1-Measure (can be achieved using
+        Maximum possible value of F1-Measure (as achieved when using
         &alpha;=0.5).
       </dd>
 
@@ -426,11 +415,6 @@ $timestamp -- time.time() for start of the operation
     <tr>
       <th><b>FP/TP Ratio</b></th>
       <td>#echo "%.5f" % t.fp_tp_ratio #</td>
-    </tr>
-    <tr>
-      <th><b>Break-Even</b> 
-      <span class="footnote">(value at precision=recall)</span></th>
-      <td>#echo "%.5f" % $p.breakeven #</td>
     </tr>
     <tr>
       <th><b>Weighted F-Measure</b> 

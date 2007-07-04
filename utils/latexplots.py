@@ -8,7 +8,22 @@ Figure 2. ROC curve overlay
 Figure 3. PR curve overlay
 Figure 4. P,R,F1,Fa curve for AIDSBio to demo optimisation
 
+                                    
 """
+
+__license__ = """This program is free software: you can redistribute it and/or
+modify it under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your option)
+any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program. If not, see <http://www.gnu.org/licenses/>."""
+
+from __future__ import division
 
 import logging
 from path import path
@@ -19,10 +34,10 @@ from mscanner.scorefile  import readPMIDs
 from mscanner.validation import PerformanceStats
 from mscanner.plotting import bincount, kernelPDF, calculateOverlap
 
-initLogger()
-
 interactive = False
 npoints = 400
+mscanner_dir = path(r"C:\Documents and Settings\Graham\My Documents\data\mscanner")
+source_dir = mscanner_dir / "output"
 outdir = path(r"C:\Documents and Settings\Graham\My Documents\temporary")
 
 rc("figure", figsize=(8,6), dpi=100)
@@ -60,8 +75,10 @@ def getStats(indir, dataset, title, alpha=0.5):
     @param alpha: What alpha to use when recalcing performance
     """
     logging.info("Reading dataset %s", dataset)
-    pscores = array([s[0] for s in readPMIDs(indir/dataset/mrc.report_positives, withscores=True)])
-    nscores = array([s[0] for s in readPMIDs(indir/dataset/mrc.report_negatives, withscores=True)])
+    pscores = array([s[0] for s in readPMIDs(
+        indir/dataset/mrc.report_positives, withscores=True)])
+    nscores = array([s[0] for s in readPMIDs(
+        indir/dataset/mrc.report_negatives, withscores=True)])
     stats = PerformanceStats(pscores, nscores, alpha)
     stats.title = title
     return stats
@@ -96,12 +113,11 @@ def plotArticleScoreDensity(fname, statlist):
         title(s.title)
         line_pos, = plot(px, py, color='red', label=r"$\rm{Positive}$")
         line_neg, = plot(nx, ny, color='blue', label=r"$\rm{Negative}$")
-        line_threshold = axvline(s.threshold, color='green', linewidth=1, 
-                                 label=r"$\rm{Threshold}$")
+        line_threshold = axvline(
+            s.threshold, color='green', linewidth=1, label=r"$\rm{Threshold}$")
         # No longer plotting the overlapping area
         #area, iX, iY = calculateOverlap(px, py, nx, ny)
-        #patch_overlap, = fill(iX, iY, facecolor='magenta', alpha=0.7, 
-        #                      label=r"$\rm{Overlap}$")
+        #patch_overlap, = fill(iX, iY, facecolor='magenta', alpha=0.7, label=r"$\rm{Overlap}$")
         if idx == 0 or idx == 2:
             ylabel("Density")
         if idx == 2 or idx == 3:
@@ -113,7 +129,7 @@ def plotArticleScoreDensity(fname, statlist):
 def plotArticleScoreHistogram(fname, pscores, nscores):
     """Plot histograms for pos/neg scores, with line to mark threshold"""
     logging.info("Plotting article score histogram to %s", fname)
-    title("Article Score Histograms")
+    ##title("Article Score Histograms")
     xlabel("Article Score")
     ylabel("Article Density")
     p_n, p_bins, p_patches = hist(pscores, bins=bincount(pscores), normed=True)
@@ -122,14 +138,14 @@ def plotArticleScoreHistogram(fname, pscores, nscores):
     setp(n_patches, 'facecolor', 'b', 'alpha', 0.50, 'linewidth', 0.0)
     p_y = normpdf(p_bins, mean(pscores), std(pscores))
     n_y = normpdf(n_bins, mean(nscores), std(nscores))
-    p_l = plot(p_bins, p_y, 'r--', label=r"$\rm{Positive}$")
-    n_l = plot(n_bins, n_y, 'b--', label=r"$\rm{Negative}$")
+    p_l = plot(p_bins, p_y, 'r--', label=r"$\rm{Relevants}$")
+    n_l = plot(n_bins, n_y, 'b--', label=r"$\rm{Irrelevant}$")
     custom_show(fname, type="svg")
     
 def plotFeatureScoreHistogram(fname, fscores):
     """Plot histogram for individual feature scores"""
     logging.info("Plotting feature score histogram to %s", fname)
-    title("Feature Score Histogram")
+    ##title("Feature Score Histogram")
     xlabel("Feature Score")
     ylabel("Number of Features")
     fscores.sort()
@@ -144,16 +160,14 @@ def plotROC(fname, statlist):
     values = [smooth(s.TPR[::-1], s.FPR[::-1]) for s in statlist]
     # Plot complete ROC curve
     subplot(121)
-    title(r"ROC curves")
+    ##title(r"ROC curves")
     ylabel(r"True Positive Rate (Recall)")
     xlabel(r"False Positive Rate (1-Specificity)")
     lines = [plot(FPR, TPR)[0] for TPR, FPR in values]
-    plot([s.tuned.FPR for s in statlist], [s.tuned.TPR for s in statlist], "kx", markeredgewidth=1)
-    xlim(0.0, 1.0)
-    ylim(0.0, 1.0)
+    axis([0.0, 1.0, 0.0, 1.0])
     # Plot zoomed in ROC curve
     subplot(122)
-    title(r"Magnified ROC")
+    ##title(r"Magnified ROC")
     xlabel(r"False Positive Rate (1-Specificity)")
     lines = [plot(FPR, TPR)[0] for TPR, FPR in values]
     amount = 0.25
@@ -164,50 +178,85 @@ def plotROC(fname, statlist):
 def plotPR(fname, statlist):
     """Plots PR curves overlayed"""
     logging.info("Plotting PR curve to %s", fname)
-    title(r"Precision versus Recall")
+    ##title(r"Precision versus Recall")
     ylabel(r"$\rm{Precision}\ (\pi)$")
     xlabel(r"$\rm{Recall}\ (\rho)$")
+    # Dotted line for break-even point
+    plot([0.0, 1.0], [0.0, 1.0], "k:")
     # Pairs of TPR and PPV vectors for plotting
     values = [smooth(s.TPR[::-1], s.PPV[::-1]) for s in statlist]
     lines = [plot(TPR, PPV)[0] for TPR, PPV in values]
     # Place X marks at threshold
     plot([s.tuned.TPR for s in statlist], [s.tuned.PPV for s in statlist], "kx", markeredgewidth=2)
     # Draw legends
-    legend(lines, [r"$\rm{"+s.title+r"}$" for s in statlist], (0.1, 0.3))
+    legend(lines, [r"$\rm{"+s.title+r"}$" for s in statlist], (0.5, 0.15))
     axis([0.0, 1.0, 0.0, 1.0])
     custom_show(fname)
 
 def plotPRF(fname, s):
     """Plots a single Precision/Recall/F-Measure curve"""
     logging.info("Plotting PRF curve to %s", fname)
-    title(s.title + " performance versus threshold")
+    ##title(s.title + " performance versus threshold")
     ylabel("Performance Measures")
     xlabel("Decision Threshold")
-    x = linspace(s.uscores[0], s.uscores[-1], npoints)
-    x, TPR = smooth(s.uscores, s.TPR, x)
-    x, PPV = smooth(s.uscores, s.PPV, x)
-    x, FM = smooth(s.uscores, s.FM, x)
-    x, FMa = smooth(s.uscores, s.FMa, x)
+    # We only plot starting from score of -50
+    start = 0
+    while s.uscores[start] < -40:
+        start += 1
+    x = linspace(s.uscores[start], s.uscores[-1], npoints)
+    x, TPR = smooth(s.uscores[start:], s.TPR[start:], x)
+    x, PPV = smooth(s.uscores[start:], s.PPV[start:], x)
+    x, FM = smooth(s.uscores[start:], s.FM[start:], x)
+    x, FMa = smooth(s.uscores[start:], s.FMa[start:], x)
     plot(x, TPR, label=r"$\rm{Recall}\ (\rho)$")
     plot(x, PPV, label=r"$\rm{Precision}\ (\pi)$")
     plot(x, FM, label=r"$F_1$")
-    plot(x, FMa, label=r"$F_{\alpha}\ (\alpha=0.9)$")
+    plot(x, FMa, label=r"$F_{\alpha}\ (\alpha=%s)$" % str(s.alpha))
     axvline(s.threshold, label=r"$\rm{Threshold}$")
     ylim(0,1)
-    legend(loc="upper left")
+    legend(loc="upper right")
     custom_show(fname)
 
-def plotRetrievaltest():
-    """Plots retrieval test results for 20% of PharmGKB to see how it
-    retrieves the remaining 80%
+def RetrievalTest():
+    """Plots retrieval test results for 20% of PharmGKB to see how MScanner
+    and PubMed compare at retrieving the remaining 80%.
     """
+    logging.info("Plotting Retrieval curve for PG07")
+    pgdir = source_dir / "070626 Retrieval a_i 0.2 5k" / "pg07-retrieval"
+    # Retrieval vs rank for MScanner
+    mscanner_c = array([int(x) for x in (pgdir/"retrieval_stats.txt").lines()])
+    # Gold standard citations for PG07
+    pg_test = [int(x) for x in (pgdir/"retrieval_test.txt").lines()]
+    # PubMed query output
+    pubmed = mscanner_dir/"support"/"PubMed Pharmacogenetics"
+    pgx1 = [int(x) for x in (pubmed/"pgx1.txt").lines()]
+    # Retrieval vs rank for PubMed
+    from mscanner.scoring import retrievalTest    
+    pgx1_c = retrievalTest(pgx1, set(pg_test))
+    # Plot the graph
+    ax1 = subplot(111)
+    ##title("PG07 Retrieval Comparison")
+    ylabel("Fraction retrieved")
+    xlabel("False Positives")
+    N = len(pg_test)
+    r = 4301
+    semilogx(range(1,r)-mscanner_c[1:r], mscanner_c[1:r]/N, label="MScanner")
+    semilogx(range(1,r)-pgx1_c[1:r], pgx1_c[1:r]/N, label="PubMed")
+    legend(loc="upper left")
+    grid(True)
+    gca().xaxis.grid(True, which='minor')
+    ax2 = twinx()
+    semilogx([1],[1])
+    ax2.set_xlim(1,r)
+    ax2.set_ylim(0,ax1.get_ylim()[1]*len(pg_test))
+    ylabel("True Positives")
+    custom_show("fig4_pg07retrieval")
 
-def publication_plots():
-    """Draws figures for the BMC paper: including densities, ROC curve, PR curve, and PRF curve.
-
-    @note: Must still add the retrieval testing curve.
+def Publication():
+    """Draws figures for the BMC paper: including densities, ROC curve, PR
+    curve, and PRF curve.
     """
-    indir = path(r'C:\Documents and Settings\Graham\My Documents\data\mscanner\output\070530 CV10 vs 100k')
+    indir = source_dir / "070621 CV10 100k a_i"
     aids = getStats(indir, "aids-vs-100k", "AIDSBio")
     rad = getStats(indir, "radiology-vs-100k", "Radiology")
     pg07 = getStats(indir, "pg07-vs-100k", "PG07")
@@ -215,14 +264,15 @@ def publication_plots():
     all = (aids,rad,pg07,ran10)
     plotROC("fig2_roc", all)
     plotPR("fig3_pr", all)
-    aidsalpha = PerformanceStats(aids.pscores, aids.nscores, alpha=0.95)
-    aidsalpha.title = aids.title
-    plotPRF("fig4_prf", aidsalpha)
-    plotArticleScoreDensity("fig1_density", all)
+    fmplot = PerformanceStats(pg07.pscores, pg07.nscores, alpha=0.95)
+    fmplot.title = pg07.title
+    plotPRF("fig6_prf", fmplot)
+    #plotArticleScoreDensity("fig1_density", all)
+    RetrievalTest()
 
-def test_plots():
+def Testing():
     global indir
-    indir = path(r'C:\Documents and Settings\Graham\My Documents\data\mscanner\output\070206 LOO w s=0.01')
+    indir = source_dir / "070206 LOO w s=0.01"
     pg04 = getStats(indir, "pg04-vs-30k", "PG04")
     pg07 = getStats(indir, "pg07-vs-30k", "PG07")
     plotArticleScoreDensity("test_density", (pg04,pg07,pg07,pg04))
@@ -232,31 +282,22 @@ def test_plots():
     pg04alpha.title = pg04.title
     plotPRF("test_prf", pg04alpha)
 
-def custom_plots(subdirs):
-    indir = path(r'C:\Documents and Settings\Graham\My Documents\data\mscanner\output\070206 LOO w s=0.01')
-    statlist = [getStats(indir, d, d) for d in subdirs]
-    fscores = [getFeatScores(indir, d) for d in subdirs]
+def Custom(subdirs):
+    statlist = [getStats(source_dir/d, d, d) for d in subdirs]
+    fscores = [getFeatScores(source_dir/d, d) for d in subdirs]
     #plotArticleScoreDensity("cus_density", stats)
     #plotROC("cus_roc", statlist)
     #plotPR("cus_pr", statlist)
     for stats, fscores in zip(statlist, fscores):
         #plotPRF("cus_%s_prf" % stats.title, stats)
-        plotArticleScoreHistogram("cus_%s_arthist" % stats.title, stats.pscores, stats.nscores)
-        plotFeatureScoreHistogram("cus_%s_feathist" % stats.title, fscores)
+        plotArticleScoreHistogram(
+            "cus_%s_arthist" % stats.title, stats.pscores, stats.nscores)
+        plotFeatureScoreHistogram(
+            "cus_%s_feathist" % stats.title, fscores)
 
 if __name__ == "__main__":
-    from getopt import getopt
-    optlist, args = getopt(sys.argv[1:], "d:", ["data="])
-    data = None
-    for key, value in optlist:
-        if key in ["-d","--data"]:
-            data = value
-    if data is None:
-        print __doc__
-        sys.exit(1)
-    elif data== "publication":
-        publication_plots()
-    elif data == "test":
-        test_plots()
-    elif data == "custom":
-        custom_plots(sys.argv[2:])
+    initLogger(logfile=False)
+    if len(sys.argv) != 2:
+        print "Please give python expression"
+    else:
+        eval(sys.argv[1])

@@ -1,3 +1,13 @@
+"""Test suite for mscanner.support.utils
+
+                                   
+
+@license: This source file is free software. It comes without any warranty, to
+the extent permitted by applicable law. You can redistribute it and/or modify
+it under the Do Whatever You Want Public License. Terms and conditions: 
+   0. Do Whatever You Want
+"""
+
 import numpy as nx
 import os
 import unittest

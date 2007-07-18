@@ -1,45 +1,35 @@
-<table class="status" style="margin:auto;">
-  <thead>
-    <tr>
-      <th colspan="2" style="text-align:center;font-weight:bold;">
-        Status for batch <a href="/status">$status.dataset</a>  
-      </th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>
-        Start Date
-      </th>
-      <td>
-        $time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($status.timestamp))
-      </td>
-    </tr>
-    <tr>
-      <th>
-        Elapsed Time
-      </th>
-      <td>
-        #import time
-        #set $elapsed = $time.time() - $status.timestamp
-        #echo "%d hours, %d minutes, %d seconds" % ($elapsed / (60*60), ($elapsed % (60*60)) / 60, $elapsed % 60)
-      </td>
-    </tr>
-    <tr>
-      <th>
-        Steps Completed
-      </th>
-      <td>
-        $status.progress
-      </td>
-    </tr>
-    <tr>
-      <th>
-        Total Steps
-      </th>
-      <td>
-        $status.total
-      </td>
-    </tr>
-  </tbody>
+#if $getVar('current', None) is None
+
+<p>
+There are no tasks currently in the MScanner queue.
+</p>
+
+#else
+
+<table class="status">
+  <tr>
+    <th>Current task</th>
+    <td>
+    $current.dataset ($current.operation) 
+    (<a href="/static/output/$current.dataset/" target="_blank">future location</a>)
+    </td>
+  </tr>
+  <tr>
+    <th>
+      Time of submission
+    </th>
+    <td>
+      $time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($current.timestamp))
+    </td>
+  </tr>
+  <tr>
+    <th>
+      Total tasks in queue
+    </th>
+    <td>
+      $current.queue_length
+    </td>
+  </tr>
 </table>
+
+#end if current

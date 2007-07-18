@@ -38,19 +38,39 @@ Sample Title
         <a href="/">Front Page</a>
       </td>
       <td>
-        <a href="/status">Detailed Status</a>
+        <a href="/status">Status</a>
       </td>
       <td>
         <a href="/form">Submit Query</a>
       </td>
       <td>
-        <a href="/output/">View Output</a>
+        <a href="/output">View Output</a>
       </td>
+      <!--
+      <td>
+        <a href="/contact">Contact Us</a>
+      </td>
+      -->
     </tr>
   </table>
 </div>
 #end block topmenu
 
+#def print_errors
+#if $getVar("errors",None) is not None
+<div class="errors">
+  <h2>Errors</h2>
+  <ul>
+    #for error in $errors
+    <li>
+      $error
+    </li>
+    #end for
+  </ul>
+</div>
+#end if
+#end def print_errors
+  
 #block contents
 <div class="contents">
 TESTING

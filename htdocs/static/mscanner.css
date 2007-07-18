@@ -55,6 +55,9 @@ div.text {
 div.text > p {
     padding: 1ex;
 }
+p.narrow {
+    max-width: 30em;
+}
 p.alert {
     border: solid red 2px;
     margin: 1ex;

@@ -2,7 +2,7 @@
 
 #def title
 Submit Query or Validation #slurp
-#end def
+#end def title
 
 #def head
 <head>
@@ -18,13 +18,12 @@ Submit Query or Validation #slurp
     window.onload = function() {
       var names = [
         "h_dataset",
-        "h_code",
-        "h_pseudocount",
+        "h_delcode",
         "h_positives",
         "h_threshold",
         "h_limit",
-        "h_nfold",
-        "h_negatives",
+        "h_nfolds",
+        "h_numnegs",
         "h_alpha"
       ];
       for (var i = 0; i < names.length; i++) {
@@ -33,9 +32,10 @@ Submit Query or Validation #slurp
       }
     }
     
+    // Fills the 
     function example() {
-       $('dataset').value = "example-radiology-query"
-       $('positives').value = "10390570\n10555669\n10587123\n10658726\n10702822\n10747308\n11092485\n11812973\n12216754\n12438060\n12708922\n12828616\n12945936\n14510633\n14628859\n14700161\n14752189\n14914750\n15256634\n15310152\n15351243\n15405683\n15480032\n15520901\n15717221\n15718419\n1592926\n16009818\n16019460\n16154823\n16189163\n16272860\n16299797\n16344746\n16415460\n16488085\n1727362\n1899742\n1928554\n1950868\n1984330\n2406785\n2731700\n2806818\n3275982\n3279735\n3416282\n3840980\n3871147\n4040300\n5327041\n5368340\n6497634\n6783686\n6856834\n7034554\n7480744\n8190956\n8208972\n8316667\n8372948\n8615251\n8911169\n8988207\n8988208\n9754100\n9922200\n9922201\n"
+       \$('dataset').value = "example-radiology-query"
+       \$('positives').value = "10390570\n10555669\n10587123\n10658726\n10702822\n10747308\n11092485\n11812973\n12216754\n12438060\n12708922\n12828616\n12945936\n14510633\n14628859\n14700161\n14752189\n14914750\n15256634\n15310152\n15351243\n15405683\n15480032\n15520901\n15717221\n15718419\n1592926\n16009818\n16019460\n16154823\n16189163\n16272860\n16299797\n16344746\n16415460\n16488085\n1727362\n1899742\n1928554\n1950868\n1984330\n2406785\n2731700\n2806818\n3275982\n3279735\n3416282\n3840980\n3871147\n4040300\n5327041\n5368340\n6497634\n6783686\n6856834\n7034554\n7480744\n8190956\n8208972\n8316667\n8372948\n8615251\n8911169\n8988207\n8988208\n9754100\n9922200\n9922201\n"
     }
   </script>
   
@@ -44,7 +44,7 @@ Submit Query or Validation #slurp
 
 ## Set the "disabled" attribute on form items if necessary
 #def disabled
-#if $status#disabled="disabled"#end if##slurp
+##if $status#disabled="disabled"#end if##slurp
 #end def
 
 #def form_row(label, id, input, help)
@@ -91,34 +91,20 @@ Submit Query or Validation #slurp
 #def contents
 <div class="contents">
 
+$print_errors()
+
 <form class="query" action="" method="post">
   
-  #if $getVar('errors',None)
-  <fieldset>
-    <legend>Form Errors</legend>
-    <ul>
-      #for error in $errors
-      <li>
-        $error
-      </li>
-      #end for
-    </ul>
-  </fieldset>
-  #end if
-
-  #if $getVar('status',None)
-  <p class="alert">
-    MScanner is busy with another submission.  You can <a
-    href="/status">check on its status</a> (option to notify by
-    e-mail), or browse the help buttons below.
-  </p>
-  #end if
-
   <fieldset>
     
     <legend>Standard Options</legend>
 
+    ## Currently auto-filling the captcha - fix this later
+    <input type="hidden" id="captcha" name="captcha" value="orange" />
+    
     <table>
+
+      ## Box for pasting in PubMed IDs
       $form_row("Input Citations", "positives",
       $h_textarea("positives",3,10,$positives), """Paste a list of
       PubMed IDs (not <a
@@ -126,22 +112,17 @@ Submit Query or Validation #slurp
       UIs</a>) one per line into the text box.  The scanner will be
       trained to detect further articles like these.  Invalid IDs will
       be displayed, and filtered out of this box.""")
-    </table>
 
-    <button type="button" onclick="javascript:example()" $disabled>Example PubMed IDs</button>
-
-    <button type="submit">Determine Enriched Terms </button>
-
-    <button type="button" onclick="()" $disabled>Example PubMed IDs</button>
-    
-    <table>
-      $form_row("Batch Name", "dataset", $h_input("dataset",30,$dataset),
+      ## Field for the dataset
+      $form_row("Task Name", "dataset", $h_input("dataset",30,$dataset),
       """To help identify your results, provide a name for your
-      submission so that you can identify it later.  The title may
-      only consist of lowercase alphanumerics plus _.-, up to a
-      maximum of 30 characters (no spaces or uppercase).""")
+      submission in case there is a long queue and you want to
+      identify it later.  The title may only consist of lowercase 
+      alphanumerics plus _.-, up to a maximum of 30 
+      characters (no spaces or uppercase).""")
       
-      $form_row("Deletion Code", "code", $h_input("code",8,$code),
+      ## Field for deletion code
+      $form_row("Deletion Code", "delcode", $h_input("delcode",8,$delcode),
       """To prevent random people from cancelling your submission or
       deleting your output you should specify a short easy-to-remember code 
       (if blank, anyone  can delete your output).  It will only be used once: 
@@ -176,13 +157,13 @@ Submit Query or Validation #slurp
   <fieldset>
     
     <legend>
-      <input type="radio" name="operation" value="validation" $disabled />
+      <input type="radio" name="operation" value="validate" $disabled />
       Validation Operation
     </legend>
     
     <table>
-      $form_row("Number of Folds", "nfold",
-      $h_option("nfold",[0,5,10],$nfold), """The number of groups to
+      $form_row("Number of Folds", "nfolds",
+      $h_option("nfolds",[0,5,10],$nfolds), """The number of groups to
       split the positives into, and also to split the negatives into.
       For validation, all but one pair of groups is used to build the
       statistical model, and then scores are calculated for the last
@@ -190,8 +171,8 @@ Submit Query or Validation #slurp
       instead, where only the article being scored is left out of the
       training model.""")
 
-      $form_row("Number of Negatives", "negatives",
-      $h_input("negatives",8,$negatives), """Select this many random
+      $form_row("Number of Negatives", "numnegs",
+      $h_input("numnegs",8,$numnegs), """Select this many random
       articles from Medline to use as negatives (custom negative sets
       can only be used on the command line version of MScanner, since
       they need to be quite large).""")
@@ -205,10 +186,11 @@ Submit Query or Validation #slurp
       &alpha;>0.5 trades some recall for increased precision.""")
     </table>
 
-  </fieldset>
+  </fieldset> 
 
   <button type="submit">Submit Batch</button>
 
+  <button type="button" onclick="javascript:example()" $disabled>Example PubMed IDs</button>
 
 </form>
 

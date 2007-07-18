@@ -69,30 +69,35 @@ def mainloop():
         if listing:
             descriptor = listing[0]
             rc.update(readDescriptor(descriptor))
-            log.info("Perfrming %s on descriptor %s", 
+            log.info("Performing %s on descriptor %s", 
                      rc.operation, descriptor.basename())
-            if rc.operation == "query":
-                qenv.standardQuery(descriptor)
-                descriptor.move(rc.query_report_dir / "descriptor.txt")
-            elif rc.operation == "validate":
-                venv.standardValidation(descriptor)
-                descriptor.move(rc.valid_report_dir / "descriptor.txt")
+            try:
+                if rc.operation == "query":
+                    qenv.standardQuery(descriptor)
+                    descriptor.move(rc.query_report_dir / "descriptor.txt")
+                elif rc.operation == "validate":
+                    venv.standardValidation(descriptor)
+                    descriptor.move(rc.valid_report_dir / "descriptor.txt")
+            except ValueError, e:
+                log.error(e)
+                descriptor.remove()
         time.sleep(1)
 
 def makeTestQueue():
     from mscanner.scorefile import readPMIDs
     from mscanner.support.storage import Storage
     pmids = list(readPMIDs(rc.corpora / "genedrug-small.txt"))
-    ts = lambda x: rc.queue_path / time.strftime("%Y%m%d-%H%M%S.txt", time.gmtime(x))
+    ts = lambda x, d: rc.queue_path / \
+    (time.strftime("%Y%m%d%H%M%S", time.gmtime(x)) + "-" + d + ".txt")
     params = Storage(
         operation = "validate", dataset = "gdsmallvalidq",
         nfolds = 5, numnegs = 1000, alpha = 0.6,
         timestamp = time.time(), limit = 500, threshold = 0)
-    writeDescriptor(ts(params.timestamp), pmids, params)
+    writeDescriptor(ts(params.timestamp, params.dataset), pmids, params)
     params.timestamp += 5
     params.operation = "query"
     params.dataset = "gdsmallqueryq"
-    writeDescriptor(ts(params.timestamp), pmids, params)
+    writeDescriptor(ts(params.timestamp, params.dataset), pmids, params)
 
 if __name__ == "__main__":
     initLogger()

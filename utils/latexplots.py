@@ -11,6 +11,8 @@ Figure 4. P,R,F1,Fa curve for AIDSBio to demo optimisation
                                     
 """
 
+from __future__ import division
+
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
 Free Software Foundation, either version 3 of the License, or (at your option)
@@ -23,10 +25,9 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
-from __future__ import division
-
 import logging
 from path import path
+
 from pylab import *
 
 from mscanner.configuration import rc as mrc, initLogger
@@ -83,6 +84,15 @@ def getStats(indir, dataset, title, alpha=0.5):
     stats.title = title
     return stats
 
+def gplot(x,y,ls,label,pos=0.6,usemarker=False):
+    """Wraps plot to add a single marker marker instead of lots"""
+    if usemarker:
+        i = int(pos*len(x))
+        plot(x,y,ls[0:2])
+        plot([x[i]],[y[i]],ls,label=label)
+    else:
+        plot(x,y,ls[0:2],label=label)
+
 def custom_show(fname, doshow=interactive, type="eps"):
     """Either shows an interactive plot, or writes to EPS followed by
     convertion to PDF (since matplotlib's PDF backend is buggy)"""
@@ -136,11 +146,11 @@ def plotArticleScoreHistogram(fname, pscores, nscores):
     n_n, n_bins, n_patches = hist(nscores, bins=bincount(nscores), normed=True)
     setp(p_patches, 'facecolor', 'r', 'alpha', 0.50, 'linewidth', 0.0)
     setp(n_patches, 'facecolor', 'b', 'alpha', 0.50, 'linewidth', 0.0)
-    p_y = normpdf(p_bins, mean(pscores), std(pscores))
-    n_y = normpdf(n_bins, mean(nscores), std(nscores))
-    p_l = plot(p_bins, p_y, 'r--', label=r"$\rm{Relevants}$")
-    n_l = plot(n_bins, n_y, 'b--', label=r"$\rm{Irrelevant}$")
-    custom_show(fname, type="svg")
+    #p_y = normpdf(p_bins, mean(pscores), std(pscores))
+    #n_y = normpdf(n_bins, mean(nscores), std(nscores))
+    #p_l = plot(p_bins, p_y, 'r--', label=r"$\rm{Relevants}$")
+    #n_l = plot(n_bins, n_y, 'b--', label=r"$\rm{Irrelevant}$")
+    custom_show(fname)
     
 def plotFeatureScoreHistogram(fname, fscores):
     """Plot histogram for individual feature scores"""
@@ -157,21 +167,24 @@ def plotROC(fname, statlist):
     """Plots ROC curves overlayed"""
     logging.info("Plotting ROC grid to %s", fname)
     figure(figsize=(10,5))
+    formats = ["r-s", "b-D", "g-h", "c-"]
     values = [smooth(s.TPR[::-1], s.FPR[::-1]) for s in statlist]
     # Plot complete ROC curve
     subplot(121)
     ##title(r"ROC curves")
     ylabel(r"True Positive Rate (Recall)")
     xlabel(r"False Positive Rate (1-Specificity)")
-    lines = [plot(FPR, TPR)[0] for TPR, FPR in values]
+    for (TPR, FPR), fmt  in zip(values, formats):
+        plot(FPR, TPR, fmt[0:2])
     axis([0.0, 1.0, 0.0, 1.0])
     # Plot zoomed in ROC curve
     subplot(122)
     ##title(r"Magnified ROC")
     xlabel(r"False Positive Rate (1-Specificity)")
-    lines = [plot(FPR, TPR)[0] for TPR, FPR in values]
+    for (TPR, FPR), fmt, s  in zip(values, formats, statlist):
+        gplot(FPR, TPR, fmt, label=r"$\rm{"+s.title+r"}$", pos=0.96)
     amount = 0.25
-    legend(lines, [r"$\rm{"+s.title+r"}$" for s in statlist], "lower right")
+    legend(loc="lower right")
     axis([0.0, amount, 1-amount, 1.0])
     custom_show(fname)
 
@@ -184,12 +197,16 @@ def plotPR(fname, statlist):
     # Dotted line for break-even point
     plot([0.0, 1.0], [0.0, 1.0], "k:")
     # Pairs of TPR and PPV vectors for plotting
-    values = [smooth(s.TPR[::-1], s.PPV[::-1]) for s in statlist]
-    lines = [plot(TPR, PPV)[0] for TPR, PPV in values]
+    formats = ["r-s", "b-D", "g-h", "c-o"]
+    for s, fmt in zip(statlist, formats):
+        TPR, PPV = smooth(s.TPR[::-1], s.PPV[::-1])
+        gplot(TPR, PPV, fmt, label=r"$\rm{"+s.title+r"}$", pos=0.5)
     # Place X marks at threshold
-    plot([s.tuned.TPR for s in statlist], [s.tuned.PPV for s in statlist], "kx", markeredgewidth=2)
+    plot([s.tuned.TPR for s in statlist], 
+         [s.tuned.PPV for s in statlist],
+         "kx", markeredgewidth=2)
     # Draw legends
-    legend(lines, [r"$\rm{"+s.title+r"}$" for s in statlist], (0.5, 0.15))
+    legend(loc=(0.5, 0.15))
     axis([0.0, 1.0, 0.0, 1.0])
     custom_show(fname)
 
@@ -208,11 +225,11 @@ def plotPRF(fname, s):
     x, PPV = smooth(s.uscores[start:], s.PPV[start:], x)
     x, FM = smooth(s.uscores[start:], s.FM[start:], x)
     x, FMa = smooth(s.uscores[start:], s.FMa[start:], x)
-    plot(x, TPR, label=r"$\rm{Recall}\ (\rho)$")
-    plot(x, PPV, label=r"$\rm{Precision}\ (\pi)$")
-    plot(x, FM, label=r"$F_1$")
-    plot(x, FMa, label=r"$F_{\alpha}\ (\alpha=%s)$" % str(s.alpha))
-    axvline(s.threshold, label=r"$\rm{Threshold}$")
+    gplot(x, PPV, "b-D", label=r"$\rm{Precision}\ (\pi)$")
+    gplot(x, FMa, "c-o", label=r"$F\ (\alpha=%s)$" % str(s.alpha))
+    gplot(x, FM, "g-h", label=r"$F_1$")
+    gplot(x, TPR, "r-s", label=r"$\rm{Recall}\ (\rho)$")
+    axvline(s.threshold, c="k", label=r"$\rm{Threshold}$")
     ylim(0,1)
     legend(loc="upper right")
     custom_show(fname)
@@ -240,8 +257,8 @@ def RetrievalTest():
     xlabel("False Positives")
     N = len(pg_test)
     r = 4301
-    semilogx(range(1,r)-mscanner_c[1:r], mscanner_c[1:r]/N, label="MScanner")
-    semilogx(range(1,r)-pgx1_c[1:r], pgx1_c[1:r]/N, label="PubMed")
+    semilogx(range(1,r)-mscanner_c[1:r], mscanner_c[1:r]/N, "r", label="MScanner")
+    semilogx(range(1,r)-pgx1_c[1:r], pgx1_c[1:r]/N, "b", label="PubMed")
     legend(loc="upper left")
     grid(True)
     gca().xaxis.grid(True, which='minor')
@@ -267,7 +284,7 @@ def Publication():
     fmplot = PerformanceStats(pg07.pscores, pg07.nscores, alpha=0.95)
     fmplot.title = pg07.title
     plotPRF("fig6_prf", fmplot)
-    #plotArticleScoreDensity("fig1_density", all)
+    plotArticleScoreDensity("fig1_density", all)
     RetrievalTest()
 
 def Testing():

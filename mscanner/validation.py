@@ -437,7 +437,7 @@ class PerformanceStats:
         enrichment = 0
         if prevalence > 0:
             enrichment = precision / prevalence
-        # Return local variables as members of an object
+        # Return local variables in a storage object
         from mscanner.support.storage import Storage
         self.tuned = Storage(locals())
         del self.tuned.self

@@ -202,8 +202,11 @@ class ValidationEnvironment:
         if not rc.report_term_scores.exists():
             log.debug("Writing term scores")
             import codecs
-            self.featinfo.writeScoresCSV(
-                codecs.open(rc.report_term_scores, "wb", "utf-8"))
+            f = codecs.open(rc.report_term_scores, "wb", "utf-8")
+            try:
+                self.featinfo.writeScoresCSV(f)
+            finally:
+                f.close()
         self.performance = PerformanceStats(
             self.pscores, self.nscores, rc.alpha)
         p = self.performance
@@ -242,7 +245,7 @@ class ValidationEnvironment:
         ft = FileTransaction(rc.report_index, "w")
         tpl = mapper.validation(
             stats = self.featinfo.getFeatureStats(),
-            linkpath = rc.templates.relpath().replace('\\','/'),
+            #linkpath = rc.templates.relpath().replace('\\','/'),
             overlap = overlap,
             p = self.performance,
             rc = rc,

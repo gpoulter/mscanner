@@ -40,8 +40,8 @@ def readPMIDs(filename, outbase=None, include=None, exclude=None, withscores=Fal
     """
     import logging as log
     count = 0
-    broken_file = file(outbase+".broken.txt","w") if outbase else None
-    exclude_file = file(outbase+".exclude.txt","w") if outbase else None
+    broken_file = open(outbase+".broken.txt", "w") if outbase else None
+    exclude_file = open(outbase+".exclude.txt", "w") if outbase else None
     for line in file(filename, "r"):
         sline = line.strip()
         if sline == "" or sline.startswith("#"):
@@ -65,8 +65,8 @@ def readPMIDs(filename, outbase=None, include=None, exclude=None, withscores=Fal
         broken_file.close()
         exclude_file.close()
     if count == 0:
-        raise ValueError("Did not succeed in reading any non-excluded PMIDs"+\
-                         "from %s" % filename)
+        raise ValueError("Failed to read any non-excluded PMIDs "+\
+                         "from %s" % filename.basename())
     else:
         log.debug("Got %d PubMed IDs from %s", count, filename.basename())
 
@@ -110,6 +110,7 @@ descriptor_keys = dict(
     alpha=float,
     code=str,
     dataset=str,
+    delcode=str,
     limit=int,
     nfolds=int,
     numnegs=int,
@@ -124,6 +125,9 @@ def readDescriptor(fpath):
     @note: Each line is formatted as "#key = value".  The reading stops
     at the first line that does not start with '#'.   The valid keys
     are listed in the converter dictionary.
+    
+    @note: Also returns a "_filename" attribute that is the name of
+    the descriptor that was read.
 
     @note: The same descriptor file can be used as a PubMed ID list,
     as the PubMed-ID reader ignores lines beginning with '#'.
@@ -138,6 +142,7 @@ def readDescriptor(fpath):
         value = descriptor_keys[key](value.strip())
         result[key] = value
         line = f.readline()
+    result["_filename"] = fpath
     f.close()
     return result
     
@@ -145,14 +150,18 @@ def writeDescriptor(fpath, pmids, params):
     """Write parameters and PubMed IDs to the descriptor file.
     
     @param fpath: File to write
+
     @param pmids: List of PubMed IDs, may be None
+    
     @param params: Key-value dictionary to write. Values are converted with
-    str().  Only certain keys are written."""
+    str().  Only keys that have a member in descriptor_keys are actually
+    written to the file."""
     f = file(fpath, "w")
     for key, value in params.iteritems():
         if key not in descriptor_keys: 
             continue
         f.write("#" + key + " = " + str(value).strip() + "\n")
     if pmids is not None:
-        fpath.write_lines([str(pmid) for pmid in pmids])
+        for pmid in pmids:
+            f.write(str(pmid)+"\n")
     f.close()

@@ -76,7 +76,7 @@ rc.query_report_dir = lambda: rc.working / "query" / rc.dataset
 ## Path to outputs directory for validation
 rc.valid_report_dir = lambda: rc.working / "validation" / rc.dataset
 ## Path to outputs directory for web submissions
-rc.web_report_dir = lambda: rc.working / "weboutput"
+rc.web_report_dir = lambda: rc.htdocs / "static" / "output"
 ## Path to the cscore program
 rc.cscore_path = lambda: rc.sources / "mscanner" / "cscore" / "cscore"
 ## Path to the descriptor queue
@@ -91,6 +91,8 @@ rc.drugtable = lambda: rc.working / "genedrug" / "drugtable.txt"
 ### ALL OUTPUTS
 ## Name of index file
 rc.report_index = path("index.html")
+## Name of descriptor file
+rc.report_descriptor = path("descriptor.txt")
 ### QUERY
 ## Name of input score file
 rc.report_input_scores = path("input_scores.txt")

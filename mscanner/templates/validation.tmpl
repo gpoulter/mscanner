@@ -84,16 +84,6 @@ $timestamp -- time.time() for start of the operation
     </tr>
     $hr("h_timestamp", """Date and time at which the query was submitted.""")
 
-    #if isinstance($rc.pseudocount, float)
-    <tr>
-      <th>Pseudocount</th>
-      <td id="pseudocount">$rc.pseudocount</td>
-      $help("h_pseudocount")
-    </tr>
-    $hr("h_pseudocount", """Prior count added to the number of
-    occurrences of every term, so that no terms have probabilities of
-    zero.""")
-
     <tr>
       <th>Feature scores</th>
       <td id="report_term_scores"><a href="$rc.report_term_scores">$rc.report_term_scores</a></td>
@@ -177,9 +167,9 @@ $timestamp -- time.time() for start of the operation
     <tr>
       <th>Break-Even <span class="footnote">(where precision=recall)</span></th>
       <td id="break_even">#echo "%.5f" % $p.breakeven #</td>
-      $help("break_even")
+      $help("h_break_even")
     </tr>
-    $hr("break_even", """Shared value at the point where Recall = Precision =
+    $hr("h_break_even", """Shared value at the point where Recall = Precision =
     F1-measure. Typically the F1-Measure at break-even is slightly lower than
     the maximum F1-Measure.""")
 

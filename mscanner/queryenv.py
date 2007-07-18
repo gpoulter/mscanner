@@ -103,6 +103,7 @@ class QueryEnvironment:
             getPostMask = rc.getPostMask
         )
     
+    @preserve_cwd
     def standardQuery(self, pmids_path=None):
         """All-in-one for the most common operation.
         
@@ -256,8 +257,9 @@ class QueryEnvironment:
         # Feature Scores
         log.debug("Writing feature scores")
         import codecs
-        self.featinfo.writeScoresCSV(
-            codecs.open(rc.report_term_scores, "wb", "utf-8"))
+        f = codecs.open(rc.report_term_scores, "wb", "utf-8")
+        self.featinfo.writeScoresCSV(f)
+        f.close()
         # Write Input Citations
         log.debug("Writing input citations")
         self.inputs.sort(reverse=True)
@@ -275,7 +277,7 @@ class QueryEnvironment:
         ft = FileTransaction(rc.report_index, "w")
         index = mapper.results(
             stats = self.featinfo.getFeatureStats(),
-            linkpath = rc.templates.relpath().replace('\\','/'),
+            #linkpath = rc.templates.relpath().replace('\\','/'),
             lowest_score = self.results[-1][0],
             num_results = len(self.results),
             rc = rc, 
@@ -312,16 +314,18 @@ def writeCitations(template, mode, scores, fname, perfile):
         else:
             towrite = scores[start:]
             fnames[count+2] = None
+        ft = FileTransaction(fnames[count+1], "w")
         template(
             cite_table = citationTable(start+1, towrite),
             dataset = rc.dataset,
-            linkpath = rc.templates.relpath().replace('\\','/'),
+            #linkpath = rc.templates.relpath().replace('\\','/'),
             mode = mode, 
             num_citations = len(towrite),
             prev_file = fnames[count],
             this_file = fnames[count+1],
             next_file = fnames[count+2],
-            ).respond(FileTransaction(fnames[count+1], "w"))
+            ).respond(ft)
+        ft.close()
 
 def citationTable(startfrom, scores):
     """Generate HTML table for citations using ElementTree

@@ -160,7 +160,7 @@ rc.getPostMask = None
 ## Name of dataset
 rc.dataset = "default"
 ## Float for minimum score threshold
-rc.threshold = 0
+rc.threshold = 10
 ## Integer for maximum number of results (may be fewer due to threshold)
 rc.limit = 1000
 ## Number of validation folds to use

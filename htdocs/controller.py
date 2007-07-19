@@ -1,7 +1,7 @@
 #!/export/home/medscan/local32/bin/python2.5
 """
 web.py controller for the MScanner web interface (view is the
-template code, and the model is the queue-checking programme.
+template code, and the model is the queue programme).
 
                                    
 """
@@ -151,13 +151,15 @@ def validateForm(input):
             str, lambda x: x == "orange", 
             "The captcha value must be the word 'orange'"),
         delcode=(
-            str, lambda x: len(x) <= 10,
-            "You should use a short deletion code (10 or fewer letters) "+
-            "that you will remember - like your first name."),
+            str, lambda x: re.match(r"^[a-zA-Z0-9 ._-]{0,10}$") is not None,
+            "You should use a short (10 characters or less) deletion code "+
+            "using only letters or numbers that you will remember. "+
+            "It's a minor security measure to avoid random deletion of outputs. "+
+            "and the letters/numbers thing is to avoid malicious inputs."),
         dataset=(
             str, lambda x: re.match(r"^[a-zA-Z0-9._-]+$", x) is not None,
             "The task name must contain a-z, ., _, - characters only "+
-            "as it is to be used as a directory name in a URL"),
+            "as it needs to be safe as a directory name in a URL."),
         limit=(
             int, lambda x: 100 <= x <= 10000,
             "You may retrieve between 100 and 10000 citations"),
@@ -395,4 +397,7 @@ class web_contact:
         print t
 
 if __name__ == "__main__":
-    web.run(urls, globals())
+    try:
+        web.run(urls, globals())
+    except KeyboardInterrupt:
+        pass

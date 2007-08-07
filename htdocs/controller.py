@@ -214,6 +214,7 @@ class web_front:
     
     def GET(self):
         """Return the front page for MScanner"""
+        web.header('Content-Type', 'text/html') 
         t = front.front(searchList=[page_defaults])
         t.current = getCurrentTask()
         print t
@@ -223,6 +224,7 @@ class web_form:
     
     def GET(self):
         """Return the form with default values"""
+        web.header('Content-Type', 'text/html') 
         t = form.form(searchList=[page_defaults, form_defaults])
         t.current = getCurrentTask()
         print t
@@ -233,6 +235,7 @@ class web_form:
         Without errors, place an entry in the queue and go to the
         special status page for that task.
         """
+        web.header('Content-Type', 'text/html') 
         import pprint
         pp = pprint.PrettyPrinter()
         # Submitted form must have EVERY key or you get "bad request"
@@ -272,6 +275,7 @@ class web_status:
     
     def GET(self):
         """Output the status page"""
+        web.header('Content-Type', 'text/html') 
         # Fill the general status template
         t = status.status(searchList=[page_defaults])
         t.current = getCurrentTask()
@@ -299,12 +303,14 @@ class web_output:
     
     def GET(self):
         """Just list the available output directories"""
+        web.header('Content-Type', 'text/html') 
         t = output.output(searchList=page_defaults)
         t.donetasks = listDoneTasks(descriptors=True)
         print t
         
     def POST(self):
         """Attempt to download or delete one of the outputs"""
+        web.header('Content-Type', 'text/html') 
         t = output.output(searchList=page_defaults)
         t.donetasks = listDoneTasks(descriptors=True)
         input = web.input("operation", dataset=None, delcode=None)
@@ -364,12 +370,14 @@ class web_contact:
     
     def GET(self):
         """Print the contact form"""
+        web.header('Content-Type', 'text/html') 
         t = contact.contact(searchList=[page_defaults])
         print t
     
     def POST(self):
         """Submit the contact form.  Errors out if the captcha is 
         incorrect"""
+        web.header('Content-Type', 'text/html') 
         ivars = web.input("subject", "msg", "fromaddr", "captcha")
         ovars = Storage()
         t = contact.contact(searchList=[page_defaults, ovars])

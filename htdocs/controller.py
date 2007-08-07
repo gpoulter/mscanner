@@ -19,7 +19,7 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
 import sys
-#sys.path.insert(0,"/export/home/medscan/source")
+sys.path.insert(0,"/export/home/medscan/source")
 
 import web
 from web.utils import Storage
@@ -151,11 +151,9 @@ def validateForm(input):
             str, lambda x: x == "orange", 
             "The captcha value must be the word 'orange'"),
         delcode=(
-            str, lambda x: re.match(r"^[a-zA-Z0-9 ._-]{0,10}$") is not None,
-            "You should use a short (10 characters or less) deletion code "+
-            "using only letters or numbers that you will remember. "+
-            "It's a minor security measure to avoid random deletion of outputs. "+
-            "and the letters/numbers thing is to avoid malicious inputs."),
+            str, lambda x: re.match(r"^[ a-zA-Z0-9 ._-]{0,10}$", x) is not None,
+            "You should use a short (0 to 10 characters) deletion code. "+
+            "It is a minor security measure to avoid others deleting of outputs."),
         dataset=(
             str, lambda x: re.match(r"^[a-zA-Z0-9._-]+$", x) is not None,
             "The task name must contain a-z, ., _, - characters only "+

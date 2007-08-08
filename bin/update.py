@@ -30,7 +30,7 @@ import logging as log
 import sys
 
 from mscanner import article
-from mscanner.configuration import rc
+from mscanner.configuration import rc, initLogger
 from mscanner.featuremap import FeatureMapping
 from mscanner.medline import MedlineCache
 
@@ -41,6 +41,8 @@ if __name__ == "__main__":
             print __doc__
             sys.exit(0)
     # Initialise database
+    initLogger(logfile=False)
+    log.info("Initialising databases")
     medcache = MedlineCache(
             FeatureMapping(rc.featuremap),
             rc.db_env_home,
@@ -54,7 +56,7 @@ if __name__ == "__main__":
             )
     # Load articles from a pickle
     if len(sys.argv) == 2:
-        print "Loading articles from " + sys.argv[1]
+        log.info("Loading articles from " + sys.argv[1])
         articles = cPickle.load(file(sys.argv[1], "rb"))
         dbenv = medcache.makeDBEnv()
         medcache.putArticleList(articles, dbenv)

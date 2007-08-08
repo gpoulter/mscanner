@@ -132,7 +132,7 @@ rc.report_fmeasure_img = path("fmeasure.png")
 ## Whether to use transactions while updating
 rc.use_transactions = False
 ## Number of seconds to pause before next file while updating
-rc.save_delay = 2
+rc.save_delay = 6
 ## Server for sending e-mails
 rc.smtpserver = "smtp.uct.ac.za" # "smtp.stanford.edu"
 ## Proportion of data to use in retrieval test

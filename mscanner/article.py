@@ -30,14 +30,14 @@ class Article:
     methods).
 
     Passed via constructor:
-        @ivar pmid: Integer PubMed ID or MEDLINE UI of the article.
-        @ivar title: Title of the article
-        @ivar abstract: Abstract of the article
-        @ivar journal: Medline abbreviated journal title
-        @ivar issn: ISSN code for the journal
-        @ivar year: Year of publication
-        @ivar meshterms: Set of Mesh terms associated with article.
-        @ivar authors: Set of (initials,lastname) pairs of article authors
+        @ivar pmid: PubMed ID of the article (int)
+        @ivar title: Title of the article (string)
+        @ivar abstract: Abstract of the article (sring)
+        @ivar journal: Medline abbreviated journal title (string)
+        @ivar issn: ISSN code for the journal (string)
+        @ivar year: Year of publication (int)
+        @ivar meshterms: MeSH as a list of (descriptor, qual, ...) tuples
+        @ivar authors: Authors as a list of (initials, lastname) tuples of 
     """
     def __init__(self,
                  pmid=None,

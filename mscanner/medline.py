@@ -125,7 +125,7 @@ class MedlineCache:
     def putArticles(self, articles, dbenv):
         """Store Article objects and feature lists the databases
 
-        @param articles: Iterable of Article objects
+        @param articles: Iterator over Article objects
         @param dbenv: Database environment to use
         """
         log.info("Starting transaction to add articles")

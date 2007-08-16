@@ -1,4 +1,4 @@
-#!python
+#!/usr/bin/env python
 
 """Selects a random subset of lines from one file and writes them to another
 

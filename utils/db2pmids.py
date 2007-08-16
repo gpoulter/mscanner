@@ -1,4 +1,4 @@
-#!env python
+#!/usr/bin/env python
 
 """Extract a list of PubMed IDs from a FeatureDatabase
 

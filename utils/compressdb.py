@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """Small utility to compress shelved pickles in a Berkeley DB
 
                                    
@@ -7,8 +9,6 @@ the extent permitted by applicable law. You can redistribute it and/or modify
 it under the Do Whatever You Want Public License. Terms and conditions: 
    0. Do Whatever You Want
 """
-
-#!env python
 
 from mscanner.support import dbshelve
 

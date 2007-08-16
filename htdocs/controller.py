@@ -1,4 +1,5 @@
 #!/export/home/medscan/local32/bin/python2.5
+
 """
 web.py controller for the MScanner web interface (view is the
 template code, and the model is the queue programme).
@@ -64,7 +65,7 @@ form_defaults = Storage(
     nfolds = 10,
     operation = "",
     positives = "",
-    threshold = 0.0,
+    threshold = 20.0,
     )
 
 #############################################################

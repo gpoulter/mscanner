@@ -1,11 +1,14 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 
 #* TEMPLATE PARAMETERS
-$linkpath -- Include JS and CSS remotely at this location
-$lowest_score -- Score of lowest-scoring article
-$num_results -- Number of results
-$rc -- RCStorage object with configuration parameters
-$timestamp -- time.time() for start of the operation
+linkpath -- Include JS and CSS remotely at this location
+rc -- RCStorage object with configuration parameters
+lowest_score -- Score of lowest-scoring article
+num_results -- Number of results
+timestamp -- time.time() for start of the operation
+best_tfidfs -- List of termid, tfidf, (term, termtype), score, pos, neg for
+               those terms with the highest TF.IDF scores.
+notfound_pmids -- List of PubMed IDs that were not found in the database.
 *#
 
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
@@ -68,99 +71,147 @@ $timestamp -- time.time() for start of the operation
        <th>Help</th>
      </tr>
    </thead>
-   <tbody>
+  <tbody>
 
-     <tr>
-       <th>Timestamp</th>
-       #import time
-       <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($timestamp))</td>
-       $help(None)
-     </tr>
+  <tr>
+    <th>Timestamp</th>
+    #import time
+    <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($timestamp))</td>
+    $help(None)
+  </tr>
 
-     <tr>
-       <th>Pseudocount</th>
-       <td>$rc.pseudocount</td>
-       $help("h_pseudocount")
-     </tr>
-     $hr("h_pseudocount", """Prior added to the number of occurrences
-     of each term to avoid probabilities of zero.""")
+  #if $rc.pseudocount is not None
+  <tr>
+    <th>Pseudocount</th>
+    <td>$rc.pseudocount</td>
+    $help("h_pseudocount")
+  </tr>
+  $hr("h_pseudocount", """Prior added to the number of occurrences
+  of each term to avoid probabilities of zero.""")
+  #end if
 
-     <tr>
-       <th>Result limit</th>
-       <td>$rc.limit</td>
-       $help("h_limit")
-     </tr>
-     $hr("h_limit", """The maximum number of results.""")
+  <tr>
+    <th>Result limit</th>
+    <td>$rc.limit</td>
+    $help("h_limit")
+  </tr>
+  $hr("h_limit", """The maximum number of results.""")
 
-     <tr>
-       <th>Score threshold</th>
-       <td>$rc.threshold</td>
-       $help("h_threshold")
-     </tr>
-     $hr("h_threshold", """The minimum score which may be included in
-     the results""")
+  <tr>
+    <th>Score threshold</th>
+    <td>$rc.threshold</td>
+    $help("h_threshold")
+  </tr>
+  $hr("h_threshold", """The minimum score which may be included in
+  the results""")
 
-     <tr>
-       <th>Number of results</th>
-       <td>$num_results</td>
-       $help(None)
-     </tr>
+  <tr>
+    <th>Number of results</th>
+    <td>$num_results</td>
+    $help(None)
+  </tr>
 
-     <tr>
-       <th>Lowest scoring result</th>
-       <td>#echo "%.5f" % $lowest_score #</td>
-       $help(None)
-     </tr>
+  <tr>
+    <th>Lowest scoring result</th>
+    <td>#echo "%.5f" % $lowest_score #</td>
+    $help(None)
+  </tr>
 
-     <tr>
-       <th>Input PubMed IDs</th>
-       <td><a href="$rc.report_input_scores">$rc.report_input_scores</a></td>
-       $help("h_positives")
-     </tr>
-     $hr("h_positives", """PubMed IDs for the examples.""")
+  <tr>
+    <th>Input PubMed IDs</th>
+    <td><a href="$rc.report_input_scores">$rc.report_input_scores</a></td>
+    $help("h_positives")
+  </tr>
+  $hr("h_positives", """PubMed IDs for the examples.""")
 
-     <tr>
-       <th>MeSH Scores (CSV)</th>
-       <td><a href="$rc.report_term_scores">$rc.report_term_scores</a></td>
-       $help("h_csv")
-     </tr>
-     $hr("h_csv", """CSV spreadsheet with the support scores for the
-     features (MeSH terms and ISSNs).  The number of positive and
-     negative occurrences and pseudocount are also included, as these
-     go into calculating the support score.""")
+  <tr>
+    <th>MeSH Scores (CSV)</th>
+    <td><a href="$rc.report_term_scores">$rc.report_term_scores</a></td>
+    $help("h_csv")
+  </tr>
+  $hr("h_csv", """CSV spreadsheet with the support scores for the
+  features (MeSH terms and ISSNs).  The number of positive and
+  negative occurrences and pseudocount are also included, as these
+  go into calculating the support score.""")
 
-     <tr>
-       <th>Result scores</th>
-       <td><a href="$rc.report_result_scores">$rc.report_result_scores</a></td>
-       $help("h_result_scores")
-     </tr>
-     $hr("h_result_scores", """Text file with the result PubMed IDs
-     ranked by decreasing score (score is also listed).""")
+  <tr>
+    <th>Result scores</th>
+    <td><a href="$rc.report_result_scores">$rc.report_result_scores</a></td>
+    $help("h_result_scores")
+  </tr>
+  $hr("h_result_scores", """Text file with the result PubMed IDs
+  ranked by decreasing score (score is also listed).""")
 
-     <tr>
-       <th>Input citations</th>
-       <td><a href="$rc.report_input_citations">$rc.report_input_citations</a></td>
-       $help("h_input_citations")
-     </tr>
-     $hr("h_input_citations", """Web page with the example citations
-     provided as input.  They are ranked by score, so if there are
-     examples which don't fit with the majority they should be near
-     the bottom.""")
+  <tr>
+    <th>Input citations</th>
+    <td><a href="$rc.report_input_citations">$rc.report_input_citations</a></td>
+    $help("h_input_citations")
+  </tr>
+  $hr("h_input_citations", """Web page with the example citations
+  provided as input.  They are ranked by score, so if there are
+  examples which don't fit with the majority they should be near
+  the bottom.""")
 
-     <tr>
-       <th>Result citations</th>
-       <td><a href="$rc.report_result_citations">$rc.report_result_citations</a></td>
-       $help("h_result_citations")
-     </tr>
-     $hr("h_result_citations", """Web page with the results of the
-     query, including links to NCBI, titles and abstracts.  Warning:
-     file may be large.""")
+  <tr>
+    <th>Result citations</th>
+    <td><a href="$rc.report_result_citations">$rc.report_result_citations</a></td>
+    $help("h_result_citations")
+  </tr>
+  $hr("h_result_citations", """Web page with the results of the
+  query, including links to NCBI, titles and abstracts.  Warning:
+  file may be large.""")
 
-   </tbody>
+ </tbody>
  </table>
 
- #include $_inc("features.tmpl")
+  #include $_inc("features.tmpl")
 
+  #if $getVar("best_tfidfs", None)
+  <h2>Features with high TF-IDF</h2>
+  
+  <p class="tabwidth">These features are the most suitable for use in keyword searches
+  to retrieve this set of articles.  Features with TF-IDF
+  above 0.2 or 0.3 are more useful. </p>
+  
+  <table>
+  <thead>
+  <tr>
+  <td>TF-IDF</td>
+  <td>Type</td>
+  <td>Term</td>
+  <td>Term ID</td>
+  <td>Score</td>
+  <td>Pos</td>
+  <td>Neg</td>
+  </tr>
+  </thead>
+  #for termid, tfidf, (term, termtype), score, pos, neg in $best_tfidfs:
+  <tr>
+  <td>#echo "%.2f"%$tfidf#</td>
+  <td>$termtype</td>
+  <td>$term</td>
+  <td>$termid</td>
+  <td>#echo "%.2f"%$score#</td>
+  <td>$pos</td>
+  <td>$neg</td>
+  </tr>
+  #end for termid
+  </table>
+  #end if tfidf
+  
+  #if $getVar("notfound_pmids", []) != []:
+  <h2>Invalid input citations</h2>
+  <p class="tabwidth">These PubMed IDs were part of the input to the query,
+  but were not found in the database - probably because they are "in-progress"
+  and so do not have MeSH terms assigned.  If their status has recently changed
+  to "PubMed - Indexed for Medline" they will be added to the database overnight.</p>
+  <ul>
+  #for pmid in $notfound_pmids:
+  <li><a href="http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&db=pubmed&list_uids=$pmid">$pmid</li>
+  #end for
+  </ul>
+  #end if
+  
 </div>
 
 <div class="footer">

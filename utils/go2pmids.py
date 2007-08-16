@@ -1,4 +1,4 @@
-#!env python
+#!/usr/bin/env python
 
 """Extract PubMed IDs from GeneOntology annotation files
 

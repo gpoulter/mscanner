@@ -87,6 +87,9 @@ def randomSample(k, pool, exclude):
         # Move the chosen item to the end, where so it will be
         # part of the selected items in the next iteration
         pool[dest], pool[choice] = pool[choice], pool[dest]
+        #orig_dest = pool[dest]
+        #pool[dest] = pool[choice]
+        #pool[choice] = orig_dest
     # Phantom iteration: selected are n-k ... n
     return nx.array(pool[n-k:])
 

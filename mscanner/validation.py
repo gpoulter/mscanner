@@ -113,7 +113,7 @@ class Validator:
             log.debug("Fold %d: pstart = %d, psize = %s; nstart = %d, nsize = %d", 
                       fold, pstart, psize, nstart, nsize)
             # Get new feature scores
-            termscores = s.featinfo.updateFeatureScores(
+            s.featinfo.updateFeatureScores(
                 pos_counts = pcounts - countFeatures(
                     len(s.featinfo), s.featdb, 
                     s.positives[pstart:pstart+psize]), 
@@ -123,6 +123,7 @@ class Validator:
                 pdocs = pdocs-psize, 
                 ndocs = ndocs-nsize)
             # Calculate the article scores for the test fold
+            termscores = s.featinfo.scores
             s.pscores[pstart:pstart+psize] = [
                 nx.sum(termscores[s.featdb[d]]) for d in 
                 s.positives[pstart:pstart+psize]]
@@ -410,7 +411,7 @@ class PerformanceStats:
         A = self.A
         T = TP + TN
         F = FP + FN
-        TPR, FNR, TNR, FPR, PPV, NPV = 0, 0, 0, 0, 0, 0
+        TPR, FNR, TNR, FPR, PPV, NPV, FDR = 0, 0, 0, 0, 0, 0, 0
         if TP + FN != 0:
             TPR = TP / (TP + FN) # TPR=TP/P = sensitivity = recall
             FNR = FN / (TP + FN) # FNR=FN/P = 1-TP/P = 1-sensitivity = 1-recall
@@ -419,6 +420,7 @@ class PerformanceStats:
             FPR = FP / (TN + FP) # FPR=FP/N = 1 - TN/N = 1-specificity
         if TP + FP != 0:
             PPV = TP / (TP + FP) # PPV=precision
+            FDR = FP / (TP + FP) # FDR=1-precision
         if TN + FN != 0:
             NPV = TN / (TN + FN) # NPV
         accuracy = T / A if A != 0 else 0

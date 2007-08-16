@@ -134,6 +134,7 @@ class Plotter(Gnuplot):
         g.title("Score Histograms")
         g.xlabel("Article Score")
         g.ylabel("Histogram Mass")
+        ## Commented out arrow - rather adding a real line
         #g("set arrow from %f,0 to %f,%f nohead lw 4 " % (
         #    threshold, threshold, max(chain(py,ny))))
         g("set style fill solid 1.0")

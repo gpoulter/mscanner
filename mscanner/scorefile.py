@@ -28,6 +28,9 @@ def readPMIDs(filename, outbase=None, include=None, exclude=None, withscores=Fal
     optional score after the PubMed ID. File format ignores blank lines and
     lines starting with #, and only parses the line up to the first whitespace
     character.
+    
+    @param outbase: Use as base file name for the .broken/.exclude files
+    where PMIDs that are filtered out for some reason are left.
 
     @param include: Only return members of this set
 
@@ -64,11 +67,7 @@ def readPMIDs(filename, outbase=None, include=None, exclude=None, withscores=Fal
     if outbase:
         broken_file.close()
         exclude_file.close()
-    if count == 0:
-        raise ValueError("Failed to read any non-excluded PMIDs "+\
-                         "from %s" % filename.basename())
-    else:
-        log.debug("Got %d PubMed IDs from %s", count, filename.basename())
+    log.debug("Got %d PubMed IDs from %s", count, filename.basename())
 
 def writePMIDScores(filename, pairs):
     """Write (score, PMID) pairs to filename, in decreasing
@@ -105,6 +104,7 @@ def getArticles(article_db_path, pmidlist_path):
     cPickle.dump(articles, file(cache_path,"wb"), protocol=2)
     artdb.close()
     return articles
+
 
 descriptor_keys = dict(
     alpha=float,
@@ -158,9 +158,8 @@ def writeDescriptor(fpath, pmids, params):
     written to the file."""
     f = file(fpath, "w")
     for key, value in params.iteritems():
-        if key not in descriptor_keys: 
-            continue
-        f.write("#" + key + " = " + str(value).strip() + "\n")
+        if key in descriptor_keys: 
+            f.write("#" + key + " = " + str(value).strip() + "\n")
     if pmids is not None:
         for pmid in pmids:
             f.write(str(pmid)+"\n")

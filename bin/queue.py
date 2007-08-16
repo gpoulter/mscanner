@@ -64,6 +64,8 @@ def mainloop():
     as requested"""
     qenv = QueryEnvironment()
     venv = ValidationEnvironment()
+    # Initialise the article list for later
+    venv.article_list
     while True:
         listing = rc.queue_path.files("*.txt")
         if listing:
@@ -72,6 +74,8 @@ def mainloop():
             log.info("Performing %s on descriptor %s", 
                      rc.operation, descriptor.basename())
             try:
+                # REMOVE SLEEP FOR MAPLES - TESTING ONLY
+                time.sleep(20)
                 if rc.operation == "query":
                     qenv.standardQuery(descriptor)
                     descriptor.move(rc.query_report_dir / "descriptor.txt")

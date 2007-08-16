@@ -190,17 +190,12 @@ $timestamp -- time.time() for start of the operation
   </h2>
 
   <div class="help" id="h_cmatrix">
-    <dl>
-      <dt>TP</dt><dd>True Positives</dd>
-      <dt>FP</dt><dd>False Positives</dd>
-      <dt>TN</dt><dd>True Negatives</dd>
-      <dt>FN</dt><dd>False Negatives</dd>
-      <dt>P</dt><dd>Number of positives</dd>
-      <dt>N</dt><dd>Number of negatives</dd>
-      <dt>A</dt><dd>Total number of articles</dd>
-      <dt>T</dt><dd>Correctly classified</dd>
-      <dt>F</dt><dd>Incorrectly classified</dd>
-    </dl>
+  <p>
+  The columns of the confusion matrix are actual categories, and
+  the rows are predicted categories.  Hover the mouse over each of the squares
+  for a full description of the quantity, and the formula for calculating 
+  it.
+  </p>
   </div>
   <script type="text/javascript">hide('h_cmatrix')</script>
 
@@ -210,91 +205,58 @@ $timestamp -- time.time() for start of the operation
     </colgroup>
     <thead>
       <tr>
-        <th></th>
-        <th>Correct</th>
-        <th>Incorrect</th>
-        <th>Total</th>
+      <th rowspan="2" colspan="2"></th>
+      <th colspan="2">Actual</th>
+      <th rowspan="2">Totals</th>
+      <th rowspan="2">Rates</th>
+      </tr>
+      <tr>
+        <th>Relevant</th>
+        <th>Irrelevant</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <th>Positive</th>
-        <td class="tp">TP=$t.TP</td>
-        <td class="fn">FN=$t.FN</td>
-        <td>P=$t.P</td>
+        <th rowspan="2">Predicted</th>
+        <th>Relevant'</th>
+        <td class="tp" title="True Positives (hits)">TP=$t.TP</td>  
+        <td class="fp" title="False Positives (false alarms / Type I errors)">FP=$t.FP</td>
+        <td title="Positive predictions = TP+FP">P'=#echo $t.TP+$t.FP#</td>
+        <td title="Positive Predictive Value = TP/(TP+FP)">PPV=#echo "%.2f"%$t.PPV#</td>
       </tr>
       <tr>
-        <th>Negative</th>
-        <td class="tn">TN=$t.TN</td>
-        <td class="fp">FP=$t.FP</td>
-        <td>N=$t.N</td>
+        <th>Irrelevant'</th>
+        <td class="fn" title="False Negatives (misses / Type II errors)">FN=$t.FN</td>
+        <td class="tn" title="True Negatives (correct rejections)">TN=$t.TN</td>
+        <td title="Negative predictions = TN+FN">N'=#echo $t.TN+$t.FN#</td>
+        <td title="Negative Predictive Value = TN/(TN+FN)">NPV=#echo "%.5f"%t.NPV#</td>
       </tr>
       <tr>
-        <th>Total</th>
-        <td>T=$t.T</td>
-        <td>F=$t.F</td>
-        <td>A=$t.A</td>
+        <th colspan="2">Totals</th>
+        <td title="Positives = TP+FN">P=$t.P</td>
+        <td title="Negatives = TN+FP">N=$t.N</td>
+        <td title="Size of data = TP+TN+FP+FN">$t.A</td>
+        <td title="Prevalence = (TP+FN)/(TP+TN+FP+FN)">Prev=#echo "%.5f"%(float($t.P)/$t.A)#</td>
+      </tr>
+      <tr>
+        <th colspan="2">Rates</th>
+        <td title="True Positive Rate (OR hit rate OR recall OR sensitivity) = TP/(TP+FN)">TPR=#echo "%.2f"%$t.TPR#</td>  
+        <td title="False Positive Rate = FP/(TN+FP)">FPR=#echo "%.5f"%$t.FPR#</td>
+        <td title="This square is intentionally left blank"></td>
+        <td title="Accuracy = (TP+TN)/(TP+TN+FP+FN)">Acc=#echo "%.5f"%t.accuracy#</td>
       </tr>
     </tbody>
   </table>
 
-  <h2>Proportional Confusion Matrix
-  <button onclick="toggle('h_proportions')">?</button>
-  </h2>
-
-  <div class="help" id="h_proportions">
-    <dl>
-      <dt>TPR</dt>
-      <dd>True Positive Rate (TP/P)</dd>
-      <dt>FNR</dt>
-      <dd>False Negative Rate (FN/P)</dd>
-      <dt>FPR</dt>
-      <dd>False Positive Rate (FP/N)</dd>
-      <dt>TNR</dt>
-      <dd>True Negative Rate (TN/N)</dd>
-    </dl>
-  </div>
-  <script type="text/javascript">hide('h_proportions')</script>
-
-  <table class="matrix">
-    <colgroup span="4">
-      <col span="4" ></col>
-    </colgroup>
-    <thead>
-      <tr>
-        <th></th>
-        <th>Correct</th>
-        <th>Incorrect</th>
-        <th>Total</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <th>Positive</th>
-        <td class="tp">TPR=#echo "%.2f"%$t.TPR #</td>
-        <td class="fn">FNR=#echo "%.2f"%$t.FNR #</td>
-        <td>#echo "%.2f"%($t.TPR+$t.FNR) #</td>
-      </tr>
-      <tr>
-        <th>Negative</th>
-        <td class="tn">TNR=#echo "%.2f"%$t.TNR #</td>
-        <td class="fp">FPR=#echo "%.2f"%$t.FPR #</td>
-        <td>#echo "%.2f"%($t.TNR+$t.FPR) #</td>
-      </tr>
-      <tr>
-        <th>Total</th>
-        <td>#echo "%.2f"%($t.TPR+$t.TNR) #</td>
-        <td>#echo "%.2f"%($t.FNR+$t.FPR) #</td>
-        <td>#echo "%.2f"%($t.TPR+$t.FNR+$t.TNR+$t.FPR) #</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <h2>Performance Measures
+  <h2>Common Performance Measures
   <button onclick="toggle('h_performance')">?</button>
   </h2>
 
   <div class="help" id="h_performance">
+    <p>These are performance measures which are commonly quoted.  All of
+    them are derived from the confusion matrix.  In this context, Recall,
+    Precision and False Positive Rate are the most relevant.
+  
     <dl>
       <dt>Prevalence</dt>
       <dd>
@@ -303,38 +265,48 @@ $timestamp -- time.time() for start of the operation
       
       <dt>Accuracy</dt>
       <dd>
-        Proportion of correct classifications
+        Proportion of correct predictions
       </dd>
 
-      <dt>Error Rate</dt>
+      <dt>Error Rate (1-Accuracy)</dt>
       <dd>
-        Proportion of incorrect classifications (1-Accuracy).
+        Proportion of incorrect predictions
       </dd>
 
-      <dt>Precision | Positive Predictive Value</dt>
+      <dt>Recall OR True Positive Rate OR Sensitivity</dt>
       <dd>
-        Proportion of classifier positives which are true positives.
+        Proportion of positives which were correctly predicted to be positive.
+      </dd>
+
+      <dt>Precision OR Positive Predictive Value</dt>
+      <dd>
+        Proportion of predicted positives which are true positives.
       </dd>
 
       <dt>Negative Predictive Value</dt>
       <dd>
-        Proportion of classifier negatives which are true negatives.
+        Proportion of predicted negatives which are true negatives.
       </dd>
 
-      <dt>Recall | True Positive Rate | Sensitivity</dt>
+      <dt>Specificity OR True Negative Rate (1-False Positive Rate)</dt>
       <dd>
-        Proportion of positives which were correctly classified as positive.
+        Proportion of negatives which were correctly predicted to be negative.
       </dd>
 
-      <dt>Specificity | True Negative Rate</dt>
+      <dt>False Positive Rate (1-Specificity)</dt>
       <dd>
-        Proportion of negatives which were correctly classified as negative
+        Proportion of negatives which were incorrectly predicted to be positive.
+      </dd>
+      
+      <dt>False Discovery Rate (1-Precision)</dt>
+      <dd>
+        Proportion of predicted positives which are false positives.
       </dd>
 
       <dt>FP/TP Ratio</dt>
       <dd>
-        Ratio of false positives to true positives.  Related to precision by 
-        <i>1/(x+1)</i>, if the TP/FP ratio is <i>x</i>.
+        Ratio of false positives to true positives.  Related to precision: 
+        if TP/FP is <i>x</i>, then precision is <i>1/(x+1)</i>.
       </dd>
 
       <dt>&alpha;-Weighted F-Measure</dt>
@@ -374,32 +346,47 @@ $timestamp -- time.time() for start of the operation
     </colgroup>
     <tr>
       <th><b>Prevalence</b> 
-      <span class="footnote">(P/A)</span></th>
+      <span class="footnote">P/(P+N)</span></th>
       <td>#echo "%.5f" % $t.prevalence #</td>
     </tr>
     <tr>
       <th><b>Accuracy</b> 
-      <span class="footnote">(T/A)</span></th>
+      <span class="footnote">(TP+TN)/(P+N)</span></th>
       <td>#echo "%.5f" % $t.accuracy #</td>
     </tr>
     <tr>
       <th><b>Error Rate</b> 
-      <span class="footnote">(F/A=1-Accuracy)</span></th>
+      <span class="footnote">(FP+FN)/(P+N)=1-Accuracy</span></th>
       <td>#echo "%.5f" % (1-$t.accuracy) #</td>
     </tr>
     <tr>
-      <th><b>Recall | Sensitivity | True Positive Rate</b> 
-      <span class="footnote">(&rho;=TPR=TP/P)</span></th>
+      <th><b>Recall OR Sensitivity OR True Positive Rate</b> 
+      <span class="footnote">&rho;=TPR=TP/(TP+FN)</span></th>
       <td>#echo "%.5f" % $t.recall #</td>
     </tr>
     <tr>
-      <th><b>Precision | Positive Predictive Value</b> 
-      <span class="footnote">(PPV=TP/(TP+FP))</span></th>
+      <th><b>Precision OR Positive Predictive Value</b> 
+      <span class="footnote">&pi;=PPV=TP/(TP+FP)</span></th>
       <td>#echo "%.5f" % $t.PPV #</td>
     </tr>
     <tr>
+      <th><b>False Discovery Rate</b>
+      <span class="footnote">FDR=FP/(TP+FP)=1-Precision</span></th>
+      <td>#echo "%.5f" % $t.FDR #</td>
+    </tr>
+    <tr>
+      <th><b>Specificity OR True Negative Rate</b> 
+      <span class="footnote">TNR=TN/(TN+FP)=1-FPR</span></th>
+      <td>#echo "%.5f" % $t.TNR #</td>
+    </tr>
+    <tr>
+      <th><b>False Positive Rate</b> 
+      <span class="footnote">FPR=FP/(TN+FP)=1-TNR</span></th>
+      <td>#echo "%.5f" % $t.FPR #</td>
+    </tr>
+    <tr>
       <th><b>Negative Preditive Value</b> 
-      <span class="footnote">(NPV=TN/(TN+FN))</span></th>
+      <span class="footnote">NPV=TN/(TN+FN)</span></th>
       <td>#echo "%.5f" % $t.NPV #</td>
     </tr>
     <tr>

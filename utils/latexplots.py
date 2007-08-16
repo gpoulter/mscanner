@@ -1,4 +1,4 @@
-#!python
+#!/usr/bin/env python
 
 """
 Draws publication-quality plots for use in the paper
@@ -254,7 +254,7 @@ def RetrievalTest():
     ax1 = subplot(111)
     ##title("PG07 Retrieval Comparison")
     ylabel("Fraction retrieved")
-    xlabel("False Positives")
+    xlabel("False Positives (logarithmic scale)")
     N = len(pg_test)
     r = 4301
     semilogx(range(1,r)-mscanner_c[1:r], mscanner_c[1:r]/N, "r", label="MScanner")

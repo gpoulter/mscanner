@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env 
 
 cd "$(basename "$_")/../htdocs/templates"
 echo "Re-compiling changed templates in $(pwd)"

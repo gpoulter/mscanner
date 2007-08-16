@@ -1,4 +1,4 @@
-#!env python
+#!/usr/bin/env python
 
 """Use SOAP to fetch current literature annotations from PharmGKB
 

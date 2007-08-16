@@ -24,10 +24,10 @@ html, body, div {
     width: 100%;
 }
 html {
-    background-color: #C2D7EE;
+    background-color: #C2D7EE; /* light blue */
 }
 div.header {
-    background-color: #FFFFFF;
+    background-color: white;
     border-bottom-style: dotted;
     margin: 0;
     padding: 0.3em;
@@ -42,7 +42,7 @@ div.body {
 }
 div.footer {
     border-top-style: dotted;
-    background-color: #FFFFFF;
+    background-color: white;
     width: 100%;
     padding: 1ex;
 }
@@ -68,11 +68,14 @@ table {
     width: 33em;
     border-collapse: collapse;
 }
+p.tabwidth {
+    width: 33em;
+}
 thead {
-    background-color: #A3C2E2; 
+    background-color: #A3C2E2; /* middle blue */
 }
 tbody th {
-    background-color: #93B2D2;
+    background-color: #93B2D2; /* pastel blue */
     text-align: left;
 }
 td, th {
@@ -89,14 +92,14 @@ table.results col.longlabel {
     width: 25em;
 }
 table.results col.value {
-    background-color: #FFFFFF;
+    background-color: white;
 }
 table.results col.help {
-    background-color: #EEEEFF;
+    background-color: #EEEEFF; /* light mauve */
     width: 2em;
 }
 table.results tr.help {
-    background-color: #EEEEFF;
+    background-color: #EEEEFF; /* light mauve */
     text-align: justify;
 }
 table.results tr.help td {
@@ -126,10 +129,10 @@ table.cite col.classification {
     background-color: lightgrey;
 }
 table.cite tr.author, col.author {
-    background-color: #FFFFDD;
+    background-color: #FFFFDD; /* light yellow */
 }
 table.cite tr.abstract, col.abstract {
-    background-color: #EEEEFF;
+    background-color: #EEEEFF; /* light mauve */
 }
 table.cite td.title {
     font-size: smaller;
@@ -153,8 +156,8 @@ table.cite col.journal { width: 10em; }
 
 /* Confusion Matrix in validation.tmpl */
 table.matrix col { width: 25%; }
-td.tp { background-color: #FF3333; }
-td.fn { background-color: #FFCCCC; }
-td.tn { background-color: #3333FF; }
-td.fp { background-color: #CCCCFF; }
+td.tp { background-color: #FF3333; } /* bright red */
+td.tn { background-color: #3333FF; } /* bright blue */
+td.fp { background-color: #CCCCFF; } /* pale red */
+td.fn { background-color: #FFCCCC; } /* pale blue */
 

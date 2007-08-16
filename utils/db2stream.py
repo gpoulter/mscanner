@@ -1,4 +1,4 @@
-#!env python
+#!/usr/bin/env python
 
 """Convert a FeatureDatabase to a FeatureStream
 

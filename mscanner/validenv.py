@@ -32,7 +32,7 @@ from mscanner.support.gcheetah import TemplateMapper, FileTransaction
 from mscanner.support.utils  import preserve_cwd, randomSample
 from mscanner.validation import Validator, PerformanceStats
 
-class ValidationEnvironment:
+class ValidationEnvironment(object):
     """Class to simplify constructing new cross-validation
     based analyses.
     
@@ -57,8 +57,18 @@ class ValidationEnvironment:
         log.info("Loading article databases")
         self.featdb = FeatureDatabase(rc.featuredb, 'r')
         self.featmap = FeatureMapping(rc.featuremap)
-        self.article_list = nx.array([int(x) for x in rc.articlelist.lines()])
         self.postFilterFunction = None
+        
+    @property
+    def article_list(self):
+        """List of PubMed IDs in the database (array of up to 16 million 32-bit
+        integers)"""
+        try:
+            return self._article_list
+        except AttributeError: pass
+        log.info("Loading article list")
+        self._article_list = nx.array([int(x) for x in rc.articlelist.lines()])
+        return self._article_list
         
     @preserve_cwd
     def standardValidation(self, pospath, negpath=None):
@@ -106,6 +116,7 @@ class ValidationEnvironment:
             self.negatives = randomSample(
                 rc.numnegs, self.article_list, set(positives))
         else:
+            # Read existing list of negatives from disk
             negatives = list(readPMIDs(
                 negpath, outbase=rc.valid_report_dir/"negatives", exclude=set(positives)))
             self.negatives = nx.array(negatives, nx.int32)
@@ -244,7 +255,7 @@ class ValidationEnvironment:
         mapper = TemplateMapper(root=rc.templates)
         ft = FileTransaction(rc.report_index, "w")
         tpl = mapper.validation(
-            stats = self.featinfo.getFeatureStats(),
+            stats = self.featinfo.stats,
             #linkpath = rc.templates.relpath().replace('\\','/'),
             overlap = overlap,
             p = self.performance,

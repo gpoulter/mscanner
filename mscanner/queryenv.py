@@ -30,8 +30,7 @@ from mscanner.featuredb import FeatureDatabase, FeatureStream
 from mscanner.featuremap import FeatureMapping
 from mscanner.scorefile import readPMIDs, writePMIDScores
 from mscanner.scoring import (FeatureInfo, countFeatures, 
-                              iterScores, iterCScores,
-                              filterDocuments, retrievalTest)
+                              iterScores, iterCScores, retrievalTest)
 from mscanner.support import dbshelve
 from mscanner.support.gcheetah import TemplateMapper, FileTransaction
 from mscanner.support.utils  import preserve_cwd
@@ -84,6 +83,12 @@ class QueryEnvironment:
         self.input_pmids = set(readPMIDs(
             pmids_path, outbase=rc.query_report_dir/"input", include=self.featdb))
         return self.input_pmids
+    
+    def checkEmptyInput(self):
+        if len(self.input_pmids) != 0:
+            return
+        log.warning("No valid PubMed IDs were found!")
+        
 
     def getFeatureInfo(self):
         """Calculate and return FeatureInfo object for current input"""
@@ -124,7 +129,6 @@ class QueryEnvironment:
            and rc.report_result_scores.exists():
             self.loadResults()
         else:
-            self.featinfo.getFeatureScores()
             self.getResults()
             self.saveResults()
         self.writeReport()
@@ -158,19 +162,18 @@ class QueryEnvironment:
         # Calculate score for each result PMID
         if "use_cscores":
             # Read the feature stream using cscore
-            self.results = filterDocuments(
-                iterCScores(rc.cscore_path, rc.featurestream, 
-                            self.featmap.numdocs, self.featinfo.scores, 
-                            rc.limit+len(self.input_pmids),
-                            self.input_pmids),
-                rc.limit, rc.threshold)
+            self.results = list(iterCScores(
+                rc.cscore_path, rc.featurestream, 
+                self.featmap.numdocs, self.featinfo.scores, 
+                rc.limit, len(self.input_pmids),
+                rc.threshold, self.input_pmids))
         else:
             # Read the feature stream using Python
-            feats = FeatureStream(open(rc.featurestream, "rb"))
-            self.results = filterDocuments(
-                iterScores(feats, self.featinfo.scores, self.input_pmids),
-                rc.limit, rc.threshold)
-            feats.close()
+            featurestream = FeatureStream(open(rc.featurestream, "rb"))
+            self.results = iterScores(
+                featurestream, self.featinfo.scores, rc.limit,
+                rc.threshold, self.input_pmids)
+            featurestream.close()
         
     @preserve_cwd
     def testRetrieval(self, pmids_path):
@@ -198,23 +201,22 @@ class QueryEnvironment:
         # Get feature info and result scores
         self.featinfo = self.getFeatureInfo()
         rc.threshold = None
-        self.featinfo.getFeatureScores()
         self.getResults()
         self.saveResults()
         # Test the results against the test PMIDs
         self.cumulative = retrievalTest(
             [p for s,p in self.results], self.input_test)
-        # Write number of test hits for each rank
+        # Write the number of TP at each rank
         rc.report_retrieval_stats.write_lines(
             [str(x) for x in self.cumulative])
         # Write test PMIDs
         rc.report_retrieval_test_pmids.write_lines(
             [str(x) for x in self.input_test])
-        # Graph number of hits versus rank
+        # Graph TP vs FP (FP = rank-TP)
         from mscanner.plotting import Plotter
         plotter = Plotter()
-        plotter.plotRetrievalGraph(rc.report_retrieval_graph, 
-                                   self.cumulative, len(self.input_test))
+        plotter.plotRetrievalGraph(
+            rc.report_retrieval_graph, self.cumulative, len(self.input_test))
         return self.cumulative
     
     def getGDFilterResults(self, pmids_path, pharmdemo_db=None):
@@ -226,7 +228,6 @@ class QueryEnvironment:
         from mscanner.pharmdemo.dbexport import exportDefault
         self.loadInput(pmids_path)
         self.featinfo = self.getFeatureInfo()
-        self.featinfo.getFeatureScores()
         self.getResults()
         log.debug("Gene-drug associations on results")
         gdfilter = getGeneDrugFilter(rc.genedrug, rc.drugtable, rc.gapscore)
@@ -248,6 +249,14 @@ class QueryEnvironment:
         self.artdb lookups beforehand.  Somehow, performing the lookups
         while busy with the template code is terribly slow. 
         """
+        # Extract the top TF-IDF terms as (termid, (term,type), tfidf)
+        from heapq import nlargest
+        best_tfidfs = nlargest(
+            20, enumerate(self.featinfo.tfidf), key=lambda x:x[1])
+        best_tfidfs = [ 
+            (t, tfidf, self.featmap[t], self.featinfo.scores[t], 
+             self.featinfo.pos_counts[t], self.featinfo.neg_counts[t])
+            for t, tfidf in best_tfidfs ]
         # Set up template and directory
         log.debug("Writing report for data set %s", rc.dataset)
         mapper = TemplateMapper(root=rc.templates, kwargs=dict(filter="Filter"))
@@ -276,10 +285,12 @@ class QueryEnvironment:
         log.debug("Writing index file")
         ft = FileTransaction(rc.report_index, "w")
         index = mapper.results(
-            stats = self.featinfo.getFeatureStats(),
+            stats = self.featinfo.stats,
             #linkpath = rc.templates.relpath().replace('\\','/'),
             lowest_score = self.results[-1][0],
             num_results = len(self.results),
+            notfound_pmids = list(readPMIDs(rc.query_report_dir/"input.broken.txt")),
+            best_tfidfs = best_tfidfs,
             rc = rc, 
             timestamp = rc.timestamp,
         ).respond(ft)

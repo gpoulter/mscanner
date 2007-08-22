@@ -183,6 +183,9 @@ def validateForm(input):
     # Place for output variables
     output = Storage()
     for key, value in input.iteritems():
+        if key not in validator:
+            output[key] = value
+            continue
         convertfn, test, errmsg = validator[key]
         # Don't want to write all of the data if it's long
         svalue = str(value)
@@ -209,7 +212,7 @@ class web_front:
     
     def GET(self):
         """Return the front page for MScanner"""
-        web.header('Content-Type', 'text/html') 
+        web.header('Content-Type', 'text/html; charset=utf-8') 
         t = front.front(searchList=[page_defaults])
         t.current = getCurrentTask()
         print t
@@ -219,7 +222,7 @@ class web_form:
     
     def GET(self):
         """Return the form with default values"""
-        web.header('Content-Type', 'text/html') 
+        web.header('Content-Type', 'text/html; charset=utf-8') 
         t = form.form(searchList=[page_defaults, form_defaults])
         t.current = getCurrentTask()
         print t
@@ -230,7 +233,7 @@ class web_form:
         Without errors, place an entry in the queue and go to the
         special status page for that task.
         """
-        web.header('Content-Type', 'text/html') 
+        web.header('Content-Type', 'text/html; charset=utf-8') 
         import pprint
         pp = pprint.PrettyPrinter()
         # Submitted form must have EVERY key or you get "bad request"
@@ -270,7 +273,7 @@ class web_status:
     
     def GET(self):
         """Output the status page"""
-        web.header('Content-Type', 'text/html') 
+        web.header('Content-Type', 'text/html; charset=utf-8') 
         # Fill the general status template
         t = status.status(searchList=[page_defaults])
         t.current = getCurrentTask()
@@ -298,17 +301,18 @@ class web_output:
     
     def GET(self):
         """Just list the available output directories"""
-        web.header('Content-Type', 'text/html') 
+        web.header('Content-Type', 'text/html; charset=utf-8') 
         t = output.output(searchList=page_defaults)
-        t.donetasks = listDoneTasks(descriptors=True)
+        t.donetasks = sorted(listDoneTasks(descriptors=True), 
+                             key=lambda x:x.timestamp, reverse=True)
         print t
         
     def POST(self):
         """Attempt to download or delete one of the outputs"""
-        web.header('Content-Type', 'text/html') 
+        web.header('Content-Type', 'text/html; charset=utf-8') 
         t = output.output(searchList=page_defaults)
         t.donetasks = listDoneTasks(descriptors=True)
-        input = web.input("operation", dataset=None, delcode=None)
+        input = web.input("operation", dataset=None, delcode=None, omit_mesh=[])
         formvars, errors = validateForm(input)
         # So the returned form knows what task is referred to
         if formvars.dataset is None:
@@ -363,12 +367,17 @@ class web_output:
                 from zipfile import ZipFile, ZIP_DEFLATED
                 zf = ZipFile(str(outfile), "w", ZIP_DEFLATED)
                 for fpath in outdir.files():
-                    if not fpath.endswith(".zip"):
-                        zf.write(str(fpath), str(fpath.basename()))
+                    if fpath.endswith(".zip"):
+                       continue
+                    if fpath.basename() == rc.report_term_scores:
+                        # Omit MeSH terms if the user requests it
+                        if formvars.omit_mesh == ["on"]:
+                            continue
+                    zf.write(str(fpath), str(fpath.basename()))
                 zf.close()
             dsurl = web.urlquote(dataset)
             web.seeother("static/output/" + dsurl + "/" + dsurl + ".zip")
-        if formvars.operation != "download":
+        if formvars.operation != "download" or hasattr(t, "errors"):
             print t
 
 class web_contact:
@@ -376,14 +385,14 @@ class web_contact:
     
     def GET(self):
         """Print the contact form"""
-        web.header('Content-Type', 'text/html') 
+        web.header('Content-Type', 'text/html; charset=utf-8') 
         t = contact.contact(searchList=[page_defaults])
         print t
     
     def POST(self):
         """Submit the contact form.  Errors out if the captcha is 
         incorrect"""
-        web.header('Content-Type', 'text/html') 
+        web.header('Content-Type', 'text/html; charset=utf-8') 
         ivars = web.input("captcha", "email", "message", "name")
         if ivars.email == "":
             ivars.email = "nobody@maples.stanford.edu"

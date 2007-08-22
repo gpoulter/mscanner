@@ -8,6 +8,8 @@ MScanner Output
 
 #import time
 
+<div class="narrow">
+
 $print_errors()
 
 #if $getVar("nodelete", None) is not None
@@ -40,11 +42,13 @@ $print_errors()
 
 #else
 
-<form class="output" action="" method="post">
-
   <p>Click on the name of the batch to open the results in a new window. Only
   the 100 most recent queries are kept (older queries are deleted - please save
   them if you wish to keep the query output for future reference).</p>
+  
+</div>
+
+<form class="output" action="" method="post">
 
   <table>
     <thead>
@@ -59,7 +63,7 @@ $print_errors()
       #for d in $donetasks
       <tr>
         <td class="del">
-          <input type="radio" name="dataset" value="$d.dataset"/>
+          <input type="radio" name="dataset" value="$d.dataset" />
         </td>
         <td class="timestamp">
           $time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($d.timestamp))
@@ -75,15 +79,20 @@ $print_errors()
     </tbody>
   </table>
 
+  <div class="narrow">
+  
   <p>
-    Download selected output as a zip file (1-2 megabytes):
-    <button type="submit" name="operation" value="download">Download Selected</button>
+    Download selected as a zip file (0.5-2 megabytes, 
+    <input type="checkbox" name="omit_mesh" checked="checked"/> omit term list to save 300k):
+    <button type="submit" name="operation" value="download">Download</button>
   </p>
 
   <p>
     Delete selected using deletion code: <input name="delcode" type="text" size="10"/>
-    <button type="submit" name="operation" value="delete" >Delete Selected</button>
+    <button type="submit" name="operation" value="delete" >Delete</button>
   </p>
+  
+  </div>
   
 #end if have_donetasks
 

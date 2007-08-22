@@ -117,6 +117,7 @@ class QueryEnvironment:
             rc.timestamp = time.time() 
         if not rc.query_report_dir.exists():
             rc.query_report_dir.makedirs()
+            rc.query_report_dir.chmod(0777)
         os.chdir(rc.query_report_dir)
         if pmids_path is not None:
             self.loadInput(pmids_path)

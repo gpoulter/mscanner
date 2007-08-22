@@ -85,6 +85,7 @@ class ValidationEnvironment(object):
         if rc.timestamp is None: rc.timestamp = time.time() 
         if not rc.valid_report_dir.exists():
             rc.valid_report_dir.makedirs()
+            rc.valid_report_dir.chmod(0777)
         # FeatureInfo for this validation run
         self.featinfo = FeatureInfo(
             featmap = self.featmap, 

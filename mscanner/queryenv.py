@@ -333,7 +333,7 @@ def writeCitations(template, mode, scores, fname, perfile):
         template(
             cite_table = citationTable(start+1, towrite),
             dataset = rc.dataset,
-            linkpath = rc.templates.relpath().replace('\\','/'),
+            #linkpath = rc.templates.relpath().replace('\\','/'),
             mode = mode, 
             num_citations = len(towrite),
             prev_file = fnames[count],

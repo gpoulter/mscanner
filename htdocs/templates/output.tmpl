@@ -16,17 +16,17 @@ $print_errors()
 
 <p>Failed to delete the task <q>$target</q></p>
 
-#if $nodelete == "nodelcode"
-  <p>Cannot delete the output since no deletion code was provided</p>
-#elif $nodelete == "busy"
-  <p>Cannot delete since MScanner is currently busy with the task.</p>
-#elif $nodelete == "notfound"
-  <p>Cannot delete because the task does not appear to exist in
-  the queue or in the output.</p>
-#elif $nodelete == "badcode"
-  <p>Cannot delete since because the provided code did not match that
-  stored in the task descriptor.</p>
-#end if deleteoptions
+  #if $nodelete == "nodelcode"
+    <p>Cannot delete the output since no deletion code was provided</p>
+  #elif $nodelete == "busy"
+    <p>Cannot delete since MScanner is currently busy with the task.</p>
+  #elif $nodelete == "notfound"
+    <p>Cannot delete because the task does not appear to exist in
+    the queue or in the output.</p>
+  #elif $nodelete == "badcode"
+    <p>Cannot delete since because the provided code did not match that
+    stored in the task descriptor.</p>
+  #end if deleteoptions
 
 #end if nodelete
 
@@ -45,9 +45,13 @@ $print_errors()
   <p>Click on the name of the batch to open the results in a new window. Only
   the 100 most recent queries are kept (older queries are deleted - please save
   them if you wish to keep the query output for future reference).</p>
-  
-</div>
 
+#end if donetasks
+
+</div><!--narrow-->
+
+#if len($donetasks) != 0
+  
 <form class="output" action="" method="post">
 
   <table>
@@ -78,23 +82,24 @@ $print_errors()
       #end for
     </tbody>
   </table>
+  
+<div class="narrow">
 
-  <div class="narrow">
-  
-  <p>
-    Download selected as a zip file (0.5-2 megabytes, 
-    <input type="checkbox" name="omit_mesh" checked="checked"/> omit term list to save 300k):
-    <button type="submit" name="operation" value="download">Download</button>
-  </p>
+<p>
+  Download selected as a zip file (0.5-2 megabytes, 
+  <input type="checkbox" name="omit_mesh" checked="checked"/> omit term list to save 300k):
+  <button type="submit" name="operation" value="download">download</button>
+</p>
 
-  <p>
-    Delete selected using deletion code: <input name="delcode" type="text" size="10"/>
-    <button type="submit" name="operation" value="delete" >Delete</button>
-  </p>
+<p>
+  Delete selected using deletion code: <input name="delcode" type="text" size="10"/>
+  <button type="submit" name="operation" value="delete" >delete</button>
+</p>
+
+</div>
   
-  </div>
-  
+</form>
+
 #end if have_donetasks
 
-</form>
 #end def contents

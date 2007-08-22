@@ -95,12 +95,15 @@ function loadCitations(fname, append) {
    var table = text.match(/<[t]body>[^\v]*?<\/tbody>/);
    var blob = table[0].substr(7,table[0].length-15);
    var tbody = document.getElementById("citations").getElementsByTagName("tbody")[0]
-   if (append == false) {
-      tbody.innerHTML = blob + tbody.innerHTML;
+   alert(tbody.innerHTML);
+   if (append == true) {
+      tbody.innerHTML = tbody.innerHTML + blob;
    } else {
-      tbody.innerHTML += blob;
+      tbody.innerHTML = blob + tbody.innerHTML;
    }
+   /* because new text is unhidden, and no events are linked */
    hide_allrows();
+   add_table_events();
 }
 
 /* Open positive documents in PubMed */

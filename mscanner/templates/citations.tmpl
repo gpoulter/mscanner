@@ -74,43 +74,51 @@ Next File: <a href="$next_file">$next_file</a>
   #end if
 </p>
 
-<p>To use the save/load features, you will have to save the file as a
-local HTML file.  When you open the HTML file, Internet Explorer will say
-at the top "To help protect your security, Internet Explorer has restricted 
-this webpage from running scripts or ActiveX controls that could access your 
-computer".  You will have to "Allow blocked content" before save/load or 
-filtering of results will work.</p>
+<fieldset class="cite">
+
+  <legend>Classify citations</legend>
+
+  <input type="button" id="pubmed_all" value="Open all citations in PubMed" /><br />
+  <input type="button" id="pubmed_relevant" value="Open relevant citations in PubMed" /><br />
+
+  <p>
+    To open only relevant citations in PubMed, you must first click in the 
+    "C" column once to mark the citation relevant (<span
+    style="background-color:red;color:red;">...</span>)).  
+  </p>
+  
+  <p>    
+    You can click again to mark citations as irrelevant (<span
+    style="background-color:blue;color:blue;">...</span>). Grey citations (
+    <span style="background-color:lightgrey;color:lightgrey;">...</span>)
+    mean "not yet been manually classified".  
+  </p>
+</fieldset>
+
 
 <fieldset class="cite">
 
-  <legend>Manage Classifications</legend>
+  <legend>Save and load manual classifications</legend>
+
+  <p>To save and load classifications, this file must be opened
+  from disk (e.g. after having been saved using "save page as").
+  You may also have to "Allow blocked content" if Internet Explorer
+  or Mozilla Firefox are blocking the scripts in the file 
+  (since local scripts can read and write a files on the disk like
+  a normal program, which can be risky).</p>
   
-  Select a file name:<input type="file" size="80" id="fname" />
+  File name to use:<input type="file" size="50" id="fname" />
   <br />
   <input type="button" id="save_tags" value="Save classifications to file" /><br/>
   <input type="button" id="load_tags" value="Load classifications from file" /><br/>
-  <input type="button" id="pubmed_relevant" value="Open relevant citations in PubMed" /><br/>
-  <input type="button" id="pubmed_all" value="Open all citations in PubMed" /><br/>
   <input type="button" id="append_html" value="Append citations from HTML file"/>
+
+  <p>The first two buttons save or load the manual classifications
+  to/from a CSV file (that can be opened in Excel).</p>
   
-  <p>
-    Classify citations as irrelevant (<span
-    style="background-color:blue;color:blue;">...</span>) by clicking
-    once in the "C" column, or relevant (<span
-    style="background-color:red;color:red;">...</span>) by clicking twice.
-    Gray citations (<span
-    style="background-color:lightgray;color:lightgray;">...</span>)
-    have not yet been manually classified.  Use the buttons above to
-    save/load these classifications.  The third button will open
-    citations that have been marked relevant in pubmed.
-  </p>
-  
-  <p>
-    Use the buttons above to save and load the manual classifications
-    to/from disk in CSV format.  Since remote pages are not able to
-    access local files, this page must first be saved as an HTML file
-    and opened locally for the save/load feature to work.
-  </p>
+  <p>The third button only works in Firefox (required feature is not
+  supported in Internet Explorer). It expects an HTML file (like this one), 
+  and will add that file's table of citations to the bottom of this one.</p>
   
 </fieldset>
 
@@ -118,28 +126,34 @@ filtering of results will work.</p>
 
 <fieldset class="cite"> 
 
-<legend>Filter Citations</legend> 
+<legend>Filter by title and abstract</legend> 
 
-<input type="text" size="50" id="filter" onkeypress="return noenter()"/> 
+<input type="text" size="35" id="filter"/> 
 
 <input type="button" id="do_filter" value="Filter Citations" /> 
 
 <input type="button" id="clear_filter" value="Clear Filter" />
 
-<p>Case-insensitive <a
+<p>Uses a case-insensitive <a
 href="http://www.javascriptkit.com/jsref/regexp.shtml">regular expression</a>
-filter. Clearing the filter will show all citations. Given text "X" we test
-RegExp("X","i") on the title and abstract of each citation. To
-find "rat" as a whole word, use "\brat\b" (specifies that "rat" must
-have word boundaries on either side).</p>
+to filter the citations by title and abstract. Given "X" we test
+RegExp("X","i") on the title and abstract of each citation. To find "rat" as a
+whole word, use "\brat\b" (specifies that "rat" must have word boundaries on
+either side). Clearing the filter will show all citations. </p>
 
 </fieldset>
 
-<p>Only list citations published between
-<input type="text" size="4" id="yearstart" value="1900"/> and
-<input type="text" size="4" id="yearend" value="2020"/> inclusive.
-<input type="button" id="do_year_filter" value="Filter"/>
-</p>
+<fieldset class="cite">
+
+  <legend>Filter by publication date</legend>
+  
+  <p>Only list citations published between
+  <input type="text" size="4" id="yearstart" value="1900"/> and
+  <input type="text" size="4" id="yearend" value="2020"/> inclusive.
+  <input type="button" id="do_year_filter" value="Filter"/>
+  </p>
+
+</fieldset>
 
 </div><!--class=narrow-->
 

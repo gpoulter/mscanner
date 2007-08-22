@@ -1,3 +1,16 @@
+/*
+Cells in each row are:
+0 - Classification
+1 - Rank
+2 - Score
+3 - PMID
+4 - Year
+5 - Expand Author
+6 - Expand Abstract
+7 - Title
+8 - ISSN
+*/
+
 /* Return whether event was a right click */
 function is_rightclick(event) {
    var rightclick;
@@ -29,10 +42,13 @@ function noenter() {
 // Read classifications from disk
 function loadTags(fname) 
 {
-   var fname = document.getElementById("fname").value
-   var lines = readFile(fname).split("\n");
-   for(i = 0; i < lines.length; i++) 
-   {
+   var text = readFile(fname)
+   if (text == null) {
+      alert("Failed to read text from file");
+      return;
+   }
+   var lines = text.split("\n");
+   for (i = 0; i < lines.length; i++) {
       var values = lines[i].split(",");
       var pmid = values[0];
       var score = values[1];
@@ -44,6 +60,7 @@ function loadTags(fname)
       case "1": setTag(pmid, 2); break;
       }
    }
+   alert("Successfully loaded classifications");
 }
 
 // Save classifications to disk
@@ -53,7 +70,7 @@ function saveTags(fname) {
    for (var i = 0; i < rows.length; i++) {
       if (rows[i].className == "main") {
          var pmid = rows[i].id;
-         var score = document.getElementById("s_"+pmid).innerHTML;
+         var score = rows[i].cells[2].innerHTML;
          var line = pmid+","+score+","
          switch(getTag(pmid)) {
          case 0: line += " \n"; break;
@@ -63,8 +80,10 @@ function saveTags(fname) {
          text += line;
       }
    }
-   fname = document.getElementById("fname").value
-   writeFile(fname, text);
+   fname = document.getElementById("fname").value;
+   if (writeFile(fname, text) == true) {
+      alert("Successfully saved classifications");
+   }
 }
 
 /* 
@@ -76,7 +95,7 @@ function loadCitations(fname, append) {
    var table = text.match(/<[t]body>[^\v]*?<\/tbody>/);
    var blob = table[0].substr(7,table[0].length-15);
    var tbody = document.getElementById("citations").getElementsByTagName("tbody")[0]
-   if(append == false) {
+   if (append == false) {
       tbody.innerHTML = blob + tbody.innerHTML;
    } else {
       tbody.innerHTML += blob;
@@ -101,13 +120,17 @@ function openPubMed(all) {
          }
       }
    }
-   window.open(qstring);
+   if(count == 0) {
+      alert("Cannot open PubMed as there are no PubMed IDs to open");
+   } else {
+      window.open(qstring);
+   }
 }
 
 // Get classification tag (0,1,2)
 function getTag(pmid) {
    var color = document.getElementById(pmid).cells[0].style.backgroundColor
-   switch(color) {
+   switch (color) {
       case "": return 0;
       case "blue": return 1;
       case "red": return 2;
@@ -120,7 +143,7 @@ function setTag(pmid, value) {
    var row = document.getElementById(pmid)
    var tagstyle = row.cells[0].style
    var rowstyle = row.style
-   switch(value) {
+   switch (value) {
    case 0:
       tagstyle.backgroundColor = "";
       rowstyle.backgroundColor = "";
@@ -137,19 +160,6 @@ function setTag(pmid, value) {
    } 
 }
 
-/*
-Cells in each row are:
-0 - Classification
-1 - Rank
-2 - Score
-3 - PMID
-4 - Year
-5 - Expand Author
-6 - Expand Abstract
-7 - Title
-8 - ISSN
-*/
-
 /* Hides rows not matching the given regex filter. */
 function filterCitations(filter) {
    var rows = document.getElementById("citations").rows;
@@ -158,7 +168,7 @@ function filterCitations(filter) {
       if (rows[i].className == "main") {
          var cells = rows[i].cells;
          var text = cells[7].innerHTML
-         if(rows[i+2].length > 0) {
+         if (rows[i+2].length > 0) {
             text += rows[i+2].cells[0].innerHTML;
          }
          if (filter == "" || RegExp(filter, "i").test(text)) {

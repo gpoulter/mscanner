@@ -3,11 +3,12 @@
 Validator -- Perform cross-validation for article scores
 PerformanceStats -- Calculate statistics from article scores
 
-                                   
 """
 
 from __future__ import division
 
+                                               
+__author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
 Free Software Foundation, either version 3 of the License, or (at your option)
@@ -19,6 +20,7 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
+
 
 from itertools import chain, izip
 import logging as log
@@ -139,6 +141,8 @@ class Validator:
         
         @note: Feature scores by Bayesian pseudocount only - no other methods.
         
+        @deprecated: Everyone uses 10-fold, and this is way slower anyway.
+        
         @return: self.pscores and self.nscores
         """
         # Set up base feature scores
@@ -236,6 +240,7 @@ class PerformanceStats:
         s.getRatioVectors(s.alpha)
         s.getCurveAreas()
         s.getROCError()
+        s.getAveragePrecision()
         s.getMaxFMeasurePoint()
         s.getBreakEvenPoint()
         s.getTunedStatistics()
@@ -276,7 +281,7 @@ class PerformanceStats:
             FP = s.N - TN  # TN+FP=N
 
             # ncount-TN = number of negatives having threshold score
-            ncount = TN 
+            ncount = TN # Start at TN and subtract it later
             while (ncount < s.N) and s.nscores[ncount] == threshold:
                 ncount += 1
             s.NE[idx] = ncount-TN
@@ -324,6 +329,39 @@ class PerformanceStats:
         s.ROC_area = trapz(s.TPR[::-1], s.FPR[::-1])
         s.PR_area = trapz(s.PPV[::-1], s.TPR[::-1])
         return s.ROC_area, s.PR_area
+    
+    def iterMerge(self):
+        """Iterate (float, bool) for score and relevancy of
+        each document in decreasing order of score.
+        
+        @note: Relies on nscores and pscores being in decreasing order."""
+        s = self
+        p_idx = 0
+        n_idx = 0
+        while p_idx < s.P or n_idx < s.N:
+            if p_idx < s.P and \
+            (n_idx >= s.N or s.pscores[p_idx] >= s.nscores[n_idx]):
+                yield s.pscores[p_idx], True
+                p_idx += 1
+            elif n_idx < s.N and \
+            (p_idx >= s.P or s.nscores[n_idx] > s.pscores[p_idx]):
+                yield s.nscores[n_idx], False
+                n_idx += 1
+        
+    def getAveragePrecision(self):
+        """Return precision averaged over each point where a relevant
+        document is returned"""
+        AvPrec = 0.0
+        TP = 0
+        FP = 0
+        for score, relevant in self.iterMerge():
+            if relevant:
+                TP += 1
+                AvPrec += TP/(TP+FP)
+            else:
+                FP += 1
+        self.AvPrec = AvPrec/TP
+        return self.AvPrec
     
     def getROCError(self):
         """Use Hanley1982 to calculate standard error on the Wilcoxon

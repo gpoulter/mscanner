@@ -3,11 +3,12 @@
 @note: This module relies heavily on rc parameters (many other modules like
 scoring take these as function arguments instead)
 
-                                   
 """
 
 from __future__ import division, with_statement, absolute_import
 
+                                               
+__author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
 Free Software Foundation, either version 3 of the License, or (at your option)
@@ -28,7 +29,7 @@ import os
 from mscanner.configuration import rc
 from mscanner.featuredb import FeatureDatabase, FeatureStream
 from mscanner.featuremap import FeatureMapping
-from mscanner.scorefile import readPMIDs, writePMIDScores
+from mscanner.scorefile import readPMIDs, writePMIDScores, emptyInputPage
 from mscanner.scoring import (FeatureInfo, countFeatures, 
                               iterScores, iterCScores, retrievalTest)
 from mscanner.support import dbshelve
@@ -72,7 +73,7 @@ class QueryEnvironment:
         """Get rid of old results, that we may query again"""
         try:
             del self.featinfo
-            del self.inputs
+            del self.input_pmids
             del self.results
         except AttributeError:
             pass
@@ -84,12 +85,6 @@ class QueryEnvironment:
             pmids_path, outbase=rc.query_report_dir/"input", include=self.featdb))
         return self.input_pmids
     
-    def checkEmptyInput(self):
-        if len(self.input_pmids) != 0:
-            return
-        log.warning("No valid PubMed IDs were found!")
-        
-
     def getFeatureInfo(self):
         """Calculate and return FeatureInfo object for current input"""
         log.info("Calculating feature scores")
@@ -118,13 +113,20 @@ class QueryEnvironment:
         @param pmids_path: Path to list of input PMIDs. If None, we assume
         loadInput() has already been called. """
         import time
-        if rc.timestamp is None: rc.timestamp = time.time() 
+        if rc.timestamp is None: 
+            rc.timestamp = time.time() 
         if not rc.query_report_dir.exists():
             rc.query_report_dir.makedirs()
+        os.chdir(rc.query_report_dir)
         if pmids_path is not None:
             self.loadInput(pmids_path)
+            if len(self.input_pmids) == 0:
+                # No valid PubMed IDs in the input, write error page
+                emptyInputPage(list(
+                    readPMIDs(rc.query_report_dir/"input.broken.txt")))
+                return
+        # Carry out the query and write the report
         self.featinfo = self.getFeatureInfo()
-        os.chdir(rc.query_report_dir)
         if rc.report_input_scores.exists() \
            and rc.report_result_scores.exists():
             self.loadResults()
@@ -220,7 +222,8 @@ class QueryEnvironment:
         return self.cumulative
     
     def getGDFilterResults(self, pmids_path, pharmdemo_db=None):
-        """Filter results and input articles for those containing gene-drug co-occurrences
+        """Filter results and input articles for those containing gene-drug
+        co-occurrences
         
         @param export_pharmdemo: If True, export results to PharmDemo database
         """
@@ -289,10 +292,10 @@ class QueryEnvironment:
             #linkpath = rc.templates.relpath().replace('\\','/'),
             lowest_score = self.results[-1][0],
             num_results = len(self.results),
-            notfound_pmids = list(readPMIDs(rc.query_report_dir/"input.broken.txt")),
             best_tfidfs = best_tfidfs,
             rc = rc, 
             timestamp = rc.timestamp,
+            notfound_pmids = list(readPMIDs(rc.query_report_dir/"input.broken.txt")),
         ).respond(ft)
         ft.close()
 
@@ -329,7 +332,7 @@ def writeCitations(template, mode, scores, fname, perfile):
         template(
             cite_table = citationTable(start+1, towrite),
             dataset = rc.dataset,
-            #linkpath = rc.templates.relpath().replace('\\','/'),
+            linkpath = rc.templates.relpath().replace('\\','/'),
             mode = mode, 
             num_citations = len(towrite),
             prev_file = fnames[count],
@@ -386,24 +389,24 @@ def citationTable(startfrom, scores):
         pmid = str(art.pmid)
         tr = SubElement(tbody, "tr", {"class":"main"}, id=pmid)
         # Classification
-        SubElement(tr, "td", id="c_"+pmid, onclick="classify('%s')"%pmid)
+        SubElement(tr, "td")
         # Rank
-        SubElement(tr, "td", id="c_"+pmid).text = str(idx+startfrom)
+        SubElement(tr, "td").text = str(idx+startfrom)
         # Score
-        SubElement(tr, "td", id="s_"+pmid).text = "%.2f" % score
+        SubElement(tr, "td").text = "%.2f" % score
         # PMID
         td = SubElement(tr, "td")
         SubElement(td, "a", href=ncbi_pmid+pmid).text = pmid
         # Year
         SubElement(tr, "td").text = str(art.year)
-        # Expand Author
-        td = SubElement(tr, "td", onclick="toggle('au_%s')"%pmid)
+        # Expand Author button
+        td = SubElement(tr, "td")
         td.text = "+" if art.authors else ""
-        # Expand Abstract
-        td = SubElement(tr, "td", onclick="toggle('ab_%s')"%pmid)
+        # Expand Abstract button
+        td = SubElement(tr, "td")
         td.text = "+" if art.abstract else ""
         # Title
-        td = SubElement(tr, "td", {"class":"title"}, id="t_"+pmid)
+        td = SubElement(tr, "td", {"class":"title"})
         td.text = art.title.encode("utf-8")
         # ISSN
         td = SubElement(tr, "td")

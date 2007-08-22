@@ -1,14 +1,22 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 
-#* TEMPLATE PARAMETERS
+#* Index to the query outputs
+
 linkpath -- Include JS and CSS remotely at this location
+
 rc -- RCStorage object with configuration parameters
+
 lowest_score -- Score of lowest-scoring article
+
 num_results -- Number of results
+
 timestamp -- time.time() for start of the operation
+
 best_tfidfs -- List of termid, tfidf, (term, termtype), score, pos, neg for
                those terms with the highest TF.IDF scores.
-notfound_pmids -- List of PubMed IDs that were not found in the database.
+
+notfound_pmids -- List of PubMed IDs that were not found in the database
+(passed to invalid.tmpl)
 *#
 
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
@@ -29,12 +37,18 @@ notfound_pmids -- List of PubMed IDs that were not found in the database.
   </style>
   #end if
   
+  <script type="text/javascript">
+  window.onload = function() {
+    make_toggles();
+  }
+  </script>
+  
 </head>
 
 #def help(name)
 <td>
   #if $name is not None
-  <button onclick="toggle('$name')">?</button>
+  <button class="toggle" id="toggle_$name">?</button>
   #end if
 </td>
 #end def
@@ -43,7 +57,6 @@ notfound_pmids -- List of PubMed IDs that were not found in the database.
 <tr id="$name" class="help">
   <td colspan="3">
     $value
-    <script type="text/javascript">hide('$name')</script>
   </td>
 </tr>
 #end def
@@ -55,6 +68,8 @@ notfound_pmids -- List of PubMed IDs that were not found in the database.
 </div>
 
 <div class="body">
+
+<div class="narrow">
 
  <h2>Result Properties</h2>
 
@@ -77,8 +92,17 @@ notfound_pmids -- List of PubMed IDs that were not found in the database.
     <th>Timestamp</th>
     #import time
     <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($timestamp))</td>
-    $help(None)
+    $help("h_timestamp")
   </tr>
+  $hr("h_timestamp", "When the data set was created")
+
+  <tr>
+    <th>File written at</th>
+    #import time
+    <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime())</td>
+    $help("h_written")
+  </tr>
+  $hr("h_written", "When this index file was written (at the end of the query)")
 
   #if $rc.pseudocount is not None
   <tr>
@@ -87,7 +111,7 @@ notfound_pmids -- List of PubMed IDs that were not found in the database.
     $help("h_pseudocount")
   </tr>
   $hr("h_pseudocount", """Prior added to the number of occurrences
-  of each term to avoid probabilities of zero.""")
+  of each term to regularise the estimated occurrence probabilities.""")
   #end if
 
   <tr>
@@ -169,7 +193,7 @@ notfound_pmids -- List of PubMed IDs that were not found in the database.
   #if $getVar("best_tfidfs", None)
   <h2>Features with high TF-IDF</h2>
   
-  <p class="tabwidth">These features are the most suitable for use in keyword searches
+  <p>These features are the most suitable for use in keyword searches
   to retrieve this set of articles.  Features with TF-IDF
   above 0.2 or 0.3 are more useful. </p>
   
@@ -199,20 +223,11 @@ notfound_pmids -- List of PubMed IDs that were not found in the database.
   </table>
   #end if tfidf
   
-  #if $getVar("notfound_pmids", []) != []:
-  <h2>Invalid input citations</h2>
-  <p class="tabwidth">These PubMed IDs were part of the input to the query,
-  but were not found in the database - probably because they are "in-progress"
-  and so do not have MeSH terms assigned.  If their status has recently changed
-  to "PubMed - Indexed for Medline" they will be added to the database overnight.</p>
-  <ul>
-  #for pmid in $notfound_pmids:
-  <li><a href="http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&db=pubmed&list_uids=$pmid">$pmid</li>
-  #end for
-  </ul>
-  #end if
+  #include $_inc("invalid.tmpl")
   
-</div>
+</div><!--narrow-->  
+  
+</div><!--body-->
 
 <div class="footer">
                                                

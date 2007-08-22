@@ -24,11 +24,11 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 def selfupdate(onlyargs=False, exclude=[]):
     """Call in any method to set instance attributes from local variables.
     
-    @param onlyargs: If True, use only named arguments
+    @param onlyargs: If True, use only named arguments and not locals
     
     @param exclude: Names of other variables to exclude.
 
-    @note: Instance to update is assumed to be first argument of the caller.
+    @note: First argument to the caller is taken to be the "self" to update
     
     @note: Equivalent to 'vars(self).update(vars()); del self.self'
     """

@@ -5,21 +5,25 @@ MScanner: Retrieve Medline citations using examples
 #end def title
 
 #def contents
-<div class="contents">
+<div class="narrow">
 
-<div class="text">
+<h3>How to use MScanner</h3>
 
-<p class="narrow">MScanner is a medline classifier, which
-learns a model of the topic being searched for from examples of relevant
-citations (the more examples the better).  While it is easy to 
-find a few relevant results in the output of PubMed, in situations where
-you need hundreds of citations on a particular topic MScanner is here
-to make use of any existing examples.</p>
+<p>Click on "Query", paste in some PubMed IDs representing
+Medline citations, choose a name for the task, and click "Submit".  
+The status page will give you a link to your output, which will be ready 
+in 90 seconds if you are at the front of the queue.  The output
+will consist of several hundred Medline citations that MScanner thinks are most
+similar in content to the citations</p>
+
+<h3>Why use MScanner</h3>
+
+<p>If you have examples of what you are looking for, MScanner
+helps you find more without having to guess keywords.  It should
+be useful for database curation, or when one needs to construct
+a large set of citations on some topic.</p>
 
 #include $inc("statusblock.tmpl")
 
-</div><!--text-->
-
-</div><!--body-->
-
+</div><!--narrow-->
 #end def contents

@@ -1,20 +1,32 @@
-/* Palette Guide
-EEEEEE= light gray
-CCCCCC= middle gray
-BBBBBB= darker gray
-C2D7EE= light blue
-A3C2E2= middle blue
-93B2D2= pastel blue
-FFFFDD= light yellow
-EEEEFF= light mauve
+/* 
+
+Colours
+white (page background)
+#EEEEEE; /* light gray
+#CCCCCC; /* middle gray
+#BBBBBB; /* darker gray
+
+#C2D7EE; /* light blue    (page background??)
+#E8F0F8; /* pastel blue   (table background)
+#70B0FF; /* middle blue   (table heading)
+#FFFFDD; /* light yellow  (row heading background)
+#A0F0C0; /* pastel green  (header/footer and note heading)
+#EEEEFF; /* light mauve   (help blocks in table)
 */
 
-@media print {
-    background-color: white;
-    color: black;
-    button {
-        visibility: hidden;
-    }
+.borderless, table.borderless td, table.borderless th {
+  /* use to remove borders from tables and images */
+  border: 0;
+}
+
+.first {
+  /* remove margin for things at the top */
+  margin-top: 0 ! important; 
+}
+
+.last, .with-subtitle {
+  /* remove margin for things at the bottom */
+  margin-bottom: 0 ! important; 
 }
 
 html, body, div {
@@ -23,126 +35,150 @@ html, body, div {
     margin: 0;
     width: 100%;
 }
-html {
-    background-color: #C2D7EE; /* light blue */
+
+img { display: block; }
+
+dt { font-weight: bold; }
+
+html { background-color: white; }
+
+div.body {
+    padding: 1em;
+    width: 100%;
 }
+
+div.narrow {
+    /* keep everything within this div to a readable width */
+    max-width: 35em;
+}
+
+div.header, div.footer {
+    /* colour for header and footer */
+    background-color: #FFFFDD; /* light yellow */
+}
+
 div.header {
-    background-color: white;
+    /* header section for page */
     border-bottom-style: dotted;
     margin: 0;
     padding: 0.3em;
     text-align: center;
 }
-div.header > h1 {
-    margin: 0;
-}
-div.body {
-    padding: 1em;
-    width: 100%;
-}
+
 div.footer {
+    /* footer section for page */
     border-top-style: dotted;
-    background-color: white;
     width: 100%;
     padding: 1ex;
 }
-div.help {
-    width: 33em;
-    text-align: justify;
-}
-h2 {
-    border-bottom: 2px solid black;
-}
-img {
-    display: block;
-}
-dt {
-    font-weight: bold;
+
+div.header > h1 {
+    /* avoid margins within the header */
+    margin: 0;
 }
 
-/* General table properties */
+h2 {
+    /* underline major headings */
+    border-bottom: 2px solid black;
+}
+
+/* common properties for all tables */
 table, thead, tbody {
+    /* thick border around all tables */    
     border: 2px solid black;
 }
 table {
-    width: 33em;
+    /* default table settings */
     border-collapse: collapse;
-}
-p.tabwidth {
-    width: 33em;
+    width: 100%; /* make surrounding container narrow */
+    background-color: #E8F0F8; /* pastel blue */
 }
 thead {
-    background-color: #A3C2E2; /* middle blue */
+    /* column headings */
+    background-color: #70B0FF; /* middle blue */
 }
 tbody th {
-    background-color: #93B2D2; /* pastel blue */
+    /* row headings */
+    background-color: #E8F0F8; /* pastel blue */
     text-align: left;
 }
 td, th {
+    /* thin border around table cells */
     border: 1px solid black;
     padding: 0.5ex;
 }
 
+div.help {
+    /* help sections associated with tables */
+    text-align: justify;
+}
 
-/* Results info in results.tmpl */
+/* info table in results.tmpl */
 table.results col.label {
+    /* column with name of the quantity */
     width: 11em;
 }
-table.results col.longlabel {
-    width: 25em;
-}
 table.results col.value {
-    background-color: white;
+    /* column with value of the quantity */
 }
 table.results col.help {
+    /* column with help buttons */
     background-color: #EEEEFF; /* light mauve */
     width: 2em;
 }
 table.results tr.help {
+    /* rows with help info */
     background-color: #EEEEFF; /* light mauve */
     text-align: justify;
-}
-table.results tr.help td {
     padding: 1ex;
 }
 
-
-/* Feature Info Table in features.tmpl */
+/* features.tmpl feature summary */
 table.features col.label {
+    /* width of left-most column with labels */
     width: 20em;
 }
 
-
-/* Main table in citations.tmpl */
+/* citations.tmpl citation table */
 fieldset.cite {
     width: auto;
     max-width: 95%;
     margin-bottom: 1em;
 }
 table.cite {
+    /* citation table */
     background-color: white;
     width: 95%;
     min-width: 40em;
     text-align: center;
 }              
 table.cite col.classification {
+    /* column for manual classification */
     background-color: lightgrey;
 }
 table.cite tr.author, col.author {
+    /* author colour */
     background-color: #FFFFDD; /* light yellow */
 }
 table.cite tr.abstract, col.abstract {
+    /* abstract colour  */
     background-color: #EEEEFF; /* light mauve */
 }
+table.cite tr.mesh col.mesh {
+    /* mesh colour */
+    background-color: #A0F0C0; /* pastel green */
+}
 table.cite td.title {
+    /* titles - but not the heading of the column */
     font-size: smaller;
 }
 table.cite tr.abstract td {
+    /* abstracts */
     padding: 1em;
     text-align: justify;
 }
 
-/* Column widths in citations.tmpl  */
+/* column widths for citation table */
 table.cite col.classification { width: 1em; }
 table.cite col.rank { width: 1em; }
 table.cite col.score { width: 3em;}
@@ -150,11 +186,10 @@ table.cite col.pmid { width: 5em; }
 table.cite col.year { width: 3em; }
 table.cite col.author{ width: 1em; }
 table.cite col.abstract { width: 1em; }
-table.cite col.title { }
+table.cite col.title { /* variable width */ } 
 table.cite col.journal { width: 10em; }
 
-
-/* Confusion Matrix in validation.tmpl */
+/* confusion matrix in validation.tmpl */
 table.matrix col { width: 25%; }
 td.tp { background-color: #FF3333; } /* bright red */
 td.tn { background-color: #3333FF; } /* bright blue */

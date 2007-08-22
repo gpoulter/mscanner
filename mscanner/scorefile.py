@@ -9,6 +9,8 @@ writeDescriptor() -- Write paramaters to a descriptor file
                                    
 """
 
+                                               
+__author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
 Free Software Foundation, either version 3 of the License, or (at your option)
@@ -164,3 +166,19 @@ def writeDescriptor(fpath, pmids, params):
         for pmid in pmids:
             f.write(str(pmid)+"\n")
     f.close()
+
+def emptyInputPage(pmids):
+    """When none of the PubMed IDs were valid, print this error
+    page instead, with a list of the submitted IDs and links to PubMed.
+    """
+    import logging
+    from mscanner.support.gcheetah import TemplateMapper, FileTransaction
+    from mscanner.configuration import rc
+    logging.warning("No valid PubMed IDs were found!")
+    mapper = TemplateMapper(root=rc.templates, kwargs=dict(filter="Filter"))
+    ft = FileTransaction(rc.report_index, "w")
+    index = mapper.notfound(
+        rc = rc,
+        notfound_pmids = pmids).respond(ft)
+    ft.close()
+

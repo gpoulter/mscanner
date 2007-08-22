@@ -5,6 +5,7 @@ MScanner Output
 #end def
 
 #def contents
+
 #import time
 
 $print_errors()
@@ -14,35 +15,36 @@ $print_errors()
 <p>Failed to delete the task <q>$target</q></p>
 
 #if $nodelete == "nodelcode"
-<p>Cannot delete the output since no deletion code was provided</p>
+  <p>Cannot delete the output since no deletion code was provided</p>
 #elif $nodelete == "busy"
-<p>Cannot delete since MScanner is currently busy with the task.</p>
+  <p>Cannot delete since MScanner is currently busy with the task.</p>
 #elif $nodelete == "notfound"
-<p>Cannot delete because the task does not appear to exist in
-the queue or in the output.</p>
+  <p>Cannot delete because the task does not appear to exist in
+  the queue or in the output.</p>
 #elif $nodelete == "badcode"
-<p>Cannot delete since because the provided code did not match that
-stored in the task descriptor.</p>
+  <p>Cannot delete since because the provided code did not match that
+  stored in the task descriptor.</p>
 #end if deleteoptions
 
 #end if nodelete
 
 #if $getVar("did_delete", None) is not None
 
-<p>Have deleted the task <q>$target</q> from $did_delete.</p>
+  <p>Have deleted the task <q>$target</q> from $did_delete.</p>
 
 #end if did_delete
 
 #if len($donetasks) == 0
 
-<p>There is no output currently avaiable.</p>
+  <p>There is no output currently avaiable.</p>
 
 #else
 
 <form class="output" action="" method="post">
 
-  <p>Click on the name of the batch to open the results in a new
-  window.</p>
+  <p>Click on the name of the batch to open the results in a new window. Only
+  the 100 most recent queries are kept (older queries are deleted - please save
+  them if you wish to keep the query output for future reference).</p>
 
   <table>
     <thead>
@@ -73,12 +75,10 @@ stored in the task descriptor.</p>
     </tbody>
   </table>
 
-<!--
   <p>
-    Download selected as a zip file:
+    Download selected output as a zip file (1-2 megabytes):
     <button type="submit" name="operation" value="download">Download Selected</button>
   </p>
--->
 
   <p>
     Delete selected using deletion code: <input name="delcode" type="text" size="10"/>
@@ -88,4 +88,4 @@ stored in the task descriptor.</p>
 #end if have_donetasks
 
 </form>
-#end def
+#end def contents

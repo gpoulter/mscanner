@@ -68,3 +68,26 @@ function writeFileNetscape(fname, text) {
    outputStream.close();
 }
 
+/* Load XML document, calls back when ready. */
+// http://www.quirksmode.org/dom/importxml.html 
+function importXML(fname, callback)
+{
+   if (document.implementation && document.implementation.createDocument)
+   {
+      xmlDoc = document.implementation.createDocument("", "", null);
+      xmlDoc.onload = callback;
+   }
+   else if (window.ActiveXObject)
+   {
+      xmlDoc = new ActiveXObject("Microsoft.XMLDOM");
+      xmlDoc.onreadystatechange = function () {
+	 if (xmlDoc.readyState == 4) callback(xmlDoc);
+      };
+   }
+   else
+   {
+      alert('Your browser can\'t handle this script');
+      return;
+   }
+   xmlDoc.load(filename);
+}

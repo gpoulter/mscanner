@@ -18,6 +18,9 @@ Sample Title
 <link rel="shortcut icon" href="$baseurl/favicon.png" type="image/x-icon"/>
 #end block stdheaders
 
+#block extraheaders
+#end block extraheaders
+
 </head>
 #end block head
 
@@ -35,22 +38,20 @@ Sample Title
   <table>
     <tr>
       <td>
-        <a href="/">Front Page</a>
+        <a href="/">Home</a>
+      </td>
+      <td>
+        <a href="/form">Query</a>
       </td>
       <td>
         <a href="/status">Status</a>
       </td>
       <td>
-        <a href="/form">Submit Query</a>
+        <a href="/output">Output</a>
       </td>
-      <td>
-        <a href="/output">View Output</a>
-      </td>
-      <!--
       <td>
         <a href="/contact">Contact Us</a>
       </td>
-      -->
     </tr>
   </table>
 </div>
@@ -71,11 +72,13 @@ Sample Title
 #end if
 #end def print_errors
   
-#block contents
+#block contents_outer
 <div class="contents">
-TESTING
-</div>
+#block contents
+CONTENTS
 #end block contents
+</div>
+#end block contents_outer
 
 #block footer
 <div class="footer">

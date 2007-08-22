@@ -6,11 +6,12 @@ filterDocuments() -- Filter iterScores() output for top N
 partitionList() -- Split list into train/test partitions
 retrievalTest() -- Count gold standard docs as a function of rank
 
-                                   
 """
 
 from __future__ import division
 
+                                               
+__author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
 Free Software Foundation, either version 3 of the License, or (at your option)
@@ -156,6 +157,8 @@ class FeatureInfo(object):
         """Use a pseudocount vector, or a constant pseudocount to get
         posterior feature probablilities.   Instead of +1 in the
         denominator, we use +2*pseudocount.
+        
+        @note: Depre
         """
         if s.pseudocount is None:
             s.pseudocount = nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
@@ -216,11 +219,16 @@ class FeatureInfo(object):
         except AttributeError: 
             pass
         self._tfidf = nx.zeros(len(self.pos_counts), dtype=float)
-        tdocs = self.pdocs+self.ndocs # total documents
-        tcounts = self.pos_counts+self.neg_counts # number docs with each feature
-        u = (tcounts != 0)
+        # Document frequency
+        docfreq_t = self.pos_counts+self.neg_counts
+        # Number of documents
+        N = self.pdocs+self.ndocs # number of documents
+        # Inverse Document Frequency (log N/df_t)
+        u = (docfreq_t != 0)
+        idf = nx.log(N / docfreq_t[u])
+        # Term frequency
         tf = (self.pos_counts[u] / nx.sum(self.pos_counts))
-        idf = nx.log(tdocs / tcounts[u])
+        # Calculate TF.IDF
         self._tfidf[u] = tf * idf
         return self._tfidf
 

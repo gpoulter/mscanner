@@ -54,6 +54,8 @@ $prev_file/this_file/next_file -- Names of files to link to
 
 <div class="body">
 
+<div class="narrow">
+
 <p>
 #if $getVar("prev_file", None)
 Previous File: <a href="$prev_file">$prev_file</a>
@@ -72,24 +74,35 @@ Next File: <a href="$next_file">$next_file</a>
   #end if
 </p>
 
+<p>To use the save/load features, you will have to save the file as a
+local HTML file.  When you open the HTML file, Internet Explorer will say
+at the top "To help protect your security, Internet Explorer has restricted 
+this webpage from running scripts or ActiveX controls that could access your 
+computer".  You will have to "Allow blocked content" before save/load or 
+filtering of results will work.</p>
+
 <fieldset class="cite">
 
   <legend>Manage Classifications</legend>
   
-  <input type="file" size="80" id="fname" />
+  Select a file name:<input type="file" size="80" id="fname" />
   <br />
-  <input type="button" onclick="saveTags()" value="Save Classifications" />
-  <input type="button" onclick="loadTags()" value="Load Classifications" />
+  <input type="button" id="save_tags" value="Save classifications to file" /><br/>
+  <input type="button" id="load_tags" value="Load classifications from file" /><br/>
+  <input type="button" id="pubmed_relevant" value="Open relevant citations in PubMed" /><br/>
+  <input type="button" id="pubmed_all" value="Open all citations in PubMed" /><br/>
+  <input type="button" id="append_html" value="Append citations from HTML file"/>
   
   <p>
-    The citations can be manually classified by clicking on the box in
-    the "C" column. Gray citations <span
-    style="background-color:lightgray;color:lightgray;">...</span>
-    have not been manually classified, red citations <span
-    style="background-color:red;color:red;">...</span> are relevant,
-    and blue citations <span
-    style="background-color:blue;color:blue;">...</span> are
-    non-relevant.
+    Classify citations as irrelevant (<span
+    style="background-color:blue;color:blue;">...</span>) by clicking
+    once in the "C" column, or relevant (<span
+    style="background-color:red;color:red;">...</span>) by clicking twice.
+    Gray citations (<span
+    style="background-color:lightgray;color:lightgray;">...</span>)
+    have not yet been manually classified.  Use the buttons above to
+    save/load these classifications.  The third button will open
+    citations that have been marked relevant in pubmed.
   </p>
   
   <p>
@@ -98,9 +111,10 @@ Next File: <a href="$next_file">$next_file</a>
     access local files, this page must first be saved as an HTML file
     and opened locally for the save/load feature to work.
   </p>
-  <input type="button" onclick="openPubMed()" value="Open Relevant Citations in PubMed" />
   
 </fieldset>
+
+## Filter citations by regex
 
 <fieldset class="cite"> 
 
@@ -108,26 +122,32 @@ Next File: <a href="$next_file">$next_file</a>
 
 <input type="text" size="50" id="filter" onkeypress="return noenter()"/> 
 
-<input type="button" 
-onclick="filterCitations(\$('filter').value)"
-value="Filter Citations" /> 
+<input type="button" id="do_filter" value="Filter Citations" /> 
 
-<input type="button"
-onclick="\$('filter').value='';filterCitations('')" 
-value="Clear Filter" />
+<input type="button" id="clear_filter" value="Clear Filter" />
 
-<p>Case-insensitive filter to show only citations which have the filter text
-present in their title or abstract. Clearing the filter shows all citations. The
-filter makes use of <a
-href="http://www.javascriptkit.com/jsref/regexp.shtml">Regular expressions</a>
-(for filter text "X" we create RegExp("X","i")).  For example, to find
-"rat" as a whole word, use "\brat\b" .</p>
+<p>Case-insensitive <a
+href="http://www.javascriptkit.com/jsref/regexp.shtml">regular expression</a>
+filter. Clearing the filter will show all citations. Given text "X" we test
+RegExp("X","i") on the title and abstract of each citation. To
+find "rat" as a whole word, use "\brat\b" (specifies that "rat" must
+have word boundaries on either side).</p>
 
 </fieldset>
 
+<p>Only list citations published between
+<input type="text" size="4" id="yearstart" value="1900"/> and
+<input type="text" size="4" id="yearend" value="2020"/> inclusive.
+<input type="button" id="do_year_filter" value="Filter"/>
+</p>
+
+</div><!--class=narrow-->
+
+## Actual citations
+
 $cite_table
 
-</div>
+</div><!--class=body-->
 
 <div class="footer">
                                                

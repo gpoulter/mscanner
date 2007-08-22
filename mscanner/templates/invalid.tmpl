@@ -1,0 +1,35 @@
+#* Prints a paragraph about PubMed IDs not found in the MScanner database
+
+notfound_pmids -- list of PubMed IDs (integer or string)
+
+*#
+
+#if $getVar("notfound_pmids", []) != []:
+
+<h2>Invalid PubMed IDs</h2>
+
+<p>The PubMed IDs listed below were not found in the MScanner database.
+Possible causes are:</p>
+
+<ul>
+
+<li>Some citations were "in-progress", and thus lack MeSH terms. If their
+status has recently changed to "PubMed - Indexed for Medline" they will be
+added to the MScanner database overnight.</li>
+
+<li>Medline UIs were submitted instead of PubMed IDs.  See
+the <a href="http://www.ncbi.nlm.nih.gov/entrez/publisher/uidpmid.cgi">
+Medline UI/PubMed ID matcher</a> to convert them to PubMed IDs</p>
+
+<li>Some PubMed IDs were invalid. For invalid IDs, clicking the links below
+will lead to a blank page instead of a citation.</li>
+
+</ul>
+
+<ul>
+#for pmid in $notfound_pmids:
+<li><a href="http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&db=pubmed&list_uids=$pmid">$pmid</li>
+#end for
+</ul>
+
+#end if notfound_pmids

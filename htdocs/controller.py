@@ -26,14 +26,10 @@ import web
 from web.utils import Storage
 import re
 import time
-import platform
 
 from templates import contact, form, front, form, output, status
 from mscanner.configuration import rc
 from mscanner.scorefile import readDescriptor, writeDescriptor
-
-# In case of windows-specific handling
-windows = (platform.system() == "Windows")
 
 # Set pretty and informative error handler
 web.webapi.internalerror = web.debugerror
@@ -146,43 +142,41 @@ def validateForm(input):
     display if conversion was unsucessful on some of them"""
     validator = dict(
         alpha=(
-            float, lambda x: 0 <= x <= 1, 
-            "Alpha must be in the range 0 to 1"),
+            float, lambda x: 0.0 <= x <= 1.0, 
+            "Alpha must be between 0.0 and 1.0"),
         captcha=(
             str, lambda x: x == "orange", 
-            "The captcha value must be the word 'orange'"),
+            "The captcha must be the word 'orange'"),
         delcode=(
-            str, lambda x: re.match(r"^[ a-zA-Z0-9 ._-]{0,10}$", x) is not None,
-            "You should use a short (0 to 10 characters) deletion code. "+
-            "It is a minor security measure to avoid others deleting of outputs."),
+            str, lambda x: re.match(r"^[ a-zA-Z0-9.;_-]{0,20}$", x) is not None,
+            "Deletion code must be alphanumeric and shorter than 20 characters"),
         dataset=(
-            str, lambda x: re.match(r"^[a-zA-Z0-9._-]+$", x) is not None,
+            lambda x: re.sub(r"[^ a-zA-Z0-9.;_-]", "", x)[:50], 
+            lambda x: re.match(r"^[a-zA-Z0-9._-]{1,50}$", x) is not None,
             "The task name must contain a-z, ., _, - characters only "+
             "as it needs to be safe as a directory name in a URL."),
         limit=(
             int, lambda x: 100 <= x <= 10000,
-            "You may retrieve between 100 and 10000 citations"),
+            "Retrieval limit must be between 100 and 10000."),
         nfolds=(
-            int, lambda x: 0 <= x <= 10,
-            "You may use between 2 and 10 validation folds.  0 "+
-            "signals leave out one validation, which is slow"),
+            int, lambda x: x == 5 or x == 10,
+            "Number of cross validation folds must be 5 or 10."),
         numnegs=(
-            int, lambda x: 1000 <= x <= 100000,
-            "You may have between 1000 and 100000 negatives"),
+            int, lambda x: 100 <= x <= 100000,
+            "Number of negatives must be between 100 and 100000."),
         operation=(
             str, lambda x: x in ["delete", "download", "query",  "validate"],
             "Operation must be 'delete', 'download', 'query' or 'validate'"),
         positives=(
             lambda x: [int(y) for y in x.split()], 
-            lambda x: len(x) >= 10, 
-            "Provide at least 10 PubMed IDs, given "+
-            "as whitespace-separated numbers"),
+            lambda x: len(x) > 0, 
+            "At least one PubMed ID must be provided"),
         threshold=(
-            float, lambda x: -100 <= x <= 100,
-            "You may choose a threshold between -100 and 100"),
+            float, lambda x: -1000 <= x <= 1000,
+            "The threshold must be between -1000 and +1000"),
         timestamp=(
-            float, lambda x: True,
-            "Failed to parse as a float")
+            float, lambda x: x > 0,
+            "Time stamp must be a floating point number.")
         )
     # List of errors
     errors = []
@@ -361,10 +355,21 @@ class web_output:
                         target_descriptor._filename.remove()
                         t.did_delete = "queue"
         elif formvars.operation == "download":
-            # Save the output directory as a zip file for
-            # download.  Not implemented yet.
-            pass
-        print t
+            # Save the output directory as a zip file for download
+            dataset = formvars.dataset
+            outdir = rc.web_report_dir / dataset
+            outfile = outdir / (dataset + ".zip")
+            if not outfile.exists():
+                from zipfile import ZipFile, ZIP_DEFLATED
+                zf = ZipFile(str(outfile), "w", ZIP_DEFLATED)
+                for fpath in outdir.files():
+                    if not fpath.endswith(".zip"):
+                        zf.write(str(fpath), str(fpath.basename()))
+                zf.close()
+            dsurl = web.urlquote(dataset)
+            web.seeother("static/output/" + dsurl + "/" + dsurl + ".zip")
+        if formvars.operation != "download":
+            print t
 
 class web_contact:
     """Form to contact the webmaster"""
@@ -379,28 +384,33 @@ class web_contact:
         """Submit the contact form.  Errors out if the captcha is 
         incorrect"""
         web.header('Content-Type', 'text/html') 
-        ivars = web.input("subject", "msg", "fromaddr", "captcha")
-        ovars = Storage()
-        t = contact.contact(searchList=[page_defaults, ovars])
-        if ivars.captcha.tolower() != "orange":
-            ovars.errors = ["Invalid Captcha Response: %s" % ivars.captcha]
-            logging.debug("Invalid captcha entered: %s" % ivars.captcha)
-            print t
-            return
-        import smtplib
-        import logging
-        server = smtplib.SMTP(rc.smtpserver)
-        server.set_debuglevel(0)
-        msg = "From: %s\r\nTo: %s\r\n\r\n" % (ivars.fromaddr, rc.webmaster_email)
-        msg += ivars.msg
-        try:
-            server.sendmail(ivars.fromaddr, rc.webmaster_email, ivars.msg)
-        except Exception:
-            t.errors = ["Failed to send the email! Please search for Graham"+
-            "Poulter on Google to contact him"]
-        server.quit()
-        mailer.remove()
-        ovars.success = True
+        ivars = web.input("captcha", "email", "message", "name")
+        if ivars.email == "":
+            ivars.email = "nobody@maples.stanford.edu"
+        v = Storage()
+        v.update(ivars)
+        t = contact.contact(searchList=[page_defaults, v])
+        if ivars.captcha.lower() != "orange":
+            # Incorrect captcha
+            v.bad_captcha = True
+        else:
+            # Send the email using the ivars
+            import smtplib
+            from email.mime.text import MIMEText
+            msg = MIMEText(ivars.message)
+            msg['Subject'] = "Contact from MScanner"
+            msg['From'] = ivars.name + "<" + ivars.email + ">"
+            msg['To'] = rc.webmaster_email
+            server = smtplib.SMTP(rc.smtpserver)
+            try:
+                server.sendmail(ivars.email, rc.webmaster_email, msg.as_string())
+            except Exception, e:
+                v.failed_send = True
+                v.error = str(e)
+                sys.stderr.write(e.message)
+            else:
+                v.success = True
+            server.quit()
         print t
 
 if __name__ == "__main__":

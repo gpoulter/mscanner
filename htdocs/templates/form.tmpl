@@ -4,48 +4,47 @@
 Submit Query or Validation #slurp
 #end def title
 
-#def head
-<head>
+#def extraheaders
+<script type="text/javascript" src="$baseurl/static/mootools.js"></script>
 
-  <title>$title</title>
-  $stdheaders
-
-  <script type="text/javascript" src="$baseurl/static/mootools.js"></script>
-
-  <script type="text/javascript">
-    var help = new Object();
-    
-    window.onload = function() {
-      var names = [
-        "h_dataset",
-        "h_delcode",
-        "h_positives",
-        "h_threshold",
-        "h_limit",
-        "h_nfolds",
-        "h_numnegs",
-        "h_alpha"
-      ];
-      for (var i = 0; i < names.length; i++) {
-        help[names[i]] = new Fx.Slide(names[i], {duration: 500})
-        help[names[i]].hide() 
+<script type="text/javascript">
+  /* 
+  When a button of class "toggle" and id toggle_x is clicked,
+  it will slide-toggle the target with id x. Targets are initially hidden.
+  */
+  function create_sliders() {
+    /* handler for button with id like toggle_x */
+    function toggle_handler() {
+      \$(this.id.substr(7)).slider.toggle(); // "toggle_x" -> "x"
+    }
+    /* for each toggle button, we link and hide its target */
+    var buttons = document.getElementsByTagName("button");
+    for(var i = 0; i < buttons.length; i++) {
+      button = buttons[i];
+      if(button.className == 'toggle') {
+        id = button.id.substr(7);
+        target = \$(id)
+        if(target) {
+          target.slider = new Fx.Slide(id, {"duration": 500});
+          target.slider.hide();
+          button.onclick = toggle_handler;
+        }
       }
     }
-    
-    // Fills the 
-    function example() {
-       \$('dataset').value = "example-radiology-query"
-       \$('positives').value = "10390570\n10555669\n10587123\n10658726\n10702822\n10747308\n11092485\n11812973\n12216754\n12438060\n12708922\n12828616\n12945936\n14510633\n14628859\n14700161\n14752189\n14914750\n15256634\n15310152\n15351243\n15405683\n15480032\n15520901\n15717221\n15718419\n1592926\n16009818\n16019460\n16154823\n16189163\n16272860\n16299797\n16344746\n16415460\n16488085\n1727362\n1899742\n1928554\n1950868\n1984330\n2406785\n2731700\n2806818\n3275982\n3279735\n3416282\n3840980\n3871147\n4040300\n5327041\n5368340\n6497634\n6783686\n6856834\n7034554\n7480744\n8190956\n8208972\n8316667\n8372948\n8615251\n8911169\n8988207\n8988208\n9754100\n9922200\n9922201\n"
-    }
-  </script>
+  }
   
-</head>
-#end def head
-
-## Set the "disabled" attribute on form items if necessary
-#def disabled
-##if $status#disabled="disabled"#end if##slurp
-#end def
+  // Fills the example PubMed IDs
+  function fill_example() {
+     \$('dataset').value = "example-radiology-query"
+     \$('positives').value = "10390570\n10555669\n10587123\n10658726\n10702822\n10747308\n11092485\n11812973\n12216754\n12438060\n12708922\n12828616\n12945936\n14510633\n14628859\n14700161\n14752189\n14914750\n15256634\n15310152\n15351243\n15405683\n15480032\n15520901\n15717221\n15718419\n1592926\n16009818\n16019460\n16154823\n16189163\n16272860\n16299797\n16344746\n16415460\n16488085\n1727362\n1899742\n1928554\n1950868\n1984330\n2406785\n2731700\n2806818\n3275982\n3279735\n3416282\n3840980\n3871147\n4040300\n5327041\n5368340\n6497634\n6783686\n6856834\n7034554\n7480744\n8190956\n8208972\n8316667\n8372948\n8615251\n8911169\n8988207\n8988208\n9754100\n9922200\n9922201\n"
+  }
+  
+  window.onload = function() {
+    \$('fill_example').onclick = fill_example;
+    create_sliders();
+  }
+</script>
+#end def extraheaders
 
 #def form_row(label, id, input, help)
 <tr>
@@ -56,7 +55,7 @@ Submit Query or Validation #slurp
     $input
   </td>
   <td class="help">
-    <button type="button" onclick="help['h_$id'].toggle()">help</button>
+    <button type="button" class="toggle" id="toggle_h_$id">help</button>
   </td>
 </tr>
 <tr class="help">
@@ -70,18 +69,18 @@ Submit Query or Validation #slurp
 
 ## Generate input field 'name', of 'size' characters, defaulting to 'value'
 #def h_input(name, size, value)
-<input name="$name" id="$name" type="text" size="$size" value="$value" $disabled />
+<input name="$name" id="$name" type="text" size="$size" value="$value"/>
 #end def
 
 ## Generate textarea 'name', filled with 'value'
 #def h_textarea(name, rows, cols, value)
-<textarea name="$name" id="$name" rows="$rows" cols="$cols" $disabled>$value</textarea>
+<textarea name="$name" id="$name" rows="$rows" cols="$cols">$value</textarea>
 #end def
 
 ## Generate dropdown 'name', with keys/values in the list titled 'options',
 ## and with 'value' selected as the default.
 #def h_option(name, options, value)
-<select name="$name" id="$name" $disabled>
+<select name="$name" id="$name">
 #for f in options
 <option value="$f" #if $f==$value#selected="selected"#end if#>$f</option>
 #end for
@@ -89,7 +88,8 @@ Submit Query or Validation #slurp
 #end def
 
 #def contents
-<div class="contents">
+
+<div class="narrow">
 
 $print_errors()
 
@@ -99,8 +99,11 @@ $print_errors()
     
     <legend>Standard Options</legend>
 
-    ## Currently auto-filling the captcha - fix this later
-    <input type="hidden" id="captcha" name="captcha" value="orange" />
+    ## Auto-filling the captcha for this form, spambots likely to be invalid
+    <input type="hidden" id="captcha" name="captcha" value="orange"/>
+    
+    ## Leaving number of folds set to the default
+    <input type="hidden" id="nfolds" name="nfolds" value="$nfolds"/>    
     
     <table>
 
@@ -109,27 +112,21 @@ $print_errors()
       $h_textarea("positives",3,10,$positives), """Paste a list of
       PubMed IDs (not <a
       href="http://www.ncbi.nlm.nih.gov/entrez/publisher/uidpmid.cgi">Medline
-      UIs</a>) one per line into the text box.  The scanner will be
-      trained to detect further articles like these.  Invalid IDs will
-      be displayed, and filtered out of this box.""")
+      UIs</a>) into the text box.  The output page will list any
+      invalid IDs.""")
 
       ## Field for the dataset
       $form_row("Task Name", "dataset", $h_input("dataset",30,$dataset),
-      """To help identify your results, provide a name for your
-      submission in case there is a long queue and you want to
-      identify it later.  The title may only consist of lowercase 
-      alphanumerics plus _.-, up to a maximum of 30 
-      characters (no spaces or uppercase).""")
+      """To easily identify your results, provide a name for your
+      submission.  The title will be restriced to letters, numbers
+      and some punctuation (_-.), at most 30 characters in length.""")
       
       ## Field for deletion code
       $form_row("Deletion Code", "delcode", $h_input("delcode",8,$delcode),
-      """To prevent random people from cancelling your submission or
-      deleting your output you should specify a short easy-to-remember code 
-      (if blank, anyone  can delete your output).  It will only be used once: 
-      to delete the output. <br/><br/>Preventing others from
-      <i>viewing</i> your output requires your downloading it and then
-      deleting it from the output page (output is a plain directory,
-      so this application can't limit access)""")
+      """To prevent others from deleting your output or removing the 
+      submission from the queue, specify a short code which will
+      be required for deleting the output.""")
+      
     </table>
 
   </fieldset>
@@ -137,19 +134,17 @@ $print_errors()
   <fieldset>
     
     <legend>
-      <input type="radio" name="operation" value="query" checked="checked" $disabled/>Query Operation
+      <input type="radio" name="operation" value="query" checked="checked"/>Query Operation
     </legend>
     
     <table>
       $form_row("Score Threshold", "threshold",
-      $h_input("threshold",8,$threshold), """Only return articles
-      scoring above this threshold.  If very few articles score this
-      high, there may be fewer results than the result limit.""")
+      $h_input("threshold",8,$threshold), """Only citations
+      scoring above this threshold will be returned.""")
 
       $form_row("Result Limit", "limit", $h_input("limit",8,$limit),
-      """The maximum number of results to return.  If many articles
-      score above the threshold, the result limit will trim the list
-      down to this maximum.  Maximum allowed value: 10000.""")
+      """At most this many citations will be returned 
+      (capped between 100 and 10000)""")
     </table>
 
   </fieldset>
@@ -157,43 +152,30 @@ $print_errors()
   <fieldset>
     
     <legend>
-      <input type="radio" name="operation" value="validate" $disabled />
+      <input type="radio" name="operation" value="validate"/>
       Validation Operation
     </legend>
     
     <table>
-      $form_row("Number of Folds", "nfolds",
-      $h_option("nfolds",[0,5,10],$nfolds), """The number of groups to
-      split the positives into, and also to split the negatives into.
-      For validation, all but one pair of groups is used to build the
-      statistical model, and then scores are calculated for the last
-      group.  Specifying 0 (zero), performs leave-out-one validation
-      instead, where only the article being scored is left out of the
-      training model.""")
-
       $form_row("Number of Negatives", "numnegs",
-      $h_input("numnegs",8,$numnegs), """Select this many random
-      articles from Medline to use as negatives (custom negative sets
-      can only be used on the command line version of MScanner, since
-      they need to be quite large).""")
+      $h_input("numnegs",8,$numnegs), """Number of random
+      citations to use as irrelevant examples (capped between 10 and 100,000).
+      """)
 
-      $form_row("F-Measure Alpha", "alpha",
-      $h_input("alpha",8,$alpha), """The validation threshold is tuned
-      to maximise the &alpha;-weighted F-Measure, which reduces to the
-      F<sub>1</sub> measure (which balances recall and precision) in
-      the case of &alpha;=0.5.  &alpha; is the weight to give to
-      precision, and may take on values between 0.0 and 1.0.  Using
-      &alpha;>0.5 trades some recall for increased precision.""")
+      $form_row("F-Measure Alpha", "alpha", $h_input("alpha",8,$alpha), """The
+      weight of precision when optmising the threshold using F-Measure.
+      &alpha;=0.5 weights precision and recall equally, values between 0.5 and
+      1.0 give more weight to precision, and values between 0.0 and 0.5 give
+      more weight to recall""")
     </table>
-
+    
   </fieldset> 
 
-  <button type="submit">Submit Batch</button>
-
-  <button type="button" onclick="javascript:example()" $disabled>Example PubMed IDs</button>
+  <button type="submit">Submit</button>
+  
+  <button type="button" id="fill_example">Example</button>
 
 </form>
 
-</div><!--contents-->
-
+</div>
 #end def contents

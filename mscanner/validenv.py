@@ -2,9 +2,10 @@
 
 ValidationEnvironment -- Environment for cross-validation
 
-                                   
 """
 
+                                               
+__author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
 Free Software Foundation, either version 3 of the License, or (at your option)
@@ -26,7 +27,8 @@ from mscanner.configuration import rc
 from mscanner.featuredb import FeatureDatabase
 from mscanner.featuremap import FeatureMapping
 from mscanner.plotting import Plotter
-from mscanner.scorefile import getArticles, readPMIDs, writePMIDScores
+from mscanner.scorefile import (
+    getArticles, readPMIDs, writePMIDScores, emptyInputPage)
 from mscanner.scoring import FeatureInfo, countFeatures
 from mscanner.support.gcheetah import TemplateMapper, FileTransaction
 from mscanner.support.utils  import preserve_cwd, randomSample
@@ -61,14 +63,15 @@ class ValidationEnvironment(object):
         
     @property
     def article_list(self):
-        """List of PubMed IDs in the database (array of up to 16 million 32-bit
-        integers)"""
+        """List of PubMed IDs in the database 
+        
+        @note: May contain up to 16 million 32-bit integers."""
         try:
             return self._article_list
-        except AttributeError: pass
-        log.info("Loading article list")
-        self._article_list = nx.array([int(x) for x in rc.articlelist.lines()])
-        return self._article_list
+        except AttributeError: 
+            log.info("Loading article list")
+            self._article_list = nx.array([int(x) for x in rc.articlelist.lines()])
+            return self._article_list
         
     @preserve_cwd
     def standardValidation(self, pospath, negpath=None):
@@ -77,7 +80,7 @@ class ValidationEnvironment(object):
         @param pospath: Location of input positive PMIDs
         @param negpath: Location of input negative PMIDs (or None)
         """
-        # Report directory
+        # Construct report directory
         import time
         if rc.timestamp is None: rc.timestamp = time.time() 
         if not rc.valid_report_dir.exists():
@@ -98,6 +101,11 @@ class ValidationEnvironment(object):
         # Calculate new results
         else:
             self.loadInputs(pospath, negpath)
+            if len(self.positives) == 0:
+                # No valid PubMed IDs in the input = no validation
+                emptyInputPage(list(
+                    readPMIDs(rc.valid_report_dir/"positives.broken.txt")))
+                return
             self.getResults()
             self.saveResults()
         self.writeReport()
@@ -105,20 +113,28 @@ class ValidationEnvironment(object):
         rc.timestamp = None
 
     def loadInputs(self, pospath, negpath=None):
-        """Load PubMed IDs from files.  If negpath is None, we generate
-        negatives by random sample of PubMed citations."""
+        """Load PubMed IDs from files.  
+        
+        @note: If negpath is None, negatives are taken by random sample 
+        of PubMed citations in self.article_list."""
         log.info("Reading positive PubMed IDs")
         positives = list(readPMIDs(
             pospath, outbase=rc.valid_report_dir/"positives", include=self.featdb))
         log.info("Reading negative PubMed IDs")
         if negpath is None:
-            # No negatives provided, take a sample of random citations
+            # No negatives provided
+            # Clamp number of negatives if more are requested than are available
+            maxnegs = len(self.article_list)-len(positives)
+            if rc.numnegs > maxnegs:
+                rc.numnegs = maxnegs
+            # Take an appropriately sized sample of random citations
             self.negatives = randomSample(
                 rc.numnegs, self.article_list, set(positives))
         else:
             # Read existing list of negatives from disk
             negatives = list(readPMIDs(
-                negpath, outbase=rc.valid_report_dir/"negatives", exclude=set(positives)))
+                negpath, outbase=rc.valid_report_dir/"negatives", 
+                exclude=set(positives)))
             self.negatives = nx.array(negatives, nx.int32)
         self.positives = nx.array(positives, nx.int32)
         
@@ -126,7 +142,10 @@ class ValidationEnvironment(object):
     def loadResults(self):
         """Sets self.(positives, pscores, negatives, nscores),
         
-        @note: writePMIDScores has written PMIDs decreasing by score
+        @note: Used to re-analyse validation runs.
+        
+        @note: Assumes PMIDs are decreasing by score, as
+        written by scorefile.writePMIDScores.
         """
         log.info("Loading result scores for %s", rc.dataset)
         os.chdir(rc.valid_report_dir)
@@ -146,7 +165,7 @@ class ValidationEnvironment(object):
         writePMIDScores(rc.report_negatives, izip(self.nscores, self.negatives))
 
     def getResults(self):
-        """Calculate results by creating a Validator instance
+        """Calculate scores on citations using cross validation
         
         @note: We perform all the self.featdb lookups beforehand (and only
         once) - somehow performing them while busy with validation is terribly
@@ -171,9 +190,10 @@ class ValidationEnvironment(object):
         
     @preserve_cwd
     def geneDrugFilter(self):
-        """Set self.postFilterFunction to this method, which returns a set of
-        PubMed IDs for input citations having gene-drug co-occurrences in their
-        abstract.s """
+        """Returns a set of PubMed IDs for input citations having gene-drug
+        co-occurrences in their abstract.
+        
+        @note: Use by assigning this method to self.postFilterFunction"""
         from mscanner.pharmdemo.dbexport import (writeGeneDrugCountsCSV, 
                                                  countGeneDrug)
         from mscanner.pharmdemo.genedrug import getGeneDrugFilter
@@ -261,5 +281,6 @@ class ValidationEnvironment(object):
             p = self.performance,
             rc = rc,
             timestamp = rc.timestamp,
+            notfound_pmids = list(readPMIDs(rc.valid_report_dir/"positives.broken.txt")),
         ).respond(ft)
         ft.close()

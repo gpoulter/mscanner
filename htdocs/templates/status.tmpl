@@ -4,84 +4,107 @@
 MScanner Status Report
 #end def title
 
+#def extraheaders
+<script type="text/javascript">
+    /* Reload status page every 30 second */
+    var timer = 30;
+    function countdown() {
+        timer = timer - 1;
+        if (timer % 10 == 0 || timer < 5) {
+            document.getElementById("reload").innerHTML = timer;
+        }
+        if(timer == 0) {
+            window.location.reload();
+        }
+        setTimeout(countdown, 1000);
+    }
+    window.onload = countdown;
+</script>
+#end def extraheaders
+
 #def contents
+<div class="text">
+
+<p>
+This page will reload in <span id="reload">30</span> seconds.  
+</p>
 
 $print_errors()
 
-<p class="narrow">This page displays the status of MScanner.   Queries in the
-queue each take about 90 seconds to process, while cross validation
-may take up to 160 seconds if 100,000 irrelevant citations are specified.</p>
-
 #include $inc("statusblock.tmpl")
 
-## We've been given a target task name to output the status for
+##### TARGET-SPECIFIC STATUS #####
+
 #if $getVar("target",None) is not None
 
-<h2>Status for <i>$target</i></h2>
-
-#if $target_status == "current"
-
-<p>The task is currently in progress.</p>
-
-#elif $target_status == "queue"
-
-<p>The task is currently waiting in the queue.</p>
-
-#elif $target_status == "done"
-
-<p>The task is complete.  The output should be waiting at
-<a href="static/output/$target">static/output/$target</a></p>
-
-#elif $target_status == "notfound"
-
-<p>The task was not found in the queue or amongst the complete tasks.
-You can try <a href="form">submitting a task</a> or looking amongst
-the <a href="output">complete tasks</a>.</p>
-
-#end if target_status
-
-## If we're given a deletion code, offer to delete the task
-#if $getVar("delcode", None) is not None
-
-#if len($delcode) == 0
-<p>According to the parameters, no deletion code was set.</p>
-#else
-<p>According to the parameters, the deletion code is <b>$delcode</b>.</p>
-#end if
-
-<form action="output" method="post">
-<input type="hidden" name="operation" value="delete" />
-<input type="hidden" name="dataset" value="$target" />
-<input type="hidden" name="delcode" value="$delcode" />
-<input type="submit" value="Delete $target" />
-</form>
-
-#end if delcode
+    <h2>Status for <i>$target</i></h2>
+    
+    #if $target_status == "current"
+    
+        <p>Your task is in progress, and should be done within 2 minutes
+        for queries, and within 3 minutes for cross validation.</p>
+    
+    #elif $target_status == "queue"
+    
+        <p>Your task is waiting in the queue (give an average of 2 minutes per 
+        item in the queue).</p>
+    
+    #elif $target_status == "done"
+    
+        <p>Your task is complete.  The output should be waiting at
+        <a href="static/output/$target">static/output/$target</a></p>
+    
+    #elif $target_status == "notfound"
+    
+        <p>The specified task was not found in the queue or amongst the complete tasks.
+        You can try <a href="form">submitting a task</a> or looking amongst
+        the <a href="output">complete tasks</a>.</p>
+    
+    #end if target_status
+    
+    ###### TASK DELETION #######
+    
+    #if $getVar("delcode", None) is not None
+    
+        #if len($delcode) == 0
+        <p>According to the parameters, no deletion code was set.</p>
+        #else
+        <p>According to the parameters, the deletion code is <b>$delcode</b>.</p>
+        #end if len_delcode
+        
+        <form action="output" method="post">
+        <input type="hidden" name="operation" value="delete" />
+        <input type="hidden" name="dataset" value="$target" />
+        <input type="hidden" name="delcode" value="$delcode" />
+        <input type="submit" value="Delete $target" />
+        </form>
+    
+    #end if delcode
 
 #end if target
 
+##### LIST QUEUE CONTENTS #####
+
 #if $getVar('current', None) is not None
 
-<h2>Other task files in the queue</h2>
-## Print the list of other files in the queue
-#if len($listing) > 0
-<pre>
-#echo "\n".join($listing)
-</pre>
-#end if
+    <h2>Other task files in the queue</h2>
+    ## Print the list of other files in the queue
+    #if len($listing) > 0
+    <pre>
+    #echo "\n".join($listing)
+    </pre>
+    #end if listing
 
-#end if other_task_files
+#end if current
 
-## Print the latest contents of the log
+##### PRINT LOG #####
+
+#if len($getVar('logcontents', [])) > 0
 <h2>Contents of the log</h2>
-#if len($getVar('logcontents', [])) == 0
-<p>The log file is empty.</p> 
-#else
 <pre>
 #echo "".join($logcontents)
 </pre>
 #end if logcontents
 
-</div> <!--class=status-->
-
+</div><!--text-->
 #end def contents

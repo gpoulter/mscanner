@@ -2,11 +2,16 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 
-#* TEMPLATE PARAMETERS
+#* Validation output page
+
 $linkpath -- None, or where to link for JS/CSS instead of #include
-$overlap -- None, or degree of overlap between pos and neg distributions
-$p -- PerformanceStats instance (with p.tuned)
+
 $rc -- Configuration variables
+
+$overlap -- None, or degree of overlap between pos and neg distributions
+
+$p -- PerformanceStats instance (with p.tuned)
+
 $timestamp -- time.time() for start of the operation
 *#
 
@@ -21,20 +26,28 @@ $timestamp -- time.time() for start of the operation
   <script type="text/javascript" src="$linkpath/hider.js"></script>
   <link rel="stylesheet" type="text/css" href="$linkpath/style.css"/>
   #else
-  <style type="text/css">
-    #include raw $_inc("style.css")
-  </style>
+
   <script type="text/javascript">
     #include raw $_inc("hider.js")
   </script>
+
+  <style type="text/css">
+    #include raw $_inc("style.css")
+  </style>
   #end if
+  
+  <script type="text/javascript">
+  window.onload = function() {
+    make_toggles();
+  }
+  </script>
   
 </head>
 
 #def help(name)
 <td>
   #if $name is not None
-  <button onclick="toggle('$name')">?</button>
+  <button class="toggle" id="toggle_$name">?</button>
   #end if
 </td>
 #end def
@@ -43,7 +56,6 @@ $timestamp -- time.time() for start of the operation
 <tr id="$name" class="help">
   <td colspan="3">
     $value
-    <script type="text/javascript">hide('$name')</script>
   </td>
 </tr>
 #end def
@@ -55,6 +67,8 @@ $timestamp -- time.time() for start of the operation
 </div>
 
 <div class="body">
+
+<div class="narrow">
 
 <h2>Global information</h2>
 
@@ -138,31 +152,34 @@ $timestamp -- time.time() for start of the operation
       <td id="roc_area">#echo "%.5f" % $p.W #</td>
       $help("h_roc")
     </tr>
-    $hr("h_roc", """Global measure of classifier performance which is
-    independent of the prevalence in the input data and the choice of
-    decision threshold.  Worst case is 0.5 (true positives increase at
-    same rate as false positives), and best case is 1.0.""")
+    $hr("h_roc", """Area under ROC is a global data-size-independent
+    measure of performance.  Worst case is 0.5 (diagonal line: true positives 
+    increase at same rate as false positives), and best case is 1.0.""")
 
     <tr>
       <th>Standard Error of A(z)</th>
       <td id="roc_stderr">#echo "%.5f" % $p.W_stderr #</td>
       $help("h_roc_stderr")
     </tr>
-    $hr("h_roc_stderr", """Since A(z) is equal to the Wilcoxon statistic W for the 
-    data, we use the method of Hanley1982 to calculate the standard error
-    of the area under the ROC curve.""")
+    $hr("h_roc_stderr", """Area is equivalent to the Wilcoxon statistic W, for which 
+    we use the method of Hanley1982 to calculate the standard error.""")
 
     <tr>
       <th>Area under PR curve</th>
       <td id="pr_area">#echo "%.5f" % $p.PR_area #</td>
       $help("h_prcurve")
     </tr>
-    $hr("h_prcurve", """The area under the Precision-Recall (PR) curbe
-    is equal to the average precision over equally spaced points of
-    recall between 0 and 1.  Best performance is 1.0, worst
-    performance is equal to prevalence.  All other factors held
-    constant, this value increases monotonically with prevalence
-    (number of positives over number of negatives).""")
+    $hr("h_prcurve", """Area under the Precision-Recall (PR) curve,
+    using trapezoidal rule over each distinct threshold.""")
+    
+    <tr>
+      <th><b>Averaged Precision</b></th>
+      <td id="avprec">#echo "%.5f" % $p.AvPrec #</td>
+      $help("h_avprec")
+    </tr>
+    $hr("h_avprec", """Average value of precision, where the
+    precision is evaluated at each point where a relevant citation is 
+    retrieved.""")
     
     <tr>
       <th>Break-Even <span class="footnote">(where precision=recall)</span></th>
@@ -186,7 +203,7 @@ $timestamp -- time.time() for start of the operation
   #include $_inc("features.tmpl")
 
   <h2>Classifier Confusion Matrix
-  <button onclick="toggle('h_cmatrix')">?</button>
+  <button class="toggle" id="toggle_h_cmatrix">?</button>
   </h2>
 
   <div class="help" id="h_cmatrix">
@@ -197,7 +214,6 @@ $timestamp -- time.time() for start of the operation
   it.
   </p>
   </div>
-  <script type="text/javascript">hide('h_cmatrix')</script>
 
   <table class="matrix">
     <colgroup span="4">
@@ -249,7 +265,7 @@ $timestamp -- time.time() for start of the operation
   </table>
 
   <h2>Common Performance Measures
-  <button onclick="toggle('h_performance')">?</button>
+  <button class="toggle" id="toggle_h_performance")">?</button>
   </h2>
 
   <div class="help" id="h_performance">
@@ -335,9 +351,9 @@ $timestamp -- time.time() for start of the operation
         classifier's precision is over a classifier which calls
         everything positive.
       </dd>
-    </dl>
+      
+  </dl>
   </div>
-  <script type="text/javascript">hide('h_performance')</script>
 
   <table class="results">
     <colgroup>
@@ -415,7 +431,7 @@ $timestamp -- time.time() for start of the operation
   </table>
 
   <h2>Performance graphs
-  <button onclick="toggle('h_graphs')">?</button>
+  <button class="toggle" id="toggle_h_graphs">?</button>
   </h2>
 
   <div class="help" id="h_graphs">
@@ -455,7 +471,6 @@ $timestamp -- time.time() for start of the operation
       </dd>
     </dl>
   </div>
-  <script type="text/javascript">hide('h_graphs')</script>
 
   <img src="$rc.report_artscores_img" alt="Article Score Densities"/>
   
@@ -467,7 +482,11 @@ $timestamp -- time.time() for start of the operation
   
   <img src="$rc.report_fmeasure_img" alt="Precision and Recall vs Threshold"/>
 
-</div>
+  #include $_inc("invalid.tmpl")
+
+</div><!--narrow-->
+
+</div><!--body-->
 
 <div class="footer">
                                                

@@ -1,7 +1,7 @@
 #if $getVar('current', None) is None
 
 <p>
-There are no tasks currently in the MScanner queue.
+There are no tasks waiting in the queue.
 </p>
 
 #else
@@ -16,15 +16,16 @@ There are no tasks currently in the MScanner queue.
   </tr>
   <tr>
     <th>
-      Time of submission
+      Submission time
     </th>
     <td>
+      #import time
       $time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($current.timestamp))
     </td>
   </tr>
   <tr>
     <th>
-      Total tasks in queue
+      Tasks still to do
     </th>
     <td>
       $current.queue_length

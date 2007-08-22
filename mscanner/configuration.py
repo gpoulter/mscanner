@@ -12,10 +12,10 @@ in the instance (passed via __init__), which may differ from the RC one.
 
 @note: For parameters which depend on others, prefix with lambda:
 so that the dependency is updated dynamically.
-
-                                   
 """
 
+                                               
+__author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
 Free Software Foundation, either version 3 of the License, or (at your option)

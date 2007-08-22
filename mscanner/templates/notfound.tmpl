@@ -1,0 +1,37 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+
+  <title>MScanner error for $rc.dataset</title>
+
+  #if $getVar("linkpath", None) 
+  <link rel="stylesheet" type="text/css" href="$linkpath/style.css"/>
+  #else
+  <style type="text/css">
+    #include raw $_inc("style.css")
+  </style>
+  #end if
+  
+</head>
+
+<body>
+
+<div class="header">
+ <h1>MScanner error for $rc.dataset</h1>
+</div>
+
+<div class="narrow body">
+
+#include $_inc("invalid.tmpl")
+
+</div><!--narrow body-->
+
+<div class="footer">
+                                               
+</div>
+
+</body>
+
+</html>

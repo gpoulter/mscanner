@@ -143,6 +143,8 @@ rc.timestamp = None
 rc.webmaster_email = "xxxxxxxxxxxxxxxxxxxxxxxx"
 ## Base directory for the website
 rc.siteurl = "http://mscanner.stanford.edu"
+## If true, link to .js and .css files instead of including them
+rc.linkHeaders = False;
 
 ## Parameters affecting FeatureInfo 
 
@@ -170,7 +172,7 @@ rc.alpha = 0.5
 ## Number of negatives to use
 rc.numnegs = 500000
 ## Number of citations per output file
-rc.citations_per_file = 250
+rc.citations_per_file = 200
 
 ## Logging configuration
 def initLogger(console=True, logfile=None):

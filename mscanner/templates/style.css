@@ -1,6 +1,6 @@
 /* 
+Colour Palette
 
-Colours
 white (page background)
 #EEEEEE; /* light gray
 #CCCCCC; /* middle gray
@@ -14,21 +14,6 @@ white (page background)
 #EEEEFF; /* light mauve   (help blocks in table)
 */
 
-.borderless, table.borderless td, table.borderless th {
-  /* use to remove borders from tables and images */
-  border: 0;
-}
-
-.first {
-  /* remove margin for things at the top */
-  margin-top: 0 ! important; 
-}
-
-.last, .with-subtitle {
-  /* remove margin for things at the bottom */
-  margin-bottom: 0 ! important; 
-}
-
 html, body, div {
     display: block;
     padding: 0;
@@ -40,24 +25,19 @@ img { display: block; }
 
 dt { font-weight: bold; }
 
-html { background-color: white; }
+html { background-color: #C2D7EE; /* light blue */ }
 
-div.body {
+div#body {
     padding: 1em;
     width: 100%;
 }
 
-div.narrow {
-    /* keep everything within this div to a readable width */
-    max-width: 35em;
-}
-
-div.header, div.footer {
+div#header, div#footer {
     /* colour for header and footer */
     background-color: #FFFFDD; /* light yellow */
 }
 
-div.header {
+div#header {
     /* header section for page */
     border-bottom-style: dotted;
     margin: 0;
@@ -65,21 +45,26 @@ div.header {
     text-align: center;
 }
 
-div.footer {
+div#footer {
     /* footer section for page */
     border-top-style: dotted;
-    width: 100%;
     padding: 1ex;
 }
 
-div.header > h1 {
+div#header > h1 {
     /* avoid margins within the header */
     margin: 0;
 }
 
+div.narrow {
+    /* keep everything within this div to a readable width */
+    max-width: 35em;
+}
+
 h2 {
     /* underline major headings */
-    border-bottom: 2px solid black;
+    border-bottom: 1px solid black;
+    margin-top: 1ex;
 }
 
 /* common properties for all tables */
@@ -90,7 +75,7 @@ table, thead, tbody {
 table {
     /* default table settings */
     border-collapse: collapse;
-    width: 100%; /* make surrounding container narrow */
+    width: 100%; /* fill surrounding container */
     background-color: #E8F0F8; /* pastel blue */
 }
 thead {

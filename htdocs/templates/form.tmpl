@@ -5,7 +5,12 @@ Submit Query or Validation #slurp
 #end def title
 
 #def extraheaders
-<script type="text/javascript" src="$baseurl/static/mootools.js"></script>
+
+## Uncompressed javascript for debugging (77k)
+##<script type="text/javascript" src="$baseurl/static/mootools.js"></script>
+
+## Compressed javascript for production (13k)
+<script type="text/javascript" src="$baseurl/static/mootools.zip.js"></script>
 
 <script type="text/javascript">
   /* 
@@ -109,23 +114,30 @@ $print_errors()
 
       ## Box for pasting in PubMed IDs
       $form_row("Input Citations", "positives",
-      $h_textarea("positives",3,10,$positives), """Paste a list of
-      PubMed IDs (not <a
-      href="http://www.ncbi.nlm.nih.gov/entrez/publisher/uidpmid.cgi">Medline
-      UIs</a>) into the text box.  The output page will list any
-      invalid IDs.""")
+      $h_textarea("positives",3,10,$positives), 
+      
+      """A list of PubMed IDs, one per line.  The results page will list any
+      invalid identifiers.  To obtain PubMed IDs (if a list is not already
+      available from a database or reference manager), tick some search
+      results on <a href="http://www.ncbi.nlm.nih.gov/sites/entrez">PubMed</a>,
+      then use the drop-down boxes Display: "UI List" and Send To: "Text".      
+      """)
 
       ## Field for the dataset
-      $form_row("Task Name", "dataset", $h_input("dataset",30,$dataset),
-      """To easily identify your results, provide a name for your
-      submission.  The title will be restriced to letters, numbers
-      and some punctuation (_-.), at most 30 characters in length.""")
+      $form_row("Task Name", "dataset", 
+      $h_input("dataset",30,$dataset),
+
+      """The name of the task, to make it easier to locate on the results page.
+      The name is restriced to letters, numbers and some punctuation (_-.), at
+      most 30 characters in length.""")
       
       ## Field for deletion code
-      $form_row("Deletion Code", "delcode", $h_input("delcode",8,$delcode),
-      """To prevent others from deleting your output or removing the 
-      submission from the queue, specify a short code which will
-      be required for deleting the output.""")
+      $form_row("Deletion Code", "delcode", 
+      $h_input("delcode",8,$delcode),
+
+      """(optional) To prevent others from deleting your output or removing the
+      submission from the queue, specify a short code which will be required
+      for deleting the output.""")
       
     </table>
 
@@ -138,13 +150,19 @@ $print_errors()
     </legend>
     
     <table>
-      $form_row("Score Threshold", "threshold",
-      $h_input("threshold",8,$threshold), """Only citations
-      scoring above this threshold will be returned.""")
 
-      $form_row("Result Limit", "limit", $h_input("limit",8,$limit),
-      """At most this many citations will be returned 
-      (capped between 100 and 10000)""")
+      $form_row("Score Threshold", "threshold",
+      $h_input("threshold",8,$threshold), 
+      
+      """The results page will contain citations scoring above
+      this threshold (threshold may be between -100 and +100).""")
+
+      $form_row("Result Limit", "limit", 
+      $h_input("limit",8,$limit),
+
+      """At most this many citations will be returned (limit may be
+      between 100 and 10000)""")
+      
     </table>
 
   </fieldset>
@@ -158,21 +176,27 @@ $print_errors()
     
     <table>
       $form_row("Number of Negatives", "numnegs",
-      $h_input("numnegs",8,$numnegs), """Number of random
-      citations to use as irrelevant examples (capped between 10 and 100,000).
-      """)
+      $h_input("numnegs",8,$numnegs), 
+      
+      """Number of random citations to use as irrelevant examples in 10-fold
+      cross validation (number of negatives may be between 100 and
+      100,000).""")
 
-      $form_row("F-Measure Alpha", "alpha", $h_input("alpha",8,$alpha), """The
-      weight of precision when optmising the threshold using F-Measure.
-      &alpha;=0.5 weights precision and recall equally, values between 0.5 and
-      1.0 give more weight to precision, and values between 0.0 and 0.5 give
-      more weight to recall""")
+      $form_row("F-Measure Alpha", "alpha", 
+      $h_input("alpha",8,$alpha), 
+      
+      """The weight of precision use to calculate the F measure (the threshold
+      for calling a citation positive is chosen to maximise F). &alpha;=0.5 gives
+      precision and recall equal weight, values between 0.5 and 1.0 give more
+      weight to precision, and values between 0.0 and 0.5 give more weight to
+      recall""") 
+      
     </table>
     
   </fieldset> 
 
   <div>
-    <button type="submit">Submit</button>
+    <input type="submit" />
   
     <button type="button" id="fill_example">Example</button>
   </div>

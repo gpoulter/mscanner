@@ -8,20 +8,19 @@ Contact the Author
 <div class="narrow">
 
 #if $getVar("failed_send", False)
-<p>
-Failed to send the email! Please contact 
-<a href="mailto:mscanner.w3f@gishpuppy.com">Graham poulter</a>.
-
-Error: $error
-</p>
-<hr/>
+    <p>
+    Failed to send the email! Please contact 
+    <a href="mailto:mscanner.w3f@gishpuppy.com">Graham poulter</a>.
+    Error: $error
+    </p>
+    <hr />
 #end if
 
 #if $getVar("bad_captcha", False)
-<p>
-Error, bad captcha entered: <q>$captcha</q>
-</p>
-<hr/>
+    <p>
+    Error, bad captcha entered: <q>$captcha</q>
+    </p>
+    <hr />
 #end if
 
 #if $getVar("success", False)
@@ -33,7 +32,7 @@ Error, bad captcha entered: <q>$captcha</q>
     #set $message = ""
     #set $captcha = ""
     </p>
-    <hr/>
+    <hr />
 #end if
 
 <form action="contact" method="post">

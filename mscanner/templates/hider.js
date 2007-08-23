@@ -3,21 +3,6 @@ function $(name) {
    return document.getElementById(name);
 }
 
-/* Return target of the event */
-function event_target(event) {
-   var targ;
-   if (event.target) {
-      targ = event.target; // Netscape
-   }
-   else if (event.srcElement) {
-      targ = event.srcElement; // Microsoft
-   }
-   if (targ.nodeType == 3) { // defeat Safari bug
-      targ = targ.parentNode;
-   }
-   return targ;
-}  
-
 visible_element = null;
 
 /* toggle element */
@@ -51,20 +36,10 @@ function show(element, vis_state) {
    visible_element = element;
 }
 
-/* given an event, return its target in a cross-browser manner */
-function getEventTarget(e) {
-   var targ;
-   if (!e) var e = window.event;
-   if (e.target) targ = e.target;
-   else if (e.srcElement) targ = e.srcElement;
-   if (targ.nodeType == 3) // defeat Safari bug
-      targ = targ.parentNode;
-   return targ;
-}
 
 /* create events for all toggle buttons */
 function make_toggles() {
-  /* handler for toggle buttons, using the id's like toggle_x */
+  /* for toggle buttons, uses the id's of the form toggle_x */
   function toggle_handler() {
     toggle($(this.id.substr(7)));
   }

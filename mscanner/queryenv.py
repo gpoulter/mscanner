@@ -290,7 +290,7 @@ class QueryEnvironment:
         ft = FileTransaction(rc.report_index, "w")
         index = mapper.results(
             stats = self.featinfo.stats,
-            #linkpath = rc.templates.relpath().replace('\\','/'),
+            linkpath = rc.templates.relpath().replace('\\','/') if rc.linkHeaders else None,
             lowest_score = self.results[-1][0],
             num_results = len(self.results),
             best_tfidfs = best_tfidfs,
@@ -317,35 +317,37 @@ def writeCitations(template, mode, scores, fname, perfile):
     @param perfile: Number of citations per file (the very last file 
     may however have up to 2*perfile-1 citations)
     """
-    fnames = [None] + [fname] + [ 
-        (fname.namebase + ("_%02d" % x) + fname.ext)
-        for x in range(2,2+int(len(scores)/perfile)) ] + [None]
+    # List of ranks where each file's citation records start
     starts = range(0, len(scores), perfile)
-    if len(starts)>1 and (len(scores)-starts[-1]) < perfile:
+    # If the last file is less than half full, we concat to second-last
+    if len(starts)>1 and (len(scores)-starts[-1]) < (perfile//2):
         del starts[-1]
+    # List of HTML files containing the citations
+    from path import path
+    fnames = [fname] + [ 
+        path(fname.namebase + ("_%02d" % x) + fname.ext)
+        for x in range(2, 1+len(starts)) ]
     for count, start in enumerate(starts):
-        if count < len(starts)-1:
+        if count+1 < len(starts):
             towrite = scores[start:start+perfile]
         else:
             towrite = scores[start:]
-            fnames[count+2] = None
-        ft = FileTransaction(fnames[count+1], "w")
+        ft = FileTransaction(fnames[count], "w")
         template(
             cite_table = citationTable(start+1, towrite),
             dataset = rc.dataset,
-            #linkpath = rc.templates.relpath().replace('\\','/'),
+            linkpath = rc.templates.relpath().replace('\\','/') if rc.linkHeaders else None,
             mode = mode, 
-            num_citations = len(towrite),
-            prev_file = fnames[count],
-            this_file = fnames[count+1],
-            next_file = fnames[count+2],
+            report_length = len(towrite),
+            filelist = fnames,
+            filename = fnames[count],
             ).respond(ft)
         ft.close()
 
-def citationTable(startfrom, scores):
+def citationTable(startrank, scores):
     """Generate HTML table for citations using ElementTree
     
-    @param startfrom: Rank of the first article in scores
+    @param startrank: Rank of the first article in scores
 
     @param scores: List of (score, Article) in decreasing order of score
     
@@ -392,7 +394,7 @@ def citationTable(startfrom, scores):
         # Classification
         SubElement(tr, "td")
         # Rank
-        SubElement(tr, "td").text = str(idx+startfrom)
+        SubElement(tr, "td").text = str(idx+startrank)
         # Score
         SubElement(tr, "td").text = "%.2f" % score
         # PMID

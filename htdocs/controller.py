@@ -92,7 +92,7 @@ def getStatusForTask(dataset, current=None):
 
 def checkDataset(dataset):
     """For security, we always check the task name is valid"""
-    if re.match(r"^[a-zA-Z0-9._-]+$", dataset) is None:
+    if re.match(r"^[a-zA-Z0-9._-]{1,30}$", dataset) is None:
         raise ValueError("Invalid task name %s!" % dataset)
 
 def listQueueTasks(descriptors=False):
@@ -149,21 +149,23 @@ def validateForm(input):
             "The captcha must be the word 'orange'"),
         delcode=(
             str, lambda x: re.match(r"^[ a-zA-Z0-9.;_-]{0,20}$", x) is not None,
-            "Deletion code must be alphanumeric and shorter than 20 characters"),
+            "The deletion code must consist of letters and numbers"+
+            "and be shorter than 20 characters"),
         dataset=(
-            lambda x: re.sub(r"[^ a-zA-Z0-9.;_-]", "", x)[:50], 
-            lambda x: re.match(r"^[a-zA-Z0-9._-]{1,50}$", x) is not None,
-            "The task name must contain a-z, ., _, - characters only "+
-            "as it needs to be safe as a directory name in a URL."),
+            lambda x: re.sub(r"[^ a-zA-Z0-9.;_-]", "", x)[:30], 
+            lambda x: re.match(r"^[ a-zA-Z0-9._-]{1,30}$", x) is not None,
+            "The task name must be between 1 and 30 letters, numbers or ._-"+
+            "characters, so that it is safe to use as a directory and URL"),
         limit=(
             int, lambda x: 100 <= x <= 10000,
-            "Retrieval limit must be between 100 and 10000."),
+            "The retrieval limit must be between 100 and 10000."),
         nfolds=(
             int, lambda x: x == 5 or x == 10,
-            "Number of cross validation folds must be 5 or 10."),
+            "The number of cross validation folds must be 5 or 10."),
         numnegs=(
             int, lambda x: 100 <= x <= 100000,
-            "Number of negatives must be between 100 and 100000."),
+            "The number of cross validation negatives must be between"+
+            "100 and 100000."),
         operation=(
             str, lambda x: x in ["delete", "download", "query",  "validate"],
             "Operation must be 'delete', 'download', 'query' or 'validate'"),

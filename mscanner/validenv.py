@@ -277,7 +277,7 @@ class ValidationEnvironment(object):
         ft = FileTransaction(rc.report_index, "w")
         tpl = mapper.validation(
             stats = self.featinfo.stats,
-            #linkpath = rc.templates.relpath().replace('\\','/'),
+            linkpath = rc.templates.relpath().replace('\\','/') if rc.linkHeaders else None,
             overlap = overlap,
             p = self.performance,
             rc = rc,

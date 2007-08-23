@@ -2,15 +2,9 @@
 #include <stdlib.h>
 
 // Simple tests for ctypes
-void double_int(int a, int *b) {
-    *b = a*2;
-}
-void double_array(int len, int *a) {
-    int i;
-    for(i = 0; i < len; i++) {
-        a[i] *= 2;
-    }
-}
+void double_int(int a, int *b) { *b = a*2; }
+void double_array(int len, int *a) { int i;
+for(i = 0; i < len; i++) a[i] *= 2; }
 
 // Holds PubMed ID and score of a citation
 typedef struct {

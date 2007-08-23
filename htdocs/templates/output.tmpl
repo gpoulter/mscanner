@@ -17,7 +17,7 @@ $print_errors()
 <p>Failed to delete the task <q>$target</q></p>
 
   #if $nodelete == "nodelcode"
-    <p>Cannot delete the output since no deletion code was provided</p>
+    <p>Cannot delete the output because no deletion code was provided.</p>
   #elif $nodelete == "busy"
     <p>Cannot delete since MScanner is currently busy with the task.</p>
   #elif $nodelete == "notfound"

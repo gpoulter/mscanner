@@ -7,23 +7,57 @@ MScanner: Retrieve Medline citations using examples
 #def contents
 <div class="narrow">
 
-<h3>How to use MScanner</h3>
-
-<p>Click on "Query", paste in some PubMed IDs representing
-Medline citations, choose a name for the task, and click "Submit".  
-The status page will give you a link to your output, which will be ready 
-in 90 seconds if you are at the front of the queue.  The output
-will consist of several hundred Medline citations that MScanner thinks are most
-similar in content to the citations</p>
-
-<h3>Why use MScanner</h3>
-
-<p>If you have examples of what you are looking for, MScanner
-helps you find more without having to guess keywords.  It should
-be useful for database curation, or when one needs to construct
-a large set of citations on some topic.</p>
-
 #include $inc("statusblock.tmpl")
+
+<h2>Queries</h2>
+
+<p>Give MScanner examples of the kinds of articles you are looking for,
+and it will automatically find similar articles</p>
+
+<ul>
+<li>Click on "Query" above</li>
+<li>Paste a list of PubMed IDs</li>
+<li>Enter a name for the submission</li>
+<li>Click "submit"</li>
+</ul>
+
+<p>
+You will be taken to a refreshing status page until the results
+are ready.  View <a href="static/sample/pg07-query">sample results</a>
+for a query using 1,500 citations from the 
+<a href="http://www.pharmgkb.org">Pharmacogenetics KnowledgeBase</a>.
+</p>
+
+<h3>Cross validation</h3> 
+
+<p> 
+Using random articles for input produces random articles for output. To see
+how good MScanner is at distinguishing the input from the rest of <a
+href="http://www.nlm.nih.gov/pubs/factsheets/medline.html">Medline</a>, use the
+10-fold cross validation option on the query page (requires 30 or more training
+citations). View <a href="static/sample/pg07-valid"> sample cross validation
+output</a> 
+</p>
+
+<p>
+MScanner has been tested using Mozilla Firefox and Internet Explorer 7,
+and the mini-application for searching within the output page
+requires JavaScript to be enabled.
+</p>
+
+<!--
+<h3>Publication Results</h3>
+
+<p>
+MScanner is being published in BMC Bioinformatics.  The full
+cross validation results for the published data sets are below:
+</p>
+
+<a href="sample/pg07-valid">
+
+
+<a href="sample/pg07-query">PG07 Query
+-->
 
 </div><!--narrow-->
 #end def contents

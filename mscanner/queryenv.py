@@ -361,7 +361,7 @@ def citationTable(startrank, scores):
     @note: Original Cheetah template is a docstring at the end of the file.
     """
     from xml.etree.cElementTree import ElementTree, Element, SubElement
-    table = Element("table", {"class":"cite"}, id="citations")
+    table = Element("table", id="citations")
     ncols = 9 # Number of columns in the table
     cg = SubElement(table, "colgroup")
     SubElement(cg, "col", {"class":"classification"})
@@ -409,7 +409,7 @@ def citationTable(startrank, scores):
         td = SubElement(tr, "td")
         td.text = "+" if art.abstract else ""
         # Title
-        td = SubElement(tr, "td", {"class":"title"})
+        td = SubElement(tr, "td")
         td.text = art.title.encode("utf-8")
         # ISSN
         td = SubElement(tr, "td")

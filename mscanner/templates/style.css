@@ -25,7 +25,10 @@ img { display: block; }
 
 dt { font-weight: bold; }
 
-html { background-color: #C2D7EE; /* light blue */ }
+html { 
+    color: black; /* text color */
+    background-color: #C2D7EE; /* light blue */ 
+}
 
 div#body {
     padding: 1em;
@@ -33,8 +36,7 @@ div#body {
 }
 
 div#header, div#footer {
-    /* colour for header and footer */
-    background-color: #FFFFDD; /* light yellow */
+    background-color: white; 
 }
 
 div#header {
@@ -118,66 +120,77 @@ table.results tr.help {
     padding: 1ex;
 }
 
-/* features.tmpl feature summary */
+/************** FEATURES.TMPL ONLY ***************/
 table.features col.label {
     /* width of left-most column with labels */
     width: 20em;
 }
 
-/* citations.tmpl citation table */
-fieldset.cite {
-    width: auto;
-    max-width: 95%;
-    margin-bottom: 1em;
-}
-table.cite {
+
+/************** VALIDATION.TMPL ONLY ************/
+table.matrix col { width: 25%; }
+table.matrix td.tp { background-color: #FF3333; } /* bright red */
+table.matrix td.tn { background-color: #3333FF; } /* bright blue */
+table.matrix td.fp { background-color: #CCCCFF; } /* pale red */
+table.matrix td.fn { background-color: #FFCCCC; } /* pale blue */
+
+
+/********* BIG TABLE IN CITATIONS.TMPL ************/
+
+table#citations {
     /* citation table */
     background-color: white;
     width: 95%;
     min-width: 40em;
     text-align: center;
 }              
-table.cite col.classification {
+
+table#citations col.classification {
     /* column for manual classification */
     background-color: lightgrey;
 }
-table.cite tr.author, col.author {
+
+table#citations tr.author, col.author {
     /* author colour */
     background-color: #FFFFDD; /* light yellow */
 }
-table.cite tr.abstract, col.abstract {
+
+table#citations tr.abstract, col.abstract {
     /* abstract colour  */
     background-color: #EEEEFF; /* light mauve */
 }
-table.cite tr.mesh col.mesh {
+
+table#citations tr.mesh, col.mesh {
     /* mesh colour */
     background-color: #A0F0C0; /* pastel green */
 }
-table.cite td.title {
-    /* titles - but not the heading of the column */
-    font-size: smaller;
+
+table#citations > thead > tr > th {
+    /* full-size centered for headings */
+    font-size: 100%;
+    text-align: center;
 }
-table.cite tr.abstract td {
+
+table#citations tr.abstract td {
     /* abstracts */
     padding: 1em;
     text-align: justify;
 }
 
 /* column widths for citation table */
-table.cite col.classification { width: 1em; }
-table.cite col.rank { width: 1em; }
-table.cite col.score { width: 3em;}
-table.cite col.pmid { width: 5em; }
-table.cite col.year { width: 3em; }
-table.cite col.author{ width: 1em; }
-table.cite col.abstract { width: 1em; }
-table.cite col.title { /* variable width */ } 
-table.cite col.journal { width: 10em; }
+table#citations col.classification { width: 1em; }
+table#citations col.rank { width: 1em; }
+table#citations col.score { width: 3em;}
+table#citations col.pmid { width: 5em; }
+table#citations col.year { width: 3em; }
+table#citations col.author{ width: 1em; }
+table#citations col.abstract { width: 1em; }
+table#citations col.journal { width: 10em; }
 
-/* confusion matrix in validation.tmpl */
-table.matrix col { width: 25%; }
-td.tp { background-color: #FF3333; } /* bright red */
-td.tn { background-color: #3333FF; } /* bright blue */
-td.fp { background-color: #CCCCFF; } /* pale red */
-td.fn { background-color: #FFCCCC; } /* pale blue */
+table#citations td + td + td + td + td + td + td + td {
+    /* this column is variable width */
+    /* for title column (heading must override these) */
+    text-align: left;
+    font-size: smaller;
+}
 

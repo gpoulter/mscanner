@@ -38,7 +38,7 @@ td {
     /* table cells */
     background-color: #EEEEEE; /* gray 1 */
 }
-div.header {
+div#header {
     /* header for each page */
     margin: 0;
     padding: 0.3em;
@@ -46,16 +46,16 @@ div.header {
     border-bottom-style: dotted;
     background-color: #F6F9FE; /* pale blue */
 }
-div.header h1 {
+div#header h1 {
     margin: 0;
 }
-div.contents {
+div#contents {
     /* pad the contents a bit to keep it away from edges */
     background-color: #F6F9FE; /* pale blue */
     padding: 1em;
     width: 100%;
 }
-div.footer {
+div#footer {
     /* footer for each page */
     border-top-style: dotted;
     background-color: #FFFFDD; /* light yellow */
@@ -78,23 +78,23 @@ p.alert {
 
 /* TOP MENU */
 
-div.topmenu {
+div#topmenu {
     /* container for the top menu */
     text-align: center;
     border-bottom: dotted;
 }
-div.topmenu table {
+div#topmenu table {
     /* hold menu buttons in a table with separated cells */
     width: 80%;
     margin: 0 auto 0 auto;
     border-collapse: separate;
     border-spacing: 1ex;
 }
-div.topmenu a {
+div#topmenu a {
     /* use no underlining on links */
     text-decoration: none;
 }
-div.topmenu td {
+div#topmenu td {
     /* simulate a button */
     background-color: #F6F9FE; /* pale blue */
     border: solid 2px black;

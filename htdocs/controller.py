@@ -148,14 +148,14 @@ def validateForm(input):
             str, lambda x: x == "orange", 
             "The captcha must be the word 'orange'"),
         delcode=(
-            str, lambda x: re.match(r"^[ a-zA-Z0-9.;_-]{0,20}$", x) is not None,
-            "The deletion code must consist of letters and numbers"+
-            "and be shorter than 20 characters"),
+            str, lambda x: re.match(r"^[ a-zA-Z0-9.;_-]{0,10}$", x) is not None,
+            "The deletion code must be at most 10 characters long. "+
+            "Letters, numbers and some punctuation (.;,_-) are allowed"),
         dataset=(
             lambda x: re.sub(r"[^ a-zA-Z0-9.;_-]", "", x)[:30], 
-            lambda x: re.match(r"^[ a-zA-Z0-9._-]{1,30}$", x) is not None,
-            "The task name must be between 1 and 30 letters, numbers or ._-"+
-            "characters, so that it is safe to use as a directory and URL"),
+            lambda x: re.match(r"^[ a-zA-Z0-9.,;_-]{1,30}$", x) is not None,
+            "The task name must be between 1 and 30 characters long. "
+            "Letters, numbers or some punctuation (.,;_-) are allowed."),
         limit=(
             int, lambda x: 100 <= x <= 10000,
             "The retrieval limit must be between 100 and 10000."),
@@ -172,7 +172,9 @@ def validateForm(input):
         positives=(
             lambda x: [int(y) for y in x.split()], 
             lambda x: len(x) > 0, 
-            "At least one PubMed ID must be provided"),
+            "The input citations must consist of numbers (PubMed IDs) "+
+            "separated by spaces or line breaks - no other character are "+
+            "allowed, and at least one citation must be provied"),
         threshold=(
             float, lambda x: -1000 <= x <= 1000,
             "The threshold must be between -1000 and +1000"),

@@ -102,12 +102,13 @@ Navigation:
 
 <div id="script_warning">
 
-  <h2>Scripts have been disabled</h2>
+  <h2>Dynamic content is disabled</h2>
 
   <p>
-  Your browser has blocked the scripts in this file from running.  To use
-  the dynamic features, you will have to "Allow blocked content"
-  (see top of the screen).
+  Either the page is busy loading (can take a while over slow
+  connections - consider downloading the zip file), or the
+  browser is blocking the scripts. If the browser is warning about
+  scripts select "Allow blocked content" to enable the scripts.
   </p>
   
 </div>
@@ -151,10 +152,10 @@ Navigation:
   
   #set save_target = $filename.namebase+".csv"
   
-  <p>These buttons will save or load classifications (markings in the "C"
-  column as to whether a citation is relevant or irrelevant) to a file in the
-  same directory as this one called <a id="save_target" href="$save_target">
-  $save_target</a>. The file can also be opened in a spreadsheet.</p>
+  <p>These buttons will save or load classifications (the marks in the "C"
+  column as to whether a citation is relevant or irrelevant) to a file
+  called <a id="save_target" href="$save_target">$save_target</a>
+  in the same directory as this HTML file one.</p>
 
 </div>
 
@@ -196,10 +197,10 @@ Navigation:
 
   <h2>Filter by year of publication</h2>
   
-  <p>Only list citations published between
-  <input type="text" size="4" id="yearstart" value="1900"/> and
-  <input type="text" size="4" id="yearend" value="2020"/> inclusive.
-  <input type="button" id="do_year_filter" value="Filter"/>
+  <p>Of visible citations, only show those published between
+  <input type="text" size="3" id="yearstart" value="1900"/> and
+  <input type="text" size="3" id="yearend" value="2020"/>.
+  <button id="do_year_filter">Filter</button>
   </p>
 
 </div> 

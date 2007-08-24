@@ -11,38 +11,31 @@ MScanner: Retrieve Medline citations using examples
 
 <h2>Queries</h2>
 
-<p>Give MScanner examples of the kinds of articles you are looking for,
-and it will automatically find similar articles</p>
-
-<ul>
-<li>Click on "Query" above</li>
-<li>Paste a list of PubMed IDs</li>
-<li>Enter a name for the submission</li>
-<li>Click "submit"</li>
-</ul>
+<p> On the "Query" page (see above), give MScanner examples of the sort of
+articles you are looking for, then click "Submit Query", and it will find
+similar articles. MScanner works with anywhere from 1 to 10,000 examples.</p>
 
 <p>
-You will be taken to a refreshing status page until the results
-are ready.  View <a href="static/sample/pg07-query">sample results</a>
-for a query using 1,500 citations from the 
-<a href="http://www.pharmgkb.org">Pharmacogenetics KnowledgeBase</a>.
+You will be taken to a waiting page until the results are ready (takes
+about 90 seconds from the front of the queue). Meanwhile, you can view some <a
+href="static/sample/pg07">sample results</a> for a query that used about 1,500
+citations from the <a href="http://www.pharmgkb.org">Pharmacogenetics
+KnowledgeBase (PharmGKB)</a>.
 </p>
 
-<h3>Cross validation</h3> 
+<h2>Cross validation</h2> 
 
-<p> 
-Using random articles for input produces random articles for output. To see
-how good MScanner is at distinguishing the input from the rest of <a
+<p> If MScanner is given random articles for input, it produces random articles
+for output. To measure how well MScanner can distinguish your input from the
+rest of <a
 href="http://www.nlm.nih.gov/pubs/factsheets/medline.html">Medline</a>, use the
 10-fold cross validation option on the query page (requires 30 or more training
-citations). View <a href="static/sample/pg07-valid"> sample cross validation
-output</a> 
-</p>
+citations). You can view some <a href="static/sample/pg07-vs-100k">sample cross
+validation output</a> also using the PharmGKB data.</p>
 
 <p>
-MScanner has been tested using Mozilla Firefox and Internet Explorer 7,
-and the mini-application for searching within the output page
-requires JavaScript to be enabled.
+MScanner has been tested using Mozilla Firefox and Internet Explorer 7.
+JavaScript needs to be enabled for the mini-application in the results page.
 </p>
 
 <!--

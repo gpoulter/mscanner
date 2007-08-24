@@ -253,11 +253,13 @@ function add_table_events() {
       }
       return false; // suppress default click action
    }
-   // Author row is sibling of target's parent row.
+   
+   /* Author row is sibling of target's parent row. */
    function onclick_author() {
       toggle(this.parentNode.nextSibling);
    }
-   // Abstract row is second sibling of target's parent row.
+
+   /* Abstract row is second sibling of target's parent row. */
    function onclick_abstract() {
       toggle(this.parentNode.nextSibling.nextSibling);
    }

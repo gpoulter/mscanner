@@ -82,7 +82,8 @@ class QueryEnvironment:
         """Read input PubMed IDs from pmids_path"""
         log.info("Loading input PMIDs from %s", pmids_path.basename())
         self.input_pmids = set(readPMIDs(
-            pmids_path, outbase=rc.query_report_dir/"input", include=self.featdb))
+            pmids_path, include=self.featdb,
+            broken_name=rc.report_input_broken))
         return self.input_pmids
     
     def getFeatureInfo(self):
@@ -119,25 +120,48 @@ class QueryEnvironment:
             rc.query_report_dir.makedirs()
             rc.query_report_dir.chmod(0777)
         os.chdir(rc.query_report_dir)
-        if pmids_path is not None:
+        if pmids_path is not None: # Not already loaded PMIDs
             self.loadInput(pmids_path)
-            if len(self.input_pmids) == 0:
-                # No valid PubMed IDs in the input, write error page
-                emptyInputPage(list(
-                    readPMIDs(rc.query_report_dir/"input.broken.txt")))
+            if len(self.input_pmids) == 0: # No valid PMIDs found
+                emptyInputPage(list(readPMIDs(rc.report_input_broken)))
                 return
-        # Carry out the query and write the report
+        # Perform query and write the report
         self.featinfo = self.getFeatureInfo()
         if rc.report_input_scores.exists() \
-           and rc.report_result_scores.exists():
+           and rc.report_result_scores.exists(): # Have results
             self.loadResults()
-        else:
+        else: # Generate new results
             self.getResults()
             self.saveResults()
         self.writeReport()
-        rc.timestamp = None
+        rc.timestamp = None # reset for next run
         log.info("FINISHING QUERY %s", rc.dataset)
         
+    def getGDFilterResults(self, pmids_path, export_db=False):
+        """Filter results and input articles for those containing gene-drug
+        co-occurrences
+        
+        @param export_pharmdemo: If True, export results to PharmDemo database
+        """
+        self.input_pmids = set(readPMIDs(pmids_path, include=self.featdb))
+        self.featinfo = self.getFeatureInfo()
+        self.getResults()
+        log.debug("Gene-drug associations on results")
+        from mscanner.pharmdemo.genedrug import getGeneDrugFilter
+        gdfilter = getGeneDrugFilter(rc.genedrug_db, rc.drugtable, rc.gapscore_db)
+        gdarticles = []
+        for score, pmid in chain(self.results, self.inputs):
+            a = self.artdb[str(pmid)]
+            a.genedrug = gdfilter(a)
+            if len(a.genedrug) > 0:
+                gdarticles.append(a)
+        if export_db == True:
+            from mscanner.pharmdemo.dbexport import GeneDrugExport
+            gdexport = GeneDrugExport(gdarticles)
+            gdexport.writeGeneDrugCountsCSV(rc.genedrug_csv)
+            gdexport.exportText(rc.genedrug_sql)
+        return gdarticles
+
     @preserve_cwd
     def loadResults(self):
         """Read self.inputs and self.results (PMIDs and scores) from
@@ -222,29 +246,6 @@ class QueryEnvironment:
             rc.report_retrieval_graph, self.cumulative, len(self.input_test))
         return self.cumulative
     
-    def getGDFilterResults(self, pmids_path, pharmdemo_db=None):
-        """Filter results and input articles for those containing gene-drug
-        co-occurrences
-        
-        @param export_pharmdemo: If True, export results to PharmDemo database
-        """
-        from mscanner.pharmdemo.genedrug import getGeneDrugFilter
-        from mscanner.pharmdemo.dbexport import exportDefault
-        self.loadInput(pmids_path)
-        self.featinfo = self.getFeatureInfo()
-        self.getResults()
-        log.debug("Gene-drug associations on results")
-        gdfilter = getGeneDrugFilter(rc.genedrug, rc.drugtable, rc.gapscore)
-        self.gdarticles = []
-        for pmid, score in chain(self.results, self.inputs):
-            a = self.artdb[str(pmid)]
-            a.genedrug = gdfilter(a)
-            if len(a.genedrug) > 0:
-                self.gdarticles.append(a)
-        if pharmdemo_db is not None:
-            exportDefault(pharmdemo_db, self.gdarticles)
-        return self.gdarticles
-
     @preserve_cwd
     def writeReport(self):
         """Write the HTML report for the query results
@@ -296,7 +297,7 @@ class QueryEnvironment:
             best_tfidfs = best_tfidfs,
             rc = rc, 
             timestamp = rc.timestamp,
-            notfound_pmids = list(readPMIDs(rc.query_report_dir/"input.broken.txt")),
+            notfound_pmids = list(readPMIDs(rc.report_input_broken)),
         ).respond(ft)
         ft.close()
 

@@ -61,18 +61,21 @@ def retrieval(*datasets):
         env.testRetrieval(rc.corpora / ds_map[dataset])
 
 def heparin():
-    """When performing cross-validation with a large number
-    of positiv"""
+    """Performs a query using heparin (PubFinder example).
+    Large inputs mask the effects of the choice of pseudocount,
+    so I chose this small input to figure out what the best choice is:
+    per-feature pseucocounts without a rarity cut-off.
+    """
     env = QueryEnvironment()
     env.loadInput(rc.corpora / "pubfinder-heparin.txt")
-    rc.limit = 500 # don't need a lot of results
-    rc.threshold = 0 # lenient threshold
-    rc.pseudocount = 0 # per-feature pseudocounts
+    rc.limit = 500        # don't need a lot of results
+    rc.threshold = 0      # lenient threshold of zero
+    rc.pseudocount = None # per-feature pseudocounts
     for dataset, pseudocount, cutoff in [ 
         ("heparin-ps_const",    0.01, True),
-        ("heparin-ps_per",      0.0,  False),
+        ("heparin-ps_per",      None, False),
         ("heparin-ps_constcut", 0.01, True),
-        ("heparin-ps_percut",   0.0,  True) ]:
+        ("heparin-ps_percut",   None, True) ]:
         rc.dataset = dataset
         rc.pseudocount = pseudocount
         rc.cutoff = cutoff
@@ -81,10 +84,12 @@ def heparin():
 def pharmdemo():
     """Special query which exports to the PharmDemo database for PharmGKB"""
     rc.dataset = "pharmdemo"
-    rc.threshold = 0
+    rc.threshold = 50.0
     rc.limit = 10000
     env = QueryEnvironment()
-    env.getGDFilterResults(rc.corpora / "pharmdemo.txt", "/tmp/pharmdemo")
+    input = rc.corpora / "pharmgkb-070205.txt"
+    input = rc.corpora / "genedrug-small.txt"
+    env.getGDFilterResults(input, export_db=True)
         
 if __name__ == "__main__":
     initLogger()

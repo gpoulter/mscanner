@@ -57,25 +57,24 @@ def parseDrugs(text):
     first alias is the preferred drug name.
     """
     drugs = {}
+    text = text.replace("\r","")
     lines = text.split('\n')
-    mainsplit = re.compile(r"\A(\w+)\t([^\t]+)\t([^\t]*)\t(.*)\Z")
-    subsplit = re.compile(r"\|")
     for line in lines:
         if line=="":
             continue
-        # Check tab count in lines
-        if line.count('\t') != 3:
-            raise ValueError, "Drug lines must have three tabs (see README). Bad line was '"+line+"'"
-        # Check splitting line into components
-        (PKID,main,trade,generic) = mainsplit.match(line).groups()
-        if trade != "" and trade[-1:] != "|":
-            raise ValueError, "Drugs must terminate in '|' (see README). Bad line was '"+line+"'"
-        if generic != "" and generic[-1:] != "|":
-            raise ValueError, "Drugs must terminate in '|' (see README). Bad line was '"+line+"'"
-        # Get names from each component and slurp into a list
-        trades = subsplit.split(trade[:-1])
-        generics = subsplit.split(generic[:-1])
-        drugs[PKID] = [ name for name in [main]+trades+generics if name != "" ]
+        # Extract tab-separated fields
+        tabgroups = line.split("\t")
+        if len(tabgroups) != 4:
+            raise ValueError("Drug table: file must have four tab-separated fields. Bad line: <" + line + ">")
+        PKID, main, trade, generic = tabgroups
+        # Split trade names and generics
+        if (trade != "" and trade[-1:] != "|") or \
+           (generic != "" and generic[-1:] != "|"):
+            raise ValueError("Drug table: generic/trade field did not end in '|'. Bad line: <"+line+">")
+        # Split trade/generic lists using "|"
+        trades = trade[:-1].split("|")
+        generics = generic[:-1].split("|")
+        drugs[PKID] = [ name for name in ([main]+trades+generics) if name != "" ]
     return drugs
 
 
@@ -100,6 +99,7 @@ class CachingGeneFinder:
         containing such a mapping.
 
         """
+        # Default threshold
         self.min_threshold = 0.1
         # Set up XMLRPC (possibly proxied)
         bionlp_uri="http://bionlp.stanford.edu/xmlrpc"
@@ -343,13 +343,14 @@ class GeneDrugFilter:
         and abstract joined together.
         """
         article.pmid = str(article.pmid)
-        # DO NOT CHANGE NEXT FOUR LINES (DISRUPTS GENEFINDER CACHE)
+        # DO NOT CHANGE NEXT FIVE LINES (DISRUPTS GENEFINDER CACHE)
         text = article.title
         if text[-1:] != ".":
             text += ". "
-        text += article.abstract
-        log.debug("Querying genes for article %s", article.pmid)
-        return self.listGeneDrugs(text)
+        if article.abstract is not None:
+            text += article.abstract
+        result = self.listGeneDrugs(text)
+        return result
 
 class CachingGeneDrugLister:
 
@@ -357,10 +358,10 @@ class CachingGeneDrugLister:
         """Caching proxy for gene-drug filtering
 
         @param cache: A mapping from PMIDs to a drug:[genes] mapping,
-        or the filename for a shelf containing one.
+        or the path to a shelf for holding one.
 
         @param gdfilter: Function which takes an article and returns a
-        drug:[genes] mapping
+        drug:[genes] mapping.
         """
         if isinstance(cache, basestring):
             self.cache = dbshelve.open(cache, 'c')
@@ -383,15 +384,21 @@ class CachingGeneDrugLister:
         """Return gene-drug association for an article"""
         key = str(article.pmid)
         if key in self.cache:
-            return self.cache[key]
-        result = self.gdfilter(article)
+            result = self.cache[key]
+        else:
+            result = self.gdfilter(article)
         log.debug("%s: %s", str(article.pmid), str(result))
         self.cache[key]=result
         return result
 
 def getGeneDrugFilter(gdcache, drugtable, gapscorecache):
-    """Convenience function to create a fully caching gene-drug filter"""
+    """Convenience function to create a fully caching gene-drug filter
+    
+    @param gdcache: Path to catched gene-drug co-occurrences
+    @param drugtable: Path to table of drugs
+    @param gapscorecache: Path to GAPscore webservice result cache
+    """
     return CachingGeneDrugLister(
         gdcache, GeneDrugFilter(
-        parseDrugs(file(drugpickle, "rb").read()),
+        parseDrugs(file(drugtable, "rb").read()),
         CachingGeneFinder(gapscorecache)))

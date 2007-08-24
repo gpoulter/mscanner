@@ -23,7 +23,8 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
-def readPMIDs(filename, outbase=None, include=None, exclude=None, withscores=False):
+def readPMIDs(filename, include=None, exclude=None, 
+              broken_name=None, exclude_name=None, withscores=False):
     """Read PubMed IDs one per line from filename.
 
     @param filename: Path to file containing one PubMed ID per line, with
@@ -31,12 +32,14 @@ def readPMIDs(filename, outbase=None, include=None, exclude=None, withscores=Fal
     lines starting with #, and only parses the line up to the first whitespace
     character.
     
-    @param outbase: Use as base file name for the .broken/.exclude files
-    where PMIDs that are filtered out for some reason are left.
+    @param include: Only return members of this set (other PubMed IDs
+    are considered "broken").
 
-    @param include: Only return members of this set
-
+    @param broken_name: File to write non-included PubMed IDs
+    
     @param exclude: Do not return members of this set
+    
+    @param exclude_name: File to write excluded PubMed IDs
     
     @param withscores: Also read the score after the PubMed ID on each line.
     
@@ -45,8 +48,8 @@ def readPMIDs(filename, outbase=None, include=None, exclude=None, withscores=Fal
     """
     import logging as log
     count = 0
-    broken_file = open(outbase+".broken.txt", "w") if outbase else None
-    exclude_file = open(outbase+".exclude.txt", "w") if outbase else None
+    broken = []
+    excluded = []
     for line in file(filename, "r"):
         sline = line.strip()
         if sline == "" or sline.startswith("#"):
@@ -54,20 +57,23 @@ def readPMIDs(filename, outbase=None, include=None, exclude=None, withscores=Fal
         splits = sline.split()
         pmid = int(splits[0])
         if include is not None and pmid not in include:
-            if outbase: broken_file.write(str(pmid)+"\n")
-            log.warn("PMID %d is not a member of include" % pmid)
+            broken.append(pmid)
             continue
         if exclude is not None and pmid in exclude:
-            if outbase: exclude_file.write(str(pmid)+"\n")
-            log.warn("PMID %d is a member of exclude" % pmid)
+            excluded.append(pmid)
             continue
         if withscores:
             yield float(splits[1]), pmid
         else:
             yield pmid
         count += 1
-    if outbase:
+    if broken_name != None:
+        broken_file = open(broken_name, "w")
+        broken_file.write("\n".join(str(s) for s in broken))
         broken_file.close()
+    if exclude_name != None:
+        exclude_file = open(exclude_name, "w")
+        exclude_file.write("\n".join(str(s) for s in excluded))
         exclude_file.close()
     log.debug("Got %d PubMed IDs from %s", count, filename.basename())
 

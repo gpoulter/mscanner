@@ -48,7 +48,8 @@ class DbexportTests(unittest.TestCase):
         self.fn.remove()
         
     def test(self):
-        dbexport.exportText(self.fn, articles)
+        exporter = dbexport.GeneDrugExport(articles);
+        exporter.exportText(self.fn)
         """
         dbname = ":memory:"
         self.con = sqlite.connect( self.dbname )

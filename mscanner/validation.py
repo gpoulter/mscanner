@@ -392,7 +392,7 @@ class PerformanceStats:
         Q2 = r6.sum() / (P * N**2)
         Q1 = r7.sum() / (N * P**2)
         W_stderr = nx.sqrt((W*(1-W)+(P-1)*(Q1-W**2)+(N-1)*(Q2-W**2))/(P*N))
-        print W, Q1, Q2, W_stderr
+        #print W, Q1, Q2, W_stderr
         s.W = W
         s.W_stderr = W_stderr
         return W, W_stderr

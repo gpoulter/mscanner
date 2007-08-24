@@ -104,8 +104,7 @@ class ValidationEnvironment(object):
             self.loadInputs(pospath, negpath)
             if len(self.positives) == 0:
                 # No valid PubMed IDs in the input = no validation
-                emptyInputPage(list(
-                    readPMIDs(rc.valid_report_dir/"positives.broken.txt")))
+                emptyInputPage(list(readPMIDs(rc.report_positives_broken)))
                 return
             self.getResults()
             self.saveResults()
@@ -119,13 +118,13 @@ class ValidationEnvironment(object):
         @note: If negpath is None, negatives are taken by random sample 
         of PubMed citations in self.article_list."""
         log.info("Reading positive PubMed IDs")
-        positives = list(readPMIDs(
-            pospath, outbase=rc.valid_report_dir/"positives", include=self.featdb))
+        positives = list(readPMIDs(pospath, include=self.featdb,
+                        broken_name=rc.report_positives_broken))
         log.info("Reading negative PubMed IDs")
         if negpath is None:
             # No negatives provided
             # Clamp number of negatives if more are requested than are available
-            maxnegs = len(self.article_list)-len(positives)
+            maxnegs = len(self.article_list) - len(positives)
             if rc.numnegs > maxnegs:
                 rc.numnegs = maxnegs
             # Take an appropriately sized sample of random citations
@@ -133,9 +132,8 @@ class ValidationEnvironment(object):
                 rc.numnegs, self.article_list, set(positives))
         else:
             # Read existing list of negatives from disk
-            negatives = list(readPMIDs(
-                negpath, outbase=rc.valid_report_dir/"negatives", 
-                exclude=set(positives)))
+            negatives = list(readPMIDs(negpath, exclude=set(positives),
+                         exclude_name=rc.report_negatives_exclude))
             self.negatives = nx.array(negatives, nx.int32)
         self.positives = nx.array(positives, nx.int32)
         
@@ -282,6 +280,6 @@ class ValidationEnvironment(object):
             p = self.performance,
             rc = rc,
             timestamp = rc.timestamp,
-            notfound_pmids = list(readPMIDs(rc.valid_report_dir/"positives.broken.txt")),
+            notfound_pmids = list(readPMIDs(rc.report_positives_broken)),
         ).respond(ft)
         ft.close()

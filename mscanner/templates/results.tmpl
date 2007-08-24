@@ -27,7 +27,7 @@ notfound_pmids -- List of PubMed IDs that were not found in the database
 
   #if $getVar("linkpath", None) 
   <script type="text/javascript" src="$linkpath/hider.js"></script>
-  <link rel="stylesheet" type="text/css" href="$linkpath/style.css"/>
+  <link rel="stylesheet" type="text/css" href="$linkpath/style.css" />
   #else
   <script type="text/javascript">
     #include raw $_inc("hider.js")
@@ -200,13 +200,13 @@ notfound_pmids -- List of PubMed IDs that were not found in the database
   <table>
   <thead>
   <tr>
-  <td>TF-IDF</td>
-  <td>Type</td>
-  <td>Term</td>
-  <td>Term ID</td>
-  <td>Score</td>
-  <td>Pos</td>
-  <td>Neg</td>
+  <th>TF-IDF</th>
+  <th>Type</th>
+  <th>Term</th>
+  <th>Term ID</th>
+  <th>Score</th>
+  <th>Pos</th>
+  <th>Neg</th>
   </tr>
   </thead>
   #for termid, tfidf, (term, termtype), score, pos, neg in $best_tfidfs:

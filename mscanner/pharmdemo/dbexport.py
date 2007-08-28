@@ -90,7 +90,8 @@ class GeneDrugExport:
     def exportText(self, outfile):
         class TextOutput:
             def __init__(self, outfile):
-                self.out = open(outfile, "w")
+                import codecs
+                self.out = codecs.open(outfile, "wb", "utf-8")
             def commit(self):
                 self.out.close()
             def cursor(self):

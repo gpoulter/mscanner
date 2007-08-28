@@ -140,9 +140,9 @@ class CachingGeneFinder:
             def send_host(self, connection, host):
                 connection.putheader('Host', self.realhost)
         return xmlrpclib.ServerProxy(url,transport=ProxyTransport(proxy))
-
-    def __del__(self):
-        if hasattr(self,"cache") and isinstance(self.cache, dbshelve.Shelf):
+    
+    def close(self):
+        if hasattr(self,"cache") and hasattr(self.cache, "close"):
             self.cache.close()
             del self.cache
 
@@ -197,6 +197,11 @@ class GeneDrugFilter:
     def __call__(self,article):
         """Automatically calls L{listGeneDrugsArticle}"""
         return self.listGeneDrugsArticle(article)
+    
+    def close(self):
+        if hasattr(self, "geneFinder") and hasattr(self.geneFinder, "close"):
+            self.geneFinder.close()
+            del self.geneFinder
 
     @staticmethod
     def stripDrugs(drugs):
@@ -371,11 +376,15 @@ class CachingGeneDrugLister:
             raise ValueError("Cache is neither a filename nor dictionary")
         self.gdfilter=gdfilter
 
-    def __del__(self):
-        if hasattr(self, "cache") and isinstance(self.cache, dbshelve.Shelf):
+    def close(self):
+        """Close the gene-drug results cache and filter if possible"""
+        if hasattr(self, "cache") and hasattr(self.cache, "close"):
             self.cache.close()
             del self.cache
-
+        if hasattr(self, "gdfilter") and hasattr(self.gdfilter, "close"):
+            self.gdfilter.close()
+            del self.gdfilter
+        
     def __call__(self, article):
         """Automatically calls L{listGeneDrugs}"""
         return self.listGeneDrugs(article)
@@ -394,11 +403,12 @@ class CachingGeneDrugLister:
 def getGeneDrugFilter(gdcache, drugtable, gapscorecache):
     """Convenience function to create a fully caching gene-drug filter
     
-    @param gdcache: Path to catched gene-drug co-occurrences
+    @param gdcache: Dictionary or path to to DB for storing gene-drug co-occurrences
+    
     @param drugtable: Path to table of drugs
-    @param gapscorecache: Path to GAPscore webservice result cache
+
+    @param gapscorecache: Dictionary or path to DB for stroing GAPscore results
     """
-    return CachingGeneDrugLister(
-        gdcache, GeneDrugFilter(
-        parseDrugs(file(drugtable, "rb").read()),
-        CachingGeneFinder(gapscorecache)))
+    drugs = parseDrugs(file(drugtable, "rb").read())
+    gapscore = CachingGeneFinder(gapscorecache)
+    return CachingGeneDrugLister(gdcache, GeneDrugFilter(drugs, gapscore))

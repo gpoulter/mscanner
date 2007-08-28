@@ -14,25 +14,20 @@ white (page background)
 #EEEEFF; /* light mauve   (help blocks in table)
 */
 
+/* BLOCK ELEMENTS */
+
 html, body, div {
     display: block;
     padding: 0;
     margin: 0;
     width: 100%;
 }
-
 img { display: block; }
-
 dt { font-weight: bold; }
 
 html { 
     color: black; /* text color */
     background-color: #C2D7EE; /* light blue */ 
-}
-
-div#body {
-    padding: 1em;
-    width: 100%;
 }
 
 div#header, div#footer {
@@ -42,9 +37,13 @@ div#header, div#footer {
 div#header {
     /* header section for page */
     border-bottom-style: dotted;
-    margin: 0;
     padding: 0.3em;
     text-align: center;
+}
+
+div#body {
+    padding: 1em;
+    width: 100%;
 }
 
 div#footer {
@@ -69,9 +68,10 @@ h2 {
     margin-top: 1ex;
 }
 
-/* common properties for all tables */
+/************* TABLE STYLE ******************/
+
 table, thead, tbody {
-    /* thick border around all tables */    
+    /* thick border around tables */    
     border: 2px solid black;
 }
 table {
@@ -94,26 +94,26 @@ td, th {
     border: 1px solid black;
     padding: 0.5ex;
 }
-
 div.help {
-    /* help sections associated with tables */
+    /* help sections within table rows */
     text-align: justify;
 }
 
-/* info table in results.tmpl */
-table.results col.label {
+/************ RESULTS.TMPL ONLY ***********/
+
+table#results col.label {
     /* column with name of the quantity */
     width: 11em;
 }
-table.results col.value {
+table#results col.value {
     /* column with value of the quantity */
 }
-table.results col.help {
+table#results col.help {
     /* column with help buttons */
     background-color: #EEEEFF; /* light mauve */
     width: 2em;
 }
-table.results tr.help {
+table#results tr.help {
     /* rows with help info */
     background-color: #EEEEFF; /* light mauve */
     text-align: justify;
@@ -121,21 +121,26 @@ table.results tr.help {
 }
 
 /************** FEATURES.TMPL ONLY ***************/
-table.features col.label {
+
+table#features col.label {
     /* width of left-most column with labels */
     width: 20em;
 }
 
 
 /************** VALIDATION.TMPL ONLY ************/
-table.matrix col { width: 25%; }
-table.matrix td.tp { background-color: #FF3333; } /* bright red */
-table.matrix td.tn { background-color: #3333FF; } /* bright blue */
-table.matrix td.fp { background-color: #CCCCFF; } /* pale red */
-table.matrix td.fn { background-color: #FFCCCC; } /* pale blue */
 
+table#matrix col { width: 25%; }
+table#matrix td.tp { background-color: #FF3333; } /* bright red */
+table#matrix td.tn { background-color: #3333FF; } /* bright blue */
+table#matrix td.fp { background-color: #CCCCFF; } /* pale red */
+table#matrix td.fn { background-color: #FFCCCC; } /* pale blue */
 
-/********* BIG TABLE IN CITATIONS.TMPL ************/
+/********* CITATIONS.TMPL ONLY ************/
+
+div.control {
+    margin-bottom: 1ex;
+}
 
 table#citations {
     /* citation table */
@@ -156,12 +161,12 @@ table#citations tr.author, col.author {
 }
 
 table#citations tr.abstract, col.abstract {
-    /* abstract colour  */
+    /* abstract row colour  */
     background-color: #EEEEFF; /* light mauve */
 }
 
 table#citations tr.mesh, col.mesh {
-    /* mesh colour */
+    /* mesh row colour */
     background-color: #A0F0C0; /* pastel green */
 }
 
@@ -188,8 +193,7 @@ table#citations col.abstract { width: 1em; }
 table#citations col.journal { width: 10em; }
 
 table#citations td + td + td + td + td + td + td + td {
-    /* this column is variable width */
-    /* for title column (heading must override these) */
+    /* title column (column 8) is variable width */
     text-align: left;
     font-size: smaller;
 }

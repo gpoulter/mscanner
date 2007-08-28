@@ -100,116 +100,135 @@ Navigation:
   #end if
 </p>
 
-<div id="script_warning">
-
-  <h2>Dynamic content is disabled</h2>
+<div class="control" id="script_warning">
 
   <p>
-  Either the page is busy loading (can take a while over slow
-  connections - consider downloading the zip file), or the
-  browser is blocking the scripts. If the browser is warning about
-  scripts select "Allow blocked content" to enable the scripts.
+    The script which hides this paragraph has not run. If the page is taking
+    a long time to load, consider downloading the zip file instead. If there is
+    an alert saying that there is blocked content, select "Allow blocked content"
+    to enable the scripts.
   </p>
   
 </div>
 
-<div id="pubmed_div">
+<div class="control" id="no_save_load_div">
 
-  <h2>Open citations in PubMed</h2>
-
-  <button id="open_pubmed_all">All citations</button>&nbsp;
-  <button id="open_pubmed_relevant">Only relevant citations</button>
-
-  <p>To open only relevant citations in PubMed, first mark some citations as
-  relevant by clicking on them once in "C" column (<span
-  style="background-color:red;color:red;">...</span>)). </p>
-  
-  <p>Clicking a second time explicitly marks the citation as irrelevant (<span
-  style="background-color:blue;color:blue;">...</span>). Grey citations ( <span
-  style="background-color:lightgrey;color:lightgrey;">...</span>) are not 
-  manually classified".</p>
-  
-</div>
-
-<div id="no_save_load_div">
-
-  <h2>Saving/loading of classifications is disabled</h2>
-  
-  <p>This file is being viewed online.  If the file were opened
-  locally from the hard drive,  then classifications (markings
-  of which citations in the file have been marked relevant or irrelevant) 
-  could be saved or loaded.  To use that feature, either "save page as",
-  or downloading the zip file containing all of the results pages.</p>
+  <p> 
+    This file is being viewed online. By opening a local copy of the file it
+    will be possible to save to file and load from file the manual
+    classifications made by clicking once or twice in the "C" column. 
+  </p>
 
 </div>
 
-<div id="save_load_div">
+<div class="control" id="filter_div">
 
-  <h2>Saving and loading classifications</h2>  
+  <form id="filter_form">
+  <table>
+  <tr>
+  <th>Title contains</th>
+  <td><input type="text" size="30" id="title_regex" /></td>
+  </tr>
+  
+  <tr>
+  <th>Title/abstract contains</th>
+  <td><input type="text" size="30" id="title_abstract_regex" /></td>
+  </tr>
+  
+  <tr>
+  <th>Title/abstract does not contain</th>
+  <td><input type="text" size="30" id="exclude_regex" /></td>
+  </tr>
+  
+  <tr>
+  <th>Year of publication is between</th>
+  <td><input type="text" size="3" id="year_min" value="1900" /> and
+  <input type="text" size="3" id="year_max" value="2020" /></td>
+  </tr>
+  
+  <tr>
+  <th>Abbreviated journal contains</th>
+  <td><input type="text" size="20" id="journal_regex" /></td>
+  </tr>
+  </table>
+  </form>  
+
+  <p>
+    <button id="do_filter">Filter visible</button>&nbsp;
+    <button id="clear_filter">Show all citations</button>&nbsp;
+    <button class="toggle" id="toggle_h_filter">Help</button>
+  </p>
+
+  <div class="help" id="h_filter">
+  
+    <p>The first button will hide any visible citations that do not
+    match the filter (it will not unhide anything already hidden). The
+    second button unhides all citations.</p>
+  
+    <p>The filters are case-insensitive <a
+    href="http://www.javascriptkit.com/jsref/regexp.shtml">regular
+    expressions</a>. These will locate substrings, but have many additional
+    features. For example, "rat" matches both "rat" and "aberration",
+    but "\brat\b" will only match "rat" ("\b" means "word boundary").</p>
     
-  <button id="save_tags">Save</button>
-  <button id="load_tags">Load</button>
-  
-  #set save_target = $filename.namebase+".csv"
-  
-  <p>These buttons will save or load classifications (the marks in the "C"
-  column as to whether a citation is relevant or irrelevant) to a file
-  called <a id="save_target" href="$save_target">$save_target</a>
-  in the same directory as this HTML file one.</p>
-
-</div>
-
-<div id="append_results_div">
-
-  <h2>Appending later result files</h2>
-  
-  <p>
-  <button id="append_results">Append results</button>
-  (next file to append is <a id="next_to_append" href=""></a>)
-  </p>
-  
-  <p>Append citations from later results files to the bottom of this one.</p>
-  
-</div>
-
-## Filter citations by regex
-
-<div id="abstract_filter_div">
-
-  <h2>Filter by title/abstract</h2>
-  
-  <input type="text" size="35" id="filter"/> 
-  
-  <input type="button" id="do_filter" value="Filter Citations" /> 
-  
-  <input type="button" id="clear_filter" value="Clear Filter" />
-  
-  <p>Uses a case-insensitive <a
-  href="http://www.javascriptkit.com/jsref/regexp.shtml">regular expression</a>
-  to filter the citations by title and abstract. Given "X" we test
-  RegExp("X","i") on the title and abstract of each citation. To find "rat" as a
-  whole word, use "\brat\b" (specifies that "rat" must have word boundaries on
-  either side). Clearing the filter will show all citations.</p>
-
-</div>
-
-<div id="year_filter_div">
-
-  <h2>Filter by year of publication</h2>
-  
-  <p>Of visible citations, only show those published between
-  <input type="text" size="3" id="yearstart" value="1900"/> and
-  <input type="text" size="3" id="yearend" value="2020"/>.
-  <button id="do_year_filter">Filter</button>
-  </p>
+  </div>
 
 </div> 
+
+<div class="control" id="pubmed_div">
+
+  <button id="open_pubmed_all">Open visible in PubMed</button>&nbsp;
+  <button id="open_pubmed_relevant">Open relevant in Pubmed</button>&nbsp;
+  <button class="toggle" id="toggle_h_open">Help</button>
+
+  <div class="help" id="h_open">
+
+    <p>Opens PubMed in a new window, for the citations that are visible below.
+    The second button instead opens those citations which have been marked
+    relevant by clicking once in "C" column (colours changes to red <span
+    style="background-color:red;color:red;">...</span>)).</p>
+    
+    <p>Clicking a second time explicitly marks the citation as irrelevant (<span
+    style="background-color:blue;color:blue;">...</span>). Grey citations ( <span
+    style="background-color:lightgrey;color:lightgrey;">...</span>) are not 
+    manually classified".</p>
+    
+  </div>
+  
+</div>
+
+<div class="control" id="save_load_div">
+
+  <button id="save_tags">Save Classifications</button>&nbsp;
+  <button id="load_tags">Load Classifications</button>&nbsp;
+  <button class="toggle" id="toggle_h_save_load">Help</button>
+  
+  <div class="help" id="h_save_load">
+    #set save_target = $filename.namebase+".csv"
+    <p>
+      These buttons will save or load classifications (the marks in the "C"
+      column as to whether a citation is relevant or irrelevant) to a file
+      called <a id="save_target" href="$save_target">$save_target</a>.
+    </p>
+  </div>
+
+</div>
+
+<div class="control" id="append_results_div">
+
+  <button id="append_results">Append next result file</button>&nbsp;
+  Next up is: <a id="next_to_append" href=""></a>.&nbsp;
+  <button class="toggle" id="toggle_h_append">Help</button>
+  
+  <div class="help" id="h_append">
+    <p>Append citations from later results files to the bottom of this one.</p>
+  </div>
+  
+</div>
 
 </div><!--class=narrow-->
 
 <h2>Table of citations</h2>
-
-## Actual citations
 
 $cite_table
 

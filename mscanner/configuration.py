@@ -158,7 +158,7 @@ rc.webmaster_email = "xxxxxxxxxxxxxxxxxxxxxxxx"
 ## Base directory for the website
 rc.siteurl = "http://mscanner.stanford.edu"
 ## If true, link to .js and .css files instead of including them
-rc.linkHeaders = False;
+rc.linkHeaders = False
 
 ## Parameters affecting FeatureInfo 
 

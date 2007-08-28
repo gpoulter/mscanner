@@ -155,7 +155,9 @@ class QueryEnvironment:
             a.genedrug = gdfilter(a)
             if len(a.genedrug) > 0:
                 gdarticles.append(a)
+        gdfilter.close()
         if export_db == True:
+            log.debug("Exporting database")
             from mscanner.pharmdemo.dbexport import GeneDrugExport
             gdexport = GeneDrugExport(gdarticles)
             gdexport.writeGeneDrugCountsCSV(rc.genedrug_csv)

@@ -11,33 +11,7 @@ Cells in each row are:
 8 - ISSN
 */
 
-/******************* OPENING RESULTS IN PUBMED ******************************/
-
-/* Open positive documents in PubMed */
-function openPubMed(all) {
-   var rows = document.getElementById("citations").rows;
-   var qstring = "http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;db=pubmed&amp;list_uids=";
-   var count = 0;
-   for (var i = 0; i < rows.length; i++) {
-      if (rows[i].className == "main") {
-         var pmid = rows[i].id;
-         if (getTag(pmid) == 2 || all == true) {
-            if (count > 0) {
-               qstring += ",";
-            }
-            qstring += pmid;
-            count++;
-         }
-      }
-   }
-   if(count == 0) {
-      alert("Cannot open PubMed as there are no PubMed IDs to open");
-   } else {
-      window.open(qstring);
-   }
-}
-
-/************************ EVENT HELPER FUNCTIONS ***********************/
+/************************ HELPER FUNCTIONS ***********************/
 
 /* Return whether event was a right click */
 function is_rightclick(event) {
@@ -73,7 +47,48 @@ function noenter() {
   return !(window.event && window.event.keyCode == 13); 
 }
 
-/***************** LOADING/SAVING OF CLASSIFICATIONS *************************/
+/********************* OPENING RESULTS IN PUBMED ***************************/
+
+/* Open positive documents in PubMed 
+BUG: Internet Explorer barfs on long query strings!
+
+all=true: Open all visible citations in PubMed
+all=false: Open only manually-marked relevant citations in PubMed
+*/
+function openPubMed(all) {
+   var rows = document.getElementById("citations").rows;
+   var qstring = "http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;db=pubmed&amp;list_uids=";
+   var count = 0;
+   for (var i = 0; i < rows.length; i++) {
+      if (rows[i].className == "main") {
+         var pmid = rows[i].id;
+         if (getTag(pmid) == 2 ||
+            (all == true && rows[i].style.display != "none"))
+         {
+            if (count > 0) {
+               qstring += ",";
+            }
+            qstring += pmid;
+            count++;
+         }
+      }
+   }
+   if(count == 0) {
+      alert("Cannot open PubMed as there are no PubMed IDs to open");
+   } else {
+      window.open(qstring);
+   }
+}
+
+/* Adds events for opening citations in PubMed */
+function initPubMedOpening() {
+   $('open_pubmed_relevant').onclick = function() {
+      openPubMed(false); }
+   $('open_pubmed_all').onclick = function() {
+      openPubMed(true);  }
+}
+
+/******************* LOADING/SAVING OF CITATION TAGS ********************/
 
 /*
 0 = Unclassified (gray)
@@ -81,7 +96,7 @@ function noenter() {
 2 = Positive (red)
 */
 
-// Read classifications from disk
+/* Read classifications from disk */
 function loadTags(fname) 
 {
    try {
@@ -91,7 +106,7 @@ function loadTags(fname)
       return;
    }
    var lines = text.split("\n");
-   for (i = 0; i < lines.length; i++) {
+   for (var i = 0; i < lines.length; i++) {
       var values = lines[i].split(",");
       var pmid = values[0];
       var score = values[1];
@@ -105,7 +120,7 @@ function loadTags(fname)
    alert("Successfully loaded classifications");
 }
 
-// Save classifications to disk
+/* Save classifications to disk */
 function saveTags(fname) {
    var text = "";
    var rows = document.getElementById("citations").rows;
@@ -130,14 +145,14 @@ function saveTags(fname) {
    }
 }
 
-/* if non-local (http://) hide the save/load, else hide the warning */
-function prepare_save_load() {
+/* Set up the saving/loading of classifications */
+function initTagSaving() {
    if (areWeLocal() == false) {
+      // hide ability to save/load citations for non-local pages
       $("save_load_div").style.display = "none";
    } else {
-      // hide warning about being unable to save/load
+      // else hide warning and hook up the events
       $("no_save_load_div").style.display = "none";
-      // hook up the events
       $('save_tags').onclick = function() {
          saveTags(fileURLasPath($('save_target').href));
       }
@@ -147,9 +162,9 @@ function prepare_save_load() {
    }
 }
 
-/******************** TAGGING MANUAL CLASSIFICATIONS ************************/
+/******************** TAGGING OF CITATIONS ************************/
 
-// Get classification tag (0,1,2)
+/* Get classification tag (0,1,2) */
 function getTag(pmid) {
    var color = $(pmid).cells[0].style.backgroundColor
    switch (color) {
@@ -160,7 +175,7 @@ function getTag(pmid) {
    } 
 }
 
-// Set classification tag (takes 0,1,2)
+/* Set classification tag (value may be 0, 1 or 2) */
 function setTag(pmid, value) {
    var row = $(pmid)
    var tagstyle = row.cells[0].style
@@ -182,64 +197,24 @@ function setTag(pmid, value) {
    } 
 }
 
-/*********************** FILTERING CITATIONS ************************/
 
-/* Hides rows not matching the given regex filter. */
-function filterCitations(filter) {
-   var rows = document.getElementById("citations").rows;
-   // row 0 is the heading
-   for (var i = 1; i < rows.length; i++) {
-      if (rows[i].className == "main") {
-         var cells = rows[i].cells;
-         var text = cells[7].innerHTML
-         if (rows[i+2].length > 0) {
-            text += rows[i+2].cells[0].innerHTML;
-         }
-         if (filter == "" || RegExp(filter, "i").test(text)) {
-            rows[i].style.display = "";            
-         } else {
-            rows[i].style.display = "none";            
-         }
-         rows[i+1].style.display = "none";
-         rows[i+2].style.display = "none";            
-      }
-   }
-}
-
-/* Hides rows that are outside the given range of years */
-function filterByYear(startyear, endyear) {
-   var rows = document.getElementById("citations").rows;
-   var start = parseInt(startyear);
-   var finish = parseInt(endyear);
-   // row 0 is the heading
-   for (var i = 1; i < rows.length; i++) {
-      if (rows[i].className == "main") {
-         var cells = rows[i].cells;
-         var year = parseInt(cells[4].innerHTML);
-         if (year >= startyear && year <= endyear) {
-            rows[i].style.display = "";            
-         } else {
-            rows[i].style.display = "none";            
-         }
-         rows[i+1].style.display = "none";
-         rows[i+2].style.display = "none";            
-      }
-   }
-   return false;
-}
+/******************* CITATION TABLE EVENTS **************************/
 
 /* Hide all expanded author/abstract rows in the citations table */
-function hide_allrows() {
+function hideTableRows() {
    var rows = document.getElementById("citations").rows;
    // row 0 is the heading
    for (i = 1; i < rows.length; i+=3) {
+      rows[i].style.display = "";
       rows[i+1].style.display = "none";            
       rows[i+2].style.display = "none";
    }
 }
 
 /* Adds the events for classification/author/abstract display */
-function add_table_events() {
+function initTableEvents() {
+
+   hideTableRows()
 
    /* Cycles cell forward on left clicks, backward on right */
    function onclick_classify(e) {
@@ -275,7 +250,7 @@ function add_table_events() {
 }
 
 
-/******************** CITATION TABLE APPENDING *******************************/
+/****************** APPENDING TO THE CITATION TABLE ************************/
 
 /* 
 Read citations from disk and append to the table
@@ -288,15 +263,14 @@ function loadCitations(fname) {
    var tbody = $("citations").getElementsByTagName("tbody")[0]
    tbody.innerHTML += blob;
    /* new HTML so no events are linked */
-   hide_allrows();
-   add_table_events();
+   initTableEvents();
 }
 
-/* We can only append result files if innerHTML can be set on 
-tables (works at least in mozilla browsers) and we are 
-a local file */
+/* Note: We can only append result files if innerHTML can be set on tables
+(works at least in mozilla browsers) and we are a local file. */
+
 appendable_files = [] // list of files to append
-function prepare_appending() {
+function initResultAppending() {
    /* hide the feature if it is not supported. toSource detects Netscape. */
    if (areWeLocal() == false || (!"a".toSource)) {
       $("append_results_div").style.display = "none";
@@ -326,39 +300,69 @@ function prepare_appending() {
    setupNextAppend();
 }
 
-/************************** BASIC ONLOAD EVENTS ******************************/
+/*********************** FILTERING OF CITATIONS ************************/
 
-/* add event handlers to citation form */
-function add_filter_events() {
-   $('open_pubmed_relevant').onclick = function() {
-      openPubMed(false);
-   }
-   $('open_pubmed_all').onclick = function() {
-      openPubMed(true);
-   }
-   $('clear_filter').onclick = function() {
-      $('filter').value = '';
-      filterCitations('');
-   }
-   $('do_filter').onclick = function() {
-      filterCitations($('filter').value);
-   }
-   $('do_year_filter').onclick = function() {
-      filterByYear($('yearstart').value, $('yearend').value);
+/* Filter visible citations  */
+function filterCitations() {
+   var rows = document.getElementById("citations").rows
+   var year_min = parseInt($("year_min").value)
+   var year_max = parseInt($("year_max").value)
+   var title_filt = $("title_regex").value
+   var abstract_filt = $("title_abstract_regex").value
+   var exclude_filt = $("exclude_regex").value
+   var journal_filt = $("journal_regex").value
+   var r_title = RegExp(title_filt, "i")
+   var r_abstract = RegExp(abstract_filt, "i")
+   var r_exclude = RegExp(exclude_filt, "i")
+   var r_journal = RegExp(journal_filt, "i")
+   // row 0 is the heading
+   for (var i = 1; i < rows.length; i++) {
+      if (rows[i].className == "main" && rows[i].style.display != "none") {
+         var cells = rows[i].cells;
+         var title = cells[7].innerHTML;
+         var abst = title;
+         if (rows[i+2].length > 0) {
+            abst += rows[i+2].cells[0].innerHTML; 
+         }
+         var year = parseInt(cells[4].innerHTML);
+         var journal = cells[8].innerHTML;
+         /* Apply filter criteria */
+         if ( (year >= year_min && year <= year_max)
+            && (title_filt == "" || r_title.test(title))
+            && (abstract_filt == "" || r_abstract.test(abst))
+            && (exclude_filt == "" || !r_exclude.test(abst))
+            && (journal_filt == "" || r_journal.test(journal)))
+         {
+            // do nothing
+         } else {
+            rows[i].style.display = "none";            
+         }
+         rows[i+1].style.display = "none";
+         rows[i+2].style.display = "none";            
+      }
    }
 }
 
-/* hide the warning that scripts are blocked */
-function hide_script_warning() {
+/* Event handling for the citation filter */
+function initCitationFilter() {
+   $('clear_filter').onclick = hideTableRows;
+   $('do_filter').onclick = filterCitations;
+   $('filter_form').onsubmit = filterCitations;
+}
+
+/************************** WINDOW LOADING ******************************/
+
+/* Hide the warning that scripts are blocked */
+function hideScriptWarning() {
    $("script_warning").style.display = "none";
 }
 
-/* things to do once the page is loaded */
 window.onload = function() {
-   hide_script_warning();
-   add_filter_events();
-   prepare_save_load();
-   prepare_appending();
-   add_table_events();
-   hide_allrows();
+   hideScriptWarning()
+   make_toggles()
+   initPubMedOpening()
+   initTagSaving()
+   initResultAppending()
+   initTableEvents()
+   initCitationFilter()
 }

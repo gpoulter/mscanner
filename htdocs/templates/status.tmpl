@@ -23,7 +23,7 @@ MScanner Status Report
 #end def extraheaders
 
 #def contents
-<div class="text">
+<div class="narrow">
 
 <p>
 This page will reload in <span id="reload">30</span> seconds.  
@@ -73,10 +73,12 @@ $print_errors()
         #end if len_delcode
         
         <form action="output" method="post">
-        <input type="hidden" name="operation" value="delete" />
-        <input type="hidden" name="dataset" value="$target" />
-        <input type="hidden" name="delcode" value="$delcode" />
-        <input type="submit" value="Delete $target" />
+        <p>
+        <input type="hidden" name="operation" value="delete">
+        <input type="hidden" name="dataset" value="$target">
+        <input type="hidden" name="delcode" value="$delcode">
+        <input type="submit" value="Delete $target">
+        </p>
         </form>
     
     #end if delcode
@@ -106,5 +108,5 @@ $print_errors()
 </pre>
 #end if logcontents
 
-</div><!--text-->
+</div><!--class=narrow-->
 #end def contents

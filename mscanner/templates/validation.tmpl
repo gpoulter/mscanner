@@ -1,6 +1,6 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<html lang="en">
 
 #* Validation output page
 
@@ -21,10 +21,11 @@ $timestamp -- time.time() for start of the operation
 <head>
 
   <title>MScanner validation results: $rc.dataset</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 
   #if $getVar("linkpath", None)
   <script type="text/javascript" src="$linkpath/hider.js"></script>
-  <link rel="stylesheet" type="text/css" href="$linkpath/style.css"/>
+  <link rel="stylesheet" type="text/css" href="$linkpath/style.css">
   #else
 
   <script type="text/javascript">
@@ -37,9 +38,7 @@ $timestamp -- time.time() for start of the operation
   #end if
   
   <script type="text/javascript">
-  window.onload = function() {
-    make_toggles();
-  }
+  window.onload = function() { make_toggles(); }
   </script>
   
 </head>
@@ -75,9 +74,9 @@ $timestamp -- time.time() for start of the operation
 <table class="results">
 
   <colgroup>
-    <col class="label"></col>
-    <col class="value"></col>
-    <col class="help"></col>
+    <col class="label">
+    <col class="value">
+    <col class="help">
   </colgroup>
 
   <thead>
@@ -93,14 +92,14 @@ $timestamp -- time.time() for start of the operation
     <tr>
       <th>Timestamp</th>
       #import time
-      <td id="timestamp">$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($timestamp))</td>
+      <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($timestamp))</td>
       $help("h_timestamp")
     </tr>
     $hr("h_timestamp", """Date and time at which the query was submitted.""")
 
     <tr>
       <th>Feature scores</th>
-      <td id="report_term_scores"><a href="$rc.report_term_scores">$rc.report_term_scores</a></td>
+      <td><a href="$rc.report_term_scores">$rc.report_term_scores</a></td>
       $help("h_csv")
     </tr>
     $hr("h_csv", """CSV spreadsheet with the support scores for the
@@ -110,14 +109,14 @@ $timestamp -- time.time() for start of the operation
 
     <tr>
       <th>Positive PMIDs</th>
-      <td id="report_positives"><a href="$rc.report_positives">$rc.report_positives</a></td>
+      <td><a href="$rc.report_positives">$rc.report_positives</a></td>
       $help("h_positives")
     </tr>
     $hr("h_positives", """PubMed IDs for positive training documents.""")
 
     <tr>
       <th>Negative PMIDs</th>
-      <td id="report_negatives"><a href="$rc.report_negatives">$rc.report_negatives</a></td>
+      <td><a href="$rc.report_negatives">$rc.report_negatives</a></td>
       $help("h_negatives")
     </tr>
     $hr("h_negatives", """PubMed IDs for negative training documents
@@ -126,7 +125,7 @@ $timestamp -- time.time() for start of the operation
 
     <tr>
       <th>Number of folds</th>
-      <td id="nfolds">$rc.nfolds</td>
+      <td>$rc.nfolds</td>
       $help("h_nfolds")
     </tr>
     $hr("h_nfolds", """Number of partitions to split the positive
@@ -139,7 +138,7 @@ $timestamp -- time.time() for start of the operation
 
     <tr>
       <th>F-Measure Alpha</th>
-      <td id="alpha">$rc.alpha</td>
+      <td>$rc.alpha</td>
       $help("h_alpha")
     </tr>
     $hr("h_alpha", """The weight of precision in the &alpha;-weighted
@@ -149,7 +148,7 @@ $timestamp -- time.time() for start of the operation
 
     <tr>
       <th>Area under ROC curve A(z)</th>
-      <td id="roc_area">#echo "%.5f" % $p.W #</td>
+      <td>#echo "%.5f" % $p.W #</td>
       $help("h_roc")
     </tr>
     $hr("h_roc", """Area under ROC is a global data-size-independent
@@ -158,7 +157,7 @@ $timestamp -- time.time() for start of the operation
 
     <tr>
       <th>Standard Error of A(z)</th>
-      <td id="roc_stderr">#echo "%.5f" % $p.W_stderr #</td>
+      <td>#echo "%.5f" % $p.W_stderr #</td>
       $help("h_roc_stderr")
     </tr>
     $hr("h_roc_stderr", """Area is equivalent to the Wilcoxon statistic W, for which 
@@ -166,7 +165,7 @@ $timestamp -- time.time() for start of the operation
 
     <tr>
       <th>Area under PR curve</th>
-      <td id="pr_area">#echo "%.5f" % $p.PR_area #</td>
+      <td>#echo "%.5f" % $p.PR_area #</td>
       $help("h_prcurve")
     </tr>
     $hr("h_prcurve", """Area under the Precision-Recall (PR) curve,
@@ -174,7 +173,7 @@ $timestamp -- time.time() for start of the operation
     
     <tr>
       <th><b>Averaged Precision</b></th>
-      <td id="avprec">#echo "%.5f" % $p.AvPrec #</td>
+      <td>#echo "%.5f" % $p.AvPrec #</td>
       $help("h_avprec")
     </tr>
     $hr("h_avprec", """Average value of precision, where the
@@ -183,7 +182,7 @@ $timestamp -- time.time() for start of the operation
     
     <tr>
       <th>Break-Even <span class="footnote">(where precision=recall)</span></th>
-      <td id="break_even">#echo "%.5f" % $p.breakeven #</td>
+      <td>#echo "%.5f" % $p.breakeven #</td>
       $help("h_break_even")
     </tr>
     $hr("h_break_even", """Shared value at the point where Recall = Precision =
@@ -192,7 +191,7 @@ $timestamp -- time.time() for start of the operation
 
     <tr>
       <th>Score threshold</th>
-      <td id="threshold">#echo "%.2f" % $p.threshold #</td>
+      <td>#echo "%.2f" % $p.threshold #</td>
       $help("h_threshold")
     </tr>
     $hr("h_threshold", """The score threshold which maximises
@@ -215,10 +214,7 @@ $timestamp -- time.time() for start of the operation
   </p>
   </div>
 
-  <table class="matrix">
-    <colgroup span="4">
-      <col span="4" ></col>
-    </colgroup>
+  <table id="matrix">
     <thead>
       <tr>
       <th rowspan="2" colspan="2"></th>
@@ -265,7 +261,7 @@ $timestamp -- time.time() for start of the operation
   </table>
 
   <h2>Common Performance Measures
-  <button class="toggle" id="toggle_h_performance")">?</button>
+  <button class="toggle" id="toggle_h_performance">?</button>
   </h2>
 
   <div class="help" id="h_performance">
@@ -357,8 +353,8 @@ $timestamp -- time.time() for start of the operation
 
   <table class="results">
     <colgroup>
-      <col class="longlabel"></col>
-      <col class="value"></col>
+      <col class="longlabel">
+      <col class="value">
     </colgroup>
     <tr>
       <th><b>Prevalence</b> 
@@ -489,7 +485,7 @@ $timestamp -- time.time() for start of the operation
 </div><!--body-->
 
 <div id="footer">
-                                               
+                                     
 </div>
 
 </body>

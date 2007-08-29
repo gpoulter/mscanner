@@ -1,4 +1,4 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 
 #* Table of citations
 
@@ -19,7 +19,7 @@ filename -- Name of the current file (e.g. 'results_03.html')
 filelist -- List of names of all HTML files in the set
 *#
 
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<html lang="en">
 
 <head>
 
@@ -30,12 +30,13 @@ filelist -- List of names of all HTML files in the set
     Result Citations for $dataset
     #end if
   </title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 
   #if $getVar("linkpath", None)
   <script type="text/javascript" src="$linkpath/hider.js"></script>
   <script type="text/javascript" src="$linkpath/fileutils.js"></script>
   <script type="text/javascript" src="$linkpath/citations.js"></script>
-  <link rel="stylesheet" type="text/css" href="$linkpath/style.css" />
+  <link rel="stylesheet" type="text/css" href="$linkpath/style.css">
   #else
   <script type="text/javascript">
     #include raw $_inc("hider.js")
@@ -102,53 +103,55 @@ Navigation:
 
 <div class="control" id="script_warning">
 
-  <p>
-    The script which hides this paragraph has not run. If the page is taking
-    a long time to load, consider downloading the zip file instead. If there is
-    an alert saying that there is blocked content, select "Allow blocked content"
-    to enable the scripts.
-  </p>
+  <p>Warning: page scripts have not run - all things clickable will not
+  function until they do. If the page is taking a while to load, consider
+  downloading the zip file of results instead. If your browser is saying that
+  there is blocked content, click the alert and "Allow blocked content".</p>
   
 </div>
 
-<div class="control" id="no_save_load_div">
+<div class="control" id="save_warning_div">
 
-  <p> 
-    This file is being viewed online. By opening a local copy of the file it
-    will be possible to save to file and load from file the manual
-    classifications made by clicking once or twice in the "C" column. 
-  </p>
+  <button class="toggle" id="toggle_save_warning">Extra Features</button>
+
+  <p id="save_warning">Filtering and opening citations in PubMed are not the
+  only features: by saving a local copy of this file (e.g. using "Save As") and
+  opening it in Mozilla Firefox or Internet Explorer 7, it is possible to save
+  to or load from file the manual classifications (made by clicking once or
+  twice in the "C" column). In Firefox it is also possible to append later
+  result pages to the end of this table, to view and filter the results from
+  multiple pages simultaneously.</p>
 
 </div>
 
 <div class="control" id="filter_div">
 
-  <form id="filter_form">
+  <form action="#" method="get" id="filter_form">
   <table>
   <tr>
   <th>Title contains</th>
-  <td><input type="text" size="30" id="title_regex" /></td>
+  <td><input type="text" size="30" id="title_regex"></td>
   </tr>
   
   <tr>
   <th>Title/abstract contains</th>
-  <td><input type="text" size="30" id="title_abstract_regex" /></td>
+  <td><input type="text" size="30" id="title_abstract_regex"></td>
   </tr>
   
   <tr>
   <th>Title/abstract does not contain</th>
-  <td><input type="text" size="30" id="exclude_regex" /></td>
+  <td><input type="text" size="30" id="exclude_regex"></td>
   </tr>
   
   <tr>
   <th>Year of publication is between</th>
-  <td><input type="text" size="3" id="year_min" value="1900" /> and
-  <input type="text" size="3" id="year_max" value="2020" /></td>
+  <td><input type="text" size="5" id="year_min" value="1900"> and
+  <input type="text" size="5" id="year_max" value="2020"></td>
   </tr>
   
   <tr>
   <th>Abbreviated journal contains</th>
-  <td><input type="text" size="20" id="journal_regex" /></td>
+  <td><input type="text" size="20" id="journal_regex"></td>
   </tr>
   </table>
   </form>  
@@ -177,10 +180,12 @@ Navigation:
 
 <div class="control" id="pubmed_div">
 
-  <button id="open_pubmed_all">Open visible in PubMed</button>&nbsp;
-  <button id="open_pubmed_relevant">Open relevant in Pubmed</button>&nbsp;
-  <button class="toggle" id="toggle_h_open">Help</button>
-
+  <p>
+    <button id="open_pubmed_all">Open visible in PubMed</button>&nbsp;
+    <button id="open_pubmed_relevant">Open relevant in Pubmed</button>&nbsp;
+    <button class="toggle" id="toggle_h_open">Help</button>
+  </p>
+  
   <div class="help" id="h_open">
 
     <p>Opens PubMed in a new window, for the citations that are visible below.
@@ -199,9 +204,11 @@ Navigation:
 
 <div class="control" id="save_load_div">
 
-  <button id="save_tags">Save Classifications</button>&nbsp;
-  <button id="load_tags">Load Classifications</button>&nbsp;
-  <button class="toggle" id="toggle_h_save_load">Help</button>
+  <p>
+    <button id="save_tags">Save Classifications</button>&nbsp;
+    <button id="load_tags">Load Classifications</button>&nbsp;
+    <button class="toggle" id="toggle_h_save_load">Help</button>
+  </p>
   
   <div class="help" id="h_save_load">
     #set save_target = $filename.namebase+".csv"
@@ -216,9 +223,11 @@ Navigation:
 
 <div class="control" id="append_results_div">
 
-  <button id="append_results">Append next result file</button>&nbsp;
-  Next up is: <a id="next_to_append" href=""></a>.&nbsp;
-  <button class="toggle" id="toggle_h_append">Help</button>
+  <p>
+    <button id="append_results">Append next result file</button>&nbsp;
+    Next up is: <a id="next_to_append" href=""></a>.&nbsp;
+    <button class="toggle" id="toggle_h_append">Help</button>
+  </p>
   
   <div class="help" id="h_append">
     <p>Append citations from later results files to the bottom of this one.</p>
@@ -235,7 +244,7 @@ $cite_table
 </div><!--class=body-->
 
 <div id="footer">
-                                               
+                                     
 </div>
 
 </body>

@@ -8,7 +8,6 @@ Submit Query or Validation #slurp
 
 ## Uncompressed javascript for debugging (77k)
 ##<script type="text/javascript" src="$baseurl/static/mootools.js"></script>
-
 ## Compressed javascript for production (13k)
 <script type="text/javascript" src="$baseurl/static/mootools.zip.js"></script>
 
@@ -37,15 +36,11 @@ Submit Query or Validation #slurp
       }
     }
   }
-  
-  // Fills the example PubMed IDs
-  function fill_example() {
-     \$('dataset').value = "example-radiology-query"
-     \$('positives').value = "10390570\n10555669\n10587123\n10658726\n10702822\n10747308\n11092485\n11812973\n12216754\n12438060\n12708922\n12828616\n12945936\n14510633\n14628859\n14700161\n14752189\n14914750\n15256634\n15310152\n15351243\n15405683\n15480032\n15520901\n15717221\n15718419\n1592926\n16009818\n16019460\n16154823\n16189163\n16272860\n16299797\n16344746\n16415460\n16488085\n1727362\n1899742\n1928554\n1950868\n1984330\n2406785\n2731700\n2806818\n3275982\n3279735\n3416282\n3840980\n3871147\n4040300\n5327041\n5368340\n6497634\n6783686\n6856834\n7034554\n7480744\n8190956\n8208972\n8316667\n8372948\n8615251\n8911169\n8988207\n8988208\n9754100\n9922200\n9922201\n"
-  }
-  
   window.onload = function() {
-    \$('fill_example').onclick = fill_example;
+    \$('fill_example').onclick = function () {
+       \$('dataset').value = "example-radiology-query"
+       \$('positives').value = "10390570\n10555669\n10587123\n10658726\n10702822\n10747308\n11092485\n11812973\n12216754\n12438060\n12708922\n12828616\n12945936\n14510633\n14628859\n14700161\n14752189\n14914750\n15256634\n15310152\n15351243\n15405683\n15480032\n15520901\n15717221\n15718419\n1592926\n16009818\n16019460\n16154823\n16189163\n16272860\n16299797\n16344746\n16415460\n16488085\n1727362\n1899742\n1928554\n1950868\n1984330\n2406785\n2731700\n2806818\n3275982\n3279735\n3416282\n3840980\n3871147\n4040300\n5327041\n5368340\n6497634\n6783686\n6856834\n7034554\n7480744\n8190956\n8208972\n8316667\n8372948\n8615251\n8911169\n8988207\n8988208\n9754100\n9922200\n9922201\n"
+    }
     create_sliders();
   }
 </script>
@@ -74,7 +69,7 @@ Submit Query or Validation #slurp
 
 ## Generate input field 'name', of 'size' characters, defaulting to 'value'
 #def h_input(name, size, value)
-<input name="$name" id="$name" type="text" size="$size" value="$value"/>
+<input name="$name" id="$name" type="text" size="$size" value="$value">
 #end def
 
 ## Generate textarea 'name', filled with 'value'
@@ -98,17 +93,17 @@ Submit Query or Validation #slurp
 
 $print_errors()
 
-<form class="query" action="" method="post">
+<form id="query" action="" method="post">
   
   <fieldset>
     
     <legend>Standard Options</legend>
 
     ## Auto-filling the captcha for this form, spambots likely to be invalid
-    <input type="hidden" id="captcha" name="captcha" value="orange"/>
+    <input type="hidden" id="captcha" name="captcha" value="orange">
     
     ## Leaving number of folds set to the default
-    <input type="hidden" id="nfolds" name="nfolds" value="$nfolds"/>    
+    <input type="hidden" id="nfolds" name="nfolds" value="$nfolds">    
     
     <table>
 
@@ -145,7 +140,8 @@ $print_errors()
   <fieldset>
     
     <legend>
-      <input type="radio" name="operation" value="query" checked="checked"/>Query Operation
+      <input type="radio" name="operation" value="query" checked="checked">
+      Query Operation
     </legend>
     
     <table>
@@ -169,11 +165,12 @@ $print_errors()
   <fieldset>
     
     <legend>
-      <input type="radio" name="operation" value="validate"/>
+      <input type="radio" name="operation" value="validate">
       Validation Operation
     </legend>
     
     <table>
+    
       $form_row("Number of Negatives", "numnegs",
       $h_input("numnegs",8,$numnegs),
       
@@ -196,10 +193,10 @@ $print_errors()
     
   </fieldset> 
 
-  <div>
-    <input type="submit" />
+  <p>
+    <input type="submit">
     <button type="button" id="fill_example">Example</button>
-  </div>
+  </p>
 
 </form>
 

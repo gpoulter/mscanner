@@ -97,9 +97,21 @@ function writeFileNetscape(fname, text) {
 
 /*************** HELPER FUNCTIONS ***************************/
 
+/* Safe check for whether a variable is defined */
+function isdefined( variable) {
+    return (typeof(window[variable]) == "undefined")?  false: true;
+}
+
 /* True if we are in a file:/// URL */
 function areWeLocal() {
    return document.URL.substr(0,7) == "file://";
+}
+
+/* Returns true if it is possible to save/load files */
+function canWeSave() {
+   var isdef = isdefined;
+   return areWeLocal() && (
+   isdef("ActiveXObject") || (isdef("netscape") && isdef("Components")));
 }
 
 /* Convert a file:/// URL to a system path */

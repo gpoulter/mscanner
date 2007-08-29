@@ -1,8 +1,12 @@
 #extends page
 
 #def title
-MScanner: Retrieve Medline citations using examples
+MScanner
 #end def title
+
+#def headertitle
+<h1>MScanner</h1><p style="margin:0"> Retrieving Medline citations using examples</p>
+#end def headertitle
 
 #def contents
 <div class="narrow">
@@ -11,46 +15,71 @@ MScanner: Retrieve Medline citations using examples
 
 <h2>Queries</h2>
 
-<p> On the "Query" page (see above), give MScanner examples of the sort of
-articles you are looking for, then click "Submit Query", and it will find
-similar articles. MScanner works with anywhere from 1 to 10,000 examples.</p>
+<p>On the <a href="form">query</a> page, give MScanner examples of the
+citations you are looking for, then click "Submit Query". About 90 seconds from
+the front of the queue the result will be ready. The difference between
+MScanner and the PubMed <a
+href="http://www.ncbi.nlm.nih.gov/entrez/query/static/computation.html">Related
+Articles</a> feature is that MScanner can use many examples to define the topic
+of interest, instead of just one.</p>
 
-<p>
-You will be taken to a waiting page until the results are ready (takes
-about 90 seconds from the front of the queue). Meanwhile, you can view some <a
-href="static/sample/pg07">sample results</a> for a query that used about 1,500
-citations from the <a href="http://www.pharmgkb.org">Pharmacogenetics
-KnowledgeBase (PharmGKB)</a>.
-</p>
+<p>See the <a href="static/sample/pg07">sample output</a> of a query that used
+as input 1,595 citations from the Pharmacogenetics KnowledgeBase (<a
+href="http://www.pharmgkb.org">PharmGKB</a>).</p>
 
 <h2>Cross validation</h2> 
 
-<p> If MScanner is given random articles for input, it produces random articles
-for output. To measure how well MScanner can distinguish your input from the
-rest of <a
-href="http://www.nlm.nih.gov/pubs/factsheets/medline.html">Medline</a>, use the
-10-fold cross validation option on the query page (requires 30 or more training
-citations). You can view some <a href="static/sample/pg07-vs-100k">sample cross
-validation output</a> also using the PharmGKB data.</p>
+<p>If MScanner is given random articles for input, those citations are
+indistinguishable from the rest of <a
+href="http://www.nlm.nih.gov/pubs/factsheets/medline.html">Medline</a>. To
+measure how well MScanner can distinguish your input from Medline, use the
+10-fold cross validation option on the query page (which requires 30 or more
+training citations). See the <a href="static/sample/pg07-vs-100k">sample
+output</a> for cross validation using the PharmGKB citations as input.</p>
+
+<h2>Published data sets</h2>
+
+<p> The MScanner publication presents condensed results for cross validation on
+data sets named PG07, AIDSBio, Radiology and Random10k. What follow are links
+to the original query and cross-validation outputs for those data sets. See the
+paper for descriptions of the data sets.</p>
+
+<table>
+<tr>
+<th>Data set</th>
+<th>Query output</th>
+<th>Validation output</th>
+</tr>
+<tr>
+<td>PG07 (Pharmacogenetics, 1595 citations)</td>
+<td><a href="static/sample/pg07">pg07</a>
+<td><a href="static/sample/pg07-vs-100k">pg07-vs-100k</a></td>
+</tr>
+<tr>
+<td>AIDSBio (AIDS and Bioethics, 10732 citations)</td>
+<td><a href="static/sample/aids">aids</a></td>
+<td><a href="static/sample/aids-vs-100k">aids-vs-100k</a></td>
+</tr>
+<tr>
+<td>Radiology (splenic imaging, 67 citations)</td>
+<td><a href="static/sample/radiology">radiology</a></td>
+<td><a href="static/sample/radiology-vs-100k">radiology-vs-100k</a></td>
+</tr>
+<tr>
+<td>Random (randomly selected, 10000 citations)</td>
+<td></td>
+<td><a href="static/sample/random10k-vs-100k">random10k-vs-100k</a></td>
+</tr>
+</table>
 
 <p>
-MScanner has been tested using Mozilla Firefox and Internet Explorer 7.
-JavaScript needs to be enabled for the mini-application in the results page.
+MScanner has been tested with
+<a href="http://www.mozilla.com/firefox/">Mozilla Firefox 2</a>, 
+<a href="http://www.microsoft.com/windows/downloads/ie/getitnow.mspx">Internet Explorer 7</a>, 
+<a href="http://www.apple.com/safari/download/">Safari 3</a> and 
+<a href="http://www.opera.com/download/">Opera 9</a>.  
+Some features may not work in older browsers or with JavaScript disabled.
 </p>
-
-<!--
-<h3>Publication Results</h3>
-
-<p>
-MScanner is being published in BMC Bioinformatics.  The full
-cross validation results for the published data sets are below:
-</p>
-
-<a href="sample/pg07-valid">
-
-
-<a href="sample/pg07-query">PG07 Query
--->
 
 </div><!--narrow-->
 #end def contents

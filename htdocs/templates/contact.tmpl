@@ -37,20 +37,29 @@ Contact the Author
 
 <form action="contact" method="post">
 
-<p>Please enter the word "orange": 
-<input type="text" name="captcha" value="$getVar('captcha','')"/></p>
+<p>
+Please enter the word "orange": 
+<input type="text" name="captcha" value="$getVar('captcha','')">
+</p>
 
-<p>Your name (optional): 
-<input type="text" name="name" value="$getVar('name','')"/></p>
+<p>
+Your name (optional): 
+<input type="text" name="name" value="$getVar('name','')">
+</p>
 
-<p>Your email address (optional): 
-<input type="text" name="email" value="$getVar('email','')"/></p>
+<p>
+Your email address (optional): 
+<input type="text" name="email" value="$getVar('email','')">
+</p>
 
 <p>The message:</p>
-
+<p>
 <textarea name="message" rows="10" cols="50">$getVar('message','')</textarea>
+</p>
 
-<p><input type="submit" value="Send Message"/></p>
+<p>
+<input type="submit" value="Send Message">
+</p>
 
 </form>
 

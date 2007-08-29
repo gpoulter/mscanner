@@ -130,7 +130,6 @@ table#features col.label {
 
 /************** VALIDATION.TMPL ONLY ************/
 
-table#matrix col { width: 25%; }
 table#matrix td.tp { background-color: #FF3333; } /* bright red */
 table#matrix td.tn { background-color: #3333FF; } /* bright blue */
 table#matrix td.fp { background-color: #CCCCFF; } /* pale red */
@@ -140,6 +139,12 @@ table#matrix td.fn { background-color: #FFCCCC; } /* pale blue */
 
 div.control {
     margin-bottom: 1ex;
+}
+table#citations td.pos {
+    background-color: red;
+}
+table#citations td.neg {
+    background-color: blue;
 }
 
 table#citations {

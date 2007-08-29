@@ -8,9 +8,9 @@ MScanner Output
 
 #import time
 
-<div class="narrow">
-
 $print_errors()
+
+<div class="narrow">
 
 #if $getVar("nodelete", None) is not None
 
@@ -48,11 +48,11 @@ $print_errors()
 
 #end if donetasks
 
-</div><!--narrow-->
+</div><!--class=narrow-->
 
 #if len($donetasks) != 0
   
-<form class="output" action="" method="post">
+<form id="output" action="" method="post">
 
   <table>
     <thead>
@@ -67,7 +67,7 @@ $print_errors()
       #for d in $donetasks
       <tr>
         <td class="del">
-          <input type="radio" name="dataset" value="$d.dataset" />
+          <input type="radio" name="dataset" value="$d.dataset">
         </td>
         <td class="timestamp">
           $time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($d.timestamp))
@@ -76,27 +76,25 @@ $print_errors()
           $d.operation
         </td>
         <td class="dataset">
-          <a href="/static/output/$d.dataset/" target="_blank">$d.dataset</a>
+          <a href="/static/output/$d.dataset/">$d.dataset</a>
         </td>
       </tr>
       #end for
     </tbody>
   </table>
   
-<div class="narrow">
-
-<p>
-  Download selected as a zip file (0.5-2 megabytes, 
-  <input type="checkbox" name="omit_mesh" checked="checked"/> omit term list to save 300k):
-  <button type="submit" name="operation" value="download">download</button>
-</p>
-
-<p>
-  Delete selected using deletion code: <input name="delcode" type="text" size="10"/>
-  <button type="submit" name="operation" value="delete" >delete</button>
-</p>
-
-</div>
+  <div class="narrow">
+    <p>
+      Download selected as a zip file (0.5-2 megabytes, 
+      <input type="checkbox" name="omit_mesh" checked="checked"> omit term list to save 300k):
+      <button type="submit" name="operation" value="download">download</button>
+    </p>
+    <p>
+      Delete selected using deletion code: 
+      <input name="delcode" type="text" size="10">
+      <button type="submit" name="operation" value="delete" >delete</button>
+    </p>
+  </div>
   
 </form>
 

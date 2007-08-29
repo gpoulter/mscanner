@@ -1,6 +1,6 @@
 #block doctype
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-#end block
+#end block doctype
 
 #def title
 Sample Title
@@ -11,11 +11,14 @@ Sample Title
 
 #block head
 <head>
+
+#block wintitle
 <title>$title</title>
+#end block
 
 #block stdheaders
-<link rel="stylesheet" type="text/css" href="$baseurl/static/mscanner.css"></link>
-<link rel="shortcut icon" href="$baseurl/favicon.png" type="image/x-icon"></link>
+<link rel="stylesheet" type="text/css" href="$baseurl/static/mscanner.css">
+<link rel="shortcut icon" href="$baseurl/favicon.png" type="image/x-icon">
 #end block stdheaders
 
 #block extraheaders
@@ -29,7 +32,9 @@ Sample Title
 
 #block header
 <div id="header">
+  #block header_text
   <h1>$title</h1>
+  #end block header_text
 </div>
 #end block header
 
@@ -82,7 +87,9 @@ CONTENTS
 
 #block footer
 <div id="footer">
-                                      
+  #block footer_text
+  &copy; 2007 Graham Poulter
+  #end block footer_text
 </div>
 #end block footer
 

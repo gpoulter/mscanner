@@ -103,29 +103,29 @@ div#topmenu td {
 
 /* QUERY PAGE */
 
-form.query {
+form#query {
     /* form fills surrounding container */
     width: 100%;
 }
-form.query table {
+form#query table {
     /* form tables also fill surrounding container */
     width: 100%;
 }
-form.query fieldset {
+form#query fieldset {
     margin: 1ex;
 }
-form.query th {
+form#query th {
     width: 10em;
 }
-form.query td.value {
+form#query td.value {
     background-color: #EEEEEE; /* gray 1 */
 }
-form.query td.help {
-    width: 10%;
+form#query td.help {
+    width: 5em;
     text-align: right;
     background-color: #EEEEFF; /* light yellow */
 }
-form.query tr.help div {
+form#query tr.help div {
     background-color: #EEEEFF; /* light yellow */
 }
 
@@ -143,21 +143,21 @@ table.status td {
 
 /* OUTPUT PAGE */
 
-form.output table {
+form#output table {
     border-spacing: 3px;
     width: auto;
 }
-form.output td.del {
+form#output td.del {
     /* selection radio button cells */
     background-color: #BBBBBB; /* gray 4 */
     text-align: center;
 }
-form.output td.dataset {
+form#output td.dataset {
     /* dataset name cells */
     background-color: #CCCCCC; /* gray 3 */
     width: 15em;
 }
-form.output td.timestamp {
+form#output td.timestamp {
     /* timestamp cells */
     background-color: #DDDDDD; /* gray 2 */
 }

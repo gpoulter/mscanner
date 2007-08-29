@@ -379,6 +379,7 @@ class web_output:
                             continue
                     zf.write(str(fpath), str(fpath.basename()))
                 zf.close()
+                outfile.chmod(0777)
             dsurl = web.urlquote(dataset)
             web.seeother("static/output/" + dsurl + "/" + dsurl + ".zip")
         if formvars.operation != "download" or hasattr(t, "errors"):

@@ -393,9 +393,9 @@ def citationTable(startrank, scores):
     ncbi_jour = ncbi+"CMD=search&DB=journals&term="
     for idx, (score, art) in enumerate(scores):
         pmid = str(art.pmid)
-        tr = SubElement(tbody, "tr", {"class":"main"}, id=pmid)
+        tr = SubElement(tbody, "tr", {"class":"main"}, id="P"+pmid)
         # Classification
-        SubElement(tr, "td")
+        SubElement(tr, "td").text = " "
         # Rank
         SubElement(tr, "td").text = str(idx+startrank)
         # Score
@@ -407,10 +407,10 @@ def citationTable(startrank, scores):
         SubElement(tr, "td").text = str(art.year)
         # Expand Author button
         td = SubElement(tr, "td")
-        td.text = "+" if art.authors else ""
+        td.text = "+" if art.authors else " "
         # Expand Abstract button
         td = SubElement(tr, "td")
-        td.text = "+" if art.abstract else ""
+        td.text = "+" if art.abstract else " "
         # Title
         td = SubElement(tr, "td")
         td.text = art.title.encode("utf-8")
@@ -420,21 +420,18 @@ def citationTable(startrank, scores):
             a = SubElement(td, "a", href=ncbi_jour+art.issn)
             a.text = art.journal if art.journal else art.issn
         # Expanded authors
-        tr = SubElement(tbody, "tr", {"class":"author"}, id="au_"+pmid)
-        if not art.authors:
-            tr.set("style","display:none;")
+        tr = SubElement(tbody, "tr", {"class":"author"})
+        td = SubElement(tr, "td", {"colspan":str(ncols)})
+        td.text = " "
         if art.authors:
-            td = SubElement(tr, "td", colspan=str(ncols))
-            td.text = ""
             for initials, lastname in art.authors:
                 if initials: td.text += initials.encode("utf8") + " "
                 if lastname: td.text += lastname.encode("utf8") + ", "
         # Expanded Abstract
-        tr = SubElement(tbody, "tr", {"class":"abstract"}, id="ab_"+pmid)
-        if not art.abstract:                        
-            tr.set("style","display:none;")
-        if art.abstract:
-            td = SubElement(tr, "td", colspan=str(ncols))
+        tr = SubElement(tbody, "tr", {"class":"abstract"})
+        td = SubElement(tr, "td", {"colspan":str(ncols)})
+        td.text = " "
+        if art.abstract:                        
             td.text = art.abstract.encode("utf8")
     from cStringIO import StringIO
     s = StringIO()

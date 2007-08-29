@@ -28,7 +28,7 @@ will lead to a blank page instead of a citation.</li>
 
 <ul>
 #for pmid in $notfound_pmids:
-<li><a href="http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&db=pubmed&list_uids=$pmid">$pmid</a></li>
+<li><a href="http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;db=pubmed&amp;list_uids=$pmid">$pmid</a></li>
 #end for
 </ul>
 

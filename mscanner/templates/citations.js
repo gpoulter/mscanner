@@ -13,15 +13,6 @@ Cells in each row are:
 
 /************************ HELPER FUNCTIONS ***********************/
 
-/* Return whether event was a right click */
-function is_rightclick(event) {
-   if (!event) var event = window.event;
-   if (event.which)
-      return (event.which == 3);
-   else if (event.button)
-      return (event.button == 2);
-}
-
 /* Return target of the event */
 function event_target(event) {
    if (!event) var event = window.event;
@@ -56,36 +47,30 @@ all=true: Open all visible citations in PubMed
 all=false: Open only manually-marked relevant citations in PubMed
 */
 function openPubMed(all) {
-   var rows = document.getElementById("citations").rows;
-   var qstring = "http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;db=pubmed&amp;list_uids=";
-   var count = 0;
+   var rows = document.getElementById("citations").rows
+   var qstring = "http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;db=pubmed&amp;list_uids="
+   var count = 0
    for (var i = 0; i < rows.length; i++) {
       if (rows[i].className == "main") {
-         var pmid = rows[i].id;
+         var pmid = rows[i].id.substr(1)
          if (getTag(pmid) == 2 ||
-            (all == true && rows[i].style.display != "none"))
-         {
-            if (count > 0) {
-               qstring += ",";
-            }
-            qstring += pmid;
-            count++;
+            (all == true && rows[i].style.display != "none")) {
+            if (count > 0) qstring += ","
+            qstring += pmid
+            count++
          }
       }
    }
-   if(count == 0) {
-      alert("Cannot open PubMed as there are no PubMed IDs to open");
-   } else {
-      window.open(qstring);
-   }
+   if(count == 0)
+      alert("Cannot open PubMed as there are no PubMed IDs to open")
+   else
+      window.open(qstring)
 }
 
 /* Adds events for opening citations in PubMed */
 function initPubMedOpening() {
-   $('open_pubmed_relevant').onclick = function() {
-      openPubMed(false); }
-   $('open_pubmed_all').onclick = function() {
-      openPubMed(true);  }
+   $("open_pubmed_relevant").onclick = function() { openPubMed(false) }
+   $("open_pubmed_all").onclick = function() { openPubMed(true) }
 }
 
 /******************* LOADING/SAVING OF CITATION TAGS ********************/
@@ -102,19 +87,19 @@ function loadTags(fname)
    try {
       var text = readFile(fname)
    } catch (err) {
-      alert("Failed to read classifications from file: " + err);
-      return;
+      alert("Failed to read classifications from file: " + err)
+      return
    }
    var lines = text.split("\n");
    for (var i = 0; i < lines.length; i++) {
-      var values = lines[i].split(",");
-      var pmid = values[0];
-      var score = values[1];
-      var classification = values[2];
+      var values = lines[i].split(",")
+      var pmid = values[0]
+      var score = values[1]
+      var classification = values[2]
       switch(classification) {
-         case " ": setTag(pmid, 0); break;
-         case "0": setTag(pmid, 1); break;
-         case "1": setTag(pmid, 2); break;
+         case " ": setTag(pmid, 0); break
+         case "0": setTag(pmid, 1); break
+         case "1": setTag(pmid, 2); break
       }
    }
    alert("Successfully loaded classifications");
@@ -122,92 +107,75 @@ function loadTags(fname)
 
 /* Save classifications to disk */
 function saveTags(fname) {
-   var text = "";
-   var rows = document.getElementById("citations").rows;
+   var text = ""
+   var rows = document.getElementById("citations").rows
    for (var i = 0; i < rows.length; i++) {
       if (rows[i].className == "main") {
-         var pmid = rows[i].id;
-         var score = rows[i].cells[2].innerHTML;
+         var pmid = rows[i].id.substr(1)
+         var score = rows[i].cells[2].innerHTML
          var line = pmid+","+score+","
          switch(getTag(pmid)) {
-            case 0: line += " \n"; break;
-            case 1: line += "0\n"; break;
-            case 2: line += "1\n"; break;
+            case 0: line += " \n"; break
+            case 1: line += "0\n"; break
+            case 2: line += "1\n"; break
          }
          text += line;
       }
    }
    try {
-      writeFile(fname, text);
-      alert("Successfully saved classifications");
+      writeFile(fname, text)
+      alert("Successfully saved classifications")
    } catch (err) {
-      alert("Failed to save classifications: " + err);
+      alert("Failed to save classifications: " + err)
    }
 }
 
 /* Set up the saving/loading of classifications */
-function initTagSaving() {
-   if (areWeLocal() == false) {
-      // hide ability to save/load citations for non-local pages
-      $("save_load_div").style.display = "none";
-   } else {
-      // else hide warning and hook up the events
-      $("no_save_load_div").style.display = "none";
-      $('save_tags').onclick = function() {
-         saveTags(fileURLasPath($('save_target').href));
-      }
-      $('load_tags').onclick = function() {
-         loadTags(fileURLasPath($('save_target').href));
-      }
-   }
-}
-
-/******************** TAGGING OF CITATIONS ************************/
-
 /* Get classification tag (0,1,2) */
 function getTag(pmid) {
-   var color = $(pmid).cells[0].style.backgroundColor
-   switch (color) {
-      case "": return 0;
-      case "blue": return 1;
-      case "red": return 2;
-      default: throw "Invalid tag color " + color;
-   } 
+   var cls = $("P"+pmid).cells[0].className
+   switch(cls) {
+      case "": return 0; break
+      case "neg": return 1; break
+      case "pos": return 2; break
+      default: throw "Invalid tag class: " + color
+   }
 }
 
 /* Set classification tag (value may be 0, 1 or 2) */
 function setTag(pmid, value) {
-   var row = $(pmid)
-   var tagstyle = row.cells[0].style
-   var rowstyle = row.style
+   var tag = $("P"+pmid).cells[0]
    switch (value) {
-   case 0:
-      tagstyle.backgroundColor = "";
-      rowstyle.backgroundColor = "";
-      break;
-   case 1:
-      tagstyle.backgroundColor = "blue"; 
-      rowstyle.backgroundColor = "#DDDDFF";
-      break;
-   case 2:
-      tagstyle.backgroundColor = "red";
-      rowstyle.backgroundColor = "#FFDDDD";
-      break;
-   default: throw "Invalid tag value " + value;
-   } 
+      case 0: tag.className = ""; break
+      case 1: tag.className = "neg"; break
+      case 2: tag.className = "pos"; break
+      default: throw "Invalid tag code: " + value
+   }
 }
 
+function initTagSaving() {
+   if (areWeLocal() == false || canWeSave() == false) {
+      // hide ability to save/load citations for non-local pages
+      $("save_load_div").style.display = "none"
+   } else {
+      $("save_warning_div").style.display = "none"
+      $('save_tags').onclick = function() {
+         saveTags(fileURLasPath($('save_target').href)) }
+      $('load_tags').onclick = function() {
+         loadTags(fileURLasPath($('save_target').href)) }
+   }
+}
 
 /******************* CITATION TABLE EVENTS **************************/
 
 /* Hide all expanded author/abstract rows in the citations table */
 function hideTableRows() {
-   var rows = document.getElementById("citations").rows;
+   var rows = document.getElementById("citations").rows
    // row 0 is the heading
    for (i = 1; i < rows.length; i+=3) {
-      rows[i].style.display = "";
-      rows[i+1].style.display = "none";            
-      rows[i+2].style.display = "none";
+      rows[i].style.display = ""
+      rows[i+1].style.display = "none"     
+      rows[i+2].style.display = "none"
    }
 }
 
@@ -218,34 +186,28 @@ function initTableEvents() {
 
    /* Cycles cell forward on left clicks, backward on right */
    function onclick_classify(e) {
-      if (!e) var e = window.event;
-      // Target is cell, with parent row who has PMID as its id
-      var pmid = this.parentNode.id;
-      if (is_rightclick(e)) {
-         setTag(pmid, (getTag(pmid)+1) % 3);
-      } else {
-         setTag(pmid, (getTag(pmid)+2) % 3);
-      }
-      return false; // suppress default click action
+      /* Target is cell, with parent row who has "P"+PMID as its id */
+      var pmid = this.parentNode.id.substr(1);
+      setTag(pmid, (getTag(pmid)+2) % 3)
    }
    
    /* Author row is sibling of target's parent row. */
    function onclick_author() {
-      toggle(this.parentNode.nextSibling);
+      toggle(this.parentNode.nextSibling)
    }
 
    /* Abstract row is second sibling of target's parent row. */
    function onclick_abstract() {
-      toggle(this.parentNode.nextSibling.nextSibling);
+      toggle(this.parentNode.nextSibling.nextSibling)
    }
    
    /* Loop over rows to add event handlers */
-   var rows = document.getElementById("citations").rows;
+   var rows = document.getElementById("citations").rows
    // row 0 is the heading
    for (var i = 1; i < rows.length; i+=3) {
-      rows[i].cells[0].onclick = onclick_classify;
-      rows[i].cells[5].onclick = onclick_author;
-      rows[i].cells[6].onclick = onclick_abstract;
+      rows[i].cells[0].onclick = onclick_classify
+      rows[i].cells[5].onclick = onclick_author
+      rows[i].cells[6].onclick = onclick_abstract
    }
 }
 
@@ -257,13 +219,13 @@ Read citations from disk and append to the table
 If append is false, we prepend the data to the table instead.
 */
 function loadCitations(fname) {
-   var text = readFile(fname);
-   var table = text.match(/<[t]body>[^\v]*?<\/tbody>/);
-   var blob = table[0].substr(7,table[0].length-15);
+   var text = readFile(fname)
+   var table = text.match(/<[t]body>[^\v]*?<\/tbody>/)
+   var blob = table[0].substr(7,table[0].length-15)
    var tbody = $("citations").getElementsByTagName("tbody")[0]
-   tbody.innerHTML += blob;
+   tbody.innerHTML += blob
    /* new HTML so no events are linked */
-   initTableEvents();
+   initTableEvents()
 }
 
 /* Note: We can only append result files if innerHTML can be set on tables
@@ -272,32 +234,32 @@ function loadCitations(fname) {
 appendable_files = [] // list of files to append
 function initResultAppending() {
    /* hide the feature if it is not supported. toSource detects Netscape. */
-   if (areWeLocal() == false || (!"a".toSource)) {
-      $("append_results_div").style.display = "none";
-      return;
+   if (canWeSave() == false || (!"a".toSource)) {
+      $("append_results_div").style.display = "none"
+      return
    }
    /* make a list of files to load */
-   nodes = $("appendable_files").getElementsByTagName("a");
+   nodes = $("appendable_files").getElementsByTagName("a")
    for(var i = 0; i < nodes.length; i++) {
-      appendable_files.push(nodes[i].href);
+      appendable_files.push(nodes[i].href)
    }
    function setupNextAppend() {
       if (appendable_files.length == 0) {
-         $("next_to_append").href = "#";
-         $("next_to_append").innerHTML = "(no more files to append)";
+         $("next_to_append").href = "#"
+         $("next_to_append").innerHTML = "(no more files to append)"
       } else {
-         function fn(url) { return url.substr(url.lastIndexOf("/")+1); }
-         $("next_to_append").href = appendable_files.shift();
-         $("next_to_append").innerHTML = fn($("next_to_append").href);
+         function fn(url) { return url.substr(url.lastIndexOf("/")+1) }
+         $("next_to_append").href = appendable_files.shift()
+         $("next_to_append").innerHTML = fn($("next_to_append").href)
       }
    }
-   $('append_results').onclick = function() {
+   $("append_results").onclick = function() {
       if ($("next_to_append").href != "#") {
-         loadCitations(fileURLasPath($("next_to_append").href));
-         setupNextAppend();
+         loadCitations(fileURLasPath($("next_to_append").href))
+         setupNextAppend()
       }
    }
-   setupNextAppend();
+   setupNextAppend()
 }
 
 /*********************** FILTERING OF CITATIONS ************************/
@@ -315,50 +277,41 @@ function filterCitations() {
    var r_abstract = RegExp(abstract_filt, "i")
    var r_exclude = RegExp(exclude_filt, "i")
    var r_journal = RegExp(journal_filt, "i")
-   // row 0 is the heading
+   /* row 0 is the heading */
    for (var i = 1; i < rows.length; i++) {
       if (rows[i].className == "main" && rows[i].style.display != "none") {
-         var cells = rows[i].cells;
-         var title = cells[7].innerHTML;
-         var abst = title;
-         if (rows[i+2].length > 0) {
-            abst += rows[i+2].cells[0].innerHTML; 
-         }
-         var year = parseInt(cells[4].innerHTML);
-         var journal = cells[8].innerHTML;
+         var cells = rows[i].cells
+         var title = cells[7].innerHTML
+         var abst = title + rows[i+2].cells[0].innerHTML
+         var year = parseInt(cells[4].innerHTML)
+         var journal = cells[8].innerHTML
          /* Apply filter criteria */
          if ( (year >= year_min && year <= year_max)
             && (title_filt == "" || r_title.test(title))
             && (abstract_filt == "" || r_abstract.test(abst))
             && (exclude_filt == "" || !r_exclude.test(abst))
-            && (journal_filt == "" || r_journal.test(journal)))
-         {
+            && (journal_filt == "" || r_journal.test(journal))) {
             // do nothing
          } else {
-            rows[i].style.display = "none";            
+            rows[i].style.display = "none"    
          }
-         rows[i+1].style.display = "none";
-         rows[i+2].style.display = "none";            
+         rows[i+1].style.display = "none"
+         rows[i+2].style.display = "none"          
       }
    }
 }
 
 /* Event handling for the citation filter */
 function initCitationFilter() {
-   $('clear_filter').onclick = hideTableRows;
-   $('do_filter').onclick = filterCitations;
-   $('filter_form').onsubmit = filterCitations;
+   $("clear_filter").onclick = hideTableRows
+   $("do_filter").onclick = filterCitations
+   $("filter_form").onsubmit = filterCitations
 }
 
 /************************** WINDOW LOADING ******************************/
 
-/* Hide the warning that scripts are blocked */
-function hideScriptWarning() {
-   $("script_warning").style.display = "none";
-}
-
 window.onload = function() {
-   hideScriptWarning()
+   $("script_warning").style.display = "none"
    make_toggles()
    initPubMedOpening()
    initTagSaving()

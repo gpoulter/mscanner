@@ -14,21 +14,21 @@ white (page background)
 #EEEEFF; /* light mauve   (help blocks in table)
 */
 
-/* BLOCK ELEMENTS */
-
 html, body, div {
     display: block;
     padding: 0;
     margin: 0;
     width: 100%;
 }
-img { display: block; }
-dt { font-weight: bold; }
-
 html { 
-    color: black; /* text color */
     background-color: #C2D7EE; /* light blue */ 
+    color: black; /* default font color */
 }
+img { 
+    display: block; 
+}
+
+/*************************** BLOCK ELEMENTS ******************/
 
 div#header, div#footer {
     background-color: white; 
@@ -68,7 +68,7 @@ h2 {
     margin-top: 1ex;
 }
 
-/************* TABLE STYLE ******************/
+/************************ TABLES **************************/
 
 table, thead, tbody {
     /* thick border around tables */    
@@ -99,7 +99,7 @@ div.help {
     text-align: justify;
 }
 
-/************ RESULTS.TMPL ONLY ***********/
+/******************* RESULTS.TMPL ONLY *************************/
 
 table#results col.label {
     /* column with name of the quantity */
@@ -120,7 +120,7 @@ table#results tr.help {
     padding: 1ex;
 }
 
-/************** FEATURES.TMPL ONLY ***************/
+/*********************** FEATURES.TMPL ONLY ***********************/
 
 table#features col.label {
     /* width of left-most column with labels */
@@ -128,23 +128,18 @@ table#features col.label {
 }
 
 
-/************** VALIDATION.TMPL ONLY ************/
+/*********************** VALIDATION.TMPL ONLY ***********************/
 
 table#matrix td.tp { background-color: #FF3333; } /* bright red */
 table#matrix td.tn { background-color: #3333FF; } /* bright blue */
 table#matrix td.fp { background-color: #CCCCFF; } /* pale red */
 table#matrix td.fn { background-color: #FFCCCC; } /* pale blue */
 
-/********* CITATIONS.TMPL ONLY ************/
+/********************** CITATIONS.TMPL ONLY ************************/
 
+/* form controls on the page */
 div.control {
     margin-bottom: 1ex;
-}
-table#citations td.pos {
-    background-color: red;
-}
-table#citations td.neg {
-    background-color: blue;
 }
 
 table#citations {
@@ -154,6 +149,14 @@ table#citations {
     min-width: 40em;
     text-align: center;
 }              
+
+/* manual classifications as relevant/irrelevant */
+table#citations td.pos {
+    background-color: red;
+}
+table#citations td.neg {
+    background-color: blue;
+}
 
 table#citations col.classification {
     /* column for manual classification */

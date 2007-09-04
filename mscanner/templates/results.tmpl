@@ -70,25 +70,70 @@ notfound_pmids -- List of PubMed IDs that were not found in the database
 
 <div class="narrow">
 
- <h2>Result Properties</h2>
+ <h2>Query Results</h2>
 
  <table id="results">
-   <colgroup>
-     <col class="label">
-     <col class="value">
-     <col class="help">
-   </colgroup>
-   <thead>
-     <tr>
-       <th>Name</th>
-       <th>Value</th>
-       <th>Help</th>
-     </tr>
-   </thead>
-  <tbody>
+  <colgroup>
+    <col class="label">
+    <col class="value">
+    <col class="help">
+  </colgroup>
+ <tbody>
 
   <tr>
-    <th>Timestamp</th>
+    <th>Input citations</th>
+    <td><a href="$rc.report_input_citations">$rc.report_input_citations</a></td>
+    $help("h_input_citations")
+  </tr>
+  $hr("h_input_citations", """These are the citations that were
+  provided as input.""")
+
+  <tr>
+    <th>Result citations</th>
+    <td><a href="$rc.report_result_citations">$rc.report_result_citations</a></td>
+    $help("h_result_citations")
+  </tr>
+  $hr("h_result_citations", """These are the results of the query,
+  with a limited number of results per page""")
+
+  <tr>
+    <th>All Results</th>
+    <td>
+    <a href="$rc.report_result_all_zip">ZIP file</a> or
+    <a href="$rc.report_result_all">uncompressed</a> 
+    </td>
+    $help("h_results_all")
+  </tr>
+  $hr("h_results_all", """ALL of the results, in a single page (can take a long
+  time to load - downloading the zip file is recommended)""")
+
+  <tr>
+    <th>Term Scores</th>
+    <td><a href="$rc.report_term_scores">$rc.report_term_scores</a></td>
+    $help("h_csv")
+  </tr>
+  $hr("h_csv", """CSV spreadsheet with the support scores for the
+  features (MeSH terms and ISSNs).  The number of positive and
+  negative occurrences and pseudocount are also included, as these
+  go into calculating the support score.""")
+
+  <tr>
+    <th>Input PMIDs</th>
+    <td><a href="$rc.report_input_scores">$rc.report_input_scores</a></td>
+    $help("h_positives")
+  </tr>
+  $hr("h_positives", """PubMed IDs for the input examples.""")
+
+  <tr>
+    <th>Result PMIDs</th>
+    <td><a href="$rc.report_result_scores">$rc.report_result_scores</a></td>
+    $help("h_result_scores")
+  </tr>
+  $hr("h_result_scores", """Text file with the result PubMed IDs
+  ranked by decreasing score (score is also listed).""")
+
+  <tr>
+    <th>Task submitted at</th>
     #import time
     <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($timestamp))</td>
     $help("h_timestamp")
@@ -96,7 +141,7 @@ notfound_pmids -- List of PubMed IDs that were not found in the database
   $hr("h_timestamp", "When the data set was created")
 
   <tr>
-    <th>File written at</th>
+    <th>Output written at</th>
     #import time
     <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime())</td>
     $help("h_written")
@@ -109,24 +154,23 @@ notfound_pmids -- List of PubMed IDs that were not found in the database
     <td>$rc.pseudocount</td>
     $help("h_pseudocount")
   </tr>
-  $hr("h_pseudocount", """Prior added to the number of occurrences
-  of each term to regularise the estimated occurrence probabilities.""")
+  $hr("h_pseudocount", """Regularise the estimated probabilities for
+  feature occurrence.""")
   #end if
 
   <tr>
-    <th>Result limit</th>
+    <th>Limit</th>
     <td>$rc.limit</td>
     $help("h_limit")
   </tr>
-  $hr("h_limit", """The maximum number of results.""")
+  $hr("h_limit", """The maximum number of results to include.""")
 
   <tr>
-    <th>Score threshold</th>
+    <th>Threshold</th>
     <td>$rc.threshold</td>
     $help("h_threshold")
   </tr>
-  $hr("h_threshold", """The minimum score which may be included in
-  the results""")
+  $hr("h_threshold", """Only include citations with at least this score""")
 
   <tr>
     <th>Number of results</th>
@@ -135,54 +179,10 @@ notfound_pmids -- List of PubMed IDs that were not found in the database
   </tr>
 
   <tr>
-    <th>Lowest scoring result</th>
+    <th>Lowest score</th>
     <td>#echo "%.5f" % $lowest_score #</td>
     $help(None)
   </tr>
-
-  <tr>
-    <th>Input PubMed IDs</th>
-    <td><a href="$rc.report_input_scores">$rc.report_input_scores</a></td>
-    $help("h_positives")
-  </tr>
-  $hr("h_positives", """PubMed IDs for the examples.""")
-
-  <tr>
-    <th>MeSH Scores (CSV)</th>
-    <td><a href="$rc.report_term_scores">$rc.report_term_scores</a></td>
-    $help("h_csv")
-  </tr>
-  $hr("h_csv", """CSV spreadsheet with the support scores for the
-  features (MeSH terms and ISSNs).  The number of positive and
-  negative occurrences and pseudocount are also included, as these
-  go into calculating the support score.""")
-
-  <tr>
-    <th>Result scores</th>
-    <td><a href="$rc.report_result_scores">$rc.report_result_scores</a></td>
-    $help("h_result_scores")
-  </tr>
-  $hr("h_result_scores", """Text file with the result PubMed IDs
-  ranked by decreasing score (score is also listed).""")
-
-  <tr>
-    <th>Input citations</th>
-    <td><a href="$rc.report_input_citations">$rc.report_input_citations</a></td>
-    $help("h_input_citations")
-  </tr>
-  $hr("h_input_citations", """Web page with the example citations
-  provided as input.  They are ranked by score, so if there are
-  examples which don't fit with the majority they should be near
-  the bottom.""")
-
-  <tr>
-    <th>Result citations</th>
-    <td><a href="$rc.report_result_citations">$rc.report_result_citations</a></td>
-    $help("h_result_citations")
-  </tr>
-  $hr("h_result_citations", """Web page with the results of the
-  query, including links to NCBI, titles and abstracts.  Warning:
-  file may be large.""")
 
  </tbody>
  </table>
@@ -190,11 +190,12 @@ notfound_pmids -- List of PubMed IDs that were not found in the database
   #include $_inc("features.tmpl")
 
   #if $getVar("best_tfidfs", None)
-  <h2>Features with high TF-IDF</h2>
+  <h2>Features with high TF.IDF</h2>
   
-  <p>These features are the most suitable for use in keyword searches
-  to retrieve this set of articles.  Features with TF-IDF
-  above 0.2 or 0.3 are more useful. </p>
+  <p>Features with TF.IDF above 0.2 or 0.3 could make good keywords. <a
+  href="http://en.wikipedia.org/wiki/Tf-idf">TF.IDF</a> is term frequency times
+  inverse document frequency, where we treat the set of input citations as a
+  single document</p>
   
   <table>
   <thead>

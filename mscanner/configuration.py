@@ -101,17 +101,25 @@ rc.genedrug_sql = lambda: rc.genedrug / "pharmdemo.sql"
 rc.report_index = path("index.html")
 ## Name of descriptor file
 rc.report_descriptor = path("descriptor.txt")
+## Name of term score file
+rc.report_term_scores = path("terms.csv")
+
 ### QUERY
 ## Name of list of scores of input PMIDs
-rc.report_input_scores = path("input_scores.txt")
+rc.report_input_scores = path("inputs.txt")
 ## Name of list of broken input PMIDs
-rc.report_input_broken = path("input_broken.txt")
+rc.report_input_broken = path("broken.txt")
 ## Name of result score file
-rc.report_result_scores = path("result_scores.txt")
+rc.report_result_scores = path("results.txt")
 ## Name of file with citation records for the input
-rc.report_input_citations = path("input_citations.html")
-## Name of file with citation records for the output
-rc.report_result_citations = path("result_citations.html")
+rc.report_input_citations = path("inputs.html")
+## Name of first page with citation records for the output
+rc.report_result_citations = path("results.html")
+## Name of file with *ALL* outupt citation records
+rc.report_result_all = path("all_results.html")
+## Name of zip file with ALL output citations records
+rc.report_result_all_zip = rc.report_result_all + ".zip"
+
 ### RETRIEVAL TEST
 ## Name of file with list of testing PMIDs
 rc.report_retrieval_test_pmids = path("retrieval_test.txt")
@@ -119,6 +127,7 @@ rc.report_retrieval_test_pmids = path("retrieval_test.txt")
 rc.report_retrieval_stats = path("retrieval_stats.txt")
 ## Name of retrieval vs rank graph
 rc.report_retrieval_graph = path("retrieval.png")
+
 ### VALIDATION
 ## Name of file with positive PMIDs and scores
 rc.report_positives = path("positives.txt")
@@ -128,8 +137,6 @@ rc.report_positives_broken = path("positives_broken.txt")
 rc.report_negatives = path("negatives.txt")
 ## Name of file with excluded negative PMIDs
 rc.report_negatives_exclude = path("negatives_exclude.txt")
-## Name of term score file
-rc.report_term_scores = path("term_scores.csv")
 ## Name of histogram file
 rc.report_artscores_img = path("artscores.png")
 ## Name of feature score density file
@@ -158,7 +165,7 @@ rc.webmaster_email = "xxxxxxxxxxxxxxxxxxxxxxxx"
 ## Base directory for the website
 rc.siteurl = "http://mscanner.stanford.edu"
 ## If true, link to .js and .css files instead of including them
-rc.linkHeaders = False
+rc.link_headers = False
 
 ## Parameters affecting FeatureInfo 
 
@@ -167,9 +174,9 @@ rc.pseudocount = None
 ## Types of features to exclude
 rc.exclude_types = []
 ## Method name for calculating feature probabilities
-rc.getFrequencies = "getProbabilitiesBayes"
+rc.frequency_method = "getProbabilitiesBayes"
 ## Method name for calculating mask after scores (may be None)
-rc.getPostMask = None
+rc.post_masker = None
 
 #### Web-configurable parameters
 
@@ -197,16 +204,16 @@ def initLogger(console=True, logfile=None):
     @param logfile: File for logging, defaulting to rc.logfile. If False, do
     not log to file. """
     import logging
-    # Configure root logger
+    # Root logger
     rootlog = logging.getLogger()
     rootlog.setLevel(0)
     format = logging.Formatter("%(asctime)-9s %(levelname)-8s %(message)s", "%H:%M:%S")
-    # Configure file logging
+    # File logger
     if logfile != False:
         filelog = logging.FileHandler(logfile if logfile else rc.logfile, "w")
         filelog.setFormatter(format)
         rootlog.addHandler(filelog)
-    # Configure console logging
+    # Console logger
     if console:
         console = logging.StreamHandler()
         console.setFormatter(format)

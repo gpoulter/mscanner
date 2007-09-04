@@ -60,10 +60,10 @@ class FeatureInfo(object):
         @ivar mask: Boolean array for masking some features scores to zero
         (this is to exclude features by category, not by score).
         
-        @ivar getFrequencies: Method for calculating feature 
+        @ivar frequency_method: Method for calculating feature 
         probabilities (constructor takes method name).
         
-        @ivar getPostMask: Method for calculating mask after feature
+        @ivar post_masker: Method for calculating mask after feature
         scores are known (constructor takes method name or None)
       
         @ivar pfreqs: Probability of each feature given positive article
@@ -85,13 +85,13 @@ class FeatureInfo(object):
                  ndocs=None,
                  pseudocount=None, 
                  mask=None,
-                 getFrequencies="getProbabilitiesBayes",
-                 getPostMask=None):
+                 frequency_method="getProbabilitiesBayes",
+                 post_masker=None):
         """Initialise FeatureInfo object (parameters are instance variables)
         """
         selfupdate()
-        self.getFrequencies = getattr(self, getFrequencies)
-        self.getPostMask = getattr(self, getPostMask) if getPostMask else None
+        self.getFrequencies = getattr(self, frequency_method)
+        self.getPostMask = getattr(self, post_masker) if post_masker else None
         
     def __len__(self):
         """Length is the number of features"""

@@ -23,6 +23,7 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
+
 def readPMIDs(filename, include=None, exclude=None, 
               broken_name=None, exclude_name=None, withscores=False):
     """Read PubMed IDs one per line from filename.
@@ -77,12 +78,14 @@ def readPMIDs(filename, include=None, exclude=None,
         exclude_file.close()
     log.debug("Got %d PubMed IDs from %s", count, filename.basename())
 
+
 def writePMIDScores(filename, pairs):
     """Write (score, PMID) pairs to filename, in decreasing
     order of score."""
     from path import path
     path(filename).write_lines(
         "%-10d %f" % (p,s) for s,p in sorted(pairs, reverse=True))
+    
     
 def getArticles(article_db_path, pmidlist_path):
     """Get Article objects given a file of PubMed IDs.
@@ -114,19 +117,34 @@ def getArticles(article_db_path, pmidlist_path):
     return articles
 
 
+def parsebool(s):
+    """Convert to boolean, with special handling for strings"""
+    if isinstance(s, basestring):
+        s = s.strip()
+        if s == "0" or s == "False":
+            return False
+        elif s == "1" or s == "True":
+            return True
+        else:
+            raise ValueError("Failed to parse boolean: %s" % s)
+    else:
+        return bool(s)
+
+
 descriptor_keys = dict(
     alpha=float,
     code=str,
     dataset=str,
     delcode=str,
+    hidden=parsebool,
     limit=int,
     nfolds=int,
     numnegs=int,
     operation=str,
     threshold=float,
-    timestamp=float,
-)
-    
+    timestamp=float,)
+
+
 def readDescriptor(fpath):
     """Reads a descriptor file, returning a dictionary of parameters.
 
@@ -140,7 +158,6 @@ def readDescriptor(fpath):
     @note: The same descriptor file can be used as a PubMed ID list,
     as the PubMed-ID reader ignores lines beginning with '#'.
     """
-
     f = file(fpath, "r")
     line = f.readline()
     from mscanner.support.storage import Storage
@@ -153,7 +170,8 @@ def readDescriptor(fpath):
     result["_filename"] = fpath
     f.close()
     return result
-    
+
+
 def writeDescriptor(fpath, pmids, params):
     """Write parameters and PubMed IDs to the descriptor file.
     
@@ -167,13 +185,14 @@ def writeDescriptor(fpath, pmids, params):
     f = file(fpath, "w")
     for key, value in params.iteritems():
         if key in descriptor_keys: 
-            f.write("#" + key + " = " + str(value).strip() + "\n")
+            f.write("#" + key + " = " + str(value) + "\n")
     if pmids is not None:
         for pmid in pmids:
             f.write(str(pmid)+"\n")
     f.close()
 
-def emptyInputPage(pmids):
+
+def no_valid_pmids_page(pmids):
     """When none of the PubMed IDs were valid, print this error
     page instead, with a list of the submitted IDs and links to PubMed.
     """

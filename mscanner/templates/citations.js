@@ -145,11 +145,17 @@ function getTag(pmid) {
 /* Set classification tag (value may be 0, 1 or 2) */
 function setTag(pmid, value) {
    var tag = $("P"+pmid).cells[0]
+   var newcls = null
    switch (value) {
-      case 0: tag.className = ""; break
-      case 1: tag.className = "neg"; break
-      case 2: tag.className = "pos"; break
+      case 0: newcls = ""; break
+      case 1: newcls = "neg"; break
+      case 2: newcls = "pos"; break
       default: throw "Invalid tag code: " + value
+   }
+   /* We avoid assigning to className where possible because
+   this is a very slow operation in Internet Explorer */
+   if (newcls != null && tag.className != newcls) {
+      tag.className = newcls
    }
 }
 
@@ -177,6 +183,7 @@ function hideTableRows() {
       rows[i+1].style.display = "none"     
       rows[i+2].style.display = "none"
    }
+   $("vis_count").innerHTML = (rows.length-1)/3
 }
 
 /* Adds the events for classification/author/abstract display */
@@ -224,7 +231,7 @@ function loadCitations(fname) {
    var blob = table[0].substr(7,table[0].length-15)
    var tbody = $("citations").getElementsByTagName("tbody")[0]
    tbody.innerHTML += blob
-   /* new HTML so no events are linked */
+   /* new HTML - no events are linked yet */
    initTableEvents()
 }
 
@@ -267,45 +274,151 @@ function initResultAppending() {
 /* Filter visible citations  */
 function filterCitations() {
    var rows = document.getElementById("citations").rows
-   var year_min = parseInt($("year_min").value)
-   var year_max = parseInt($("year_max").value)
-   var title_filt = $("title_regex").value
-   var abstract_filt = $("title_abstract_regex").value
-   var exclude_filt = $("exclude_regex").value
-   var journal_filt = $("journal_regex").value
+   form = document.filter_form
+
+   var year_min = parseInt(form.year_min.value)
+   var year_max = parseInt(form.year_max.value)
+   var score_min = parseFloat(form.score_min.value)
+   if(form.year_min.value == "") year_min = 1900
+   if(form.year_max.value == "") year_min = 2300
+   if(form.score_min.value == "") score_min = -100.0
+   
+   var title_filt = form.title_regex.value
+   var abstract_filt = form.title_abstract_regex.value
+   var exclude_filt = form.exclude_regex.value
+   var journal_filt = form.journal_regex.value
+   var author_filt = form.author_regex.value
    var r_title = RegExp(title_filt, "i")
    var r_abstract = RegExp(abstract_filt, "i")
    var r_exclude = RegExp(exclude_filt, "i")
    var r_journal = RegExp(journal_filt, "i")
+   var r_author = RegExp(author_filt, "i")
+   
+   var hiding = 0 // number of rows we have hidden this time
    /* row 0 is the heading */
-   for (var i = 1; i < rows.length; i++) {
+   for (var i = 1; i < rows.length; i+=3) {
       if (rows[i].className == "main" && rows[i].style.display != "none") {
-         var cells = rows[i].cells
-         var title = cells[7].innerHTML
-         var abst = title + rows[i+2].cells[0].innerHTML
-         var year = parseInt(cells[4].innerHTML)
-         var journal = cells[8].innerHTML
-         /* Apply filter criteria */
-         if ( (year >= year_min && year <= year_max)
-            && (title_filt == "" || r_title.test(title))
-            && (abstract_filt == "" || r_abstract.test(abst))
-            && (exclude_filt == "" || !r_exclude.test(abst))
-            && (journal_filt == "" || r_journal.test(journal))) {
-            // do nothing
-         } else {
-            rows[i].style.display = "none"    
-         }
-         rows[i+1].style.display = "none"
-         rows[i+2].style.display = "none"          
+            var cells = rows[i].cells
+            var score = parseFloat(cells[2].innerHTML)
+            var year = parseInt(cells[4].innerHTML)
+            var title = cells[7].innerHTML
+            var journal = cells[8].firstChild.innerHTML // hyperlink in cell
+            var author = rows[i+1].cells[0].innerHTML
+            var abst = title + rows[i+2].cells[0].innerHTML
+            /* Apply filter criteria */
+            if ( (score >= score_min) && (year >= year_min && year <= year_max)
+               && (title_filt == "" || r_title.test(title))
+               && (abstract_filt == "" || r_abstract.test(abst))
+               && (exclude_filt == "" || !r_exclude.test(abst))
+               && (journal_filt == "" || r_journal.test(journal))
+               && (author_filt == "" || r_author.test(author))) {
+               // do nothing
+            } else {
+               rows[i].style.display = "none"
+               hiding++
+            }
+            rows[i+1].style.display = "none"
+            rows[i+2].style.display = "none"          
       }
    }
+   $("vis_count").innerHTML = parseInt($("vis_count").innerHTML) - hiding
+   return false // suppress form action
+}
+
+/* Sort all the citation rows */
+var current_sort = "score"
+function sortCitations() {
+
+   var rows = document.getElementById("citations").rows
+
+   function score_cmp(a,b) {
+      return parseFloat(b[0].childNodes[2].innerHTML) -
+             parseFloat(a[0].childNodes[2].innerHTML)
+   }
+   function year_cmp(a,b) {
+      return parseInt(b[0].childNodes[4].innerHTML) -
+             parseInt(a[0].childNodes[4].innerHTML)
+   }
+   function str_cmp(a, b) {
+      if(a < b) return -1
+      else if (a == b) return 0
+      else return +1
+   }
+   function journal_cmp(a,b) {
+      return str_cmp(a[0].childNodes[8].firstChild.innerHTML,
+             b[0].childNodes[8].firstChild.innerHTML)
+   }
+   function author_cmp(a,b) {
+      // increasing by last name of the first author
+      ma = a[1].childNodes[0].innerHTML.match(/[a-z]\ ([^\ ]+)/i)
+      mb = b[1].childNodes[0].innerHTML.match(/[a-z]\ ([^\ ]+)/i)
+      if (ma != null && mb != null)
+         return str_cmp(ma[1], mb[1])
+      else if (ma != null)
+         return -1
+      else
+         return +1
+   }
+
+   var new_sort = document.filter_form.orderby.value
+   if(new_sort == current_sort) return
+   var compare = null
+   switch (new_sort) {
+      case "score": compare = score_cmp; break
+      case "year": compare = year_cmp; break
+      case "journal": compare = journal_cmp; break
+      case "author": compare = author_cmp; break
+      default: throw "Invalid orderby comparison: " + new_sort
+   }
+   
+   // Strategy is to group the triplets of rows in to an array
+   // then clear the table, sort the array, and re-create the table
+   t = $("citations")
+   tb = t.childNodes[2]
+   x = [] // temporary storage for row triplets
+   for(i = 1; i < t.rows.length; i+=3)
+       x[(i-1)/3] = [ t.rows[i], t.rows[i+1], t.rows[i+2] ]
+   t.removeChild(tb) // clear the entire table
+   tb = document.createElement("tbody") // create it empty again
+   t.appendChild(tb) // put it back
+   x.sort(compare) // sort the row triplets
+   for(i = 1; i < x.length; i+=1) {
+       tb.appendChild(x[i][0])
+       tb.appendChild(x[i][1])
+       tb.appendChild(x[i][2])
+   }
+   
+   // update the sort
+   current_sort = new_sort
+}
+
+/* Hide the visible rows, and show the hidden rows */
+function invertSelection() {
+   var rows = document.getElementById("citations").rows
+   var vis_count = 0;
+   // row 0 is the heading
+   for (i = 1; i < rows.length; i+=3) {
+      if(rows[i].style.display == "") {
+         rows[i].style.display = "none"
+      } else {
+         rows[i].style.display = ""
+         vis_count++
+      }
+      rows[i+1].style.display = "none"     
+      rows[i+2].style.display = "none"
+   }
+   $("vis_count").innerHTML = vis_count
 }
 
 /* Event handling for the citation filter */
 function initCitationFilter() {
    $("clear_filter").onclick = hideTableRows
-   $("do_filter").onclick = filterCitations
-   $("filter_form").onsubmit = filterCitations
+   $("do_filter").onclick = function() {
+      sortCitations()
+      filterCitations()
+   }
+   $("invert_selection").onclick = invertSelection
+   document.filter_form.onsubmit = filterCitations
 }
 
 /************************** WINDOW LOADING ******************************/

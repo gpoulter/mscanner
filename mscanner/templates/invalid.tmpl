@@ -8,21 +8,20 @@ notfound_pmids -- list of PubMed IDs (integer or string)
 
 <h2>Invalid PubMed IDs</h2>
 
-<p>Some of the PubMed IDs submitted to MScanner were not
-found. Possible causes are:</p>
+<p>Some of the PubMed IDs submitted to MScanner were not found:</p>
 
 <ul>
 
-<li>Some entries were "in-progress", and thus lack MeSH terms. If
-their status has recently changed to "PubMed - Indexed for Medline" they will
-be added to MScanner overnight.</li>
+<li>Citations that are "in-progress" or "PubMed - as supplied by publisher"
+lack MeSH terms and thus cannot be used by MScanner. Citations that change to
+"PubMed - Indexed for Medline" are added to MScanner overnight.</li>
 
-<li>Some entries were Medline UIs instead of PubMed IDs.  See
-the <a href="http://www.ncbi.nlm.nih.gov/entrez/publisher/uidpmid.cgi">
-Medline UI/PubMed ID matcher</a> to convert them to PubMed IDs</li>
+<li>Some sources still contain a few obsolete Medline UIs. See the <a
+href="http://www.ncbi.nlm.nih.gov/entrez/publisher/uidpmid.cgi"> Medline
+UI/PubMed ID matcher</a> to convert Medline UIs to PubMed IDs</li>
 
-<li>Some entries were invalid. For invalid PubMed IDs, clicking the links below
-will lead to a blank page instead of a citation.</li>
+<li>For completely invalid IDs, clicking the link below leads to a blank page
+instead of a citation.</li>
 
 </ul>
 

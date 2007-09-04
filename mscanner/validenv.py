@@ -27,8 +27,7 @@ from mscanner.configuration import rc
 from mscanner.featuredb import FeatureDatabase
 from mscanner.featuremap import FeatureMapping
 from mscanner.plotting import Plotter
-from mscanner.scorefile import (
-    getArticles, readPMIDs, writePMIDScores, emptyInputPage)
+from mscanner import scorefile
 from mscanner.scoring import FeatureInfo, countFeatures
 from mscanner.support.gcheetah import TemplateMapper, FileTransaction
 from mscanner.support.utils  import preserve_cwd, randomSample
@@ -91,8 +90,8 @@ class ValidationEnvironment(object):
             featmap = self.featmap, 
             pseudocount = rc.pseudocount, 
             mask = self.featmap.featureTypeMask(rc.exclude_types),
-            getFrequencies = rc.getFrequencies,
-            getPostMask = rc.getPostMask
+            frequency_method = rc.frequency_method,
+            post_masker = rc.post_masker
         )
         os.chdir(rc.valid_report_dir)
         # Load saved results
@@ -103,9 +102,9 @@ class ValidationEnvironment(object):
         else:
             self.loadInputs(pospath, negpath)
             if len(self.positives) == 0:
-                # No valid PubMed IDs in the input = no validation
-                emptyInputPage(list(readPMIDs(rc.report_positives_broken)))
-                return
+                scorefile.no_valid_pmids_page(
+                    list(scorefile.readPMIDs(rc.report_positives_broken)))
+                return # nothing to do
             self.getResults()
             self.saveResults()
         self.writeReport()
@@ -118,7 +117,7 @@ class ValidationEnvironment(object):
         @note: If negpath is None, negatives are taken by random sample 
         of PubMed citations in self.article_list."""
         log.info("Reading positive PubMed IDs")
-        positives = list(readPMIDs(pospath, include=self.featdb,
+        positives = list(scorefile.readPMIDs(pospath, include=self.featdb,
                         broken_name=rc.report_positives_broken))
         log.info("Reading negative PubMed IDs")
         if negpath is None:
@@ -132,7 +131,7 @@ class ValidationEnvironment(object):
                 rc.numnegs, self.article_list, set(positives))
         else:
             # Read existing list of negatives from disk
-            negatives = list(readPMIDs(negpath, exclude=set(positives),
+            negatives = list(scorefile.readPMIDs(negpath, exclude=set(positives),
                          exclude_name=rc.report_negatives_exclude))
             self.negatives = nx.array(negatives, nx.int32)
         self.positives = nx.array(positives, nx.int32)
@@ -148,8 +147,8 @@ class ValidationEnvironment(object):
         """
         log.info("Loading result scores for %s", rc.dataset)
         os.chdir(rc.valid_report_dir)
-        pscores, positives = zip(*readPMIDs(rc.report_positives, withscores=True))
-        nscores, negatives = zip(*readPMIDs(rc.report_negatives, withscores=True))
+        pscores, positives = zip(*scorefile.readPMIDs(rc.report_positives, withscores=True))
+        nscores, negatives = zip(*scorefile.readPMIDs(rc.report_negatives, withscores=True))
         self.positives = nx.array(positives, nx.int32)
         self.pscores = nx.array(pscores, nx.float32)
         self.negatives = nx.array(negatives, nx.int32)
@@ -160,8 +159,8 @@ class ValidationEnvironment(object):
         """Save validation scores to disk"""
         log.info("Saving result scores")
         os.chdir(rc.valid_report_dir)
-        writePMIDScores(rc.report_positives, izip(self.pscores, self.positives))
-        writePMIDScores(rc.report_negatives, izip(self.nscores, self.negatives))
+        scorefile.writePMIDScores(rc.report_positives, izip(self.pscores, self.positives))
+        scorefile.writePMIDScores(rc.report_negatives, izip(self.nscores, self.negatives))
 
     def getResults(self):
         """Calculate scores on citations using cross validation
@@ -198,8 +197,8 @@ class ValidationEnvironment(object):
         from mscanner.pharmdemo.genedrug import getGeneDrugFilter
         log.info("Getting gene-drug associations") 
         os.chdir(rc.valid_report_dir)
-        pos_arts = getArticles(rc.articledb, self.positives)
-        neg_arts = getArticles(rc.articledb, self.negatives)
+        pos_arts = scorefile.getArticles(rc.articledb, self.positives)
+        neg_arts = scorefile.getArticles(rc.articledb, self.negatives)
         gdfilter = getGeneDrugFilter(rc.genedrug, rc.drugtable, rc.gapscore)
         postfilter = set()
         for art in chain(pos_arts, neg_arts):
@@ -275,11 +274,11 @@ class ValidationEnvironment(object):
         ft = FileTransaction(rc.report_index, "w")
         tpl = mapper.validation(
             stats = self.featinfo.stats,
-            linkpath = rc.templates.relpath().replace('\\','/') if rc.linkHeaders else None,
+            linkpath = rc.templates.relpath().replace('\\','/') if rc.link_headers else None,
             overlap = overlap,
             p = self.performance,
             rc = rc,
             timestamp = rc.timestamp,
-            notfound_pmids = list(readPMIDs(rc.report_positives_broken)),
+            notfound_pmids = list(scorefile.readPMIDs(rc.report_positives_broken)),
         ).respond(ft)
         ft.close()

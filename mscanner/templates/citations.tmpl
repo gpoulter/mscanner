@@ -114,66 +114,90 @@ Navigation:
 
   <button class="toggle" id="toggle_save_warning">Extra Features</button>
 
-  <p id="save_warning">Filtering and opening citations in PubMed are not the
-  only features: by saving a local copy of this file (e.g. using "Save As") and
-  opening it in Mozilla Firefox or Internet Explorer 7, it is possible to save
-  to or load from file the manual classifications (made by clicking once or
-  twice in the "C" column). In Firefox it is also possible to append later
-  result pages to the end of this table, to view and filter the results from
-  multiple pages simultaneously.</p>
+  <p id="save_warning">Extra features: it is possible to save/load manual
+  classifications (assigned by clicking in the "C" column) to file. To use this
+  feature, save a local copy of this file (e.g. using "Save As" or from the zip
+  archive) and open it in Mozilla Firefox or Internet Explorer 7. To use
+  another feature where later results pages can be appended to the table, open
+  the file in Mozilla Firefox.</p>
 
 </div>
 
 <div class="control" id="filter_div">
 
-  <form action="#" method="get" id="filter_form">
+  <form action="#" name="filter_form" id="filter_form">
   <table>
   <tr>
   <th>Title contains</th>
-  <td><input type="text" size="30" id="title_regex"></td>
+  <td><input type="text" size="30" name="title_regex" value=""></td>
   </tr>
   
   <tr>
   <th>Title/abstract contains</th>
-  <td><input type="text" size="30" id="title_abstract_regex"></td>
+  <td><input type="text" size="30" name="title_abstract_regex" value=""></td>
   </tr>
   
   <tr>
   <th>Title/abstract does not contain</th>
-  <td><input type="text" size="30" id="exclude_regex"></td>
+  <td><input type="text" size="30" name="exclude_regex" value=""></td>
   </tr>
   
   <tr>
   <th>Year of publication is between</th>
-  <td><input type="text" size="5" id="year_min" value="1900"> and
-  <input type="text" size="5" id="year_max" value="2020"></td>
+  <td><input type="text" size="5" name="year_min" value="1900"> and
+  <input type="text" size="5" name="year_max" value="2020"></td>
   </tr>
   
   <tr>
   <th>Abbreviated journal contains</th>
-  <td><input type="text" size="20" id="journal_regex"></td>
+  <td><input type="text" size="20" name="journal_regex" value=""></td>
   </tr>
+
+  <tr>
+  <th>Author list contains</th>
+  <td><input type="text" size="20" name="author_regex" value=""></td>
+  </tr>
+  
+  <tr>
+  <th>Score is at least</td>
+  <td><input type="text" size="5" name="score_min" value="-100"></td>
+  </tr>
+  
+  <tr>
+  <th>Order by</th>
+  <td>
+  <select name="orderby">
+    <option value="score" selected="selected">Score (decreasing)</option>
+    <option value="year">Year (decreasing)</option>
+    <option value="journal">Journal (increasing)</option>
+    <option value="author">Author (increasing)</option>
+  </select>
+  </td>
+  </tr>
+  
   </table>
   </form>  
 
   <p>
     <button id="do_filter">Filter visible</button>&nbsp;
     <button id="clear_filter">Show all citations</button>&nbsp;
+    <button id="invert_selection">Invert selection</button>&nbsp;
     <button class="toggle" id="toggle_h_filter">Help</button>
   </p>
 
   <div class="help" id="h_filter">
   
-    <p>The first button will hide any visible citations that do not
-    match the filter (it will not unhide anything already hidden). The
-    second button unhides all citations.</p>
+    <p>The filter button hides any rows not matching the filter (but does not
+    unhide anything). The second button unhides all rows. The invert selection
+    button makes the visible rows hidden and the hidden rows visible.</p>
   
     <p>The filters are case-insensitive <a
     href="http://www.javascriptkit.com/jsref/regexp.shtml">regular
-    expressions</a>. These will locate substrings, but have many additional
-    features. For example, "rat" matches both "rat" and "aberration",
-    but "\brat\b" will only match "rat" ("\b" means "word boundary").</p>
-    
+    expressions</a>. They match substrings, but have many additional features.
+    For example, "rat" matches both "rat" and "aberration", but "\brat\b" will
+    only match "rat" ("\b" means "word boundary"). To search for both "rat" and
+    "human", first filter for "rat", then filter for "human". </p>
+   
   </div>
 
 </div> 
@@ -237,7 +261,7 @@ Navigation:
 
 </div><!--class=narrow-->
 
-<h2>Table of citations</h2>
+<h2>Table of citations (<span id="vis_count">$report_length</span> visible)</h2>
 
 $cite_table
 

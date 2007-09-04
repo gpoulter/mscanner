@@ -7,61 +7,22 @@ Contact the Author
 #def contents
 <div class="narrow">
 
-#if $getVar("failed_send", False)
+#if $getVar("success", None) is not None
     <p>
-    Failed to send the email! Please contact 
-    <a href="mailto:mscanner.w3f@gishpuppy.com">Graham poulter</a>.
-    Error: $error
+    #if $success
+        Your message was sent successfully:
+    #else
+        Failed to send the email! Please contact 
+        <a href="mailto:mscanner.w3f@gishpuppy.com">Graham poulter</a>.
+        Error: <pre>$error</pre>
+    #end if
     </p>
-    <hr />
-#end if
-
-#if $getVar("bad_captcha", False)
-    <p>
-    Error, bad captcha entered: <q>$captcha</q>
-    </p>
-    <hr />
-#end if
-
-#if $getVar("success", False)
-    <p>
-    Your message from $name &lt;$email&gt; was sent successfully:
-    <pre style="width:auto;background-color:white;">$message</pre>
-    #set $name = ""
-    #set $email = ""
-    #set $message = ""
-    #set $captcha = ""
-    </p>
-    <hr />
 #end if
 
 <form action="contact" method="post">
-
-<p>
-Please enter the word "orange": 
-<input type="text" name="captcha" value="$getVar('captcha','')">
-</p>
-
-<p>
-Your name (optional): 
-<input type="text" name="name" value="$getVar('name','')">
-</p>
-
-<p>
-Your email address (optional): 
-<input type="text" name="email" value="$getVar('email','')">
-</p>
-
-<p>The message:</p>
-<p>
-<textarea name="message" rows="10" cols="50">$getVar('message','')</textarea>
-</p>
-
-<p>
-<input type="submit" value="Send Message">
-</p>
-
+$inputs.render()
+<p><input type="submit" value="Send Message"></p>
 </form>
 
-</div><!--narrow-->
+</div><!--class=narrow-->
 #end def contents

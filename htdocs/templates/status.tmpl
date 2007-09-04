@@ -29,75 +29,56 @@ MScanner Status Report
 This page will reload in <span id="reload">30</span> seconds.  
 </p>
 
-$print_errors()
-
-#include $inc("statusblock.tmpl")
+#include "templates/statusblock.tmpl"
 
 ##### TARGET-SPECIFIC STATUS #####
 
-#if $getVar("target",None) is not None
+#if $getVar("target", None) is not None
 
-    <h2>Status for <i>$target</i></h2>
-    
-    #if $target_status == "current"
-    
-        <p>Your task is in progress, and should be done within 2 minutes
-        for queries, and within 3 minutes for cross validation.</p>
-    
-    #elif $target_status == "queue"
-    
-        <p>Your task is waiting in the queue (give an average of 2 minutes per 
-        item in the queue).</p>
-    
-    #elif $target_status == "done"
-    
-        <p>Your task is complete.  The output should be waiting at
-        <a href="static/output/$target">static/output/$target</a></p>
-    
-    #elif $target_status == "notfound"
-    
-        <p>The specified task was not found in the queue or amongst the complete tasks.
-        You can try <a href="form">submitting a task</a> or looking amongst
-        the <a href="output">complete tasks</a>.</p>
-    
-    #end if target_status
-    
-    ###### TASK DELETION #######
-    
-    #if $getVar("delcode", None) is not None
-    
-        #if len($delcode) == 0
-        <p>According to the parameters, no deletion code was set.</p>
-        #else
-        <p>According to the parameters, the deletion code is <b>$delcode</b>.</p>
-        #end if len_delcode
-        
-        <form action="output" method="post">
-        <p>
-        <input type="hidden" name="operation" value="delete">
-        <input type="hidden" name="dataset" value="$target">
-        <input type="hidden" name="delcode" value="$delcode">
-        <input type="submit" value="Delete $target">
-        </p>
-        </form>
-    
-    #end if delcode
+<h2>Status for <i>$target</i></h2>
+
+#if $target_status == "current"
+
+    <p>Your task is in progress, and should be done within 2 minutes
+    for queries, and within 3 minutes for cross validation.</p>
+
+#elif $target_status == "queue"
+
+    <p>Your task is waiting in the queue (give an average of 2 minutes per 
+    item in the queue).</p>
+
+#elif $target_status == "done"
+
+    <p>Your task is complete.  The output should be waiting at
+    <a href="static/output/$target">static/output/$target</a></p>
+
+#elif $target_status == "notfound"
+
+    <p>The specified task was not found in the queue or amongst the complete
+    tasks. You can try <a href="form">submitting a task</a> or looking amongst
+    the <a href="output">complete tasks</a>.</p>
+
+#end if target_status
+
+###### TASK DELETION #######
+
+#if $getVar("inputs", None) is not None
+    <form action="output" method="post">
+    $inputs.render()
+    <p><input type="submit" value="Delete Target"></p>
+    </form>
+#end if
 
 #end if target
 
 ##### LIST QUEUE CONTENTS #####
 
-#if $getVar('current', None) is not None
-
-    <h2>Other task files in the queue</h2>
-    ## Print the list of other files in the queue
-    #if len($listing) > 0
-    <pre>
-    #echo "\n".join($listing)
-    </pre>
-    #end if listing
-
-#end if current
+#if len($listing) > 0
+<h2>Tasks in the queue</h2>
+<pre>
+#echo "\n".join($listing)
+</pre>
+#end if listing
 
 ##### PRINT LOG #####
 

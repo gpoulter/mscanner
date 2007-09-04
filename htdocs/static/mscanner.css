@@ -1,163 +1,131 @@
 /*
-Palette
 #C2D7EE; /* light blue (page background)
-#FFFFDD; /* light yellow (row heading background)
+#FFFFDD; /* pale yellow (row heading background)
 #A3C2E2; /* middle blue
 #F6F9FE; /* pale blue (header and body background)
 #93B2D2; /* pastel blue
-#DDDDDD; /* gray 2 (table heading)
 #EEEEEE; /* gray 1 (table background)
+#DDDDDD; /* gray 2 (table heading)
 */
-
-/* ALL PAGES */
 
 html {
     background-color: #C2D7EE; /* light blue */
-}
+    color: black; /* black font */ }
 html, body, div {
     display: block;
     padding: 0;
-    margin: 0;
-}
+    margin: 0; }
 .trim {
     margin: 0;
-    padding: 0;
-}
-fieldset legend {
-    font-weight: bold;
-}
+    padding: 0; }
+
+/*************** TABLES ********************/
+
 thead {
     /* table heading rows */
-    background-color: #FFFFDD; /* light yellow */
-}
+    background-color: #FFFFDD; /* light yellow */ }
 tbody th {
     /* table heading cells */
-    background-color: #DDDDDD; /* gray 2 */
-}
+    background-color: #DDDDDD; /* gray 2 */ }
 td {
     /* table cells */
-    background-color: #EEEEEE; /* gray 1 */
-}
+    background-color: #EEEEEE; /* gray 1 */ }
+
+/************* BLOCK ELEMENTS ***********************/
+
 div#header {
     /* header for each page */
     margin: 0;
     padding: 0.3em;
     text-align: center;
     border-bottom-style: dotted;
-    background-color: #F6F9FE; /* pale blue */
-}
+    background-color: #F6F9FE; /* pale blue */ }
 div#header h1 {
-    margin: 0;
-}
+    margin: 0; }
 div#contents {
     /* pad the contents a bit to keep it away from edges */
     background-color: #F6F9FE; /* pale blue */
     padding: 1em;
-    width: 100%;
-}
+    width: 100%; }
 div#footer {
     /* footer for each page */
     border-top-style: dotted;
-    background-color: #FFFFDD; /* light yellow */
+    background-color: #FFFFDD; /* pale yellow */
     width: 100%;
-    padding: 1ex;
-}
-div.narrow {
+    padding: 1ex; }
+div.narrow { 
     /* narrowed things for readability */
     padding-right: 2em;
-    max-width: 35em;
-}
+    max-width: 35em; }
+table.form th {
+    text-align: left; }
+table.form tr.error td {
+    background-color: #FFEEEE; /* pale red */ }
 
-/* FRONT PAGE */
-
-p.alert {
-    border: solid red 2px;
-    margin: 1ex;
-    padding: 0.5ex;
-}
-
-/* TOP MENU */
+/***************** TOP MENU ******************8*/
 
 div#topmenu {
     /* container for the top menu */
     text-align: center;
-    border-bottom: dotted;
-}
+    border-bottom: dotted; }
 div#topmenu table {
     /* hold menu buttons in a table with separated cells */
     width: 80%;
     margin: 0 auto 0 auto;
     border-collapse: separate;
-    border-spacing: 1ex;
-}
+    border-spacing: 1ex; }
 div#topmenu a {
     /* use no underlining on links */
-    text-decoration: none;
-}
+    text-decoration: none; }
 div#topmenu td {
     /* simulate a button */
     background-color: #F6F9FE; /* pale blue */
     border: solid 2px black;
-    padding: 0.5ex;
-}
+    padding: 0.5ex; }
 
-/* QUERY PAGE */
+/************************ QUERY PAGE ****************/
 
-form#query {
-    /* form fills surrounding container */
-    width: 100%;
-}
-form#query table {
-    /* form tables also fill surrounding container */
-    width: 100%;
-}
 form#query fieldset {
-    margin: 1ex;
-}
+    margin: 1ex; }
+form#query fieldset legend {
+    font-weight: bold; }
+form#query {
+    width: 100%; }
+form#query table {
+    width: 100%; }
 form#query th {
-    width: 10em;
-}
+    width: 10em; }
 form#query td.value {
-    background-color: #EEEEEE; /* gray 1 */
-}
+    background-color: #EEEEEE; /* gray */ }
 form#query td.help {
     width: 5em;
     text-align: right;
-    background-color: #EEEEFF; /* light yellow */
-}
+    background-color: #EEEEFF; /* pale yellow */ }
 form#query tr.help div {
-    background-color: #EEEEFF; /* light yellow */
-}
+    background-color: #EEEEFF; /* pale yellow */ }
+form#query tr.error td {
+    background-color: #FFEEEE; /* pale red */ }
 
-/* STATUS BLOCK */
+/********** STATUS BLOCK **********/
 
-div.status {
-    width: 20em;
-}
-table.status tbody th {
-    width: 10em;
-}
-table.status td {
-    width: auto;
-}
+table#status tbody th {
+    width: 10em; }
+table#status td {
+    width: auto; }
 
-/* OUTPUT PAGE */
+/************* OUTPUT PAGE ************/
 
 form#output table {
     border-spacing: 3px;
-    width: auto;
-}
+    width: auto; }
 form#output td.del {
     /* selection radio button cells */
     background-color: #BBBBBB; /* gray 4 */
-    text-align: center;
-}
+    text-align: center; }
 form#output td.dataset {
     /* dataset name cells */
     background-color: #CCCCCC; /* gray 3 */
-    width: 15em;
-}
+    width: 15em; }
 form#output td.timestamp {
     /* timestamp cells */
-    background-color: #DDDDDD; /* gray 2 */
-}
+    background-color: #DDDDDD; /* gray 2 */ }

@@ -6,29 +6,25 @@ There are no tasks waiting in the queue.
 
 #else
 
-<table class="status">
+<table id="status">
   <tr>
     <th>Current task</th>
     <td>
-    $current.dataset ($current.operation) 
-    (<a href="/static/output/$current.dataset/" target="_blank">future location</a>)
+    ${current.dataset} (${current.operation}) 
+    (<a href="/static/output/${current.dataset}/">future location</a>)
     </td>
   </tr>
   <tr>
-    <th>
-      Submission time
-    </th>
+    <th>Submission time</th>
     <td>
-      #import time
-      $time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($current.timestamp))
+    #import time
+    ${time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($current.timestamp))}
     </td>
   </tr>
   <tr>
-    <th>
-      Tasks still to do
-    </th>
+    <th>Tasks waiting</th>
     <td>
-      #echo $current.queue_length-1
+    #echo $current.queue_length-1
     </td>
   </tr>
 </table>

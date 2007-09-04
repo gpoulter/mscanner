@@ -5,17 +5,17 @@ MScanner
 #end def title
 
 #def headertitle
-<h1>MScanner</h1><p style="margin:0"> Retrieving Medline citations using examples</p>
+<h1>MScanner</h1><p style="margin:0">Retrieving Medline citations using examples</p>
 #end def headertitle
 
 #def contents
 <div class="narrow">
 
-#include $inc("statusblock.tmpl")
+#include "templates/statusblock.tmpl"
 
 <h2>Queries</h2>
 
-<p>On the <a href="form">query</a> page, give MScanner examples of the
+<p>On the <a href="query">query</a> page, give MScanner examples of the
 citations you are looking for, then click "Submit Query". About 90 seconds from
 the front of the queue the result will be ready. The difference between
 MScanner and the PubMed <a
@@ -81,5 +81,5 @@ MScanner has been tested with
 Some features may not work in older browsers or with JavaScript disabled.
 </p>
 
-</div><!--narrow-->
+</div><!--class=narrow-->
 #end def contents

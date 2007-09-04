@@ -8,7 +8,8 @@ from mscanner import configuration
 import web
 
 urls = (
-        '/(.*)', 'hello'
+        '/hello/(.*)', 'hello',
+        '/form', 'form',
         )
 
 class hello:
@@ -18,6 +19,27 @@ class hello:
             name = 'world'
         for c in xrange(int(i.times)):
             print 'Hello,', name+'!'
+
+template = """
+<html>
+<head><title>Test Form</title</head>
+<body>
+<form action="/form" method="post">
+<p>
+<input type="checkbox" name="hidestuff">
+<input type="submit">
+</p>
+</form>
+</body>
+</html>
+"""
+            
+class form:
+    def GET(self):
+        print template
+    def POST(self):
+        import pprint as p
+        p.pprint(web.input())
 
 if __name__ == "__main__":
     try:

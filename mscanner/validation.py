@@ -331,22 +331,26 @@ class PerformanceStats:
         return s.ROC_area, s.PR_area
     
     def iterMerge(self):
-        """Iterate (float, bool) for score and relevancy of
-        each document in decreasing order of score.
+        """Iterate (score, relevant) decreasing order of score, for the merged
+        contents of pscores and nscores.  
         
-        @note: Relies on nscores and pscores being in decreasing order."""
+        @note: Relevant is True if the item with that score was a member of
+        pscores, and false if the item was a member of nscores.
+        
+        @note: We expects nscores and pscores sorted in increasing order of
+        score."""
         s = self
-        p_idx = 0
-        n_idx = 0
-        while p_idx < s.P or n_idx < s.N:
-            if p_idx < s.P and \
-            (n_idx >= s.N or s.pscores[p_idx] >= s.nscores[n_idx]):
+        p_idx = s.P-1
+        n_idx = s.N-1
+        while p_idx >= 0 or n_idx >= 0:
+            if p_idx >= 0 and \
+            (n_idx < 0 or s.pscores[p_idx] >= s.nscores[n_idx]):
                 yield s.pscores[p_idx], True
-                p_idx += 1
-            elif n_idx < s.N and \
-            (p_idx >= s.P or s.nscores[n_idx] > s.pscores[p_idx]):
+                p_idx -= 1
+            elif n_idx >= 0 and \
+            (p_idx < 0 or s.nscores[n_idx] > s.pscores[p_idx]):
                 yield s.nscores[n_idx], False
-                n_idx += 1
+                n_idx -= 1
         
     def getAveragePrecision(self):
         """Return precision averaged over each point where a relevant

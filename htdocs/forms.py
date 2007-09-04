@@ -1,6 +1,10 @@
-"""High-level form construction, based on web.form by Aaron Swartz
+"""Programmatic form construction and validation
 
-@author: Aaron Swartz (modified by Graham Poulter)
+@note: Originally web.form (part of web.py by Aaron Swartz, http://webpy.org).
+I needed form validation, and used web.form as a starting point (virtually
+every line has been modified since then).
+
+@author: Aaron Swartz and Graham Poulter
 """
 
 import copy
@@ -9,12 +13,18 @@ import web
 from web import utils, net
 
 def attrget(obj, attr, value=None):
+    """Retrieve something either as dictionary key or instance attribute
+    
+    @param obj: Thing to retrieve from
+    @param attr: Name of thing to retrieve
+    @param value: Default if attr is not found"""
     if hasattr(obj, '__contains__') and attr in obj: return obj[attr]
     if hasattr(obj, attr): return getattr(obj, attr)
     return value
 
 class Form:
-    """
+    """Programmatically construct a form
+    
     @ivar inputs: List of input fields in the form
     @ivar valid: True if the form is unfilled, or validly filled
     @ivar note: Message about invalid stuff
@@ -24,9 +34,10 @@ class Form:
     def __init__(self, *inputs, **kw):
         """Construct a form.  Positional parameters are the form inputs.
         
-        @param validators: Optional keyword, providing, a list of additional
-        validators on the form besides the ones associated with an input.  
-        """
+        @param inputs: List of input fields in the form
+        
+        @keyword validators: Optional keyword, providing, a list of additional
+        validators on the form besides the ones associated with an input."""
         self.inputs = inputs
         self.valid = True
         self.note = None
@@ -34,7 +45,9 @@ class Form:
 
 
     def __call__(self, inputs=None):
-        """To avoid overwriting, create a new form by calling the class"""
+        """Call the original instance to create copies to fill.
+        
+        @param inputs: Optional a storage object which fills the form."""
         newform = copy.deepcopy(self)
         if inputs: 
             newform.validates(inputs)
@@ -42,26 +55,24 @@ class Form:
 
 
     def render(self):
-        """A bare rendering of the form"""
-        out = ''
-        if self.note: out += '<p class="error">'+self.note+'</p>\n'
-        out += '<table class="form">\n'
+        """An HTML table rendering of the form inputs"""
+        erow = '<tr class="error"><td colspan="2">%s</td></tr>\n'
+        out = '<table class="form">\n'
+        if self.note: out += erow % self.note
         for i in self.inputs:
             out += '<tr class="input">\n'
-            out += '<th>' + i.renderlabel() + '</th>\n'
-            out += '<td class="value">' + i.pre+i.render()+i.post + '</td>\n'
+            out += '<th>%s</th>\n' % i.renderlabel()
+            out += '<td class="value">%s %s %s</td>\n' % (i.pre,i.render(),i.post)
             out += '</tr>\n'
-            if i.note is not None:
-                out += '<tr class="error">\n<td colspan="2">\n'
-                out += i.note or ""
-                out += '\n</td>\n</tr>\n'
+            if i.note: out += erow % i.note
         out += "</table>\n"
         return out
     
     
     def validates(self, source, _validate=True):
-        """
-        @param source: Storage object from which to retrieve values
+        """Validate the form, also filling its values
+        
+        @param source: Storage object from which to set form values
         
         @returns: True/False about whether the form validates."""
         if hasattr(self, "d"): del self._d
@@ -69,35 +80,42 @@ class Form:
         for i in self.inputs:
             value = attrget(source, i.name)
             if _validate:
-                isvalid = isvalid and i.validate(value)
+                isvalid = i.validate(value) and isvalid
             else:
                 i.value = value
         if _validate:
-            isvalid = isvalid and self._validate(source)
+            isvalid = self._validate(source) and isvalid
             self.valid = isvalid
         return isvalid
 
 
-    def _validate(self, value):
-        """Run additional validators for the form"""
-        self.value = value
+    def _validate(self, source):
+        """Run additional validators for the form
+        
+        @param source: Storage object containing form values        
+        """
         for v in self.validators:
-            if not v.valid(value):
+            if not v.valid(source):
                 self.note = v.msg
                 return False
         return True
 
 
-    def fill(self, source=None, **kw):
-        """Fil the form with values"""
-        return self.validates(source, _validate=False, **kw)
+    def fill(self, source=None):
+        """Fill the form without validating
+
+        @param source: Storage object from which to set form values
+        """
+        self.validates(source, _validate=False)
     
     
-    def __getitem__(self, i):
-        """Dictionary access to inputs"""
+    def __getitem__(self, key):
+        """Dictionary access to inputs.
+        
+        @param key: Name of input to retrieve"""
         for x in self.inputs:
-            if x.name == i: return x
-        raise KeyError, i
+            if x.name == key: return x
+        raise KeyError, key
     
     
     @property
@@ -118,26 +136,23 @@ class Form:
 
 
 class Input(object):
-    """Represents an input in a form
-    
-    Constructor:
-    @ivar name: Name attribute for the input
-    @ivar validators: List of validators for the input
-    
-    Constructor keywords:
-    @ivar label: Contents of the <label>
+    """Represents input widgets in the form
+
+    @ivar name: The name= attribute for the input
+    @ivar validators: List of Validator to apply to the input
+    @ivar label: Contents of the <label> for the input
     @ivar pre: Text before the input
     @ivar post: Text after the input
     @ivar id: For id= attribute (but defaults to name if not provided)
     @ivar attrs: Other attributes
-    
-    Derived:
-    @ivar note: Set by the first validator that fails
+
+    @ivar note: Message set by the first validator that fails
     """
     
     def __init__(self, name, *validators, **attrs):
-        """
-        @note: Use keyword class_ to specify the class= attribute.
+        """Constructor - parameters correspond to instance variables.
+        
+        @keyword class_: Specifies the class= attribute.
         """
         self.name = name
         self.note = None
@@ -154,7 +169,11 @@ class Input(object):
 
 
     def validate(self, value):
-        """Return true if all validators work, otherwise fals and sets note
+        """Validate the input
+        
+        @param value: Value to fill the input 
+        
+        @return: True if all validators work, otherwise False and sets the note
         to the validator message"""
         self.value = value
         for v in self.validators:
@@ -175,6 +194,7 @@ class Input(object):
 
 
     def addatts(self):
+        """Render additional attributes within a tag"""
         str = ""
         for (n, v) in self.attrs.items():
             str += ' %s="%s"' % (n, net.websafe(v))
@@ -183,54 +203,104 @@ class Input(object):
     
     
 class Textbox(Input):
+    """Widget for a text input"""
+    
     def render(self):
-        x = '<input type="text" name="%s"' % net.websafe(self.name)
-        if self.value: x += ' value="%s"' % net.websafe(self.value)
-        x += self.addatts()
-        x += '>'
-        return x
+        value = ' value="%s"' % net.websafe(self.value) if self.value else ""
+        return '<input type="text" name="%s"%s%s>' % (
+            net.websafe(self.name), value, self.addatts())
 
 
-
+    
 class Password(Input):
+    """Widget for a password input"""
+    
     def render(self):
-        x = '<input type="password" name="%s"' % net.websafe(self.name)
-        if self.value: x += ' value="%s"' % net.websafe(self.value)
-        x += self.addatts()
-        x += '>'
+        value = ' value="%s"' % net.websafe(self.value) if self.value else ""
+        return '<input type="password" name="%s"%s%s>' % (
+            net.websafe(self.name), value, self.addatts())
+
+
+
+class Checkbox(Input):
+    """Widget for a checkbox input"""
+    
+    def render(self):
+        checked = ' checked="checked"' if self.value else ''
+        return '<input type="checkbox" name="%s"%s%s>' % (
+            net.websafe(self.name), checked, self.addatts())
+    
+
+
+class Hidden(Input):
+    """Widget for a hidden input"""
+
+    def render(self):
+        value = ' value="%s"' % net.websafe(self.value) if self.value else ""
+        return '<input type="hidden" name="%s"%s>' % (
+            net.websafe(self.name), value)
+
+
+
+class File(Input):
+    """Widget for a file input"""
+    
+    def render(self):
+        value = ' value="%s"' % net.websafe(self.value) if self.value else ""
+        return '<input type="file" name="%s"%s%s>' % (
+            net.websafe(self.name), value, self.addatts())
+    
+    
+    
+class Button(Input):
+    """Widget for a button.
+    
+    @note: The form was submitted by pressing this button if the buttons' name
+    is in web.inputs (with empty string for value)
+    """
+    
+    def render(self):
+        x = '<button name="%s"%s>%s</button>' % (
+            self.name, self.addatts(), self.label)
         return x
 
 
 
 class Textarea(Input):
+    """Widget for a <textarea>"""
+    
     def render(self):
-        x = '<textarea name="%s"' % net.websafe(self.name)
-        x += self.addatts()
-        x += '>'
-        if self.value is not None: x += net.websafe(self.value)
-        x += '</textarea>'
-        return x
+        value = net.websafe(self.value) if self.value else ""
+        return '<textarea name="%s"%s>%s</textarea>' % (
+            net.websafe(self.name), self.addatts(), value)
 
 
 
 class Dropdown(Input):
+    """Widget for <select> dropdown box"""
+    
     def __init__(self, name, args, *validators, **attrs):
+        """Constructor
+        
+        @param args: List of values or (value,description) pairs for the
+        dropdown box."""
         self.args = args
         super(Dropdown, self).__init__(name, *validators, **attrs)
 
 
     def render(self):
-        x = '<select name="%s"%s>\n' % (net.websafe(self.name), self.addatts())
+        x = '<select name="%s"%s>\n' % (
+            net.websafe(self.name), self.addatts())
         for arg in self.args:
             if type(arg) == tuple:
-                value, desc= arg
+                value, desc = arg
             else:
                 value, desc = arg, arg 
             if self.value == value: 
                 select_p = ' selected="selected"'
             else: 
                 select_p = ''
-            x += '  <option %s value="%s">%s</option>\n' % (
+            x += '<option%s value="%s">%s</option>\n' % (
                 select_p, net.websafe(value), net.websafe(desc))
         x += '</select>\n'
         return x
@@ -238,91 +308,53 @@ class Dropdown(Input):
 
 
 class Radio(Input):
+    """Widget for a set of radio buttons"""
+    
     def __init__(self, name, args, *validators, **attrs):
-        """
-        @param args: (name, label) pairs for the radio buttons
+        """Constructor
         
-        @note: The radio inputs do not get any attributes.
-        """
+        @param args: List of values or (value,description) pairs for radio
+        buttons."""
         self.args = args
         super(Radio, self).__init__(name, *validators, **attrs)
 
 
     def renderlabel(self):
-        """Dummy label: no unique ID for the set of buttons"""
+        """Plain-text label: no unique ID for set of buttons"""
         return self.label
 
 
     def render(self, only=None):
-        """Write a list of radio inputs. If argname is a string, only write the
-        radio button for that value."""
+        """Write a list of radio inputs. 
+        
+        @param only: Render just the radio button whose name matches."""
         out = ""
-        for arg, label in self.args:
-            if only is not None and arg != only:
+        for arg in self.args:
+            if type(arg) == tuple:
+                value, desc = arg
+            else:
+                value, desc = arg, arg 
+            if only is not None and value != only:
                 continue
-            if label is None: label = arg
-            if self.value == arg: 
-                checked = ' checked="checked"'
+            if self.value == value: 
+                select_p = ' checked="checked"'
             else: 
-                checked = ''
-            out += '<input type="radio" name="%s" value="%s"%s> %s ' % \
-            (net.websafe(self.name), net.websafe(arg), checked, net.websafe(label))
+                select_p = ''
+            out += '<span><input type="radio" name="%s" value="%s"%s> %s </span>' % \
+            (net.websafe(self.name), net.websafe(value), select_p, net.websafe(desc))
         return out
 
 
 
-class Checkbox(Input):
-    def render(self):
-        x = '<input name="%s" type="checkbox"' % net.websafe(self.name)
-        if self.value: x += ' checked="checked"'
-        x += self.addatts()
-        x += '>'
-        return x
-
-
-
-class Button(Input):
-    def __init__(self, name, *validators, **attrs):
-        super(Button, self).__init__(name, *validators, **attrs)
-        self.description = ""
-
-    def render(self):
-        safename = net.websafe(self.name)
-        x = '<button name="%s"%s>%s</button>' % (safename, self.addatts(), safename)
-        return x
-
-
-
-class Hidden(Input):
-    def __init__(self, name, *validators, **attrs):
-        super(Hidden, self).__init__(name, *validators, **attrs)
-        # it doesnt make sence for a hidden field to have description
-        self.description = ""
-
-    def render(self):
-        x = '<input type="hidden" name="%s"' % net.websafe(self.name)
-        if self.value: x += ' value="%s"' % net.websafe(self.value)
-        x += ' />'
-        return x
-
-
-
-class File(Input):
-    def render(self):
-        x = '<input type="file" name="%s"' % net.websafe(self.name)
-        x += self.addatts()
-        x += '>'
-        return x
-    
-    
-    
 class Validator:
-    """Generic validator."""
-    def __init__(self, test, msg, jstest=None): 
-        """ 
-        @param test: Function applied to input value when used as an input
-        validator, and applied to the Storage source for the form when used as
-        a form validator.
+    """Generic validator to pass to an Input or Form constructor."""
+
+    def __init__(self, test, msg): 
+        """Constructor
+        
+        @param test: Applied to input value when used as an input validator,
+        and applied to the Storage source for the form when used as a form
+        validator.
         
         @param msg: To be assigned to the note when validator fails.
         """
@@ -331,7 +363,8 @@ class Validator:
     def __deepcopy__(self, memo): 
         return copy.copy(self)
     
-    def valid(self, value): 
+    def valid(self, value):
+        """Returns true if the test function succeeds"""
         try: 
             return self.test(value)
         except: 
@@ -341,7 +374,12 @@ class Validator:
 
 class RegexValidator(Validator):
     """Tests that the value matches a particular regular expression"""
+
     def __init__(self, rexp, msg):
+        """Constructor
+        
+        @param rexp: String containing the regular expression
+        """
         self.rexp = re.compile(rexp)
         self.msg = msg
     
@@ -349,22 +387,18 @@ class RegexValidator(Validator):
         return bool(self.rexp.match(value))
 
 
-# Intended to match non-null inputs
-notnull = Validator(
-    bool, "Required")
 
+notnull = Validator(bool, "Required")
+"""Use to specify that the input should not be left empty"""
 
-# Matches if value is None or "ok"
 checkbox_validator = Validator(
-    lambda x: x == None or x == "on",
-    "Bad checkbox")
-
+    lambda x: x == None or x == "on", "Bad checkbox")
+"""Use to be sure the checkbox has valid input"""
 
 def ischecked(value):
-    """Boolean of a checkbox in web.input()"""
-    if value == None:
-        return False 
-    elif value == "on":
-        return True
-    else:
-        return bool(value)
+    """True if the Checkbox was pressed"""
+    return True if value == "on" else bool(value)
+    
+def buttonpressed(value):
+    """True if the Button was pressed"""
+    return True if value == "" else bool(value)

@@ -1,9 +1,12 @@
-"""Logic for the contact page
-"""
+"""web.py handler for the contact page"""
 
 import web
-from . import contact
+import contact
 from htdocs import forms
+
+                                     
+__author__ = "Graham Poulter"                                        
+__license__ = "GPL"
 
 ContactForm = forms.Form(
     
@@ -28,6 +31,7 @@ ContactForm = forms.Form(
         label="The message", rows=10, cols=40),
 
 )
+"""Structure for the form on the contact page"""
 
 class ContactPage:
     """Form to contact the webmaster"""

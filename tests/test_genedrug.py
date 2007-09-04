@@ -1,6 +1,6 @@
 """Test suite for mscanner.pharmdemo.genedrug
 
-                                   
+                               
 
 @license: This source file is free software. It comes without any warranty, to
 the extent permitted by applicable law. You can redistribute it and/or modify
@@ -31,8 +31,8 @@ class GeneDrugFilterTests(unittest.TestCase):
     """
 
     def setUp(self):
-        self.filter = genedrug.GeneDrugFilter(drugs,
-        genedrug.CachingGeneFinder(genefinder_cache))
+        self.filter = genedrug.GeneDrugLister(drugs,
+        genedrug.GeneFinder(genefinder_cache))
 
     def test_stripDrugs(self):
         drugtable = self.filter.stripDrugs(drugs)
@@ -139,8 +139,8 @@ class GapScoreTests(unittest.TestCase):
 
     def setUp(self):
         self.fn = path(tempfile.mktemp(prefix="gd-"))
-        self.genefinder = genedrug.CachingGeneFinder(self.fn)
-        self.filter = genedrug.GeneDrugFilter({},self.genefinder)
+        self.genefinder = genedrug.GeneFinder(self.fn)
+        self.filter = genedrug.GeneDrugLister({}, self.genefinder)
 
     def tearDown(self):
         self.genefinder.__del__()

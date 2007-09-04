@@ -1,6 +1,6 @@
 """Test suite for mscanner.featuredb
 
-                                   
+                               
 
 @license: This source file is free software. It comes without any warranty, to
 the extent permitted by applicable law. You can redistribute it and/or modify
@@ -48,14 +48,14 @@ class FeatureStreamTests(unittest.TestCase):
             self.fn.remove()
         
     def test(self):
-        f = file(self.fn, "ab")
+        f = open(self.fn, "ab")
         fs = FeatureStream(f)
         pmids = (12,34,56)
         feats = [array([1,2,3,4],uint16), array([5,6,7,8],uint16), array([],uint16)]
         for pmid, feat in zip(pmids,feats):
             fs.write(pmid, feat)
         f.close()
-        f = file(self.fn, "rb")
+        f = open(self.fn, "rb")
         fs = FeatureStream(f)
         rpmids, rfeats = zip(*[x for x in fs])
         self.assertEqual(pmids, rpmids)

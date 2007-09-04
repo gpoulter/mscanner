@@ -1,16 +1,8 @@
-"""Calculate term and document scores
-
-FeatureInfo -- Feature score calculation
-iterScores() -- Iterate over document scores
-filterDocuments() -- Filter iterScores() output for top N
-partitionList() -- Split list into train/test partitions
-retrievalTest() -- Count gold standard docs as a function of rank
-
-"""
+"""Performs calculation of term and citation scores"""
 
 from __future__ import division
 
-                                               
+                                     
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
@@ -26,8 +18,8 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 import logging as log
 import numpy as nx
+from mscanner.support.utils import selfupdate
 
-from mscanner.support.utils  import selfupdate
 
 class FeatureInfo(object):
     """Class to calculate and store all information about the
@@ -40,41 +32,33 @@ class FeatureInfo(object):
     @note: FeatureInfo can be re-used (e.g. in cross validation) when
     the data changes - but must be recreated when parameters change.
 
-    Passed via constructor:
-        
-        @ivar featmap: featuremap.FeatureMapping object
-        
-        @ivar pos_counts: Array of feature counts in positive documents. 
-        
-        @ivar neg_counts: Array of feature counts in negatives documents
-        
-        @ivar pdocs: Number of positive documents
-        
-        @ivar ndocs: Number of negative documents
-        
-        @ivar pseudocount: Either a float which is the pseudocount for all
-        features, or numpy array of per-feature counts, or None which triggers
-        once-off creation of per-features counts equal to Medline frequency if
-        Bayesian calculation is in use.
-        
-        @ivar mask: Boolean array for masking some features scores to zero
-        (this is to exclude features by category, not by score).
-        
-        @ivar frequency_method: Method for calculating feature 
-        probabilities (constructor takes method name).
-        
-        @ivar post_masker: Method for calculating mask after feature
-        scores are known (constructor takes method name or None)
-      
-        @ivar pfreqs: Probability of each feature given positive article
-        
-        @ivar nfreqs: Probability of each feature given negative article
-        
-    Properties:
-        
-        @ivar scores: Array of feature scores
-        
-        @ivar tfidf: TF-IDF scores for each feature
+    @ivar featmap: featuremap.FeatureMapping object
+    
+    @ivar pos_counts: Array of feature counts in positive documents. 
+    
+    @ivar neg_counts: Array of feature counts in negatives documents
+    
+    @ivar pdocs: Number of positive documents
+    
+    @ivar ndocs: Number of negative documents
+    
+    @ivar pseudocount: Either a float which is the pseudocount for all
+    features, or numpy array of per-feature counts, or None which triggers
+    once-off creation of per-features counts equal to Medline frequency if
+    Bayesian calculation is in use.
+    
+    @ivar mask: Boolean array for masking some features scores to zero
+    (this is to exclude features by category, not by score).
+    
+    @ivar frequency_method: Method for calculating feature 
+    probabilities (constructor takes method name).
+    
+    @ivar post_masker: Method for calculating mask after feature
+    scores are known (constructor takes method name or None)
+  
+    @ivar pfreqs: Probability of each feature given positive article
+    
+    @ivar nfreqs: Probability of each feature given negative article
     """
 
     def __init__(self, 
@@ -113,10 +97,10 @@ class FeatureInfo(object):
     
     @property
     def scores(self):
-        """Log likelihood support score of each feature. As a side effect
-        stores feature probabilities in the pfreqs and nfreqs attributes.
+        """Log likelihood support score of each feature. 
         
-        @return: Array of feature scores
+        Side effect of calling stores the first time is that feature
+        probabilities are also placed in the pfreqs and nfreqs attributes.
         """
         try:
             return self._scores
@@ -158,7 +142,7 @@ class FeatureInfo(object):
         posterior feature probablilities.   Instead of +1 in the
         denominator, we use +2*pseudocount.
         
-        @note: Depre
+        @deprecated: Performs poorly when number of inputs is small.
         """
         if s.pseudocount is None:
             s.pseudocount = nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
@@ -176,17 +160,16 @@ class FeatureInfo(object):
 
     @property 
     def stats(self):
-        """Recalculate statistics about the feature database
+        """Storage object with statistics about the features
         
-        Returns a Storage dictionary with the following keys:
-        
-        @ivar pos_occurrences: Total feature occurrences in positives
-        @ivar neg_occurrences: Total feature occurrences in negatives
-        @ivar feats_per_pos: Number of features per positive article
-        @ivar feats_per_neg: Number of features per negative article
-        @ivar distinct_feats: Number of distinct features
-        @ivar pos_distinct_feats: Number of of distinct features in positives
-        @ivar neg_distinct_feats: Number of of distinct features in negatives
+        Property has the following keys:
+            - pos_occurrences: Total feature occurrences in positives
+            - neg_occurrences: Total feature occurrences in negatives
+            - feats_per_pos: Number of features per positive article
+            - feats_per_neg: Number of features per negative article
+            - distinct_feats: Number of distinct features
+            - pos_distinct_feats: Number of of distinct features in positives
+            - neg_distinct_feats: Number of of distinct features in negatives
         """
         try: 
             return self._stats
@@ -211,9 +194,12 @@ class FeatureInfo(object):
         
     @property
     def tfidf(self):
-        """Calculate TF-IDF scores for terms, where for term frequency (TF) we
-        treat the positive corpus as a single large document, but for
-        inverse document frequency (IDF) each citation is a separate document."""
+        """TF-IDF scores for each feature
+        
+        Property calculates and caches TF-IDF scores for terms, where for term
+        frequency (TF) we treat the positive corpus as a single large document,
+        but for inverse document frequency (IDF) each citation is a separate
+        document."""
         try: 
             return self._tfidf
         except AttributeError: 
@@ -253,6 +239,8 @@ class FeatureInfo(object):
                  s.pfreqs[t], s.nfreqs[t], pseudocount[t], t,
                  s.tfidf[t], s.featmap[t][1], s.featmap[t][0]))
 
+
+
 def countFeatures(nfeats, featdb, docids):
     """Count occurrenes of each feature in a set of articles
 
@@ -268,6 +256,7 @@ def countFeatures(nfeats, featdb, docids):
     for docid in docids:
         counts[featdb[docid]] += 1
     return counts
+
 
 def iterScores(docs, featscores, limit, threshold=None, exclude=[]):
     """Iterate over docs, yielding scores (calculated using featscores array),
@@ -298,6 +287,7 @@ def iterScores(docs, featscores, limit, threshold=None, exclude=[]):
     if ndocs < limit:
         limit = ndocs
     return heapq.nlargest(limit, results)
+
 
 def iterCScores(progpath, docstream, numdocs, featscores, 
                 limit, safety, threshold=None, exclude=[]):
@@ -344,10 +334,12 @@ def iterCScores(progpath, docstream, numdocs, featscores,
                 break
         s = p.stdout.read(8)
     p.stdout.close()
-        
+
+
 def iterCScores2(docstream, numdocs, featscores, 
                  limit, safety, threshold=None, exclude=[]):
-    """
+    """Use ctypes to access cscores for calculating feature scores.
+    
     @param docstream: Path to file containing feature vectors for documents to
     score (formatted as in mscanner.featuredb.FeatureStream)
     
@@ -389,17 +381,18 @@ def iterCScores2(docstream, numdocs, featscores,
             if count >= limit:
                 break
 
+
 def retrievalTest(results, test):
-    """Returns number of 
+    """Perform a retrieval test of query results against a gold standard.
+
+    The false positives can be calculated as rank minus true positives.
 
     @param results: List of result PubMed IDs
     
-    @param test: Set of gold-standard articles to look for in query results
+    @param test: Set of gold-standard articles to look for in results
 
     @return: True positives as function of rank (measured with respect
     to the test set)
-    
-    @note: The false positives is the rank minus true positives.
     """
     assert isinstance(test, set)
     TP_total = nx.zeros(len(results), nx.int32)

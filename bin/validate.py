@@ -1,18 +1,14 @@
 #!/usr/bin/env python
 
-"""Calculate performance statistics
+"""Cross-validation performance analysis
 
-Usage as backend for CGI:
+Either use as a module, or pass a Python snippet::
 
-  validate.py dataset numnegs nfolds alpha positives_path
-
-Usage for experiments (executable python string):
-
-  validate.py 'paperTests("aids-vs-500k")'
-
-                                   
+    validate.py 'paperTests("aids-vs-500k")'
 """
 
+                                     
+__author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
 Free Software Foundation, either version 3 of the License, or (at your option)
@@ -31,6 +27,7 @@ import sys
 from mscanner.configuration import rc, initLogger
 from mscanner.validenv import ValidationEnvironment
 
+
 def paperTests(*datasets):
     """Cross-validation tests for the publication"""
     dataset_map = {
@@ -39,7 +36,7 @@ def paperTests(*datasets):
     "radiology-vs-100k": ("daniel-radiology.txt", "medline07-100k.txt"),
     "random10k-vs-100k": ("random10k-06.txt", "medline07-100k.txt"), 
     "gdsmall-vs-sample": ("genedrug-small.txt", rc.articlelist) ,
-    "gdsmall-vs-1k": ("genedrug-small.txt", None),
+    "test-vs-sample": ("testing-random.txt", rc.articlelist),
     }
     env = ValidationEnvironment()
     rc.numnegs = 1000
@@ -53,11 +50,11 @@ def paperTests(*datasets):
         if neg is not None and not isinstance(neg, path):
             neg = rc.corpora / neg
         env.standardValidation(pos, neg)
-        
+
+
 def issnTest():
-    """Output cross-validatin results on AIDSBio when ISSN features are 
-    excluded.  This will show how much including ISSN helps. 
-    """
+    """Output results on AIDSBio when ISSN features are excluded. Indicates
+    the degree of performance improvement due to ISSNs."""
     env = ValidationEnvironment()
     rc.exclude_types = ["issn"]
     rc.dataset = "aids-noissn"
@@ -65,56 +62,23 @@ def issnTest():
     neg = "medline07-500k.txt"
     env.standardValidation(rc.corpora / pos, rc.corpora / neg)
 
-def compareDaniel():
-    """Make comparisons against the Rubin2005 method.  
-    
-    @note: We test Daniel's smoothing versus Bayes prior for old and
-    new pharmacogenetics data, against 30k or 500k negatives.
-    
-    """
-    pg04 = rc.corpora / "pharmgkb-2004.txt"
-    m30k = rc.corpora / "medline07-30k.txt"
-    m500k = rc.corpora / "medline07-500k.txt"
-    pg07 = rc.corpora / "pharmgkb-070205.txt"
-    env = ValidationEnvironment()
-    # New method on on pg04 vs 30k
-    rc.dataset = "pg04-vs-30k"
-    rc.exclude_types = None
-    rc.getFrequencies = "getProbabilitiesBayes"
-    env.standardValidation(pg04, m30k)
-    # Daniel's method on on pg04 vs 30k
-    rc.dataset = "pg04-vs-30k-dan"
-    rc.exclude_types = ["issn"]
-    rc.getFrequencies = "getProbabilitiesRubin"
-    env.standardValidation(pg04, m30k)
-    # New method on pg07 vs 30k
-    rc.dataset = "pg07-vs-30k"
-    rc.exclude_types = None
-    rc.getFrequencies = "getProbabilitiesBayes"
-    # Daniel's method on pg07 vs 30k
-    env.standardValidation(pg07, m30k)
-    rc.dataset == "pg07-vs-500k-dan"
-    rc.exclude_types = ["issn"]
-    rc.getFrequencies = "getProbabilitiesRubin"
-    env.standardValidation(pg07, m30k)
-        
+
 def random_bimodality():
     """Normally Random10K under cross validation against other random
     citations has multiple modes in the article scores.
     
-    This tests whether eliminating features that occur only once or
-    twice in the data is effective at removing the bimodality (since
-    such features are hypothesised to cause a spike of negative
-    feature scores in training, and random occurrences in testing
-    citations causes their scores to be shifted left from the mean).    
-    """
+    This tests whether eliminating features that do not occur in positive
+    citations removes the bimodality (since such features cause a spike of
+    negative feature scores in training, and random occurrences in testing
+    citations causes their scores to be shifted left from the mean)."""
     rc.dataset = "random10k-vs-100k-mod"
     rc.nfolds = 10
-    rc.getPostMask = "maskNonPositives"
+    rc.post_masker = "maskNonPositives"
     env = ValidationEnvironment()
     pos = "random10k-06.txt"
     neg = "medline07-100k.txt"
     env.standardValidation(rc.corpora / pos, rc.corpora / neg)
+
 
 if __name__ == "__main__":
     initLogger()

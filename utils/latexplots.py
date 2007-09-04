@@ -3,16 +3,17 @@
 """
 Draws publication-quality plots for use in the paper
 
-Figure 1. Four score density plots
-Figure 2. ROC curve overlay
-Figure 3. PR curve overlay
-Figure 4. P,R,F1,Fa curve for AIDSBio to demo optimisation
+The figures are::
+    Figure 1. Four score density plots
+    Figure 2. ROC curve overlay
+    Figure 3. PR curve overlay
+    Figure 4. P,R,F1,Fa curve for AIDSBio to demo optimisation
 
-                                    
 """
 
 from __future__ import division
-
+                                     
+__author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
 Free Software Foundation, either version 3 of the License, or (at your option)
@@ -31,9 +32,7 @@ from path import path
 from pylab import *
 
 from mscanner.configuration import rc as mrc, initLogger
-from mscanner.scorefile  import readPMIDs
-from mscanner.validation import PerformanceStats
-from mscanner.plotting import bincount, kernelPDF, calculateOverlap
+from mscanner import plotting, scorefile, validation
 
 interactive = False
 npoints = 400
@@ -64,23 +63,24 @@ def smooth(x, y, xn=npoints):
 
 def getFeatScores(indir, dataset):
     """Read feature scores for a dataset"""
-    f = file(indir/dataset/mrc.report_term_scores, "r")
+    f = open(indir/dataset/mrc.report_term_scores, "r")
     f.readline()
     return array([float(s.split(",",1)[0]) for s in f])
 
 def getStats(indir, dataset, title, alpha=0.5):
     """Read statistics based on score data
     
-    @param dataset: Subdirectory name for the data set
+    @param indir: Directory in which to find data sets
+    @param dataset: Subdirectory name for the particular data set
     @param title: Name to put on the graphs (typically same as dataset)
     @param alpha: What alpha to use when recalcing performance
     """
     logging.info("Reading dataset %s", dataset)
-    pscores = array([s[0] for s in readPMIDs(
+    pscores = array([s[0] for s in scorefile.readPMIDs(
         indir/dataset/mrc.report_positives, withscores=True)])
-    nscores = array([s[0] for s in readPMIDs(
+    nscores = array([s[0] for s in scorefile.readPMIDs(
         indir/dataset/mrc.report_negatives, withscores=True)])
-    stats = PerformanceStats(pscores, nscores, alpha)
+    stats = validation.PerformanceStats(pscores, nscores, alpha)
     stats.title = title
     return stats
 
@@ -117,8 +117,8 @@ def plotArticleScoreDensity(fname, statlist):
     logging.info("Plotting score densities to %s", fname)
     for idx, s in enumerate(statlist):
         t = s.threshold
-        px, py = kernelPDF(s.pscores)
-        nx, ny = kernelPDF(s.nscores)
+        px, py = plotting.kernelPDF(s.pscores)
+        nx, ny = plotting.kernelPDF(s.nscores)
         subplot(2,2,idx+1)
         title(s.title)
         line_pos, = plot(px, py, color='red', label=r"$\rm{Positive}$")
@@ -126,7 +126,7 @@ def plotArticleScoreDensity(fname, statlist):
         line_threshold = axvline(
             s.threshold, color='green', linewidth=1, label=r"$\rm{Threshold}$")
         # No longer plotting the overlapping area
-        #area, iX, iY = calculateOverlap(px, py, nx, ny)
+        #area, iX, iY = plotting.calculateOverlap(px, py, nx, ny)
         #patch_overlap, = fill(iX, iY, facecolor='magenta', alpha=0.7, label=r"$\rm{Overlap}$")
         if idx == 0 or idx == 2:
             ylabel("Density")
@@ -142,8 +142,8 @@ def plotArticleScoreHistogram(fname, pscores, nscores):
     ##title("Article Score Histograms")
     xlabel("Article Score")
     ylabel("Article Density")
-    p_n, p_bins, p_patches = hist(pscores, bins=bincount(pscores), normed=True)
-    n_n, n_bins, n_patches = hist(nscores, bins=bincount(nscores), normed=True)
+    p_n, p_bins, p_patches = hist(pscores, bins=plotting.bincount(pscores), normed=True)
+    n_n, n_bins, n_patches = hist(nscores, bins=plotting.bincount(nscores), normed=True)
     setp(p_patches, 'facecolor', 'r', 'alpha', 0.50, 'linewidth', 0.0)
     setp(n_patches, 'facecolor', 'b', 'alpha', 0.50, 'linewidth', 0.0)
     #p_y = normpdf(p_bins, mean(pscores), std(pscores))
@@ -159,7 +159,7 @@ def plotFeatureScoreHistogram(fname, fscores):
     xlabel("Feature Score")
     ylabel("Number of Features")
     fscores.sort()
-    n, bins, patches = hist(fscores, bins=bincount(fscores))
+    n, bins, patches = hist(fscores, bins=plotting.bincount(fscores))
     setp(patches, 'facecolor', 'r', 'linewidth', 0.0)
     custom_show(fname)
 
@@ -281,7 +281,7 @@ def Publication():
     all = (aids,rad,pg07,ran10)
     plotROC("fig2_roc", all)
     plotPR("fig3_pr", all)
-    fmplot = PerformanceStats(pg07.pscores, pg07.nscores, alpha=0.95)
+    fmplot = validation.PerformanceStats(pg07.pscores, pg07.nscores, alpha=0.95)
     fmplot.title = pg07.title
     plotPRF("fig6_prf", fmplot)
     plotArticleScoreDensity("fig1_density", all)
@@ -295,7 +295,7 @@ def Testing():
     plotArticleScoreDensity("test_density", (pg04,pg07,pg07,pg04))
     plotROC("test_roc", (pg04,pg07))
     plotPR("test_pr", (pg04,pg07))
-    pg04alpha = PerformanceStats(pg04.pscores, pg04.nscores, alpha=0.9)
+    pg04alpha = validation.PerformanceStats(pg04.pscores, pg04.nscores, alpha=0.9)
     pg04alpha.title = pg04.title
     plotPRF("test_prf", pg04alpha)
 

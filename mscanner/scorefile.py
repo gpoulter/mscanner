@@ -1,15 +1,14 @@
-"""Handle reading and writing of PMIDs and their scores
+"""Performs reading/writing of various file types
 
-readPMIDs() -- Get PMIDs (and scores too) from a text file
-writePMIDScores() -- Write PMIDs and scores to a text file
-getArticles() -- Retrieve Articles from a DB, caching results in a Pickle
-readDescriptor() -- Read paramaters from a descriptor file
-writeDescriptor() -- Write paramaters to a descriptor file
-
-                                   
+Functions in this file:
+    - L{readPMIDs}: Get PMIDs (and scores too) from a text file
+    - L{writePMIDScores}: Write PMIDs and scores to a text file
+    - L{getArticles}: Retrieve Articles from a DB, caching results in a Pickle
+    - L{readDescriptor}: Read paramaters from a descriptor file
+    - L{writeDescriptor}: Write paramaters to a descriptor file
 """
 
-                                               
+                                     
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
@@ -28,15 +27,15 @@ def readPMIDs(filename, include=None, exclude=None,
               broken_name=None, exclude_name=None, withscores=False):
     """Read PubMed IDs one per line from filename.
 
-    @param filename: Path to file containing one PubMed ID per line, with
-    optional score after the PubMed ID. File format ignores blank lines and
-    lines starting with #, and only parses the line up to the first whitespace
-    character.
+    @param filename: Path to file with PubMed IDs. Format is one PubMed ID per
+    line, with optional score after the PubMed ID. File format ignores blank
+    lines and lines starting with #, and only parses the line up to the first
+    whitespace character.
     
-    @param include: Only return members of this set (other PubMed IDs
-    are considered "broken").
+    @param include: Only return members of this set (other PubMed IDs are
+    considered "broken").
 
-    @param broken_name: File to write non-included PubMed IDs
+    @param broken_name: File to write non-included ("broken") PubMed IDs
     
     @param exclude: Do not return members of this set
     
@@ -44,14 +43,13 @@ def readPMIDs(filename, include=None, exclude=None,
     
     @param withscores: Also read the score after the PubMed ID on each line.
     
-    @returns: An iterator over PubMed ID, or (Score, PubMed ID) if
-    withscores is True.
-    """
+    @returns: Iterator over PubMed ID, or (Score, PubMed ID) if withscores is
+    True. """
     import logging as log
     count = 0
     broken = []
     excluded = []
-    for line in file(filename, "r"):
+    for line in open(filename, "r"):
         sline = line.strip()
         if sline == "" or sline.startswith("#"):
             continue
@@ -80,45 +78,43 @@ def readPMIDs(filename, include=None, exclude=None,
 
 
 def writePMIDScores(filename, pairs):
-    """Write (score, PMID) pairs to filename, in decreasing
-    order of score."""
+    """Write scores and PubMed IDs to file, in decreasing order of score.
+    
+    @param pairs: Iterable of (score, PMID)     
+    """
     from path import path
     path(filename).write_lines(
         "%-10d %f" % (p,s) for s,p in sorted(pairs, reverse=True))
     
     
 def getArticles(article_db_path, pmidlist_path):
-    """Get Article objects given a file of PubMed IDs.
+    """Retrieve Article objects given a file of PubMed IDs.
 
     @param article_db_path: Path to a berkeley DB mapping PubMed IDs
     to Article objects.
 
-    @param pmidlist_path: Path to a text file listing one PubMed ID
-    per line.
+    @param pmidlist_path: Path to a text file listing one PubMed ID per line.
 
-    @return: List of Article objects in the order given in the text
-    file.
+    @return: List of Article objects in the order given in the text file.
 
-    @note: The first time it is called for a given pmidlist_path, the results
-    are cached in a .pickle appended to pmidlist_path, and later calls simply
-    use the cached results. 
-    """
+    @note: The first called with a given PMID list caches the results in a
+    .pickle, and later calls load the pickle."""
     import cPickle
     from path import path
     from mscanner.support import dbshelve
     cache_path = path(pmidlist_path + ".pickle")
     if cache_path.isfile():
-        return cPickle.load(file(cache_path, "rb"))
+        return cPickle.load(open(cache_path, "rb"))
     pmids = readPMIDs(pmidlist_path)
     artdb = dbshelve.open(article_db_path, 'r')
     articles = [artdb[str(p)] for p in pmids]
-    cPickle.dump(articles, file(cache_path,"wb"), protocol=2)
+    cPickle.dump(articles, open(cache_path,"wb"), protocol=2)
     artdb.close()
     return articles
 
 
 def parsebool(s):
-    """Convert to boolean, with special handling for strings"""
+    """Handler for converting strings to booleans"""
     if isinstance(s, basestring):
         s = s.strip()
         if s == "0" or s == "False":
@@ -148,17 +144,14 @@ descriptor_keys = dict(
 def readDescriptor(fpath):
     """Reads a descriptor file, returning a dictionary of parameters.
 
-    @note: Each line is formatted as "#key = value".  The reading stops
-    at the first line that does not start with '#'.   The valid keys
-    are listed in the converter dictionary.
-    
-    @note: Also returns a "_filename" attribute that is the name of
-    the descriptor that was read.
+    Each descriptor line is formatted as "#key = value". Reading stops at the
+    first line that does not start with '#'. Valid keys are in
+    L{descriptor_keys}. The same file can be used with L{readPMIDs}, which
+    ignores lines beginning with '#'.
 
-    @note: The same descriptor file can be used as a PubMed ID list,
-    as the PubMed-ID reader ignores lines beginning with '#'.
-    """
-    f = file(fpath, "r")
+    @return: Storage object, with additional "_filename" key that contains
+    fpath."""
+    f = open(fpath, "r")
     line = f.readline()
     from mscanner.support.storage import Storage
     result = Storage()
@@ -180,9 +173,9 @@ def writeDescriptor(fpath, pmids, params):
     @param pmids: List of PubMed IDs, may be None
     
     @param params: Key-value dictionary to write. Values are converted with
-    str().  Only keys that have a member in descriptor_keys are actually
-    written to the file."""
-    f = file(fpath, "w")
+    str(). Only keys that have a member in descriptor_keys are actually written
+    to the file."""
+    f = open(fpath, "w")
     for key, value in params.iteritems():
         if key in descriptor_keys: 
             f.write("#" + key + " = " + str(value) + "\n")
@@ -193,9 +186,10 @@ def writeDescriptor(fpath, pmids, params):
 
 
 def no_valid_pmids_page(pmids):
-    """When none of the PubMed IDs were valid, print this error
-    page instead, with a list of the submitted IDs and links to PubMed.
-    """
+    """Print a page when no valid PMIDs were found
+    
+    The page includes a list of any submitted IDs and links to PubMed (
+    however, these IDs were not part of MScanner's database). """
     import logging
     from mscanner.support.gcheetah import TemplateMapper, FileTransaction
     from mscanner.configuration import rc

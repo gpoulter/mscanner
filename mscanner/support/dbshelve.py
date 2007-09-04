@@ -1,11 +1,7 @@
-"""Persistent shelf backed by Berkeley DB
+"""Persistent shelf backed by Berkeley DB"""
 
-open() -- Open/create a Shelf
-Shelf -- Class defining a Berkeley DB-backed shelf
-
-                                   
-"""
-
+                                     
+__author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
 Free Software Foundation, either version 3 of the License, or (at your option)
@@ -18,8 +14,10 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
-from bsddb import db
-import cPickle, os, unittest
+import bsddb
+import cPickle
+import os
+import unittest
 from path import path
 from UserDict import DictMixin
 import zlib
@@ -27,60 +25,64 @@ import zlib
 def open(filename, flags='c', mode=0660, dbenv=None, txn=None, dbname=None, compress=True):
     """Open a shelf with Berkeley DB backend
 
-    flag is one of 'r','rw','w','c','n'.  Optionally specify flags
-    such as db.DB_CREATE, db.DB_TRUNCATE, db.DB_RDONLY,
-    db.DB_AUTO_COMMIT.  dbenv provides a db.DBEnv environment, and
-    dbname selects a sub-database from the file.
+    @param flags: One of 'r','rw','w','c','n'. Optionally specify flags such as
+    db.DB_CREATE, db.DB_TRUNCATE, db.DB_RDONLY, db.DB_AUTO_COMMIT. 
+    
+    @param dbenv: Provides a db.DBEnv environment
+    
+    @param txn: Optional transaction for the opening operation.
+    
+    @param dbname: Selects a sub-database from the file.
+    
+    @param compress: If True, also gzip the pickles in the shelf.
+    
+    @return: L{Shelf} using the opened database.
     """
     if isinstance(flags, basestring):
         if flags == 'r':
-            flags = db.DB_RDONLY
+            flags = bsddb.db.DB_RDONLY
         elif flags == 'rw':
             flags = 0
         elif flags == 'w':
-            flags = db.DB_CREATE
+            flags = bsddb.db.DB_CREATE
         elif flags == 'c':
-            flags = db.DB_CREATE
+            flags = bsddb.db.DB_CREATE
         elif flags == 'n':
-            flags = db.DB_TRUNCATE | db.DB_CREATE
+            flags = bsddb.db.DB_TRUNCATE | db.DB_CREATE
         else:
-            raise db.DBError("Flag %s is not in 'r', 'rw', 'w', 'c' or 'n'"  % str(flags))
-    database = db.DB(dbenv)
-    database.open(filename, dbname, db.DB_HASH, flags, mode, txn=txn)
+            raise bsddb.db.DBError("Flag %s is not in 'r', 'rw', 'w', 'c' or 'n'"  % str(flags))
+    database = bsddb.db.DB(dbenv)
+    database.open(filename, dbname, bsddb.db.DB_HASH, flags, mode, txn=txn)
     return Shelf(database, txn, compress)
 
 class Shelf(DictMixin):
-    """A shelf for pickled objects, built upon a bsddb DB object. It
-    automatically pickles/unpickles data objects going to/from the DB.
-    
-    @note: A key-value dictionary is a table indexed by a single key, with the
-    value being a representation of the other columns. Use a more general
-    database table when indexing by more than one column may be necessary,
-    or re-invent tables using dictionaries (as in FeatureMapping).
-    
-    """
+    """A shelf built upon a bsddb DB object."""
 
     def __init__(self, database, txn=None, do_compression=True):
         """Initialise shelf with a db.DB object
+        
+        @param database: Instance of a db database
+        
+        @param txn: Optional transaction context for shelf operations
 
-        @param do_compression: If True, use zlib to transparently
-        compress pickles.
+        @param do_compression: If True, compress pickles with zlib.
         """
         self.db = database
         self.do_compression = do_compression
         self.set_txn(txn)
-        self.compress = lambda x:x
-        self.decompress = lambda x:x
         if self.do_compression:
             self.compress = zlib.compress
             self.decompress = zlib.decompress
+        else:
+            self.compress = lambda x:x
+            self.decompress = lambda x:x
 
     def set_txn(self, txn=None):
         """Set the transaction to use for database operations"""
         self.txn = txn
 
     def close(self):
-        """Close the database.  Shelf must not be used after this"""
+        """Close the underlying database.  Shelf must not be used after closing."""
         self.db.close()
 
     def __del__(self):

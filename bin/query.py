@@ -2,17 +2,13 @@
 
 """Query the MEDLINE database with a set of positive articles
 
-Usage as a backend to the web interface:
+Use as a module, or execute a Python snippet::
 
-query.py dataset limit threshold positives_path
-
-For experiments, use a Python snippet:
-
-query.py 'query("pg04","pg07")'
-
-                                   
+    query.py 'query("pg04","pg07")'
 """
 
+                                     
+__author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
 Free Software Foundation, either version 3 of the License, or (at your option)
@@ -36,9 +32,9 @@ ds_map = {
     "pg04"        : "pharmgkb-2004.txt",
     "pg07"        : "pharmgkb-070205.txt",
     "radiology"   : "daniel-radiology.txt",
-    "mscannerbib" : "mscanner-bibliography.txt",
     "gdsmall"     : "genedrug-small.txt",
 }
+"""Mapping from dataset code to input file"""
 
 def query(*datasets):
     """Perform queries with per-feature pseudocount"""
@@ -59,27 +55,6 @@ def retrieval(*datasets):
     for dataset in datasets:
         rc.dataset = dataset+"-retrieval"
         env.testRetrieval(rc.corpora / ds_map[dataset])
-
-def heparin():
-    """Performs a query using heparin (PubFinder example).
-    Large inputs mask the effects of the choice of pseudocount,
-    so I chose this small input to figure out what the best choice is:
-    per-feature pseucocounts without a rarity cut-off.
-    """
-    env = QueryEnvironment()
-    env.loadInput(rc.corpora / "pubfinder-heparin.txt")
-    rc.limit = 500        # don't need a lot of results
-    rc.threshold = 0      # lenient threshold of zero
-    rc.pseudocount = None # per-feature pseudocounts
-    for dataset, pseudocount, cutoff in [ 
-        ("heparin-ps_const",    0.01, True),
-        ("heparin-ps_per",      None, False),
-        ("heparin-ps_constcut", 0.01, True),
-        ("heparin-ps_percut",   None, True) ]:
-        rc.dataset = dataset
-        rc.pseudocount = pseudocount
-        rc.cutoff = cutoff
-        env.standardQuery()
 
 def pharmdemo():
     """Special query which exports to the PharmDemo database for PharmGKB"""

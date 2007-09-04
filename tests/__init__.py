@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+"""Tests of the MScanner modules"""
+
 import unittest
 
 def suite():

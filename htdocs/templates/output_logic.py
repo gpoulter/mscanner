@@ -1,6 +1,13 @@
+"""web.py handler for the output listing page"""
+
+                                     
+__author__ = "Graham Poulter"                                        
+__license__ = "GPL"
+
 import web
-from . import output, query_logic
+import output, query_logic
 from htdocs import forms, helpers
+
 
 OutputForm = forms.Form(
     forms.Hidden(
@@ -20,7 +27,7 @@ OutputForm = forms.Form(
         "delcode",
         query_logic.delcode_validator),
 )
-
+"""Structure for the form on the outputs page"""
 
 
 class OutputPage:

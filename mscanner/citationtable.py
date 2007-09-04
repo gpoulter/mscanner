@@ -1,13 +1,8 @@
-"""Module for writing HTML tables of citations
-
-writecitations -- Write a list of citations and scores across multiple files
-citationsTable -- Generate HTML <table> for the citations
-
-"""
+"""Module for writing HTML tables of citations"""
 
 from __future__ import division
 
-                                               
+                                     
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
@@ -29,12 +24,11 @@ def writecitations(mode, citations, fname, perfile):
 
     @param citations: List of (score, Article) in descending order of score
 
-    @param fname: Base name (e.g. results.html -->
-    results.html, results_02.html, results_03.html etc.)
+    @param fname: Base name (e.g. results.html --> results.html,
+    results_02.html, results_03.html etc.)
 
     @param perfile: Number of citations per file (the very last file 
     may however have up to 2*perfile-1 citations)
-    
     """
     # List of ranks where each file's citation records start
     starts = range(0, len(citations), perfile)
@@ -66,19 +60,19 @@ def writecitations(mode, citations, fname, perfile):
             ).respond(ft)
         ft.close()
 
+
 def maketable(startrank, citations):
     """Generate HTML table for citations using ElementTree
+    
+    We use Cheetah when there is more HTML than logic, and ElementTree when
+    there is more logic than HTML. The old Cheetah template was getting
+    cluttered from all the logic. This way also outputs less whitespace.
     
     @param startrank: Rank of the first article in scores
 
     @param citations: Iterable of (score, Article) in decreasing order of score
     
     @return: HTML for the <table> element containing citations
-    
-    @note: The philosophy here is to use Cheetah when there is more HTML than
-    logic, and ElementTree when there is more logic than HTML. The old
-    Cheetah template was getting cluttered from all the logic.  This 
-    way also outputs less whitespace.
     """
     from xml.etree.cElementTree import ElementTree, Element, SubElement
     table = Element("table", id="citations")
@@ -125,7 +119,7 @@ def maketable(startrank, citations):
         if (art.year is not None):
             td.text = str(art.year)
         else:
-            td.text = "-1" # so we can use JavaScript parseInt 
+            td.text = "0" # so we can use JavaScript parseInt 
         # Expand Author button
         td = SubElement(tr, "td")
         td.text = "+" if art.authors else " "
@@ -156,7 +150,7 @@ def maketable(startrank, citations):
         td.text = " "
         if art.abstract:                        
             td.text = art.abstract.encode("utf8")
-    from cStringIO import StringIO
-    s = StringIO()
+    import cStringIO
+    s = cStringIO.StringIO()
     ElementTree(table).write(s)
     return s.getvalue()

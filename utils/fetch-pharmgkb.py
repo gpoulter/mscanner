@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
-"""Use SOAP to fetch current literature annotations from PharmGKB
+"""Use SOAP to fetch current literature PMIDs from PharmGKB
 
-Usage: python fetch-pharmgkb.py
+Usage::
+    python fetch-pharmgkb.py 
 
-Prints a list of PubMed IDs retrieved from the PharmGKB web service.
+Prints a list of PubMed IDs retrieved from the PharmGKB web service,
+and saves them to pharmgkb-pmids.txt in the current directory.
 
                                    
 
@@ -19,8 +21,7 @@ import os
 import sys
 import SOAPpy
 
-if __name__ == "__main__":
-    
+def main():
     search_code = 9
     http_proxy = os.environ.get("http_proxy", None)
     server = SOAPpy.SOAPProxy("http://www.pharmgkb.org/services/SearchService", http_proxy=http_proxy)
@@ -31,9 +32,12 @@ if __name__ == "__main__":
     else:
         fname = "pharmgkb-pmids.txt"
         print "# %d PharmGKB PMIDs, going to %s" % (len(result), fname)
-        f = file(fname,"w")
+        f = open(fname,"w")
         for r in result:
             print r[7]
             f.write(r[7]+"\n")
         f.close()
+
+if __name__ == "__main__":
+    main()
             

@@ -1,10 +1,10 @@
-"""Export a database compatible with pharmdemo.stanford.edu
+"""Exports a database of gene-drug interactions for pharmdemo.stanford.edu
 
-GeneDrugExport -- Class for exporting gene-drug co-occurrence info
-
-                                   
+@var schema: Oracle SQL table schema of the pharmdemo database
 """
 
+                                     
+__author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
 Free Software Foundation, either version 3 of the License, or (at your option)
@@ -18,13 +18,10 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
 class GeneDrugExport:
-    """
-    countGeneDrug() -- Turn per-article associations into global associations
-    writeGeneDrugCountsCSV() -- Record global gene-drug associations for checking
-    exportDatabase() -- Export articles to a database connection
-    exportText() -- Export articles to SQL text
-    exportSQLite() -- Export articles to an SQLite database
-    schema -- The schema of the pharmdemo database
+    """Exports database of gene-drug interactions 
+    
+    @ivar gdarticles: List of articles (with additional genedrug members)
+    @ivar gdcounts: Mapping of (gene,drug) pairs to list of PubMed IDs
     """
     
     def __init__(self, gdarticles):
@@ -34,9 +31,10 @@ class GeneDrugExport:
     @staticmethod
     def countGeneDrug(articles):
         """Return global gene-drug associations given per-article associations
-    
-        @param articles: Iterable of Article objects with genedrug field
-    
+        
+        @param articles: List of Article objects. Requires pmid, title,
+        abstract and genedrug fields. with genedrug field
+        
         @return: Mapping from (gene,drug) pair to list of PMIDs
         """
         # Count gene-drug co-occurrences from articles
@@ -50,7 +48,9 @@ class GeneDrugExport:
         return gdcounter
     
     def writeGeneDrugCountsCSV(self, fname):
-        """Write association of PubMed IDs to gene-drug occurrences to a CSV file"""
+        """Write PubMed IDs gene-drug associations as CSV
+        
+        @param fname: Path to output file."""
         import codecs
         f = codecs.open(fname, "wb", "utf-8")
         f.write("PMID,GENE,DRUG\n")
@@ -60,13 +60,10 @@ class GeneDrugExport:
         f.close()
     
     def exportDatabase(self, con):
-        """Export articles to database
+        """Export articles to a database connection
     
         @param con: Connection to destination database. Database should 
-        be empty before calling this function.
-        
-        @param gdcounts: Mapping with (gene,drug) pair as a key, to list of PMIDs.
-        """
+        be empty before calling this function."""
         cur = con.cursor()
         # Create tables
         cur.executescript(schema)
@@ -88,6 +85,8 @@ class GeneDrugExport:
         con.commit()
     
     def exportText(self, outfile):
+        """Export articles to SQL text"""
+        
         class TextOutput:
             def __init__(self, outfile):
                 import codecs
@@ -113,13 +112,9 @@ class GeneDrugExport:
         self.exportDatabase(TextOutput(outfile))
     
     def exportSQLite(self, outfile):
-        """Export article results to SQLite database file
+        """Export article results to an SQLite database
     
-        @param outfile: Path of SQLite database write to.
-    
-        @param articles: List of Article objects to export.  Requires
-        pmid, title, abstract and genedrug fields.
-        """
+        @param outfile: Path of SQLite database write to."""
         from pysqlite2 import dbapi2 as sqlite
         if outfile.isfile():
             outfile.remove()
@@ -130,8 +125,7 @@ class GeneDrugExport:
     def exportOracleCon(self, conpath):
         """Export article results to an Oracle database.
     
-        @param conpath: user/password@host for the database
-        """
+        @param conpath: user/password@host connection string for the database"""
         import DCOracle2
         con = DCOracle2.connect(conpath)
         self.exportDatabase(cont)

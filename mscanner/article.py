@@ -1,8 +1,6 @@
-"""Module implementing the Article object
+"""Provides the Article class"""
 
-"""
-
-                                               
+                                     
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
@@ -16,29 +14,24 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
+
 class Article:
-    """Stores an instance of a Medline citation.
+    """Instance of a Medline citation.
     
-    Instance variables are same as the constructor parameters. 
+    @note: Instance variables are same as the constructor parameters.
     
     @note: Article models a row
-    (pmid,title,abstract,journal,issn,year,meshterms,authors), which 
-    is stored in Berkeley DB to model a table keyed by PMID.
+    (pmid,title,abstract,journal,issn,year,meshterms,authors), which is stored
+    in Berkeley DB to model a table keyed by PMID.
 
-    @note: We avoided the OOP "God Object" problem where one class subsumes all
-    behaviours which operate on its own instances in concert with other data
-    source (such as Article.getScore(featurescores) and a million other
-    methods).
-
-    Passed via constructor:
-        @ivar pmid: PubMed ID of the article (int)
-        @ivar title: Title of the article (string)
-        @ivar abstract: Abstract of the article (sring)
-        @ivar journal: Medline abbreviated journal title (string)
-        @ivar issn: ISSN code for the journal (string)
-        @ivar year: Year of publication (int)
-        @ivar meshterms: MeSH as a list of (descriptor, qual, ...) tuples
-        @ivar authors: Authors as a list of (initials, lastname) tuples of 
+    @ivar pmid: PubMed ID of the article (int)
+    @ivar title: Title of the article (string)
+    @ivar abstract: Abstract of the article (sring)
+    @ivar journal: Medline abbreviated journal title (string)
+    @ivar issn: ISSN code for the journal (string)
+    @ivar year: Year of publication (int)
+    @ivar meshterms: MeSH as a list of (descriptor, qual, ...) tuples
+    @ivar authors: Authors as a list of (initials, lastname) tuples of 
     """
     def __init__(self,
                  pmid=None,
@@ -49,9 +42,7 @@ class Article:
                  year=None,
                  meshterms=None,
                  authors=None):
-        """
-        Initialise a new article with the given parameters.        
-        """
+        """Constructor - parameters set corresponding instance variables."""
         self.pmid = pmid
         self.title = title
         self.abstract = abstract
@@ -62,6 +53,7 @@ class Article:
         self.authors = authors if authors else []
 
     def __repr__(self):
+        """Evaluatable representation of the object"""
         import pprint
         pp = pprint.PrettyPrinter()
         s = "Article(pmid=%s,\n"+\

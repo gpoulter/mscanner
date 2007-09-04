@@ -1,10 +1,6 @@
-"""Environment for constructing cross-validation-based analyses
+"""Environment for performing cross-validation-based analyses"""
 
-ValidationEnvironment -- Environment for cross-validation
-
-"""
-
-                                               
+                                     
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
@@ -34,27 +30,24 @@ from mscanner.support.utils  import preserve_cwd, randomSample
 from mscanner.validation import Validator, PerformanceStats
 
 class ValidationEnvironment(object):
-    """Class to simplify constructing new cross-validation
-    based analyses.
+    """Manages cross-validation based analyses.
     
-    From constructor:
-        @ivar featmap: Mapping feature ID <-> feature string
-        @ivar featdb: Mapping doc ID -> list of feature IDs
-        @ivar featinfo: FeatureInfo instance for calculating feature score
-        @ivar postfilter: Membership test for classifying things as positive
+    @ivar featmap: Mapping feature ID <-> feature string, from L{__init__}
+    @ivar featdb: Mapping doc ID -> list of feature IDs, from L{__init__}
+    @ivar postfilter: Membership test for classifying things as positive, from L{__init__}
 
-    From loadInputs():
-        @ivar positives: IDs of positive articles
-        @ivar negatives: IDs of negative articles
+    @ivar positives: IDs of positive articles, from L{loadInputs}
+    @ivar negatives: IDs of negative articles, from L{loadInputs}
     
-    From standardValidation():
-        @ivar pscores: Scores of positive articles
-        @ivar nscores: Scores of negative articles
-        @ivar featinfo: Feature score calculator
-        @ivar performance: Performance statistics based on article scores
+    @ivar pscores: Scores of positive articles, from L{standardValidation}
+    @ivar nscores: Scores of negative articles, from L{standardValidation}
+    
+    @ivar featinfo: FeatureInfo instance for calculating feature score, from L{writeReport}
+    @ivar performance: Performance statistics based on article scores, from L{writeReport}
     """
     
     def __init__(self):
+        """Constructor"""
         log.info("Loading article databases")
         self.featdb = FeatureDatabase(rc.featuredb, 'r')
         self.featmap = FeatureMapping(rc.featuremap)
@@ -62,9 +55,10 @@ class ValidationEnvironment(object):
         
     @property
     def article_list(self):
-        """List of PubMed IDs in the database 
+        """Array with the PubMed IDs in the database 
         
-        @note: May contain up to 16 million 32-bit integers."""
+        Array may be over 16 million members long, so the property and will
+        take a while to load the first time it is accessed."""
         try:
             return self._article_list
         except AttributeError: 
@@ -76,8 +70,10 @@ class ValidationEnvironment(object):
     def standardValidation(self, pospath, negpath=None):
         """Loads data, performs validation, and writes report
         
-        @param pospath: Location of input positive PMIDs
-        @param negpath: Location of input negative PMIDs (or None)
+        @keyword pospath: Location of input positive PMIDs
+        
+        @keyword negpath: Location of input negative PMIDs (or None,
+        to select randomly from Medline)
         """
         # Construct report directory
         import time
@@ -113,9 +109,10 @@ class ValidationEnvironment(object):
 
     def loadInputs(self, pospath, negpath=None):
         """Load PubMed IDs from files.  
+
+        @keyword pospath: Location of input positive PMIDs
         
-        @note: If negpath is None, negatives are taken by random sample 
-        of PubMed citations in self.article_list."""
+        @keyword negpath: Location of input negative PMIDs (or None)"""
         log.info("Reading positive PubMed IDs")
         positives = list(scorefile.readPMIDs(pospath, include=self.featdb,
                         broken_name=rc.report_positives_broken))
@@ -138,13 +135,10 @@ class ValidationEnvironment(object):
         
     @preserve_cwd
     def loadResults(self):
-        """Sets self.(positives, pscores, negatives, nscores),
+        """Load previously saved results instead of re-validating
         
-        @note: Used to re-analyse validation runs.
-        
-        @note: Assumes PMIDs are decreasing by score, as
-        written by scorefile.writePMIDScores.
-        """
+        Assumes PubMed IDs in the files are decreasing by score, as written by
+        L{scorefile.writePMIDScores}. """
         log.info("Loading result scores for %s", rc.dataset)
         os.chdir(rc.valid_report_dir)
         pscores, positives = zip(*scorefile.readPMIDs(rc.report_positives, withscores=True))
@@ -165,9 +159,8 @@ class ValidationEnvironment(object):
     def getResults(self):
         """Calculate scores on citations using cross validation
         
-        @note: We perform all the self.featdb lookups beforehand (and only
-        once) - somehow performing them while busy with validation is terribly
-        slow. """
+        @note: All the self.featdb lookups are done beforehand, since lookups
+        while busy with validation are slow."""
         s = self
         log.info("Performing cross-validation for for %s", rc.dataset)
         # Set up a postfilter (like geneDrugFilter) if necessary
@@ -188,10 +181,12 @@ class ValidationEnvironment(object):
         
     @preserve_cwd
     def geneDrugFilter(self):
-        """Returns a set of PubMed IDs for input citations having gene-drug
-        co-occurrences in their abstract.
+        """Create a membership test for gene-drug association.
         
-        @note: Use by assigning this method to self.postFilterFunction"""
+        To use the filter, assign this method to self.postFilterFunction
+        
+        @return: Set of PubMed IDs which have gene-drug co-occurrences.
+        """
         from mscanner.pharmdemo.dbexport import (writeGeneDrugCountsCSV, 
                                                  countGeneDrug)
         from mscanner.pharmdemo.genedrug import getGeneDrugFilter
@@ -211,11 +206,10 @@ class ValidationEnvironment(object):
 
     @preserve_cwd
     def writeReport(self):
-        """Write an HTML validation report.  Only redraws figures
-        for which output files do not already exist (likewise for term scores,
-        but the index is always re-written).
+        """Write an HTML validation report. 
         
-        @note: sets self.performance and self.feature_info
+        @note: Only redraws figures for which output files do not already exist
+        (likewise for term scores, but the index is always re-written).
         """
         os.chdir(rc.valid_report_dir)
         # Calculate feature score information

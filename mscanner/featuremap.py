@@ -1,10 +1,6 @@
-"""Implements the FeatureMapping type
+"""Provides a mapping between features and integer IDs"""
 
-FeatureMapping -- Mapping between string features and 16-bit feature IDs
-
-"""
-
-                                               
+                                     
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
@@ -21,46 +17,33 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 import codecs
 import numpy as nx
 
+
 class FeatureMapping:
-    """Curates a database of string features, providing methods to map
-    between a feature string and an integer feature ID.
+    """Persistent mapping between string features and feature IDs
 
-    @note: Feature types are mesh, qual, issn, year, author. A feature string
-    could have more than one type.
+    Feature types used with L{__getitem__}, L{featureTypeMask} and
+    L{addArticle} are "mesh", "qual", "issn". A feature string could have more
+    than one type.
     
-    @note: FeatureMapping emulates a table with columns (id,type,name,count)
-    with keys of id and (type,name). FeatureInfo and Article also re-invent the
-    table.
+    This is really a table with columns (id,type,name,count), and keys of id
+    and (type,name).
 
-    @note: Article is stored in a Berkeley DB, FeatureMapping written/read as
-    tab-separated table, and FeatureInfo is memory-only.  With
-    PyTables, all information about dataset can be stored in a DB, removing
-    any need to read flat-text output or regenerate FeatureInfo.
-    
-    @note: With (score, pmid) tuples using in QueryEnvironment or Validator, or
-    we need just array of score, or array of pmid. Zip allows conversion, but
-    this may be more efficient as a table view.
-     
-    Passed via constructor:
-    
-        @ivar featfile: Path to text file with list of terms
+    @ivar featfile: Path to text file with list of terms
 
-    Set by constructor:
-        
-        @ivar featfile_new: Temporary feature file used while writing
-        
-        @ivar numdocs: Number of documents used in creating the mapping
-        
-        @ivar features: List of features[id] == (name,type)
-        
-        @ivar feature_ids: Mapping of feature_ids[type][name] == id
-        
-        @ivar counts: List of counts[id] == number of occurrences.  For
-        score calculation this is the only column needed.
+    @ivar featfile_new: Temporary feature file used while writing
+    
+    @ivar numdocs: Number of documents used in creating the mapping
+    
+    @ivar features: List, such that features[id] == (name,type)
+    
+    @ivar feature_ids: Mapping, such that feature_ids[type][name] == id
+    
+    @ivar counts: List, such that counts[id] == number of occurrences.  For
+    score calculation this is the only column needed.
     """
 
     def __init__(self, featfile=None):
-        """Initialise the database"""
+        """Initialise the database, setting L{featfile}"""
         self.featfile = featfile
         if self.featfile is not None:
             self.featfile_new = featfile+".new"
@@ -135,14 +118,13 @@ class FeatureMapping:
         return exclude_feats
 
     def addArticle(self, **kwargs):
-        """Add an article given a list of feature strings of with keyword
-        arguments for feature types.
-
+        """Add an article, given lists of features of different types.
+        
         @note: Dynamically creates new features IDs and feature types as necessary.
-
-        @note: Takes keyword arguments for feature types, with values being a
-        list of feature strings for that type. e.g. mesh=["Term A","Term B"]
-
+        
+        @param kwargs: Mapping from feature types to lists of features for that
+        type. e.g. C{mesh=["Term A","Term B"]}
+        
         @return: Numpy array of uint16 feature IDs
         """
         result = []

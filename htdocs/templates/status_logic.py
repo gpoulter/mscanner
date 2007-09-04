@@ -1,9 +1,14 @@
-from __future__ import absolute_import
-import web
+"""web.py handler for the status page"""
 
-from . import status, query_logic
+                                     
+__author__ = "Graham Poulter"                                        
+__license__ = "GPL"
+
+import web
+import status, query_logic
 from htdocs import helpers, forms
 from mscanner.configuration import rc
+
 
 StatusForm = forms.Form(
     forms.Textbox(
@@ -17,18 +22,18 @@ StatusForm = forms.Form(
         label="Deletion code"
         ),
 )
-
+"""Structure for the delete-this-task form on the status page"""
 
 
 class StatusPage:
-    """Status page.
-            
-    List the task currently being processed (if any), the status of the
-    operation specified in the 'dataset' and 'delcode' variables, the list of
-    tasks in the queue, and the contents of the log file. """
+    """Lists the current status of MScanner and a given task.
+    
+    If the dataset and delcode parameters are given over the web,
+    it provides a form for deleting the specified task.
+    """
     
     def GET(self):
-        """Output the status page"""
+        """Print the status page"""
         web.header('Content-Type', 'text/html; charset=utf-8') 
         page = status.status()
         # Descriptor of currently running task (or None)

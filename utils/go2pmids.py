@@ -2,7 +2,8 @@
 
 """Extract PubMed IDs from GeneOntology annotation files
 
-Usage: go2pmids.sh <file1.gz> <file2.gz> ...
+Usage::
+    go2pmids.sh <file1.gz> <file2.gz> ...
 
 Files should be .gz (gzip) files containing GeneOntology annotations.
 The program prints a sorted list of unique PubMed IDs (some of which 
@@ -16,7 +17,10 @@ it under the Do Whatever You Want Public License. Terms and conditions:
    0. Do Whatever You Want
 """
 
-import sys, os, re, gzip
+import sys
+import os
+import re
+import gzip
 
 def parseGeneOntology(fname,pmids):
     pmid_finder = re.compile(r'PMID:([0-9]{1,8})')
@@ -25,8 +29,9 @@ def parseGeneOntology(fname,pmids):
         result = pmid_finder.search(line)
         if result is not None:
             pmids.add(result.group(1))
-
-if __name__=="__main__":
+    input.close()
+            
+def main():
     if(len(sys.argv)==1):
         print __doc__
         sys.exit(0)
@@ -42,3 +47,6 @@ if __name__=="__main__":
     pmids.sort(key=int)
     for p in pmids:
         print p
+
+if __name__=="__main__":
+    main()

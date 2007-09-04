@@ -1,6 +1,6 @@
 """Test suite for mscanner.support.dbshelve
 
-                                   
+                               
 
 @license: This source file is free software. It comes without any warranty, to
 the extent permitted by applicable law. You can redistribute it and/or modify

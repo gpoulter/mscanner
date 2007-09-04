@@ -1,13 +1,12 @@
-"""For updating the databases of articles and features (feature
-mapping, db of article->features and stream of article->features).
+"""For updating the databases of articles and features
 
-parse() -- Turn Medline XML
-MedlineCache -- For consistent updating of the database/features
-FileTracker -- Track processed files (to avoid re-parsing), with persistence
-
+Defined in this module:
+    - L{parse}: Turn Medline XML into Articles
+    - L{MedlineCache}: For consistent updating of the database/features
+    - L{FileTracker}: Track processed files (to avoid re-parsing), with persistence
 """
 
-                                               
+                                     
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
@@ -31,6 +30,7 @@ from mscanner.support import dbshelve
 from mscanner.article import Article
 from mscanner.featuredb import FeatureDatabase, FeatureStream
 from mscanner.featuremap import FeatureMapping
+
 
 def parse(source):
     """Convert XML file into Article objects
@@ -64,23 +64,20 @@ def parse(source):
                 yield result
             root.clear()
 
+
 class MedlineCache:    
-    """Class for updating the Article DB, FeatureMapping,
-    FeatureDatabase, FeatureStream, PMID list, and FileTracker.
+    """Class for updating the Article DB, FeatureMapping, FeatureDatabase,
+    FeatureStream, PMID list, and FileTracker.
     
-    @note: Databases are opened and closed for each putArticles() transaction
-    to limit the impact of interruptions (how do I make it atomic?)
-    
-    Passed through constructor:
-        @ivar featmap: A FeatureMapping object for mapping string features to IDs
-        @ivar db_env_home: Path to DB home directory 
-        @ivar article_db: Path to article database
-        @ivar feature_db: Path to feature database
-        @ivar feature_stream: Path to feature stream file
-        @ivar article_list: Path to list of article PMIDs
-        @ivar narticles_path: Path to file containing the total number of PMIDs
-        @ivar processed_path: Path to list of processed files
-        @ivar use_transactions: If false, disable transaction engine
+    @ivar featmap: A FeatureMapping object for mapping string features to IDs
+    @ivar db_env_home: Path to DB home directory 
+    @ivar article_db: Path to article database
+    @ivar feature_db: Path to feature database
+    @ivar feature_stream: Path to feature stream file
+    @ivar article_list: Path to list of article PMIDs
+    @ivar narticles_path: Path to file containing the total number of PMIDs
+    @ivar processed_path: Path to list of processed files
+    @ivar use_transactions: If false, disable transaction engine
     """
 
     def __init__(
@@ -94,8 +91,7 @@ class MedlineCache:
         processed_path, 
         narticles_path, 
         use_transactions=True):
-        """Initialse the database
-        """
+        """Constructor parameters set corresponding instance variables."""
         self.db_env_home = db_env_home
         self.featmap = featmap
         self.article_db = article_db
@@ -107,8 +103,9 @@ class MedlineCache:
         self.use_transactions = use_transactions
         self.recover = False
 
+
     def makeDBEnv(self):
-        """Initialise DB environment for transactions"""
+        """Initialise database environment for transactions"""
         if not self.db_env_home.isdir():
             self.db_env_home.mkdir()
         dbenv = db.DBEnv()
@@ -123,10 +120,15 @@ class MedlineCache:
         dbenv.open(self.db_env_home, flags)
         return dbenv
 
-    def putArticles(self, articles, dbenv):
-        """Store Article objects and feature lists the databases
 
+    def putArticles(self, articles, dbenv):
+        """Store Articles and feature lists in the databases
+        
+        @note: Databases are opened and closed inside each call, allowing the
+        user to Ctrl-C between files without corrupting the database.
+        
         @param articles: Iterator over Article objects
+        
         @param dbenv: Database environment to use
         """
         log.info("Starting transaction to add articles")
@@ -136,7 +138,7 @@ class MedlineCache:
         try:
             artdb = dbshelve.open(self.article_db, dbenv=dbenv, txn=txn)
             meshfeatdb = FeatureDatabase(self.feature_db, dbenv=dbenv, txn=txn)
-            featstream = FeatureStream(file(self.feature_stream,"ab"))
+            featstream = FeatureStream(open(self.feature_stream,"ab"))
             if not self.narticles_path.isfile():
                 narticles = len(meshfeatdb)
             else:
@@ -182,11 +184,16 @@ class MedlineCache:
             if txn is not None:
                 log.info("Committed transaction")
             return len(pmidlist)
-            
+
+
     def updateCacheFromDir(self, medlinedir, save_delay=5):
-        """Updates the cache given that medlinedir contains .xml.gz
-        file to add to the cache and that we should save the inverse
-        document after processing each savesteps files."""
+        """Adds articles from XML files to MScanner's databases
+        
+        @param medlinedir: Path to a directory containing .xml.gz
+        files
+        
+        @param save_delay: Pause this many seconds between calls to
+        L{putArticles}"""
         import time
         filenames = medlinedir.files("*.xml") + medlinedir.files("*.xml.gz")
         tracker = FileTracker(self.processed_path)
@@ -201,25 +208,28 @@ class MedlineCache:
             if filename.endswith(".gz"):
                 infile = gzip.open(filename, 'r')
             else:
-                infile = file(filename, 'r')
+                infile = open(filename, 'r')
             numadded = self.putArticles(parse(infile), dbenv)
             log.debug("Added %d articles", numadded)
             tracker.add(filename)
             tracker.dump()
             log.info("Completed file %d out of %d (%s)", idx+1, len(toprocess), filename.name)
         dbenv.close()
-        
+
+
+
 class FileTracker(set):
     """A persistent set for tracking of processed files.
     
-    @note: Overloads "add" to only add basenames, and facilities to 
-    load from and dump to file.
-
-    It accepts all paths, but membership is checked according to basename()
+    @note: membership is checked according to basename()
+    
+    @note: Overloads the method "add", so 
+    
+    @ivar trackfile: Path where to save the list of precessed files
     """
 
     def __init__(self, trackfile=None):
-        """Initialise, specifying path to write the list of files"""
+        """Constructor - sets L{trackfile}"""
         self.trackfile = trackfile
         self.trackfile_new = trackfile+".new"
         if isinstance(trackfile,path) and trackfile.isfile():
@@ -233,11 +243,15 @@ class FileTracker(set):
         self.trackfile_new.rename(self.trackfile)
 
     def add(self, fname):
-        """Add a file to the tracker"""
+        """Add fname.basename() to the set"""
         set.add(self, fname.basename())
 
     def toprocess(self, files):
-        """Given a list of files return sorted list of those not in the tracker"""
+        """Filter for files that have not been processed yet
+        
+        @param files: List of candidate files
+        
+        @return: Paths whose base names are not found in the set"""
         return sorted(f for f in files if f.basename() not in self)
 
 

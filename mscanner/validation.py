@@ -1,13 +1,14 @@
-"""Cross-validation and performance statistics module
+"""Cross-validation and performance statistic calculation
 
-Validator -- Perform cross-validation for article scores
-PerformanceStats -- Calculate statistics from article scores
+In this module:
+    - L{Validator}: Cross-validated calculation of article scores
+    - L{PerformanceStats}: Calculate statistics from article scores
 
 """
 
 from __future__ import division
 
-                                               
+                                     
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
@@ -30,20 +31,29 @@ from mscanner.scoring import countFeatures
 from mscanner.support.utils import selfupdate
 
 class Validator:
-    """Cross-validated calculation of article scores
+    """Cross-validated calculation of article scores.
     
-    Passed through constructor:
-        @ivar featdb: Mapping from doc id to list of feature ids
-        @ivar featinfo: FeatureInfo instance for stuff about features
-        @ivar positives: Array of positive PMIDs for validation
-        @ivar negatives: Array of negative PMIDs for validation
-        @ivar nfolds: Number of validation folds (0 for leave-out-one)
-        @ivar alpha: For Validator.getPerformance() PerformanceStatistics
-        @ivar postfilter: Check membership of this as well as score threshold
+    @group Constructor Parameters: featdb,featinfo,positives,negatives,nfolds,alpha,postfilter
+
+    @ivar featdb: Mapping from doc id to list of feature ids
     
-    Updated by validate():
-        @ivar pscores: Scores of positive articles after validation
-        @ivar nscores: Scores of negative articles after validation
+    @ivar featinfo: FeatureInfo instance for stuff about features
+    
+    @ivar positives: Array of positive PMIDs for validation
+    
+    @ivar negatives: Array of negative PMIDs for validation
+    
+    @ivar nfolds: Number of validation folds (0 for leave-out-one)
+    
+    @ivar alpha: For statistics via L{getPerformance}
+    
+    @ivar postfilter: Check membership of this as well as score threshold
+    
+    @group From validate: pscores,nscores
+    
+    @ivar pscores: Scores of positive articles after validation
+    
+    @ivar nscores: Scores of negative articles after validation
     """
 
     def __init__(self, 
@@ -55,6 +65,7 @@ class Validator:
         alpha = 0.5,
         postfilter = None,
         ):
+        """Constructor parameters set corresponding instance attributes."""
         pscores = None
         nscores = None
         selfupdate()
@@ -62,27 +73,29 @@ class Validator:
     def validate(self):
         """Carry out validation. 
         
-        @return: self.pscores and self.nscores
-        
-        @note: self.nfolds==0 is taken to mean leave-out-one validation.
-        """
+        L{nfolds}==0 means "use leave-out-one validation".
+
+        @return: L{pscores}, L{nscores}"""
         if self.nfolds:
             return self.crossValidate()
         else:
             return self.leaveOutOneValidate()
         
     def getPerformance(self):
-        """Return PerformanceStats object for this run 
+        """Get the performance statistics for previous run
         
-        @note: Only call after validate()
-        
-        @return: self.performance
+        @return: L{PerformanceStats} object
         """
         return PerformanceStats(self.pscores, self.nscores, self.alpha)
 
     @staticmethod
     def partitionSizes(nitems, nparts):
-        """Returns start indeces and lengths of partitions for cross-validation"""
+        """Calculate partitions of input data for cross validation
+        
+        @param nitems: Number of items to partition
+        @param nparts: Number of partitions
+        @return: List of start indeces, and list of lengths for partitions
+        """
         base, rem = divmod(nitems, nparts)
         sizes = base * nx.ones(nparts, nx.int32)
         sizes[:rem] += 1
@@ -93,9 +106,9 @@ class Validator:
     def crossValidate(self, randomise=True):
         """Perform n-fold validation and return the raw performance measures
         
-        @param randomise: Randomise validation splits (set False for debugging)
+        @param randomise: Randomise validation splits (use False for debugging)
         
-        @return: self.pscores and self.nscores
+        @return: L{pscores}, L{nscores}
         """
         s = self
         pdocs = len(s.positives)
@@ -137,13 +150,11 @@ class Validator:
     def leaveOutOneValidate(self):
         """Carries out leave-out-one validation, returning the resulting scores.
         
-        @note: Updates self.pscores, self.nscores
-        
         @note: Feature scores by Bayesian pseudocount only - no other methods.
         
-        @deprecated: Everyone uses 10-fold, and this is way slower anyway.
+        @deprecated: 10-fold is standard, and leave-out-one is rather slow.
         
-        @return: self.pscores and self.nscores
+        @return: L{pscores}, L{nscores}
         """
         # Set up base feature scores
         pcounts = countFeatures(len(self.featinfo), self.featdb, self.positives)
@@ -172,61 +183,64 @@ class Validator:
         for idx, doc in enumerate(self.negatives):
             self.nscores[idx] = score_article(doc, 0, -1)
         return self.pscores, self.nscores
-    
+
+
+
 class PerformanceStats:
-    """Stores performance statistics based on cross-validated article scores.
-    
-    Set by constructor:
-    
-        @ivar pscores: Scores of positive articles in increasing order
+    """Performance statistics calculation after cross validation.
 
-        @ivar nscores: Scores of negative articles in increasing order
+    @group From constructor: pscores, nscores, alpha, P, N, A
     
-        @ivar alpha: Balance of recall and precision in FM_alpha. Defaults to 0.5,
-        producing harmonic mean of recall and precision (F-Measure)
-    
-        @ivar P, N, A: Number of positive, negative articles (A=P+N)
-    
-    Set by getCountVectors():
-    
-        @ivar uscores: Unique scores in increasing order
-    
-        @ivar vlen: Length of performance vectors (= length of uscores)
+    @ivar pscores: Scores of positive articles in increasing order.
 
-        @ivar PE, NE: Number of positives, negatives having each score in uscores.
+    @ivar nscores: Scores of negative articles in increasing order.
+
+    @ivar alpha: Balance of recall and precision in FM_alpha.
+
+    @ivar P: Number of positive articles.
+
+    @ivar N: Number of negative articles.
+
+    @ivar A: Equal to L{P}+L{N}.
     
-        @ivar TP, FN, FP, FN: Confusion matrix for threshold at each score in
-        uscores
+    @group From getCountVectors: uscores, vlen, PE, NE, TP, FN, FP, TP
+    
+    @ivar uscores: Unique scores in increasing order
+
+    @ivar vlen: Length of performance vectors (= length of uscores)
+
+    @ivar PE: Number of positives with each score in uscores
+
+    @ivar NE: Number of negatives with each score in uscores
+    
+    @ivar TP, FN, FP, TN: Vectors for confusion matrix at each distinct threshold
+    
+    @group From getRatioVectors: TPR, FPR, PPV, FM, FMa
         
-    Set by getRatioVectors():
+    @ivar TPR, FPR, PPV, FM, FMa: Vectors of performance ratios at each
+    distinct threshold.
     
-        @ivar TPR, FPR, PPV, FM, FMa: Performance vectors,
-        with a value at each distinct score level.
+    @group From getCurveAreas: ROC_area,PR_area
         
-    Set by getCurveAreas():
+    @ivar ROC_area: Area under ROC curve.
     
-        @ivar ROC_area: Area under ROC curve
+    @ivar PR_area: Aread under precision-recall curve.
         
-        @ivar PR_area: Aread under precision-recall curve
+    @ivar bep_index, breakeven: Breakeven point (where precision=recall), from
+    L{getBreakEvenPoint}.
         
-    Set by getBreakEvenPoint():
+    @ivar threshold_index, threshold: Tuned threshold and its index, from
+    L{getMaxFMeasurePoint}.
     
-        @ivar bep_index, breakeven: Index and value of breakeven point (where
-        precision=recall)
-        
-    Set by getMaxFMeasurePoint():
+    @ivar tuned: Tuned performance statistics, from L{getTunedStatistics}.
     
-        @ivar threshold_index, threshold: Index of and score value of the
-        tuned threshold (cutoff for classification citations positive).
+    @ivar W, W_stderr: Better area under ROC curve, from L{getROCError}.
     
-    Set by tunedStatistics():
-    
-        @ivar tuned: Tuned performance statistics
+    @ivar AvPrec: Averaged precision, from L{getAveragePrecision}.
     """
 
     def __init__(self, pscores, nscores, alpha):
-        """Initialies the performance statistics. Parameters are 
-        defined under instance variables."""
+        """Constructor - parameters correspond to instance variables."""
         s = self
         s.alpha = alpha
         s.pscores = pscores.copy()
@@ -244,11 +258,14 @@ class PerformanceStats:
         s.getMaxFMeasurePoint()
         s.getBreakEvenPoint()
         s.getTunedStatistics()
-        
+
+
     def getCountVectors(self):
         """Calculates confusion matrix counts by iterating over pscores
         
-        @return: self.(TP, TN, FP, FN)
+        As a side effects, sets L{uscores}, L{vlen}, L{PE}, L{NE}
+        
+        @return: L{TP}, L{TN}, L{FP}, L{FN}
         """
         s = self
         s.uscores = nx.unique(nx.concatenate((s.pscores,s.nscores)))
@@ -292,12 +309,13 @@ class PerformanceStats:
             s.FN[idx] = FN
         return s.TP, s.TN, s.FP, s.FN
 
+
     def getRatioVectors(self, alpha):
         """Calculate performance using vector algebra
 
         @param alpha: Weight of precision in calculating FMa
         
-        @return: self.(TPR, FPR, PPV, FM, FMa)
+        @return: L{TPR}, L{FPR}, L{PPV}, L{FM}, L{FMa}
         """
         s = self
         # TPR is recall
@@ -313,32 +331,33 @@ class PerformanceStats:
         s.FMa = 1 / (alpha / s.PPV + (1 - alpha) / s.TPR)
         return s.TPR, s.FPR, s.PPV, s.FM, s.FMa
 
+
     def getCurveAreas(self):
         """Calculate areas under ROC and precision-recall curves
         
-        @return: self.ROC_area, self.PR_area
+        Uses trapz(y, x). TPR is decreasing as threshold climbs, so vectors
+        have to be reversed.
         
-        @note: Uses trapz(y, x). TPR is decreasing as threshold climbs, so
-        vectors have to be reversed.
+        This method underestimates ROC areas because boundary points (0,0) and
+        (1,1) usually are not present in the data. Better to use L{getROCError}
+        which does not have that problem.
         
-        @note: Underestimates ROC areas because boundary points (0,0) and (1,1)
-        usually are not present in the data. Better to use W (from
-        getROCError) which does not have that problem. """
+        @return: L{ROC_area}, L{PR_area}"""
         from scipy.integrate import trapz
         s = self
         s.ROC_area = trapz(s.TPR[::-1], s.FPR[::-1])
         s.PR_area = trapz(s.PPV[::-1], s.TPR[::-1])
         return s.ROC_area, s.PR_area
-    
+
+
     def iterMerge(self):
-        """Iterate (score, relevant) decreasing order of score, for the merged
-        contents of pscores and nscores.  
+        """Merged the contents of pscores and nscores in a single pass.
         
-        @note: Relevant is True if the item with that score was a member of
-        pscores, and false if the item was a member of nscores.
+        Expects L{nscores} and L{pscores} in increasing order of score.        
         
-        @note: We expects nscores and pscores sorted in increasing order of
-        score."""
+        @return: Iterator over (score, relevance) in decreasing order of score.
+        Relevance is True for members of pscores, and False for members of
+        nscores. """
         s = self
         p_idx = s.P-1
         n_idx = s.N-1
@@ -351,10 +370,13 @@ class PerformanceStats:
             (p_idx < 0 or s.nscores[n_idx] > s.pscores[p_idx]):
                 yield s.nscores[n_idx], False
                 n_idx -= 1
-        
+
+
     def getAveragePrecision(self):
-        """Return precision averaged over each point where a relevant
-        document is returned"""
+        """Average the precision-recall curve
+        
+        @return: L{AvPrec}, the precision averaged over each point where a
+        relevant document is returned"""
         AvPrec = 0.0
         TP = 0
         FP = 0
@@ -366,17 +388,19 @@ class PerformanceStats:
                 FP += 1
         self.AvPrec = AvPrec/TP
         return self.AvPrec
-    
+
+
     def getROCError(self):
-        """Use Hanley1982 to calculate standard error on the Wilcoxon
-        statistic W, which corresponds to the area under the ROC
-        by trapezoidal rule. 
+        """Area under ROC and its standard error
+        
+        Uses method of Hanley1982 to calculate standard error on the Wilcoxon
+        statistic W, which corresponds to the area under the ROC by trapezoidal
+        rule.
         
         @note: The vectors r1 .. r7 correspond to rows of Table II in
         Hanley1982.
-        
-        @note: W, the Wilcoxon statistic, is equal to the trapezoidal
-        rule area under the ROC.
+
+        @return: L{W}, L{W_stderr}
         """
         s = self
         # r1 is number of negatives with each score,
@@ -400,13 +424,13 @@ class PerformanceStats:
         s.W = W
         s.W_stderr = W_stderr
         return W, W_stderr
-    
+
+
     def getBreakEvenPoint(self):
-        """Calculate the threshold resulting in the break-even point
-        where precision equals recall.  Returns index into pscores,
-        and the recall/precision of the break-even point.
+        """Calculate break-even, where precision equals recall.
         
-        @return: bep_index, breakeven
+        @return: L{bep_index}, L{breakeven} - index into pscores,
+        and the recall/precision of the break-even point.
         """
         s = self
         diff = nx.absolute(nx.subtract(s.TPR, s.PPV))
@@ -414,35 +438,38 @@ class PerformanceStats:
         s.breakeven = 0.5*(s.TPR[s.bep_index]+s.PPV[s.bep_index])
         return s.bep_index, s.breakeven
 
+
     def getMaxFMeasurePoint(self):
-        """Return the threshold and its index into uscores that gives the
-        greates value for alpha-weighted F-Measure."""
+        """Point of maximum F measure
+        
+        @return: L{threshold}, L{threshold_index}, the threshold and its index
+        into uscores."""
         s = self
         max_FMa = nx.max(s.FMa)
         s.threshold_index = nx.nonzero(s.FMa == max_FMa)[0][0]
         s.threshold = self.uscores[s.threshold_index]
         return s.threshold, s.threshold_index
 
+
     def getTunedStatistics(self):
-        """Return Storage object with performance statistics for the
-        tuned threshold.
+        """Performance at the point of maximum F measure
     
-        @return: Storage object with these keys:
-          P, N, A, T, F    (summary of input)
-          TP, FP, TN, FN   (confusion matrix)
-          TPR, FNR, TNR, FPR
-          PPV, NPV
-          accuracy         (T/A)
-          enrichment       (precision/prevalence)
-          error            (F/A)
-          fmeasure         (harmonic mean of TPR and PPV [alpha=0.5])
-          fmeasure_alpha   (alpha-weighted F measure [alpha!=0.5])
-          fmeasure_max     (maximum of standard F measure [alpha=0.5])
-          precision        (PPV)
-          prevalence       (P/A)
-          recall           (TPR)
-          specificity      (TNR)
-          fp_tp_ratio      (FP/TP)
+        @return: Storage object with these keys::
+          P, N, A, T, F      (summary of input)
+          TP, FP, TN, FN     (confusion matrix)
+          TPR, FNR, TNR, FPR (ratios)
+          PPV, NPV           (ratios)
+          accuracy           (T/A)
+          enrichment         (precision/prevalence)
+          error              (F/A)
+          fmeasure           (harmonic mean of TPR and PPV [alpha=0.5])
+          fmeasure_alpha     (alpha-weighted F measure [alpha!=0.5])
+          fmeasure_max       (maximum of standard F measure [alpha=0.5])
+          precision          (PPV)
+          prevalence         (P/A)
+          recall             (TPR)
+          specificity        (TNR)
+          fp_tp_ratio        (FP/TP)
         """
         TP = int(self.TP[self.threshold_index])
         TN = int(self.TN[self.threshold_index])

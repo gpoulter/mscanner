@@ -1,6 +1,6 @@
 """Test suite for mscanner.scoring
 
-                                   
+                               
 
 @license: This source file is free software. It comes without any warranty, to
 the extent permitted by applicable law. You can redistribute it and/or modify
@@ -44,7 +44,7 @@ class CScoreTests(unittest.TestCase):
         featscores = nx.array([0.1, 5.0, 10.0, -5.0, -6.0])
         citations = [ (4, [4]), (4, [0,1,2]), (1,[0,2,3]), (2,[0,1]), (3,[1,2,3]) ]
         # Write citations to disk
-        fs = FeatureStream(file(citefname, "w"))
+        fs = FeatureStream(open(citefname, "w"))
         for pmid, feats in citations:
             fs.write(pmid, nx.array(feats, nx.uint16))
         fs.close()    

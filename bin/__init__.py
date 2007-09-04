@@ -1,2 +1,1 @@
-
-
+"""Executable scripts that use the mscanner package to perform analyses."""

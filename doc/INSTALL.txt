@@ -1,14 +1,14 @@
 .. -*- mode: rst -*-
 
-================================
-MScanner: Extend a set citations
-================================
+=====================================================
+MScanner: Retrieving Medline citations using examples
+=====================================================
 
 :Author: Graham Poulter
-                                     
+                                
 
-MScanner takes a set of articles from MEDLINE, and trains a
-classifier to search MEDLINE for other articles similar that set.  
+MScanner takes a set Medline citations, and trains a
+classifier to search for citations similar to the set as a whole.
 
 Installation
 ============
@@ -20,53 +20,40 @@ Dependencies
 ============
 
 `Python <http://www.python.org>`_
- The Python programming language, version 2.5 or higher.
+ Python programming language (version 2.5)
 
-`path module <http://www.jorendorff.com/articles/python/path/>`_
- The Python "path" module provides convenient path manipulation
- functions. Used everywhere.
+`Numpy <http://numpy.scipy.org>`_
+ Fast vector operations.
+ 
+`path <http://www.jorendorff.com/articles/python/path/>`_
+ Path manipulation.
+
+`Cheetah <http://www.cheetahtemplate.org>`_
+ Templating engine for generating HTML output.
 
 `Gnuplot-py <http://gnuplot-py.sourceforge.net/>`_
- Gnuplot-py is used for plotting the graphs output during
- validation. It in turn requires `Gnuplot <http://www.gnuplot.info/>`_
- to be installed.
+ Plots the cross validation output graphs. Gnuplot-py requires
+ `Gnuplot <http://www.gnuplot.info/>`_ to be installed. 
 
 `Epydoc <http://epydoc.sourceforge.net/>`_
- Generates API documentation for MScanner.
+ [optional] Generates API documentation for MScanner.
 
 `SciPy <http://www.scipy.org>`_
- When available we use the SciPy stats.kde module to perform Kernel
- Density Estimation (KDE) and draw a probability density function
- instead of a histogram during validation. SciPy in turn requires
- NumPy as well as ATLAS or LAPACK and BLAS.  No worries on Windows,
- and Linux distributions should install the dependencies automagically.
+ [optional] For Kernel Density Estimation (KDE) in place of histograms.
 
-`cx_Oracle <http://sourceforge.net/projects/cx-oracle/>`_
- Only for exporting to PharmDemo.
+`web.py <http://webpy.org>`_
+ [optional] Framework needed to run the MScanner web interface.
+
 
 Input Data
 ==========
 
 You will need to obtain the following data:
 
-Medline Citation Database
- A directory containing .xml.gz files of Medline citation records.
+Medline
+ A directory of xml.gz files for Medline citation records.
  Medline can be obtained by signing and faxing a memorandum of
  understanding with the NLM and downloading via FTP.
 
-A list of PubMed IDs to query with
- A text file with one PubMed ID per line.  The classifier is trained
- with the query articles to retrieve new articles that are most
- similar to the query as a whole.
-
-Table of drug names
- Only necessary for gene-drug association.  This can be obtained from
- a PharmGKB developter.  Look in ``HOME/utils/drugtable.py`` for the
- format of the table, which is converted to a Python pickle file which
- MScanner can use.
-
-MeSH Term Exclusion Files
- Download MeSH from the NLM, and use ``HOME/utils/meshexcludes.py`` to
- generate Python pickles containing terms to exclude during parsing.
- The purpose is to reduce the size of the database by excluding
- non-informative MeSH terms.
+A list of PubMed IDs
+ A text file with one PubMed ID per line.

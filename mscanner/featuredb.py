@@ -1,8 +1,6 @@
-"""Persistent assocation of items to list of integer feautres
+"""Maps PubMed IDs to feature vectors"""
 
-"""
-
-                                               
+                                     
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
@@ -22,19 +20,15 @@ import logging as log
 from path import path
 import struct
 
+
 class FeatureDatabase:
-    """Persistent dictionary with modeling a table with integer key of PubMed
-    ID and values being arrays of Feature IDs.
-    
-    @note: Persistent dictionary is used (unlike FeatureMapping) because all
-    rows will not fit in memory. 
-    
+    """Database for which PubMed ID is the key and array of Feature IDs are values
     """
     
     def __init__(self, filename=None, flags='c', mode=0660, dbenv=None, txn=None, dbname=None, ftype=nx.uint16):
         """Initialise database
 
-        @param filename: Database file
+        @param filename: Path to database file
         @param flags: Opening flags (r,rw,w,c,n)
         @param mode: Numeric file permissions
         @param dbenv: Optional database environment
@@ -106,9 +100,11 @@ class FeatureDatabase:
         return self.db.has_key(str(key))
 
     def keys(self):
+        """Return list of PubMed IDs in the database"""
         return [ k for k in self ]
 
     def __iter__(self):
+        """Iterate over PubMed IDs in the database"""
         cur = self.db.cursor()
         rec = cur.first(dlen=0, doff=0)
         while rec is not None:
@@ -117,23 +113,28 @@ class FeatureDatabase:
         cur.close()
 
     def iteritems(self):
+        """Iterate over (PMID, ndarray) pairs in the database"""
         cur = self.db.cursor()
         rec = cur.first()
         while rec is not None:
             yield rec[0], nx.fromstring(rec[1],self.ftype)
             rec = cur.next()
         cur.close()
-        
+
+
 class FeatureStream:
-    """Alternative to FeatureDatabase which stores the data in compact format
-    for fast iteration over all of it during a query operation."""
+    """Stores PubMed IDs and feature vectors like L{FeatureDatabase} but in a
+    flat file for quick parsing by a C program."""
 
     def __init__(self, stream):
-        """Initialise with a stream, usually a file opened in rb or ab mode.
-        Must support read() and write()."""
+        """Constructor
+        
+        @param stream: File-like object, supporting read/write/close. Must be
+        opened in binary mode."""
         self.stream = stream
     
     def close(self):
+        """Close the underlying file"""
         self.stream.close()
 
     def write(self, pmid, features):

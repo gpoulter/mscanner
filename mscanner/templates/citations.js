@@ -332,8 +332,8 @@ function sortCitations() {
    var rows = document.getElementById("citations").rows
 
    function score_cmp(a,b) {
-      return parseFloat(b[0].childNodes[2].innerHTML) -
-             parseFloat(a[0].childNodes[2].innerHTML)
+      return parseInt(b[0].childNodes[2].innerHTML) -
+             parseInt(a[0].childNodes[2].innerHTML)
    }
    function year_cmp(a,b) {
       return parseInt(b[0].childNodes[4].innerHTML) -

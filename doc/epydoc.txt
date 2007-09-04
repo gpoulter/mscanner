@@ -1,0 +1,16 @@
+[epydoc]
+modules: bin/, mscanner/, utils/, htdocs/
+output: html
+target: doc/html/
+docformat: epytext
+css: white
+name: MScanner
+url: http://mscanner.stanford.edu
+frames: yes
+private: yes
+imports: no
+verbosity: 0
+parse: yes
+introspect: yes
+sourcecode: yes
+separate-classes: no

@@ -100,7 +100,7 @@ notfound_pmids -- List of PubMed IDs that were not found in the database
     <th>All Results</th>
     <td>
     <a href="$rc.report_result_all_zip">ZIP file</a> or
-    <a href="$rc.report_result_all">uncompressed</a> 
+    <a href="$rc.report_result_all">$rc.report_result_all</a> 
     </td>
     $help("h_results_all")
   </tr>
@@ -109,13 +109,15 @@ notfound_pmids -- List of PubMed IDs that were not found in the database
 
   <tr>
     <th>Term Scores</th>
-    <td><a href="$rc.report_term_scores">$rc.report_term_scores</a></td>
+    <td>
+    ##<a href="$rc.report_term_scores_zip">ZIP file</a> or 
+    <a href="$rc.report_term_scores">$rc.report_term_scores</a>
+    </td>
     $help("h_csv")
   </tr>
   $hr("h_csv", """CSV spreadsheet with the support scores for the
-  features (MeSH terms and ISSNs).  The number of positive and
-  negative occurrences and pseudocount are also included, as these
-  go into calculating the support score.""")
+  features (MeSH terms and ISSNs) and the values that went
+  into calculating those scores.""")
 
   <tr>
     <th>Input PMIDs</th>

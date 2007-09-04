@@ -1,7 +1,8 @@
-"""
-Helper functions used by the template logic to interrogate the 
-status of the tasks that are in the queue or completed.
-"""
+"""For interrogating the queue and list of completed tasks"""
+
+                                     
+__author__ = "Graham Poulter"                                        
+__license__ = "GPL"
 
 from mscanner.configuration import rc
 from mscanner import scorefile
@@ -17,7 +18,7 @@ def make_queue_name(timestamp, dataset):
 def parse_queue_name(fname):
     """Given path to queue file, recover task name"""
     fmatch = re.match(r"\d{8}-\d{6}-(.+)\.txt", filename.basename())
-    return fmatch.group(1) if fmatch is not None else None        
+    return fmatch.group(1) if fmatch is not None else None
 
 
 def get_task_status(dataset, current=None):
@@ -38,6 +39,20 @@ def get_task_status(dataset, current=None):
             return "queue", scorefile.readDescriptor(rc.queue_path / fname)
     # Task is nowhere to be found
     return "notfound", None
+
+
+def get_current_task():
+    """
+    @return: None if the queue is empty, otherwise a Storage
+    descriptor for the currently running task.
+
+    @note: Descriptor has additional queue_length variable for total number of
+    tasks in the queue."""
+    listing = rc.queue_path.files("*.txt")
+    if len(listing) == 0: return None
+    current = scorefile.readDescriptor(listing[0])
+    current.queue_length = len(listing)
+    return current
 
 
 def list_queue(descriptors=False):
@@ -84,17 +99,3 @@ def list_visible():
     donetasks = sorted(list_done(descriptors=True), 
                        key=lambda x:x.timestamp, reverse=True)
     return [ d for d in donetasks if "hidden" not in d or d.hidden == False ]
-
-
-def get_current_task():
-    """
-    @return: None if the queue is empty, otherwise a Storage
-    descriptor for the currently running task.
-
-    @note: Descriptor has additional queue_length variable for total number of
-    tasks in the queue."""
-    listing = rc.queue_path.files("*.txt")
-    if len(listing) == 0: return None
-    current = scorefile.readDescriptor(listing[0])
-    current.queue_length = len(listing)
-    return current

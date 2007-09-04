@@ -1,20 +1,12 @@
 """Configuration for MedScanner
 
-Configuration options are stored in the "rc" variable in this module, which is a
-utils.RCStorage object.
+Some parameters change while the program is running, such as the query and
+validation parameters.
 
-@note: Some RC parameters, like directory paths, provide configuration
-for things which tend not to change between invocations and data sets.
-Others, like pseudocount or path to the input file, are an easy
-way to provide centralised defaults for those options.  Instantiated
-objects, like FeatureInfo, keep their own pseudocount etc.
-in the instance (passed via __init__), which may differ from the RC one.
+Parameters can be made to depend on others by using lambda, which the rc object
+auto-calls those so they appear as normal data attributes."""
 
-@note: For parameters which depend on others, prefix with lambda:
-so that the dependency is updated dynamically.
-"""
-
-                                               
+                                     
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
@@ -29,9 +21,10 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
 from path import path
-from mscanner.support.storage import RCStorage
+import mscanner.support.storage
 
-rc = RCStorage()
+rc = mscanner.support.storage.RCStorage()
+"""Global configuration options"""
 
 #### PATH CONFIGURATION
 
@@ -164,7 +157,7 @@ rc.timestamp = None
 rc.webmaster_email = "xxxxxxxxxxxxxxxxxxxxxxxx"
 ## Base directory for the website
 rc.siteurl = "http://mscanner.stanford.edu"
-## If true, link to .js and .css files instead of including them
+## Whether to link to .js and .css files instead of including them
 rc.link_headers = False
 
 ## Parameters affecting FeatureInfo 
@@ -193,16 +186,15 @@ rc.alpha = 0.5
 ## Number of negatives to use
 rc.numnegs = 500000
 ## Number of citations per output file
-rc.citations_per_file = 200
+rc.citations_per_file = 250
 
 ## Logging configuration
 def initLogger(console=True, logfile=None):
-    """Configure logging for MScanner
+    """Set up logging to file or console
     
     @param console: If True, log to the console.
     
-    @param logfile: File for logging, defaulting to rc.logfile. If False, do
-    not log to file. """
+    @param logfile: Defaults to rc.logfile. If False, do not log to file."""
     import logging
     # Root logger
     rootlog = logging.getLogger()

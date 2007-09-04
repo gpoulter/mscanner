@@ -1,14 +1,15 @@
 """Handle Articles, processed files, features, feature occurrence counts
 
-selfupdate() -- Update instance from method args and locals
-update() -- Update instance dictionary
-randomSample() -- Choose random items from an array
-preserve_cwd -- Decorator to preserve working directory
-usetempfile -- Decorator to call method with a self-destructing temp file
-
-                                   
+Module contents:
+    - L{selfupdate}: Update instance from method args and locals
+    - L{update}: Update instance dictionary
+    - L{randomSample}: Choose random items from an array
+    - L{preserve_cwd}: Decorator to preserve working directory
+    - L{usetempfile}: Decorator to call method with a self-destructing temp file
 """
 
+                                     
+__author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
 Free Software Foundation, either version 3 of the License, or (at your option)
@@ -20,6 +21,7 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
+
 
 def selfupdate(onlyargs=False, exclude=[]):
     """Call in any method to set instance attributes from local variables.
@@ -49,7 +51,8 @@ def selfupdate(onlyargs=False, exclude=[]):
                 setattr(instance, var, cf.f_locals[var])
     finally:
         del cf
-        
+
+
 def update(instance, variables, exclude=['self']):
     """Update instance attributes
     
@@ -61,12 +64,13 @@ def update(instance, variables, exclude=['self']):
         if k not in exclude:
             setattr(instance, k, v)
 
+
 def randomSample(k, pool, exclude):
     """Choose a random subset of k articles from pool
 
-    @note: This method is only suitable if you have a large pool array (say,
-    15 million items), and don't mind it being scrambled in the process, and
-    need to rule out certain items from being selected.
+    This method is only suitable when pool is large (say, 15 million items),
+    can be scrambled, and you need to rule out certain items from being
+    selected.
     
     @param k: Number of items to choose from pool
     @param pool: Array of items to choose from (will be scrambled!)
@@ -93,9 +97,9 @@ def randomSample(k, pool, exclude):
     # Phantom iteration: selected are n-k ... n
     return nx.array(pool[n-k:])
 
+
 def preserve_cwd(f):
-    """Decorator which saves working directory before callijng the function,
-    and restores it afterwards."""
+    """Decorator to save working directory and restore it afterwards."""
     def cwd_preserver(*a, **kw):
         import os
         try:
@@ -104,11 +108,13 @@ def preserve_cwd(f):
         finally:
             os.chdir(cwd)
     def decorator_update(dest, src):
-        dest.__name__ = src.__name__
-        dest.__doc__ = src.__doc__
         dest.__dict__.update(src.__dict__)
+        dest.__doc__ = src.__doc__
+        dest.__name__ = src.__name__
+        ##dest.__undecorated__ = src # help epydoc someday
     decorator_update(cwd_preserver, f)
     return cwd_preserver
+
 
 def usetempfile(function):
     """Unittest method decorator. Decorates methods of the form funcname(self,

@@ -1,14 +1,15 @@
 """Find associations of genes and drugs
 
-parseDrugs() -- Parse text version of PharmGKB drug table
-CachingGeneFinder -- Caches results of XMLRPC gene-finding queries
-GeneDrugFilter -- Use a gene-finder and drug table to find associations
-CachingGeneDrugLister -- Find associations for articles, caching results
-getGeneDrugFilter() -- Return a caching gene-drug association lister
-
-                                   
+Members of this module:
+    - L{parseDrugs}: Parse text version of PharmGKB drug table
+    - L{GeneFinder}: Caches results of XMLRPC gene-finding queries
+    - L{GeneDrugLister}: Use a gene-finder and drug table to find associations
+    - L{GeneDrugListerCache}: Find associations for articles, caching results
+    - L{getGeneDrugFilter}: Return a caching gene-drug association lister
 """
 
+                                     
+__author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
 Free Software Foundation, either version 3 of the License, or (at your option)
@@ -24,7 +25,6 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 import logging as log
 import os
 import re
-import unittest
 import xmlrpclib
 
 from mscanner.support import dbshelve
@@ -32,30 +32,25 @@ from mscanner.support import dbshelve
 def parseDrugs(text):
     """Return a drug dictionary from specially formatted table
 
+    @param text: String containing drug table to load.
+
     @see: Format of the drug table is described in README.html
 
     @raise ValueError: On incorrect formatting.
 
-    @type text: C{string}
-    @param text: Drug table to load.
-
-    @rtype: C{{string:[string]}}
-
     @note: The specified file should map PharmGKB Accession ID's to drug names.  They are
     used to scan abstracts for occurrences of drugs.  One drug is
-    described per line, and each line is to be formatted as follows:
-    
-    The drug's PharmGKB Accession ID
-    [tab]
-    The drug's main name in PharmGKB (might be comma-separated names)
-    [tab]
-    A list of the drug's generic names (if any), each terminated by '|'
-    [tab]
-    A list of the drug's trade names (if any), each terminated by '|'
+    described per line, and each line is to be formatted as follows::
+        The drug's PharmGKB Accession ID
+        [tab]
+        The drug's main name in PharmGKB (might be comma-separated names)
+        [tab]
+        A list of the drug's generic names (if any), each terminated by '|'
+        [tab]
+        A list of the drug's trade names (if any), each terminated by '|'
 
-    @return: Mapping from PharmGKB ID to aliases for the drug.  The
-    first alias is the preferred drug name.
-    """
+    @return: Mapping from PharmGKB ID to list of aliases for the drug. The
+    first alias is the preferred drug name."""
     drugs = {}
     text = text.replace("\r","")
     lines = text.split('\n')
@@ -78,27 +73,21 @@ def parseDrugs(text):
     return drugs
 
 
-class CachingGeneFinder:
-    """Cache results of gene finding queries
+class GeneFinder:
+    """Perform gene-finding queries, with result caching.
     
     @ivar min_threshold: Minimum score for keeping results
     
-    @ivar cache: Mapping from query texts to results
-    
-    """
+    @ivar cache: Mapping from query texts to results"""
 
     def __init__(self, cache):
         """Initialise cache
         
-        Uses http://bionlp.stanford.edu/xmlrpc, function
-        find_gene_and_protein_names, for the gene finder.
+        @note: Uses U{http://bionlp.stanford.edu/xmlrpc}, function
+        C{find_gene_and_protein_names}.
 
-        @type cache: C{str:(str,int,int,float)}, or C{string}
-        @param cache: Mapping of text to return values of
-        L{findGenes}, or the file name of a persistent shelf
-        containing such a mapping.
-
-        """
+        @param cache: Mapping from text to return values of L{findGenes}, or
+        path to a persistent shelf to open."""
         # Default threshold
         self.min_threshold = 0.1
         # Set up XMLRPC (possibly proxied)
@@ -142,23 +131,24 @@ class CachingGeneFinder:
         return xmlrpclib.ServerProxy(url,transport=ProxyTransport(proxy))
     
     def close(self):
+        """Close the underlying cache"""
         if hasattr(self,"cache") and hasattr(self.cache, "close"):
             self.cache.close()
             del self.cache
 
     def __call__(self,text):
-        """Automatically calls L{findGenes}"""
+        """Shortcut for calling L{findGenes}"""
         return self.findGenes(text)
 
     def findGenes(self,text):
         """Finds genes in text, with caching of results
 
-        @type text: C{str}
         @param text: Text to search for genes and proteins
+        @type text: C{str}
 
-        @rtype: C{[(str,int,int,float)]}
         @return: (gene name,start index,end index,score) for each
         gene/protein name found.
+        @rtype: C{[(str,int,int,float)]}
         """
         key = repr(text)
         if key in self.cache:
@@ -171,23 +161,26 @@ class CachingGeneFinder:
             self.cache[key] = result
         return result
 
-class GeneDrugFilter:
+class GeneDrugLister:
     """Retrieve gene-drug associations for articles"""
 
     def __init__(self, drugs, geneFinder, threshold=0.85):
         """Initialise gene-drug filter
 
+        @param geneFinder: Callable returning (gene name, start index, end
+        index, score) for all genes/proteins located in the text. 
+        
         @type geneFinder: C{f(string)->[(string,number,number,float)]}
-        @param geneFinder: Returns (gene name, start index, end index,
-        score) for all genes/proteins located in the text.
 
-        @type drugs: C{{string:[string]}}
         @param drugs: Mapping from PharmGKB ID's to drug names.  First
         name is used as the preferred name.
 
+        @type drugs: C{string:[string]}
+        
+        @param threshold: Only use genes that score higher than this in
+        geneFinder output.
+        
         @type threshold: C{float}
-        @param threshold: Genes are only used if they score higher
-        than this in the geneFinder output.
         """
         self.fulldrugs = drugs
         self.drugs = self.stripDrugs(drugs)
@@ -195,10 +188,11 @@ class GeneDrugFilter:
         self.threshold = threshold
 
     def __call__(self,article):
-        """Automatically calls L{listGeneDrugsArticle}"""
+        """Shortcut for calling L{listGeneDrugsArticle}"""
         return self.listGeneDrugsArticle(article)
     
     def close(self):
+        """Close the underlying gene-finding object"""
         if hasattr(self, "geneFinder") and hasattr(self.geneFinder, "close"):
             self.geneFinder.close()
             del self.geneFinder
@@ -208,18 +202,17 @@ class GeneDrugFilter:
         """Strip a drug dictionary down to lowercase characters and
         create a regular expression out of it.
 
-        @type drugs: C{{string:[string]}}
-
         @param drugs: Mapping from PharmGKB accession number (like
         PK12345) to drug aliases (the first name in the list is the
         preferred).
 
-        @rtype: C{{string:MatchObject}
+        @type drugs: C{string:[string]}
 
-        @return: Mapping from PharmGKB accession number to a regular
-        expression which matches any of the drug names (lowercased,
-        non-alphabetics stripped).
-        """
+        @return: Mapping from PharmGKB accession number to a regular expression
+        to matches any of the drug names (lowercased, non-alphabetics
+        stripped). 
+        
+        @rtype: C{string:Pattern} """
         result = {}
         losechars = re.compile(r'[^a-z]+')
         for (PKID,names) in drugs.iteritems():
@@ -237,14 +230,14 @@ class GeneDrugFilter:
     def listDrugs(self, text):
         """Return locations of drugs in text
 
+        Matching is approximate. All non-alphabetics in both sentences and
+        drugs are replaced with spaces before matching.
+        
         @param text: Text to search for drugs.
-
-        @rtype: C{[(string,int,int,string)]}
 
         @return: List of (matched text, start index, end index, PharmGKB ID)
         
-        @note: Matching is approximate.  All non-alphabetics in both
-        sentences and drugs are replaced with spaces before matching.
+        @rtype: C{[(string,int,int,string)]}
         """
         # lose punctuation, with extra spaces so that every word boundary is marked by a space
         reptext = re.sub(r'[^a-z]'," ", text.lower())
@@ -258,12 +251,11 @@ class GeneDrugFilter:
     def listSentences(text):
         """Return sentences from text
 
-        @type text: C{string}
         @param text: Text to parse
 
-        @rtype: C{[(string,number,number)]}
-        @return: (sentence,start index,end index) for sentences in the
-        text.
+        @return: (sentence, start index, end index) for sentences in text.
+        
+        @rtype: C{[(str,int,int)]}
         """
         # Remove existing newlines
         text = re.sub(r"\n",r" ",text)
@@ -291,11 +283,11 @@ class GeneDrugFilter:
         """List genes found in text
 
         @param text: Input text to search for genes.
-
-        @rtype: C{[(string,number,number)]}
         
         @return: (gene name, start index, end index) for each
         gene/protein name found.
+        
+        @rtype: C{[(string,number,number)]}
         """
         genes = self.geneFinder(text)
         result = []
@@ -307,16 +299,16 @@ class GeneDrugFilter:
     def listGeneDrugs(self, text):
         """Return gene-drug co-occurrences in a text
 
-        Search for genes in the text, and also split the text into
-        sentences to search for drugs in each sentence.  Then
-        aggregate co-occurrences of genes and drugs in each sentence.
+        Search for genes in the text, and also split the text into sentences to
+        search for drugs in each sentence. Then aggregate co-occurrences of
+        genes and drugs in each sentence.
 
         @param text: Text to parse, such as a title and abstract.
 
-        @rtype: C{{string:set([string])}}
-
         @return: Mapping from PharmGKB default drug name (obtained via
         PharmGKB ID) to genes co-occurring with the drug.
+        
+        @rtype: C{string:set([string])}
         """
         sentences = self.listSentences(text)
         allgenes = self.listGenes(text)
@@ -338,14 +330,14 @@ class GeneDrugFilter:
         return result
 
     def listGeneDrugsArticle(self, article):
-        """Return cached results from L{GeneDrugFilter.listGeneDrugs}
-
-        @param article: Article object to cache result for.
+        """Get gene-drug co-occurrences for title/abstract of an article
+        
+        @param article: Article object to find co-occurrences
+        
+        @return: L{listGeneDrugs} result for concatenation of title
+        and abstract.
 
         @rtype: C{string:set(string)}
-        
-        @return: The L{listGeneDrugs} result for an article's title
-        and abstract joined together.
         """
         article.pmid = str(article.pmid)
         # DO NOT CHANGE NEXT FIVE LINES (DISRUPTS GENEFINDER CACHE)
@@ -357,7 +349,7 @@ class GeneDrugFilter:
         result = self.listGeneDrugs(text)
         return result
 
-class CachingGeneDrugLister:
+class GeneDrugListerCache:
 
     def __init__(self, cache, gdfilter):
         """Caching proxy for gene-drug filtering
@@ -377,7 +369,7 @@ class CachingGeneDrugLister:
         self.gdfilter=gdfilter
 
     def close(self):
-        """Close the gene-drug results cache and filter if possible"""
+        """Close the results cache and filter if possible"""
         if hasattr(self, "cache") and hasattr(self.cache, "close"):
             self.cache.close()
             del self.cache
@@ -407,8 +399,9 @@ def getGeneDrugFilter(gdcache, drugtable, gapscorecache):
     
     @param drugtable: Path to table of drugs
 
-    @param gapscorecache: Dictionary or path to DB for stroing GAPscore results
+    @param gapscorecache: Dictionary or path to DB for stroing gapscore outputs
     """
-    drugs = parseDrugs(file(drugtable, "rb").read())
-    gapscore = CachingGeneFinder(gapscorecache)
-    return CachingGeneDrugLister(gdcache, GeneDrugFilter(drugs, gapscore))
+    drugs = parseDrugs(open(drugtable, "rb").read())
+    genefinder = GeneFinder(gapscorecache)
+    gdlister = GeneDrugLister(drugs, genefinder)
+    return GeneDrugListerCache(gdcache, gdlister)

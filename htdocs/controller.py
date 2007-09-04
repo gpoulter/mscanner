@@ -1,12 +1,12 @@
 #!/export/home/medscan/local32/bin/python2.5
 
-"""
-web.py controller for the MScanner web interface (view is the
-template code, and the model is the queue programme).
+"""Controller for the MScanner web interface 
 
-                                   
-"""
+In this context, the view is the template code, and the model is the queue
+programme."""
 
+                                     
+__author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
 Free Software Foundation, either version 3 of the License, or (at your option)
@@ -36,6 +36,7 @@ urls = (
     '/output', 'htdocs.templates.output_logic.OutputPage',
     '/contact', 'htdocs.templates.contact_logic.ContactPage',
 )
+"""Mapping between URLs and objects to process the requests"""
 
 class FrontPage:
     """Front page of the site"""

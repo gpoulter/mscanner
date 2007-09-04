@@ -1,6 +1,6 @@
 """Test suite for mscanner.validation
 
-                                   
+                               
 
 @license: This source file is free software. It comes without any warranty, to
 the extent permitted by applicable law. You can redistribute it and/or modify
@@ -93,4 +93,3 @@ if __name__ == "__main__":
     t = unittest.defaultTestLoader.loadTestsFromTestCase(
         PerformanceStatisticsTest)
     unittest.main()
-    #unittest.main()

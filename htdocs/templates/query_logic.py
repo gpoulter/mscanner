@@ -1,25 +1,31 @@
-"""Logic behind the submission form
-"""
+"""web.py handler for the query submission page"""
+
+                                     
+__author__ = "Graham Poulter"                                        
+__license__ = "GPL"
 
 import web
-
-from . import query
+import query
 from htdocs import helpers, forms
 from mscanner.configuration import rc
 from mscanner import scorefile
 
+
 def parse_pmids(pmids):
+    """Parse a string into a list of integer PubMed IDs"""
     return [int(y) for y in pmids.split()]
 
 delcode_validator = forms.RegexValidator(
     r"^[ a-zA-Z0-9.;:_-]{0,10}$", 
     "Should be 0-10 characters long, containing "+
     "only letters, numbers and .;:,_- punctuation.")
+"""Checks deletion code for valid format"""
 
 dataset_validator = forms.RegexValidator(
     r"^[ a-zA-Z0-9.,;:_-]{1,30}$",
     "Should be 1-30 characters long, containing "+
     "only letters, numbers and .,;:_- punctuation.")
+"""Checks task name for valid format"""
 
 
 QueryForm = forms.Form(
@@ -91,7 +97,7 @@ QueryForm = forms.Form(
           ("validate", "Validation Operation") ],
         forms.Validator(lambda x: x in ["query", "validate"], "Invalid operation")),
 )
-
+"""Structure for the form on the query submission page"""
 
 # Initial values to fill into the form
 form_defaults = dict(
@@ -107,13 +113,13 @@ form_defaults = dict(
     positives = "",
     threshold = 20.0,
 )
-
+"""Default values for the query form"""
 
 class QueryPage:
     """Submission form for queries or validation"""
     
     def GET(self):
-        """Return the form with default values"""
+        """Print the query form, filled with default values"""
         web.header('Content-Type', 'text/html; charset=utf-8') 
         qform = QueryForm()
         qform.fill(form_defaults)
@@ -123,7 +129,7 @@ class QueryPage:
         print page
         
     def POST(self):
-        """Submit the query form."""
+        """Submit the query form, maintains previous values"""
         web.header('Content-Type', 'text/html; charset=utf-8') 
         qform = QueryForm()
         if qform.validates(web.input()):

@@ -1,13 +1,8 @@
-"""Provides a high-level interface for performing query-based analyses.  
-
-@note: This module relies heavily on rc parameters (many other modules like
-scoring take these as function arguments instead)
-
-"""
+"""Environment for performing query-based analyses."""
 
 from __future__ import division, with_statement, absolute_import
 
-                                               
+                                     
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
@@ -26,47 +21,50 @@ import logging as log
 import numpy as nx
 import os
 
-from mscanner.configuration import rc
-from mscanner.featuredb import FeatureDatabase, FeatureStream
-from mscanner.featuremap import FeatureMapping
-from mscanner import scoring, scorefile
+from mscanner import featuredb
+from mscanner import featuremap
+from mscanner import scoring
+from mscanner import scorefile
 from mscanner.support import dbshelve
-from mscanner.support.gcheetah import TemplateMapper, FileTransaction
+from mscanner.support import gcheetah
+from mscanner.configuration import rc
 from mscanner.support.utils  import preserve_cwd
+
 
 class QueryEnvironment:
     """Class for managing MScanner analysis without passing around lots of
     parameters. RC parameters control the global data paths and output file
     names.
 
-    From constructor:
-        @ivar featdb: Mapping from PubMed ID to list of features
-        @ivar featmap: FeatureMapping instance between feature names and IDs
-        @ivar artdb: Mapping from PubMed ID to Article object
+    @ivar featdb: Mapping from PubMed ID to list of features, from L{__init__}
+
+    @ivar featmap: L{FeatureMapping} between feature names and IDs, from L{__init__}
     
-    From loadInput():
-        @ivar input_pmids: Set (not list!) of PubMed IDs as input to the query
+    @ivar artdb: Mmapping from PubMed ID to Article object, from L{__init__}
     
-    From standardQuery():
-        @ivar featinfo: Object containing feature scores and statistics
+    @ivar input_pmids: Set object with input PubMed IDs, from L{loadInput}
     
-    From loadResults() or getResults()
-        @ivar inputs: List of (pmid, score) for input PMIDs
-        @ivar results: List of (pmid, score) for result PMIDs
+    @ivar featinfo: FeatureInfo with feature scores, from L{standardQuery}
+    
+    @ivar inputs: List of (pmid, score) for input PMIDs, from L{getResults} or L{loadResults}
+    
+    @ivar results: List of (pmid, score) for result PMIDs, from L{getResults} or L{loadResults}
     """
     
     def __init__(self):
-        """Initialise QueryEnvironment
-        """
+        """Constructor"""
         log.info("Loading article databases")
-        self.featdb = FeatureDatabase(rc.featuredb, 'r')
-        self.featmap = FeatureMapping(rc.featuremap)
+        self.featdb = featuredb.FeatureDatabase(rc.featuredb, 'r')
+        self.featmap = featuremap.FeatureMapping(rc.featuremap)
         self.artdb = dbshelve.open(rc.articledb, 'r')
 
+
     def __del__(self):
+        """Closes databases"""
         self.featdb.close()
         self.artdb.close()
-        
+
+
     def clearResults(self):
         """Get rid of old results, that we may query again"""
         try:
@@ -76,14 +74,21 @@ class QueryEnvironment:
         except AttributeError:
             pass
 
+
     def loadInput(self, pmids_path):
-        """Read input PubMed IDs from pmids_path"""
+        """Read input PubMed IDs
+        
+        @param pmids_path: File to load PMIDs from
+
+        @return: L{input_pmids}
+        """
         log.info("Loading input PMIDs from %s", pmids_path.basename())
         self.input_pmids = set(scorefile.readPMIDs(
             pmids_path, include=self.featdb,
             broken_name=rc.report_input_broken))
         return self.input_pmids
-    
+
+
     def getFeatureInfo(self):
         """Calculate and return FeatureInfo object for current input"""
         log.info("Calculating feature scores")
@@ -101,16 +106,14 @@ class QueryEnvironment:
             frequency_method = rc.frequency_method,
             post_masker = rc.post_masker
         )
-    
+
+
     @preserve_cwd
     def standardQuery(self, pmids_path=None):
         """All-in-one for the most common operation.
         
-        @note: re-calculates things which use RC parameters that may
-        have changed since the last run.
-        
-        @param pmids_path: Path to list of input PMIDs. If None, we assume
-        loadInput() has already been called. """
+        @keyword pmids_path: Path to list of input PMIDs. If None, we assume
+        L{loadInput} has already been called."""
         import time
         if rc.timestamp is None: 
             rc.timestamp = time.time() 
@@ -135,12 +138,14 @@ class QueryEnvironment:
         self.writeReport()
         rc.timestamp = None # reset for next run
         log.info("FINISHING QUERY %s", rc.dataset)
-        
+
+
     def getGDFilterResults(self, pmids_path, export_db=False):
-        """Filter results and input articles for those containing gene-drug
-        co-occurrences
+        """Filter L{results} and L{inputs} for those gene-drug co-occurrences
         
-        @param export_pharmdemo: If True, export results to PharmDemo database
+        @param export_db: If True, export associations for PharmDemo
+        
+        @return: Set of articles with gene-drug associations.
         """
         self.input_pmids = set(scorefile.readPMIDs(pmids_path, include=self.featdb))
         self.featinfo = self.getFeatureInfo()
@@ -163,24 +168,26 @@ class QueryEnvironment:
             gdexport.exportText(rc.genedrug_sql)
         return gdarticles
 
+
     @preserve_cwd
     def loadResults(self):
-        """Read self.inputs and self.results (PMIDs and scores) from
-        the report directory"""
+        """Read L{inputs} and L{results} from the report directory"""
         os.chdir(rc.query_report_dir)
         log.info("Loading saved results for dataset %s", rc.dataset)
         self.inputs = list(scorefile.readPMIDs(rc.report_input_scores, withscores=True))
         self.results = list(scorefile.readPMIDs(rc.report_result_scores, withscores=True))
-        
+
+
     @preserve_cwd
     def saveResults(self):
-        """Write input/result PMIDs and scores to disk in report directory."""
+        """Write L{inputs} and L{results} with scores in the report directory."""
         os.chdir(rc.query_report_dir)
         scorefile.writePMIDScores(rc.report_input_scores, self.inputs)
         scorefile.writePMIDScores(rc.report_result_scores, self.results)
 
+
     def getResults(self):
-        """Perform the query to generate input and result scores"""
+        """Perform the query to generate L{inputs} and L{results}"""
         log.info("Peforming query for dataset %s", rc.dataset)
         # Calculate score for each input PMID
         self.inputs = [ 
@@ -197,20 +204,17 @@ class QueryEnvironment:
                 rc.threshold, self.input_pmids))
         else:
             # Read the feature stream using Python
-            featurestream = FeatureStream(open(rc.featurestream, "rb"))
+            featurestream = featuredb.FeatureStream(open(rc.featurestream, "rb"))
             self.results = scoring.iterScores(
                 featurestream, self.featinfo.scores, rc.limit,
                 rc.threshold, self.input_pmids)
             featurestream.close()
-        
+
+
     @preserve_cwd
     def testRetrieval(self, pmids_path):
-        """Splits the input into training and testing, see how many
-        testing PMIDs the query returns.
-        
-        @note: Writes files with the input PMIDs and scores, result PMIDs
-        and scores, test pmids, and cumulative number of test PMIDs
-         as a function of rank.
+        """Splits the input into training and testing, plots how many testing
+        PMIDs the query returns when trained on the training PMIDs.
         
         @return: Array with cumulative test PMIDs as function of rank
         """
@@ -246,15 +250,14 @@ class QueryEnvironment:
         plotter.plotRetrievalGraph(
             rc.report_retrieval_graph, self.cumulative, len(self.input_test))
         return self.cumulative
-    
+
+
     @preserve_cwd
     def writeReport(self):
         """Write the HTML report for the query results
         
-        @note: Writing of citation files is optimised by doing all of the
-        self.artdb lookups beforehand.  Somehow, performing the lookups
-        while busy with the template code is terribly slow. 
-        """
+        We do self.artdb lookups beforehand - database lookups while doing
+        template output is extremely slow."""
         # Extract the top TF-IDF terms as (termid, (term,type), tfidf)
         from heapq import nlargest
         best_tfidfs = nlargest(
@@ -296,8 +299,9 @@ class QueryEnvironment:
         zf.close()
         # Index.html
         log.debug("Writing index file")
-        ft = FileTransaction(rc.report_index, "w")
-        mapper = TemplateMapper(root=rc.templates, kwargs=dict(filter="Filter"))
+        ft = gcheetah.FileTransaction(rc.report_index, "w")
+        mapper = gcheetah.TemplateMapper(
+            root=rc.templates, kwargs=dict(filter="Filter"))
         mapper.results(
             stats = self.featinfo.stats,
             linkpath = rc.templates.relpath().replace('\\','/') if rc.link_headers else None,

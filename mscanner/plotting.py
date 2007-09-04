@@ -1,11 +1,8 @@
-"""Utitilities for plotting histograms, density distributions,
-precision-recall curves, ROC curves, and precision/recall/fmeasure as
-a function of threshold.
-"""
+"""Plotting functions for all graphs produced in cross validation."""
 
 from __future__ import division
 
-                                               
+                                     
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
 modify it under the terms of the GNU General Public License as published by the
@@ -23,9 +20,11 @@ from Gnuplot import Data, Gnuplot
 import logging as log
 import numpy as n
 
+
 def bincount(data):
-    """Return best number of histogram bins for the data using the
-    formula $\frac{R}{2*IQR*N^{-1/3}}.
+    """Return best number of histogram bins for the data 
+    
+    @note: Uses the formula M{K = R/(2*IQR*N^(-1/3))}
 
     @note: Expects data to be sorted increasing order.
     """
@@ -35,10 +34,11 @@ def bincount(data):
     bins = R//(2*IQR*N**(-1/3)) # Number of bins
     #print N, IQR, R, bins
     return min(150,max(10, bins))
-    
+
+
 def calculateOverlap(px, py, nx, ny):
-    """Given bell curves for positives and negatives, calculate the area of
-    overlap, assuming that p is located to the right of n. 
+    """Calculate overlap between two bell curves (curve p must be
+    to the right of curve n)
     
     Procedure is first to interpolate both curves onto a common X-axis ranging
     from min(nx) to max(px), then find highest where pY and nY intersect,
@@ -70,10 +70,14 @@ def calculateOverlap(px, py, nx, ny):
             break
     return area, X[include], iY[include]
 
+
 def kernelPDF(values, npoints=512):
     """Given 1D values, return an approximate probability density function
+    
     @param values: Sorted list of floats representing the sample
+    
     @param npoints: Number of equal-spaced points at which to estimate the PDF
+    
     @return: (xvalues,yvalues) for y=f(x) of the pdf.
     """
     from scipy import stats
@@ -81,12 +85,13 @@ def kernelPDF(values, npoints=512):
     density = stats.kde.gaussian_kde(n.array(values)).evaluate(points)
     return points, density
 
+
+
 class Plotter(Gnuplot):
     
     def plotArticleScoreDensity(g, fname, pdata, ndata, threshold):
-        """Plot probability density for pos/neg scores, with line to mark threshold
+        """Probability density of pos and neg scores, with line to mark threshold
     
-        @param g: gnuplot object
         @param fname: Filename to plot to
         @param pdata: Scores of positive documents
         @param ndata: Scores of negative documents
@@ -108,10 +113,10 @@ class Plotter(Gnuplot):
                Data(px, py, title="Positives", with="lines"),
                Data(nx, ny, title="Negatives", with="lines"))
         return overlap
-    
+
+
     def plotFeatureScoreDensity(g, fname, scores):
-        """Plots probability density function for feature scores
-        """
+        """Probability density function for feature scores"""
         log.debug("Plotting feature score density to %s", fname)
         x, y = kernelPDF(scores, npoints=1024)
         g.reset()
@@ -121,9 +126,10 @@ class Plotter(Gnuplot):
         g("set terminal png")
         g("set output '%s'" % fname)
         g.plot(Data(x, y, with="lines"))
-    
+
+
     def plotArticleScoreHistogram(g, fname, pdata, ndata, threshold):
-        """Plot histograms for pos/neg scores, with line to mark threshold""" 
+        """Histograms for pos and neg scores, with line to mark threshold""" 
         log.debug("Plotting article score histogram to %s", fname)
         from itertools import chain
         py, px = n.histogram(pdata, bins=bincount(pdata), normed=True)
@@ -143,9 +149,12 @@ class Plotter(Gnuplot):
                Data(nx, ny, title="Negatives", with="boxes"),
                Data([threshold, threshold], [0, threshold_height], 
                     title="threshold", with="lines lw 3"))
-        
+
+
     def plotFeatureScoreHistogram(g, fname, scores):
-        """Plot histogram for individual feature scores"""
+        """Histogram for feature scores
+        
+        @param scores: List with scores of each feature"""
         log.debug("Plotting feature score histogram to %s", fname)
         sscores = scores.copy()
         sscores.sort()
@@ -159,12 +168,10 @@ class Plotter(Gnuplot):
         g("set output '%s'" % fname)
         g("set style fill solid 1.0")
         g.plot(Data(x, y, with="boxes"))
-    
+
+
     def plotROC(g, fname, FPR, TPR, marker_FPR):
-        """ROC curve (TPR vs FPR)
-    
-        @param roc: Path to output file for ROC curve
-        """
+        """ROC curve (TPR vs FPR)"""
         log.debug("Plotting ROC curve to %s", fname)
         g.reset()
         g.title("ROC curve (TPR vs FPR)")
@@ -174,12 +181,10 @@ class Plotter(Gnuplot):
         g("set output '%s'" % fname)
         g.plot(Data(FPR, TPR, title="TPR", with="lines"),
                Data([marker_FPR, marker_FPR], [0,0.99], title="threshold", with="lines"))
-    
+
+
     def plotPrecisionRecall(g, fname, TPR, PPV, marker_TPR):
-        """Precision vs recall graph
-    
-        @param p_vs_r: Path to output file for precision-recall curve
-        """
+        """Precision vs recall"""
         log.debug("Plotting Precision-Recall curve to %s", fname)
         g.reset()
         g.title("Precision vs Recall")
@@ -189,10 +194,10 @@ class Plotter(Gnuplot):
         g("set output '%s'" % fname)
         g.plot(Data(TPR, PPV, title="Precision", with="lines", smooth="csplines"),
                Data([marker_TPR, marker_TPR], [0,0.99], title="threshold", with="lines"))
-    
+
+
     def plotPrecisionRecallFmeasure(g, fname, pscores, TPR, PPV, FM, FMa, threshold):
-        """Precision, Recall, F-Measure vs threshold graph
-        """
+        """Precision, Recall, F-Measure vs threshold"""
         log.debug("Plotting F-Measure curve to %s", fname)
         g.reset()
         g.title("Precision and Recall vs Threshold")
@@ -205,10 +210,10 @@ class Plotter(Gnuplot):
                Data(pscores, FM, title="F1 Measure", with="lines"),
                Data(pscores, FMa, title="F Measure", with="lines"),
                Data([threshold, threshold], [0,0.99], title="threshold", with="lines"))
-    
+
+
     def plotRetrievalGraph(g, fname, nretrieved, total):
-        """Graph of proportion of testing set retrieved, versus result rank
-        """
+        """Proportion of testing set retrieved, versus result rank"""
         log.debug("Plotting Retrieval curve to %s", fname)
         g.reset()
         g.title("Retrieval Test")

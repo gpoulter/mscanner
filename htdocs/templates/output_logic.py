@@ -41,7 +41,7 @@ class OutputPage:
         page.donetasks = helpers.list_visible()
         oform = OutputForm()
         
-        if not oform.validates():
+        if not oform.validates(web.input()):
             e = ["<li>%s: %s</li>\n" % (n,e) for n,e in 
                  oform.errors.iteritems() if e is not None]
             page.errors = "".join(["<p>Errors</p><ul>\n"]+e+["</ul>\n"])
@@ -97,6 +97,9 @@ class OutputPage:
                         # Omit MeSH terms if the user requests it
                         if forms.ischecked(oform.d.omit_mesh):
                             continue
+                    if fpath.basename() == rc.report_result_all:
+                        # Omit all-in-one result file
+                        continue
                     zf.write(str(fpath), str(fpath.basename()))
                 zf.close()
                 outfile.chmod(0777)

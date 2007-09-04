@@ -3,8 +3,9 @@
 @author: Aaron Swartz (modified by Graham Poulter)
 """
 
-import copy, re
-from web import webapi as web
+import copy
+import re
+import web
 from web import utils, net
 
 def attrget(obj, attr, value=None):
@@ -58,13 +59,12 @@ class Form:
         return out
     
     
-    def validates(self, source=None, _validate=True, **kw):
+    def validates(self, source, _validate=True):
         """
-        @param source: Storage from which to retrieve values
+        @param source: Storage object from which to retrieve values
         
         @returns: True/False about whether the form validates."""
         if hasattr(self, "d"): del self._d
-        source = source or kw or web.input()
         isvalid = True
         for i in self.inputs:
             value = attrget(source, i.name)
@@ -158,10 +158,10 @@ class Input(object):
         to the validator message"""
         self.value = value
         for v in self.validators:
-            if not v.valid(value): # O RLY?
-                self.note = v.msg # YA RLY
+            if not v.valid(value):
+                self.note = v.msg
                 return False
-        return True # NO WAI!
+        return True
 
 
     def render(self):

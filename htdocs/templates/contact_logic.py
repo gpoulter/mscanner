@@ -47,7 +47,7 @@ class ContactPage:
         web.header('Content-Type', 'text/html; charset=utf-8') 
         page = contact.contact()
         cform = ContactForm()
-        if cform.validates():
+        if cform.validates(web.input()):
             email = sanitize(cform.d.email) or "nobody@maples.stanford.edu"
             name = sanitize(cform.d.name)
             message = sanitize(cform.d.message)

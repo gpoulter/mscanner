@@ -126,7 +126,7 @@ class QueryPage:
         """Submit the query form."""
         web.header('Content-Type', 'text/html; charset=utf-8') 
         qform = QueryForm()
-        if qform.validates():
+        if qform.validates(web.input()):
             # Add a descriptor to the queue
             d = qform.d
             import time; d.timestamp = time.time()

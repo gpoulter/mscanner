@@ -96,8 +96,8 @@ class ScoringTests(unittest.TestCase):
         # Constant pseudocount and cutoff
         f = scoring.FeatureInfo(featmap, pfreqs, nfreqs, pdocs, ndocs, 
                                 pseudocount=0.1, 
-                                getFrequencies="getProbabilitiesOldBayes",
-                                getPostMask="maskRarePositives")
+                                frequency_method="getProbabilitiesOldBayes",
+                                post_masker="maskRarePositives")
         self.assert_(nx.allclose(
             f.scores, nx.array([-0.27193372,  1.02132061,  0.0 ])))
 

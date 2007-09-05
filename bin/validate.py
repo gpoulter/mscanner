@@ -2,9 +2,8 @@
 
 """Cross-validation performance analysis
 
-Either use as a module, or pass a Python snippet::
-
-    validate.py 'paperTests("aids-vs-500k")'
+Choose operation by executing a Python expression::
+    python validate.py 'paperTests("aids-vs-500k")'
 """
 
                                      
@@ -83,6 +82,6 @@ def random_bimodality():
 if __name__ == "__main__":
     initLogger()
     if len(sys.argv) != 2:
-        print "Please give python expression"
+        print "Please provide a Python expression"
     else:
         eval(sys.argv[1])

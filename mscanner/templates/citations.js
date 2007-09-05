@@ -332,8 +332,9 @@ function sortCitations() {
    var rows = document.getElementById("citations").rows
 
    function score_cmp(a,b) {
-      return parseInt(b[0].childNodes[2].innerHTML) -
-             parseInt(a[0].childNodes[2].innerHTML)
+      // Faster and more stable: sorting by increasing rank
+      return parseInt(a[0].childNodes[1].innerHTML) -
+             parseInt(b[0].childNodes[1].innerHTML)
    }
    function year_cmp(a,b) {
       return parseInt(b[0].childNodes[4].innerHTML) -
@@ -354,10 +355,8 @@ function sortCitations() {
       mb = b[1].childNodes[0].innerHTML.match(/[a-z]\ ([^\ ]+)/i)
       if (ma != null && mb != null)
          return str_cmp(ma[1], mb[1])
-      else if (ma != null)
-         return -1
-      else
-         return +1
+      else if (ma != null) return -1
+      else return +1
    }
 
    var new_sort = document.filter_form.orderby.value
@@ -374,18 +373,18 @@ function sortCitations() {
    // Strategy is to group the triplets of rows in to an array
    // then clear the table, sort the array, and re-create the table
    t = $("citations")
-   tb = t.childNodes[2]
-   x = [] // temporary storage for row triplets
+   tbody = t.childNodes[2]
+   x = [] // create array of row triplets
    for(i = 1; i < t.rows.length; i+=3)
        x[(i-1)/3] = [ t.rows[i], t.rows[i+1], t.rows[i+2] ]
-   t.removeChild(tb) // clear the entire table
-   tb = document.createElement("tbody") // create it empty again
-   t.appendChild(tb) // put it back
+   t.removeChild(tbody) // remove table body
+   tbody = document.createElement("tbody") // create empty table body
+   t.appendChild(tbody) // add empty table body
    x.sort(compare) // sort the row triplets
-   for(i = 1; i < x.length; i+=1) {
-       tb.appendChild(x[i][0])
-       tb.appendChild(x[i][1])
-       tb.appendChild(x[i][2])
+   for(i = 0; i < x.length; i+=1) {
+       tbody.appendChild(x[i][0])
+       tbody.appendChild(x[i][1])
+       tbody.appendChild(x[i][2])
    }
    
    // update the sort

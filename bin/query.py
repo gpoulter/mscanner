@@ -2,9 +2,9 @@
 
 """Query the MEDLINE database with a set of positive articles
 
-Use as a module, or execute a Python snippet::
+Choose operation by executing a Python expression::
 
-    query.py 'query("pg04","pg07")'
+    python query.py 'query("pg04","pg07")'
 """
 
                                      
@@ -36,39 +36,39 @@ ds_map = {
 }
 """Mapping from dataset code to input file"""
 
+
 def query(*datasets):
     """Perform queries with per-feature pseudocount"""
     env = QueryEnvironment()
-    rc.limit = 1000 # don't need a lot of results
-    rc.threshold = 0
-    rc.pseudocount = None # per-feature pseudocounts
     for dataset in datasets:
         rc.dataset = dataset
         env.standardQuery(rc.corpora / ds_map[dataset])
-        
+
+
 def retrieval(*datasets):
     """Carry out retrieval tests (adds -retrieval to the data set)"""
     env = QueryEnvironment()
-    rc.limit = 1000
-    rc.pseudocount = None # per-feature pseudocounts
+    rc.limit = 1000 # Force 1000 results
     rc.retrieval_test_prop = 0.2
     for dataset in datasets:
         rc.dataset = dataset+"-retrieval"
         env.testRetrieval(rc.corpora / ds_map[dataset])
 
+
 def pharmdemo():
     """Special query which exports to the PharmDemo database for PharmGKB"""
     rc.dataset = "pharmdemo"
-    rc.threshold = 50.0
-    rc.limit = 10000
+    rc.threshold = 50.0 # Higher than usual threshold
+    rc.limit = 10000 # Want lots of results
     env = QueryEnvironment()
-    input = rc.corpora / "pharmgkb-070205.txt"
+    #input = rc.corpora / "pharmgkb-070205.txt"
     input = rc.corpora / "genedrug-small.txt"
     env.getGDFilterResults(input, export_db=True)
-        
+
+
 if __name__ == "__main__":
     initLogger()
     if len(sys.argv) != 2:
-        print "Please give python expression"
+        print "Please provide a Python expression"
     else:
         eval(sys.argv[1])

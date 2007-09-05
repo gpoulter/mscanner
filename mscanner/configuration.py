@@ -171,7 +171,7 @@ rc.frequency_method = "getProbabilitiesBayes"
 ## Method name for calculating mask after scores (may be None)
 rc.post_masker = None
 
-#### Web-configurable parameters
+#### Defaults for descriptor parameters
 
 ## Name of dataset
 rc.dataset = "default"

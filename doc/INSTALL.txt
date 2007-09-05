@@ -5,7 +5,7 @@ MScanner: Retrieving Medline citations using examples
 =====================================================
 
 :Author: Graham Poulter
-                                
+                               
 
 MScanner takes a set Medline citations, and trains a
 classifier to search for citations similar to the set as a whole.

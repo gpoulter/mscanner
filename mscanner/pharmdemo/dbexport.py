@@ -86,8 +86,9 @@ class GeneDrugExport:
             # The '\n' is to put the abstract on its own line when
             # exporting as SQL text, as sometimes the whole query goes
             # over the Oracle sqplus 2499 character per line limit.
+            abstract = art.abstract[:2450] if art.abstract else None
             cur.execute("INSERT INTO cbs VALUES (?,?,\n?,\n?,?,?,?)",
-                        (str(art.pmid), art.title, art.abstract[:2450], 
+                        (str(art.pmid), art.title, abstract, 
                          " ".join(genelist), " ".join(druglist), None, None))
         con.commit()
     

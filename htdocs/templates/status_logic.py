@@ -11,6 +11,9 @@ from mscanner.configuration import rc
 
 
 StatusForm = forms.Form(
+    forms.Hidden(
+        "operation",
+        forms.Validator(lambda x: x == "delete","Invalid operation")),
     forms.Textbox(
         "dataset",
         query_logic.dataset_validator,
@@ -47,10 +50,12 @@ class StatusPage:
             # Offer a form for deleting outputs
             if "delcode" not in inputs:
                 inputs.delcode = ""
+            inputs.operation = "delete"
             sform = StatusForm(inputs)
-            if sform.valid:
-                page.inputs = sform
+            if sform.valid: 
                 page.target = sform.d.dataset
                 page.target_status, page.target_descriptor = \
                  helpers.get_task_status(page.target, page.current)
+                if page.current is None or page.current.dataset != inputs.dataset:
+                    page.inputs = sform
         print page

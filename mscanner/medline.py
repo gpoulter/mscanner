@@ -124,8 +124,10 @@ class MedlineCache:
     def putArticles(self, articles, dbenv):
         """Store Articles and feature lists in the databases
         
-        @note: Databases are opened and closed inside each call, allowing the
-        user to Ctrl-C between files without corrupting the database.
+        @note: Databases are opened and closed inside each call, so that the
+        user can Ctrl-C during the timed delay between files without corrupting
+        the database.  Using transactions has too much overhead in time,
+        and space used by the log files.
         
         @param articles: Iterator over Article objects
         

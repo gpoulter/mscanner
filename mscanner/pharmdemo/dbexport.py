@@ -3,6 +3,7 @@
 @var schema: Oracle SQL table schema of the pharmdemo database
 """
 
+from __future__ import with_statement
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
@@ -16,6 +17,8 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
+
+from contextlib import closing
 
 class GeneDrugExport:
     """Exports database of gene-drug interactions 
@@ -52,12 +55,11 @@ class GeneDrugExport:
         
         @param fname: Path to output file."""
         import codecs
-        f = codecs.open(fname, "wb", "utf-8")
-        f.write("PMID,GENE,DRUG\n")
-        for (gene,drug),pmids in self.gdcounts.iteritems():
-            for pmid in pmids:
-                f.write("%s,%s,%s\n" % (pmid, gene, drug))
-        f.close()
+        with codecs.open(fname, "wb", "utf-8") as f:
+            f.write("PMID,GENE,DRUG\n")
+            for (gene,drug),pmids in self.gdcounts.iteritems():
+                for pmid in pmids:
+                    f.write("%s,%s,%s\n" % (pmid, gene, drug))
     
     def exportDatabase(self, con):
         """Export articles to a database connection
@@ -65,33 +67,42 @@ class GeneDrugExport:
         @param con: Connection to destination database. Database should 
         be empty before calling this function."""
         cur = con.cursor()
-        # Create tables
-        cur.executescript(schema)
+        cur.executescript(schema) # Create tables 
         # Insert gene-drug associations
         for dg_id, (gd,pmids) in enumerate(self.gdcounts.iteritems()):
-            cur.execute('INSERT INTO genedrug(id,gene,drug,numarticles) VALUES (?,?,?,?)',
+            # INSERT INTO genedrug(id,gene,drug,numarticles) 
+            cur.execute("INSERT INTO genedrug VALUES (?,?,?,?)",
                         (dg_id, gd[0], gd[1], len(pmids)))
-            cur.executemany('INSERT INTO dg_pmids(pmid,text,dg_id) VALUES (?,?,?)',
+            # INSERT INTO dg_pmids(pmid,text,dg_id) 
+            cur.executemany("INSERT INTO dg_pmids VALUES (?,?,?)",
                             ((str(pmid), None, dg_id) for pmid in pmids))
-        # Insert articles
+        # Insert citations
         for art in self.gdarticles:
             genelist = set()
             for genes in art.genedrug.values():
                 genelist.update(genes)
             druglist = art.genedrug.keys()
-            cur.execute('INSERT INTO cbs(pmid,title,abs,genes,drugs,coes,evid_loc) VALUES (?,?,?,?,?,?,?)',
-                        (str(art.pmid), art.title, art.abstract, 
+            # INSERT INTO cbs(pmid,title,abs,genes,drugs,coes,evid_loc) 
+            # The '\n' is to put the abstract on its own line when
+            # exporting as SQL text, as sometimes the whole query goes
+            # over the Oracle sqplus 2499 character per line limit.
+            cur.execute("INSERT INTO cbs VALUES (?,?,\n?,\n?,?,?,?)",
+                        (str(art.pmid), art.title, art.abstract[:2450], 
                          " ".join(genelist), " ".join(druglist), None, None))
         con.commit()
     
     def exportText(self, outfile):
-        """Export articles to SQL text"""
-        
+        """Export to text file"""
         class TextOutput:
+            """'Connection' that just writes SQL to file
+            Oracle single quotes go around string data.            
+            """
             def __init__(self, outfile):
                 import codecs
                 self.out = codecs.open(outfile, "wb", "utf-8")
             def commit(self):
+                self.out.flush()
+            def close(self):
                 self.out.close()
             def cursor(self):
                 return self
@@ -103,38 +114,55 @@ class GeneDrugExport:
                 for i,s in enumerate(sub):
                     if s is None:
                         sub[i] = "NULL"
+                    elif isinstance(s, int):
+                        sub[i] = str(s)
                     elif isinstance(s, str):
-                        sub[i] = '"' + str(s) + '"'
-                self.executescript(sql % tuple(sub))
+                        sub[i] = "'" + str(s).replace("'","''") + "'"
+                self.out.write(sql % tuple(sub))
             def executemany(self, sql, subs):
                 for sub in subs:
                     self.execute(sql, sub)
-        self.exportDatabase(TextOutput(outfile))
+        with closing(TextOutput(outfile)) as con:
+            self.exportDatabase(con)
     
     def exportSQLite(self, outfile):
-        """Export article results to an SQLite database
+        """Export to an SQLite database
     
         @param outfile: Path of SQLite database write to."""
         from pysqlite2 import dbapi2 as sqlite
         if outfile.isfile():
             outfile.remove()
-        con = sqlite.connect(outfile)
-        self.exportDatabase(con)
-        con.close()
+        with closing(sqlite.connect(outfile)) as con:
+            self.exportDatabase(con)
     
     def exportOracleCon(self, conpath):
-        """Export article results to an Oracle database.
+        """Export to an Oracle database.
     
         @param conpath: user/password@host connection string for the database"""
         import DCOracle2
-        con = DCOracle2.connect(conpath)
-        self.exportDatabase(cont)
-        con.close()
-
+        with closing(DCOracle2.connect(conpath)) as con:
+            self.exportDatabase(cont)
+            
 schema="""
--- lists articles, providing categories of evidence (COE) information
--- as well as unprocessed lists of genes and drugs present in the abstract
-
+drop table dg_pmids;
+drop table cbs;
+drop table dg_pmid_coes;
+drop table genedrug;
+-- Gene-drug pairs, and number of articles containing both in their abstract.
+create table genedrug (
+  id number(10,0) primary key, 
+  gene varchar2(100), 
+  drug varchar2(100),
+  numarticles number(10,0) 
+);
+-- PMIDs associated with the gene-drug pairs from the previous table.
+create table dg_pmids (
+  pmid varchar2(15),
+  text clob,
+  dg_id integer,
+  foreign key (dg_id) references genedrug(id)
+);
+-- Articles, Category of Evidence, lists of genes and drugs in the abstract
 create table cbs (
   pmid varchar2(20) primary key,
   title varchar2(2000),
@@ -144,31 +172,9 @@ create table cbs (
   coes varchar2(50),
   evid_loc varchar2(50)
 );
-
--- contains gene-drug pairs, and the number of articles containing
--- both in their abstract.
-
-create table genedrug (
-  id number(10,0) primary key, 
-  gene varchar2(100), 
-  drug varchar2(100),
-  numarticles number(10,0) 
-);
-
--- lists PMIDs associated with the gene-drug pairs from the
--- previous table.
-
-create table dg_pmids (
-  pmid varchar2(15),
-  text clob,
-  dg_id integer,
-  foreign key (dg_id) references genedrug(id)
-);
-
--- lists category of evidence associated with each article
-
+-- Category of evidence associated with each article
 create table dg_pmid_coes (
-  pmid varchar2(15),
+  pmid varchar2(15) primary key,
   coe varchar2(3)
 );
 """

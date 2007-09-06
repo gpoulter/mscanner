@@ -93,12 +93,13 @@ form#query {
     width: 100%; }
 form#query table {
     width: 100%; }
-form#query th {
-    width: 10em; }
+form#query tbody th {
+    width: 10em; 
+    text-align: left; }
 form#query td.value {
     background-color: #EEEEEE; /* gray */ }
 form#query td.help {
-    width: 5em;
+    width: 3em;
     text-align: right;
     background-color: #EEEEFF; /* pale yellow */ }
 form#query tr.help div {

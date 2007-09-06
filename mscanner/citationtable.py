@@ -128,7 +128,7 @@ def maketable(startrank, citations):
         td.text = "+" if art.abstract else " "
         # Title
         td = SubElement(tr, "td")
-        td.text = art.title.encode("utf-8")
+        td.text = art.title
         # ISSN
         td = SubElement(tr, "td")
         a = SubElement(td, "a")
@@ -142,15 +142,16 @@ def maketable(startrank, citations):
         td.text = " "
         if art.authors:
             for initials, lastname in art.authors:
-                if initials: td.text += initials.encode("utf8") + " "
-                if lastname: td.text += lastname.encode("utf8") + ", "
+                if initials: td.text += initials + " "
+                if lastname: td.text += lastname + ", "
         # Expanded Abstract
         tr = SubElement(tbody, "tr", {"class":"abstract"})
         td = SubElement(tr, "td", {"colspan":str(ncols)})
         td.text = " "
         if art.abstract:                        
-            td.text = art.abstract.encode("utf8")
+            td.text = art.abstract
     import cStringIO
     s = cStringIO.StringIO()
-    ElementTree(table).write(s)
+    # Tell silly etree to use UTF-8 and not "us-ascii" for output
+    ElementTree(table).write(s, "utf-8") 
     return s.getvalue()

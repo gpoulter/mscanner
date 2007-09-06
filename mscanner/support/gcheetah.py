@@ -93,7 +93,7 @@ class TemplateMapper:
 
 
     def __getattr__(self, name):
-        """Attribute access creates a callable template object"""
+        """Attribute access to mapper creates a callable template object"""
         # Instantiate using self.root / name
         if self.module is None:
             return self.CallableTemplate(

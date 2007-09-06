@@ -184,7 +184,7 @@ rc.nfolds = 10
 ## 0<Alpha<1.  Alpha=0.5 maximises standard F-Measure.
 rc.alpha = 0.5
 ## Number of negatives to use
-rc.numnegs = 500000
+rc.numnegs = 100000
 ## Number of citations per output file
 rc.citations_per_file = 250
 

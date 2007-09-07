@@ -32,18 +32,25 @@ from mscanner.validation import Validator, PerformanceStats
 class ValidationEnvironment(object):
     """Manages cross-validation based analyses.
     
-    @ivar featmap: Mapping feature ID <-> feature string, from L{__init__}
-    @ivar featdb: Mapping doc ID -> list of feature IDs, from L{__init__}
-    @ivar postfilter: Membership test for classifying things as positive, from L{__init__}
+    @group From constructor: featmap,featdb
+    
+    @ivar featmap: Mapping feature ID <-> feature string
+    @ivar featdb: Mapping doc ID -> list of feature IDs
 
-    @ivar positives: IDs of positive articles, from L{loadInputs}
-    @ivar negatives: IDs of negative articles, from L{loadInputs}
+    @group From loadInputs: positives,negatives
+
+    @ivar positives: IDs of positive articles
+    @ivar negatives: IDs of negative articles
     
-    @ivar pscores: Scores of positive articles, from L{standardValidation}
-    @ivar nscores: Scores of negative articles, from L{standardValidation}
+    @group From getResults or loadResults: pscores,nscores
     
-    @ivar featinfo: FeatureInfo instance for calculating feature score, from L{writeReport}
-    @ivar performance: Performance statistics based on article scores, from L{writeReport}
+    @ivar pscores: Scores of positive articles
+    @ivar nscores: Scores of negative articles
+    
+    @group From writeReport: featinfo,performance
+    
+    @ivar featinfo: FeatureInfo instance for calculating feature score
+    @ivar performance: Performance statistics based on article scores
     """
     
     def __init__(self):
@@ -51,7 +58,6 @@ class ValidationEnvironment(object):
         log.info("Loading article databases")
         self.featdb = FeatureDatabase(rc.featuredb, 'r')
         self.featmap = FeatureMapping(rc.featuremap)
-        self.postFilterFunction = None
         
     @property
     def article_list(self):
@@ -163,10 +169,6 @@ class ValidationEnvironment(object):
         while busy with validation are slow."""
         s = self
         log.info("Performing cross-validation for for %s", rc.dataset)
-        # Set up a postfilter (like geneDrugFilter) if necessary
-        s.postfilter = None
-        if s.postFilterFunction:
-            s.postfilter = s.postFilterFunction()
         self.validator = Validator(
             featdb = dict((k,s.featdb[k]) for k in 
                           chain(s.positives,s.negatives)),
@@ -175,35 +177,9 @@ class ValidationEnvironment(object):
             negatives = s.negatives,
             nfolds = rc.nfolds,
             alpha = rc.alpha,
-            postfilter = s.postfilter,
             )
         self.pscores, self.nscores = self.validator.validate()
         
-    @preserve_cwd
-    def geneDrugFilter(self):
-        """Create a membership test for gene-drug association.
-        
-        To use the filter, assign this method to self.postFilterFunction
-        
-        @return: Set of PubMed IDs which have gene-drug co-occurrences.
-        """
-        from mscanner.pharmdemo.dbexport import (writeGeneDrugCountsCSV, 
-                                                 countGeneDrug)
-        from mscanner.pharmdemo.genedrug import getGeneDrugFilter
-        log.info("Getting gene-drug associations") 
-        os.chdir(rc.valid_report_dir)
-        pos_arts = scorefile.getArticles(rc.articledb, self.positives)
-        neg_arts = scorefile.getArticles(rc.articledb, self.negatives)
-        gdfilter = getGeneDrugFilter(rc.genedrug, rc.drugtable, rc.gapscore)
-        postfilter = set()
-        for art in chain(pos_arts, neg_arts):
-            gdresult = gdfilter(art)
-            art.genedrug = gdresult
-            if len(gdresult) > 0:
-                postfilter.add(art.pmid)
-        return postfilter
-        #writeGeneDrugCountsCSV(countGeneDrug(pos_arts))
-
     @preserve_cwd
     def writeReport(self):
         """Write an HTML validation report. 

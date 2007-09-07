@@ -6,11 +6,9 @@ import unittest
 
 def suite():
     modules = [
-        "test_dbexport",
         "test_dbshelve",
         "test_featuredb",
         "test_featuremap",
-        "test_genedrug",
         "test_medline",
         "test_scoring",
         "test_scorefile",

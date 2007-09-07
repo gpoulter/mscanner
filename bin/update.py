@@ -3,7 +3,7 @@
 """Update the MScanner database with new articles
 
 Usage::
-    update.py [somepickle]
+    python update.py [somepickle]
 
 Without no arguments, parses .xml[.gz] files in configured Medline path and add
 Article objects to the database.

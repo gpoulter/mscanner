@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""Query the MEDLINE database with a set of positive articles
+"""Performs queries using the datasets from the MScanner paper
 
 Choose operation by executing a Python expression::
 
@@ -53,17 +53,6 @@ def retrieval(*datasets):
     for dataset in datasets:
         rc.dataset = dataset+"-retrieval"
         env.testRetrieval(rc.corpora / ds_map[dataset])
-
-
-def pharmdemo():
-    """Special query which exports to the PharmDemo database for PharmGKB"""
-    rc.dataset = "pharmdemo"
-    rc.threshold = 20.0 # Higher than usual threshold
-    rc.limit = 10000 # Want lots of results
-    env = QueryEnvironment()
-    #input = rc.corpora / "pharmgkb-070205.txt"
-    input = rc.corpora / "genedrug-small.txt"
-    env.getGDFilterResults(input, export_db=True)
 
 
 if __name__ == "__main__":

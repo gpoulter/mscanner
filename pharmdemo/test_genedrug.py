@@ -15,7 +15,7 @@ import tempfile
 import unittest
 
 from mscanner.article import Article
-from mscanner.pharmdemo import genedrug
+from pharmdemo import genedrug
 
 pp = pprint.PrettyPrinter()
 
@@ -143,7 +143,7 @@ class GapScoreTests(unittest.TestCase):
         self.filter = genedrug.GeneDrugLister({}, self.genefinder)
 
     def tearDown(self):
-        self.genefinder.__del__()
+        self.genefinder.close()
         self.fn.remove()
 
     def test_listGenes(self):

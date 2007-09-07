@@ -16,7 +16,6 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
-from itertools import chain
 import logging as log
 import numpy as nx
 import os
@@ -138,35 +137,6 @@ class QueryEnvironment:
         self.writeReport()
         rc.timestamp = None # reset for next run
         log.info("FINISHING QUERY %s", rc.dataset)
-
-
-    def getGDFilterResults(self, pmids_path, export_db=False):
-        """Filter L{results} and L{inputs} for those gene-drug co-occurrences
-        
-        @param export_db: If True, export associations for PharmDemo
-        
-        @return: Set of articles with gene-drug associations.
-        """
-        self.input_pmids = set(scorefile.readPMIDs(pmids_path, include=self.featdb))
-        self.featinfo = self.getFeatureInfo()
-        self.getResults()
-        log.debug("Gene-drug associations on results")
-        from mscanner.pharmdemo.genedrug import getGeneDrugFilter
-        gdfilter = getGeneDrugFilter(rc.genedrug_db, rc.drugtable, rc.gapscore_db)
-        gdarticles = []
-        for score, pmid in chain(self.results, self.inputs):
-            a = self.artdb[str(pmid)]
-            a.genedrug = gdfilter(a)
-            if len(a.genedrug) > 0:
-                gdarticles.append(a)
-        gdfilter.close()
-        if export_db == True:
-            log.debug("Exporting database")
-            from mscanner.pharmdemo.dbexport import GeneDrugExport
-            gdexport = GeneDrugExport(gdarticles)
-            gdexport.writeGeneDrugCountsCSV(rc.genedrug_csv)
-            gdexport.exportText(rc.genedrug_sql)
-        return gdarticles
 
 
     @preserve_cwd

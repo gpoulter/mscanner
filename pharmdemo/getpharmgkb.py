@@ -18,7 +18,7 @@ it under the Do Whatever You Want Public License. Terms and conditions:
 
 import sys
 
-def main(outfile):
+def getpharmgkb(outfile):
     import os
     import SOAPpy
     search_code = 9
@@ -36,4 +36,4 @@ def main(outfile):
         f.close()
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    getpharmgkb(sys.argv[1])

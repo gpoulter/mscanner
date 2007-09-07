@@ -47,8 +47,6 @@ class Validator:
     
     @ivar alpha: For statistics via L{getPerformance}
     
-    @ivar postfilter: Check membership of this as well as score threshold
-    
     @group From validate: pscores,nscores
     
     @ivar pscores: Scores of positive articles after validation
@@ -62,9 +60,7 @@ class Validator:
         positives,
         negatives,
         nfolds = 10,
-        alpha = 0.5,
-        postfilter = None,
-        ):
+        alpha = 0.5):
         """Constructor parameters set corresponding instance attributes."""
         pscores = None
         nscores = None

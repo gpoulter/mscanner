@@ -36,6 +36,21 @@ from mscanner import validenv
 from pharmdemo import genedrug
 from pharmdemo import dbexport
 
+
+### GENE-DRUG CONFIGURATION
+rc.genedrug = lambda: rc.working / "genedrug"
+## Path to GAPScore results db
+rc.gapscore_db = lambda: rc.genedrug / "gapscore.db"
+## Path to gene-drug co-occurrence cache
+rc.genedrug_db = lambda: rc.genedrug / "genedrug.db"
+## Path to drug table
+rc.drugtable = lambda: rc.genedrug / "drugtable.txt"
+## Path to CSV table of co-occurrences
+rc.genedrug_csv = lambda: rc.genedrug / "pharmdemo.csv"
+## Path to SQL table of co-occurrences
+rc.genedrug_sql = lambda: rc.genedrug / "pharmdemo.sql"
+
+
 class PharmdemoQuery(queryenv.QueryEnvironment):
 
     def getGDFilterResults(self, pmids_path, export_db=False):

@@ -138,6 +138,7 @@ descriptor_keys = dict(
     numnegs=int,
     operation=str,
     threshold=float,
+    starttime=float,
     timestamp=float,)
 
 

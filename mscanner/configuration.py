@@ -74,20 +74,8 @@ rc.web_report_dir = lambda: rc.htdocs / "static" / "output"
 rc.cscore_path = lambda: rc.sources / "mscanner" / "cscore" / "cscore"
 ## Path to the descriptor queue
 rc.queue_path = lambda: rc.working / "queue"
-
-
-### GENE-DRUG DETECTION
-rc.genedrug = lambda: rc.working / "genedrug"
-## Path to GAPScore results db
-rc.gapscore_db = lambda: rc.genedrug / "gapscore.db"
-## Path to gene-drug co-occurrence cache
-rc.genedrug_db = lambda: rc.genedrug / "genedrug.db"
-## Path to drug table
-rc.drugtable = lambda: rc.genedrug / "drugtable.txt"
-## Path to CSV table of co-occurrences
-rc.genedrug_csv = lambda: rc.genedrug / "pharmdemo.csv"
-## Path to SQL table of co-occurrences
-rc.genedrug_sql = lambda: rc.genedrug / "pharmdemo.sql"
+## Path to descriptor of the current task
+rc.queue_current = lambda: rc.queue_path / "current"
 
 ### ALL OUTPUTS
 ## Name of index file

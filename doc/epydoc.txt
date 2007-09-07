@@ -1,7 +1,7 @@
 [epydoc]
 modules: bin/, mscanner/, utils/, htdocs/
 output: html
-target: doc/html/
+target: doc/api/
 docformat: epytext
 css: white
 name: MScanner

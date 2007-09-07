@@ -239,7 +239,7 @@ def RetrievalTest():
     and PubMed compare at retrieving the remaining 80%.
     """
     logging.info("Plotting Retrieval curve for PG07")
-    pgdir = source_dir / "070626 Retrieval a_i 0.2 5k" / "pg07-retrieval"
+    pgdir = source_dir / "Retrieval" / "070626 Retrieval a_i 0.2 5k" / "pg07-retrieval"
     # Retrieval vs rank for MScanner
     mscanner_c = array([int(x) for x in (pgdir/"retrieval_stats.txt").lines()])
     # Gold standard citations for PG07

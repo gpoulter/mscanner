@@ -115,10 +115,10 @@ class GeneDrugExport:
                 for i,s in enumerate(sub):
                     if s is None:
                         sub[i] = "NULL"
-                    elif isinstance(s, int):
+                    elif isinstance(s, basestring):
+                        sub[i] = "'" + s.replace("'","''") + "'"
+                    else:
                         sub[i] = str(s)
-                    elif isinstance(s, str):
-                        sub[i] = "'" + str(s).replace("'","''") + "'"
                 self.out.write(sql % tuple(sub))
             def executemany(self, sql, subs):
                 for sub in subs:

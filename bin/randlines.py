@@ -17,15 +17,12 @@ import random
 from path import path
 import sys
 
-def main():
-    infile = path(sys.argv[1])
+def main(infile, outfile, nlines):
     if not infile.isfile():
         raise ValueError("%s does not exist" % infile)
-    outfile = path(sys.argv[2])
     if outfile.isfile():
         raise ValueError("%s already exists!" % outfile)
-    nlines = int(path(sys.argv[3]))
     outfile.write_lines(random.sample(infile.lines(), nlines))
 
 if __name__ == "__main__":
-    main()
+    main(path(sys.argv[1]), path(sys.argv[2]), int(sys.argv[3]))

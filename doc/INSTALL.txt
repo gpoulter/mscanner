@@ -7,53 +7,174 @@ MScanner: Retrieving Medline citations using examples
 :Author: Graham Poulter
                                
 
-MScanner takes a set Medline citations, and trains a
-classifier to search for citations similar to the set as a whole.
+MScanner takes a set Medline citations, and trains a classifier to
+search for citations similar to the set as a whole.  
+
+This source code is provided for people who wish to use MScanner as
+a starting point for another Medline classifier, and those who
+wish to construct more advanced operations - such as using MScanner
+output as the input to a Natural Language Processing system.
+
+If you just wish to query with some of your own data, rather use the
+public service on the MScanner_ homepage.
+
+.. _MScanner: http://mscanner.stanford.edu
+
 
 Installation
 ============
 
-Unzip the program, which extracts to the subdirectory ``mscanner``,
-and install all the dependencies
+  * Unzip the source distribution into some directory ``INSTALL``
+    ``/opt/mscanner`` for example) on a Unix-like system.  See the
+    `Directory Layout`_.
 
-Dependencies
-============
+  * Add ``INSTALL/source`` to the ``PYTHONPATH`` environment variable.
 
-`Python <http://www.python.org>`_
- Python programming language (version 2.5)
+  * Go to ``INSTALL/source/mscanner/cscore`` and run GNU ``make`` to
+    compile the ``cscore.c`` program.
 
-`Numpy <http://numpy.scipy.org>`_
- Fast vector operations.
- 
-`path <http://www.jorendorff.com/articles/python/path/>`_
- Path manipulation.
+  * Install the Dependencies_ 
 
-`Cheetah <http://www.cheetahtemplate.org>`_
- Templating engine for generating HTML output.
+  * Set up the Configuration_
+  
+  * Place the input `Input Data`_ in the correct locations.
 
-`Gnuplot-py <http://gnuplot-py.sourceforge.net/>`_
- Plots the cross validation output graphs. Gnuplot-py requires
- `Gnuplot <http://www.gnuplot.info/>`_ to be installed. 
+  * Run the unit tests by going into ``INSTALL/source/tests`` and
+    running ``python __init__.py``
 
-`Epydoc <http://epydoc.sourceforge.net/>`_
- [optional] Generates API documentation for MScanner.
 
-`SciPy <http://www.scipy.org>`_
- [optional] For Kernel Density Estimation (KDE) in place of histograms.
+Directory Layout
+================
 
-`web.py <http://webpy.org>`_
- [optional] Framework needed to run the MScanner web interface.
-
+The default structure under the ``INSTALL`` directory is as follows::
+                                          
+     data/cache -- MScanner databases
+     data/corpora -- Input files
+     data/medline -- The downloaded Medline distribution
+     data/query -- Outputs for query-based operations
+     data/queue -- Web interface task queue
+     data/validation -- Outputs for validation-based operations
+     source/bin -- Executables (utilities and customised analyses)
+     source/doc -- INSTALL.txt
+     source/doc/api -- Generated API documentation in HTML
+     source/htdocs -- Web interface package
+     source/htdocs/static -- Static data available over the web
+     source/htdocs/static/output -- Web interface outputs
+     source/mscanner -- Core MScanner package
+     source/tests -- Unit tests for the MScanner package
+    
 
 Input Data
 ==========
 
-You will need to obtain the following data:
+MScanner requires the following data as input:
 
-Medline
- A directory of xml.gz files for Medline citation records.
- Medline can be obtained by signing and faxing a memorandum of
- understanding with the NLM and downloading via FTP.
+Medline_
+ After signing a memorandum of understanding with the National Library
+ of Medicine, Medline can be downloaded via FTP.  The FTP distribution
+ is a directory of .xml.gz files.  MScanner looks for it in
+ ``INSTALL/data/medline`` (set by the ``rc.medline`` parameter)
 
-A list of PubMed IDs
- A text file with one PubMed ID per line.
+Input PubMed IDs 
+ Text file with one PubMed ID per line.  Data sets should be placed in
+ ``INSTALL/data/corpora`` (set by the ``rc.corpora`` parameter)
+
+.. _Medline: http://www.nlm.nih.gov/bsd/licensee/2007_stats/baseline_doc.html
+
+
+Dependencies
+============
+
+Python_
+ The Python programming language (version 2.5)
+
+Numpy_
+ For vector operations.
+ 
+path_
+ For path operations.
+
+Cheetah_
+ Templating engine for generating HTML outputs.
+
+`Gnuplot-py`_
+ For plotting cross validation output graphs. Gnuplot-py requires
+ Gnuplot_ to be installed.
+
+`web.py`_
+ Python web application framework (for running the web interface).
+
+.. _Python: http://www.python.org
+.. _Numpy: http://numpy.scipy.org
+.. _path: http://www.jorendorff.com/articles/python/path
+.. _Cheetah: http://www.cheetahtemplate.org
+.. _Gnuplot-py: http://gnuplot-py.sourceforge.net/
+.. _Gnuplot: http://www.gnuplot.info/ 
+.. _web.py: http://webpy.org
+
+
+Starting the web Interface
+==========================
+
+The web interface requires `web.py`_ to be installed. It can be run
+under Apache as a CGI script, although web.py also has a built-in
+webserver.
+
+Start the queue process:
+
+  Execute ``INSTALL/source/htdocs/queue.py``.  This long-running
+  process which watches ``INSTALL/data/queue`` for descriptor files
+  deposited by the web interface, performs the requested
+  query/validation tasks, depositing the output in the static HTML
+  directory.
+
+Start the internal web server:
+
+  Execute ``INSALL/source/htdocs/controller.py``.  The web server will run on
+  ``http://localhost:8080``.  This validates input and places
+  descriptor files in the queue.
+
+To run under Apache:
+
+   Configure Apache to use ``controller.py`` as a CGI script.  Without
+   URL rewriting you will have to access pages as 
+   ``http://localhost/controller.py/form``.
+
+
+Re-generating API Documentation
+-------------------------------
+
+API documentation is linked from the MScanner_ home page.
+
+To re-generate the documentation, first install Epydoc_ , then navigate to
+the the ``INSTALL/source`` directory, and run::
+
+    epydoc.py --config=doc/epydoc.txt
+
+To convert ``source/doc/INSTALL.txt`` (which is written in the
+reStructuredText_ format) into ``INSTALL.html``, first install
+Docutils_, then navigate to ``INSTALL/source/doc`` and run::
+
+    rst2html.py INSTALL.txt > INSTALL.html
+
+.. _Epydoc: http://epydoc.sourceforge.net
+.. _reStructuredText: http://docutils.sourceforge.net/rst.html
+.. _Docutils: http://docutils.sourceforge.net
+  
+
+Configuration
+=============
+
+Default configuration is in
+``INSTALL/source/mscanner/configuration.py``, whih has descriptions of
+the MScanner rc-parameters.  The ``rc`` object holds all the global
+constants used by the MScanner library.
+
+Defaults can be overridden dynamically as follows::
+         
+   from mscanner.configuration import rc
+   rc.limit = 500 # At most 500 articles to be returned
+   from mscanner.queryenv import QueryEnvironment
+   env = QueryEnvironment()
+   env.standardQuery(rc.corpora / "my_data.txt")
+

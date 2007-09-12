@@ -18,19 +18,31 @@ from mscanner.article import Article
 from mscanner.featuremap import FeatureMapping
 from mscanner.support.utils import usetempfile
 
+def have_cscore2():
+    """Return true if we have ctypes library and the cscore2 DLL"""
+    try:
+        import ctypes
+    except ImportError:
+        return False
+    # What about cscore.so on Unix systems?
+    return path("cscore2.dll").exists()
+    
+
 class CScoreTests(unittest.TestCase):
     
     def test_ctypes(self):
+        if not have_cscore2(): return
         from ctypes import cdll, c_int, byref
-        import numpy as nx
         cscore = cdll.LoadLibrary(r"cscore2.dll")
         output = c_int()
         cscore.double_int(2, byref(output))
         self.assertEqual(output.value, 4)
+        import numpy as nx
         cscore.double_array.argtypes = [ c_int,
             nx.ctypeslib.ndpointer(dtype=nx.int32, ndim=1, flags='CONTIGUOUS') ]
         a = nx.array([1,2,3,4])
         cscore.double_array(len(a), a)
+
 
     @usetempfile
     def test_CScore(self, citefname):
@@ -48,21 +60,25 @@ class CScoreTests(unittest.TestCase):
         for pmid, feats in citations:
             fs.write(pmid, nx.array(feats, nx.uint16))
         fs.close()    
-        # Calculate the scores
+        # Calculate scores using Python and cscores
         out_cscore = list(iterCScores(
             rc.cscore_path, citefname, len(citations), featscores, 5, 3))
-        out_cscore2 = list(iterCScores2(
-            citefname, len(citations), featscores, 5, 3))
         out_old = list(iterScores(citations, featscores, 5))
-        # Compare the scores for equality
+        # Compare Python/cscore for equality
         scores_cscore = nx.array(sorted(score for score,pmid in out_cscore))
-        scores_cscore2 = nx.array(sorted(score for score,pmid in out_cscore2))
         scores_old = nx.array(sorted(score for score,pmid in out_old))
         print scores_old
         print scores_cscore
-        print scores_cscore2
         self.assert_(nx.allclose(scores_cscore, scores_old))
+        # Try to test the ctypes version: cscore2
+        if not have_cscore2(): return
+        out_cscore2 = list(iterCScores2(
+            citefname, len(citations), featscores, 5, 3))
+        scores_cscore2 = nx.array(sorted(score for score,pmid in out_cscore2))
+        print scores_cscore2
         self.assert_(nx.allclose(scores_cscore2, scores_old))
+
+
 
 class ScoringTests(unittest.TestCase):
     """Tests for scoring module functions"""
@@ -71,9 +87,11 @@ class ScoringTests(unittest.TestCase):
         self.prefix = path(tempfile.mkdtemp(prefix="scoring-"))
         print self.prefix
 
+
     def tearDown(self):
         self.prefix.rmtree(ignore_errors=True)
-        
+
+
     def test_FeatureInfo(self):
         pfreqs = nx.array([1,2,0])
         nfreqs = nx.array([2,1,0])
@@ -101,10 +119,13 @@ class ScoringTests(unittest.TestCase):
         self.assert_(nx.allclose(
             f.scores, nx.array([-0.27193372,  1.02132061,  0.0 ])))
 
+
     def test_countFeatures(self):
         featdb = {1:[1,2], 2:[2,3], 3:[3,4]}
         counts = scoring.countFeatures(5, featdb, [1,2,3])
         self.assert_(nx.all(counts == [0,1,2,2,1]))
+
+
 
 if __name__ == "__main__":
     unittest.main()

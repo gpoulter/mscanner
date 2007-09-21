@@ -180,19 +180,20 @@ class Query:
             rc.citations_per_file)
         
         # Write ALL output citations to a single HTML, and a zip file
-        outfname = self.outdir/rc.report_result_all
-        zipfname = str(outfname + ".zip")
-        citationtable.writecitations("output", outputs, outfname, len(outputs))
-        from zipfile import ZipFile, ZIP_DEFLATED
-        with closing(ZipFile(zipfname, "w", ZIP_DEFLATED)) as zf:
-            zf.write(str(outfname), str(outfname.basename()))
+        if len(outputs) > 0:
+            outfname = self.outdir/rc.report_result_all
+            zipfname = str(outfname + ".zip")
+            citationtable.writecitations("output", outputs, outfname, len(outputs))
+            from zipfile import ZipFile, ZIP_DEFLATED
+            with closing(ZipFile(zipfname, "w", ZIP_DEFLATED)) as zf:
+                zf.write(str(outfname), str(outfname.basename()))
         
         # Index.html
         log.debug("Writing index file")
         values = dict(
             stats = self.featinfo.stats,
             linkpath = rc.templates.relpath().replace('\\','/') if rc.link_headers else None,
-            lowest_score = self.results[-1][0],
+            lowest_score = self.results[-1][0] if len(self.results) else 0,
             num_results = len(self.results),
             best_tfidfs = self.featinfo.get_best_tfidfs(20),
             notfound_pmids = list(scorefile.read_pmids(self.outdir/rc.report_input_broken))

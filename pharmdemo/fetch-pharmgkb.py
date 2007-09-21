@@ -16,6 +16,7 @@ it under the Do Whatever You Want Public License. Terms and conditions:
    0. Do Whatever You Want
 """
 
+from __future__ import with_statement
 import sys
 
 def getpharmgkb(outfile):
@@ -27,13 +28,11 @@ def getpharmgkb(outfile):
     result = server.specialSearch(SOAPpy.intType(search_code))
     if len(result) == 0:
         raise RuntimeError("No results found!")
-    else:
-        print "# %d PharmGKB PMIDs, going to %s" % (len(result), outfile)
-        f = open(outfile,"w")
+    print "# %d PharmGKB PMIDs, going to %s" % (len(result), outfile)
+    with open(outfile,"w") as f:
         for r in result:
             print r[7]
             f.write(r[7]+"\n")
-        f.close()
 
 if __name__ == "__main__":
     getpharmgkb(sys.argv[1])

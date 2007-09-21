@@ -29,6 +29,7 @@ import xmlrpclib
 
 from mscanner.support import dbshelve
 
+
 def parseDrugs(text):
     """Return a drug dictionary from specially formatted table
 
@@ -73,6 +74,7 @@ def parseDrugs(text):
     return drugs
 
 
+
 class GeneFinder:
     """Perform gene-finding queries, with result caching.
     
@@ -108,6 +110,7 @@ class GeneFinder:
         else:
             raise ValueError("Cache is neither a filename nor dictionary")
 
+
     @staticmethod
     def HTTPProxiedXMLRPC(url, proxy):
         """Access an XMLRPC server from behind an HTTP proxy
@@ -129,16 +132,19 @@ class GeneFinder:
             def send_host(self, connection, host):
                 connection.putheader('Host', self.realhost)
         return xmlrpclib.ServerProxy(url,transport=ProxyTransport(proxy))
-    
+
+
     def close(self):
         """Close the underlying cache"""
         if hasattr(self,"cache") and hasattr(self.cache, "close"):
             self.cache.close()
             del self.cache
 
+
     def __call__(self,text):
         """Shortcut for calling L{findGenes}"""
         return self.findGenes(text)
+
 
     def findGenes(self,text):
         """Finds genes in text, with caching of results
@@ -160,6 +166,8 @@ class GeneFinder:
                 result.append((name,start,end,score))
             self.cache[key] = result
         return result
+
+
 
 class GeneDrugLister:
     """Retrieve gene-drug associations for articles"""
@@ -187,15 +195,18 @@ class GeneDrugLister:
         self.geneFinder = geneFinder
         self.threshold = threshold
 
+
     def __call__(self,article):
         """Shortcut for calling L{listGeneDrugsArticle}"""
         return self.listGeneDrugsArticle(article)
-    
+
+
     def close(self):
         """Close the underlying gene-finding object"""
         if hasattr(self, "geneFinder") and hasattr(self.geneFinder, "close"):
             self.geneFinder.close()
             del self.geneFinder
+
 
     @staticmethod
     def stripDrugs(drugs):
@@ -227,6 +238,7 @@ class GeneDrugLister:
                 #print result[PKID].pattern
         return result
 
+
     def listDrugs(self, text):
         """Return locations of drugs in text
 
@@ -247,12 +259,13 @@ class GeneDrugLister:
                 result.append((text[m.start():m.end()], m.start(), m.end(), PKID))
         return result
 
+
     @staticmethod
     def listSentences(text):
         """Return sentences from text
-
+        
         @param text: Text to parse
-
+        
         @return: (sentence, start index, end index) for sentences in text.
         
         @rtype: C{[(str,int,int)]}
@@ -279,9 +292,10 @@ class GeneDrugLister:
             start_idx = end_idx
         return sentences
 
+
     def listGenes(self, text):
         """List genes found in text
-
+        
         @param text: Input text to search for genes.
         
         @return: (gene name, start index, end index) for each
@@ -296,15 +310,16 @@ class GeneDrugLister:
                 result.append((name, start, end))
         return result
 
+
     def listGeneDrugs(self, text):
         """Return gene-drug co-occurrences in a text
-
+        
         Search for genes in the text, and also split the text into sentences to
         search for drugs in each sentence. Then aggregate co-occurrences of
         genes and drugs in each sentence.
-
+        
         @param text: Text to parse, such as a title and abstract.
-
+        
         @return: Mapping from PharmGKB default drug name (obtained via
         PharmGKB ID) to genes co-occurring with the drug.
         
@@ -329,6 +344,7 @@ class GeneDrugLister:
                         result[dname] |= genes
         return result
 
+
     def listGeneDrugsArticle(self, article):
         """Get gene-drug co-occurrences for title/abstract of an article
         
@@ -336,7 +352,7 @@ class GeneDrugLister:
         
         @return: L{listGeneDrugs} result for concatenation of title
         and abstract.
-
+        
         @rtype: C{string:set(string)}
         """
         article.pmid = str(article.pmid)
@@ -349,14 +365,16 @@ class GeneDrugLister:
         result = self.listGeneDrugs(text)
         return result
 
+
+
 class GeneDrugListerCache:
 
     def __init__(self, cache, gdfilter):
         """Caching proxy for gene-drug filtering
-
+        
         @param cache: A mapping from PMIDs to a drug:[genes] mapping,
         or the path to a shelf for holding one.
-
+        
         @param gdfilter: Function which takes an article and returns a
         drug:[genes] mapping.
         """
@@ -368,6 +386,7 @@ class GeneDrugListerCache:
             raise ValueError("Cache is neither a filename nor dictionary")
         self.gdfilter=gdfilter
 
+
     def close(self):
         """Close the results cache and filter if possible"""
         if hasattr(self, "cache") and hasattr(self.cache, "close"):
@@ -376,10 +395,12 @@ class GeneDrugListerCache:
         if hasattr(self, "gdfilter") and hasattr(self.gdfilter, "close"):
             self.gdfilter.close()
             del self.gdfilter
-        
+
+
     def __call__(self, article):
         """Automatically calls L{listGeneDrugs}"""
         return self.listGeneDrugs(article)
+
 
     def listGeneDrugs(self, article):
         """Return gene-drug association for an article"""
@@ -391,6 +412,8 @@ class GeneDrugListerCache:
         log.debug("%s: %s", str(article.pmid), str(result))
         self.cache[key]=result
         return result
+
+
 
 def getGeneDrugFilter(gdcache, drugtable, gapscorecache):
     """Convenience function to create a fully caching gene-drug filter

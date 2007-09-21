@@ -20,6 +20,7 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 from contextlib import closing
 
+
 class GeneDrugExport:
     """Exports database of gene-drug interactions 
     
@@ -30,6 +31,7 @@ class GeneDrugExport:
     def __init__(self, gdarticles):
         self.gdarticles = gdarticles
         self.gdcounts = self.countGeneDrug(gdarticles)
+
 
     @staticmethod
     def countGeneDrug(articles):
@@ -49,7 +51,8 @@ class GeneDrugExport:
                         gdcounter[(gene,drug)] = []
                     gdcounter[(gene,drug)].append(art.pmid)
         return gdcounter
-    
+
+
     def writeGeneDrugCountsCSV(self, fname):
         """Write PubMed IDs gene-drug associations as CSV
         
@@ -60,10 +63,11 @@ class GeneDrugExport:
             for (gene,drug),pmids in self.gdcounts.iteritems():
                 for pmid in pmids:
                     f.write("%s,%s,%s\n" % (pmid, gene, drug))
-    
+
+
     def exportDatabase(self, con):
         """Export articles to a database connection
-    
+        
         @param con: Connection to destination database. Database should 
         be empty before calling this function."""
         cur = con.cursor()
@@ -91,7 +95,8 @@ class GeneDrugExport:
                         (str(art.pmid), art.title, abstract, 
                          " ".join(genelist), " ".join(druglist), None, None))
         con.commit()
-    
+
+
     def exportText(self, outfile):
         """Export to text file"""
         class TextOutput:
@@ -125,37 +130,34 @@ class GeneDrugExport:
                     self.execute(sql, sub)
         with closing(TextOutput(outfile)) as con:
             self.exportDatabase(con)
-    
+
+
     def exportSQLite(self, outfile):
         """Export to an SQLite database
-    
+        
         @param outfile: Path of SQLite database write to."""
         from pysqlite2 import dbapi2 as sqlite
         if outfile.isfile():
             outfile.remove()
         with closing(sqlite.connect(outfile)) as con:
             self.exportDatabase(con)
-    
+
+
     def exportOracleCon(self, conpath):
         """Export to an Oracle database.
-    
+        
         @param conpath: user/password@host connection string for the database"""
         import DCOracle2
         with closing(DCOracle2.connect(conpath)) as con:
             self.exportDatabase(cont)
-            
-schema="""
+
+
+
+schema = """
 drop table dg_pmids;
-drop table cbs;
-drop table dg_pmid_coes;
 drop table genedrug;
--- Gene-drug pairs, and number of articles containing both in their abstract.
-create table genedrug (
-  id number(10,0) primary key, 
-  gene varchar2(100), 
-  drug varchar2(100),
-  numarticles number(10,0) 
-);
+drop table cbs;
+
 -- PMIDs associated with the gene-drug pairs from the previous table.
 create table dg_pmids (
   pmid varchar2(15),
@@ -163,7 +165,16 @@ create table dg_pmids (
   dg_id integer,
   foreign key (dg_id) references genedrug(id)
 );
--- Articles, Category of Evidence, lists of genes and drugs in the abstract
+
+-- Gene-drug pairs, and number of articles containing both in their abstract.
+create table genedrug (
+  id number(10,0) primary key, 
+  gene varchar2(100), 
+  drug varchar2(100),
+  numarticles number(10,0) 
+);
+
+-- Articles, categories of evidence, and genes/drugs in the abstract
 create table cbs (
   pmid varchar2(20) primary key,
   title varchar2(2000),
@@ -173,9 +184,16 @@ create table cbs (
   coes varchar2(50),
   evid_loc varchar2(50)
 );
+"""
+"""Database schema prepended to the exports"""
+
+schema_unused = """
+drop table dg_pmid_coes;
+
 -- Category of evidence associated with each article
 create table dg_pmid_coes (
   pmid varchar2(15) primary key,
   coe varchar2(3)
 );
 """
+"""Unused portion of database schema - not doing category of evidence"""

@@ -25,16 +25,13 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
-from path import path
+from itertools import chain
 import logging as log
 import sys
 
 from mscanner.configuration import rc, initLogger
-from mscanner import scorefile
-from mscanner import queryenv
-from mscanner import validenv
-from pharmdemo import genedrug
-from pharmdemo import dbexport
+from mscanner import scorefile, queryenv, validenv
+from pharmdemo import genedrug, dbexport
 
 
 ### GENE-DRUG CONFIGURATION
@@ -51,41 +48,53 @@ rc.genedrug_csv = lambda: rc.genedrug / "pharmdemo.csv"
 rc.genedrug_sql = lambda: rc.genedrug / "pharmdemo.sql"
 
 
-class PharmdemoQuery(queryenv.QueryEnvironment):
+class PharmdemoQuery(queryenv.Query):
 
-    def getGDFilterResults(self, pmids_path, export_db=False):
+    def genedrug_query(self, input, export_db=False):
         """Filter L{results} and L{inputs} for those gene-drug co-occurrences
         
-        @param pmids_path: Path to input PubMed IDs
+        @param filename: Path to input PubMed IDs
         
         @param export_db: If True, export associations for PharmDemo
         
         @return: Set of articles with gene-drug associations.
         """
-        from itertools import chain
-        self.input_pmids = set(scorefile.readPMIDs(pmids_path, include=self.featdb))
-        self.featinfo = self.getFeatureInfo()
-        self.getResults()
+        import time
+        if rc.timestamp is None: 
+            rc.timestamp = time.time() 
+        self.load_pmids(input)
+        if len(self.pmids) == 0: return
+        self.make_featinfo()
+        self.make_results()
+        # Do associations
         log.debug("Gene-drug associations on results")
         gdfilter = genedrug.getGeneDrugFilter(
             rc.genedrug_db, rc.drugtable, rc.gapscore_db)
-        gdarticles = []
+        gd_articles = []
+        gd_pmids = set()
         for score, pmid in chain(self.results, self.inputs):
-            a = self.artdb[str(pmid)]
+            a = self.env.artdb[str(pmid)]
             a.genedrug = gdfilter(a)
             if len(a.genedrug) > 0:
-                gdarticles.append(a)
+                gd_articles.append(a)
+                gd_pmids.add(pmid)
         gdfilter.close()
+        self.inputs  = [ (s,p) for s,p in self.inputs  if p in gd_pmids ]
+        self.results = [ (s,p) for s,p in self.results if p in gd_pmids ]
         if export_db == True:
             log.debug("Exporting database")
-            gdexport = dbexport.GeneDrugExport(gdarticles)
+            gdexport = dbexport.GeneDrugExport(gd_articles)
             gdexport.writeGeneDrugCountsCSV(rc.genedrug_csv)
             gdexport.exportText(rc.genedrug_sql)
-        return gdarticles
+        # Finish by writing results
+        self.save_results()
+        self.write_report()
+        rc.timestamp = None # reset for next run
+        log.info("FINISHING QUERY %s", rc.dataset)
 
 
 
-class PharmdemoValidation(validenv.ValidationEnvironment):
+class PharmdemoValidation(validenv.Validation):
     
     def genedrug_filter(self):
         """Create a membership test for gene-drug association.
@@ -94,13 +103,11 @@ class PharmdemoValidation(validenv.ValidationEnvironment):
         
         @return: Set of PubMed IDs which have gene-drug co-occurrences.
         """
-        cwd = rc.valid_report_dir
-        from pharmdemo import genedrug 
         log.info("Getting gene-drug associations") 
-        pos_arts = scorefile.getArticles(cwd/rc.articledb, self.positives)
-        neg_arts = scorefile.getArticles(cwd/rc.articledb, self.negatives)
+        pos_arts = scorefile.load_articles(rc.articledb, self.positives)
+        neg_arts = scorefile.load_articles(rc.articledb, self.negatives)
         gdfilter = genedrug.getGeneDrugFilter(
-            cwd/rc.genedrug, cwd/rc.drugtable, cwd/rc.gapscore)
+            rc.genedrug, rc.drugtable, rc.gapscore)
         postfilter = set()
         for art in chain(pos_arts, neg_arts):
             gdresult = gdfilter(art)
@@ -111,21 +118,20 @@ class PharmdemoValidation(validenv.ValidationEnvironment):
 
 
 
-def pharmdemo(pmidfile):
+def pharmdemo():
     """Perform a standard query, then filter the Query which exports to the PharmDemo database for PharmGKB
     
     @param pmidfile: Name of the file under rc.corpora to use for input PubMed IDs
     """
+    filename = rc.corpora / "pharmgkb-070205.txt"
+    #filename = rc.corpora / "genedrug-small.txt"
     rc.dataset = "pharmdemo"
     rc.threshold = 20.0 # Higher than usual threshold
     rc.limit = 10000 # Want lots of results
-    env = PharmdemoQuery()
-    env.getGDFilterResults(rc.corpora / pmidfile, export_db=True)
+    op = PharmdemoQuery(rc.working / "query" / rc.dataset)
+    op.genedrug_query(filename, export_db=True)
 
 
 if __name__ == "__main__":
     initLogger()
-    if len(sys.argv) != 2:
-        print "Please provide a Python expression"
-    else:
-        eval(sys.argv[1])
+    pharmdemo()

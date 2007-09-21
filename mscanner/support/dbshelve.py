@@ -82,7 +82,7 @@ class Shelf(DictMixin):
         self.txn = txn
 
     def close(self):
-        """Close the underlying database.  Shelf must not be used after closing."""
+        """Close the underlying database.  Shelf must not be used afterwards."""
         self.db.close()
 
     def __del__(self):

@@ -13,17 +13,12 @@ from path import path
 import tempfile
 import unittest
 
-from mscanner.article import Article
-from mscanner.featuremap import FeatureMapping
-from mscanner.medline import parse, MedlineCache, FileTracker
-from mscanner.scorefile import getArticles
+from mscanner import article, featuremap, medline, scorefile
 from mscanner.support.utils import usetempfile
 
-class ArticleParserTests(unittest.TestCase):
-    """
-    Tests ArticleParser parse
-    Not Testing: parseFile
-    """
+
+class XMLParserTests(unittest.TestCase):
+
     def art_equal(self, a, b):
         self.assertEqual(a.pmid,b.pmid)
         self.assertEqual(a.title,b.title)
@@ -33,35 +28,35 @@ class ArticleParserTests(unittest.TestCase):
         self.assertEqual(a.year,b.year)
         self.assertEqual(a.meshterms,b.meshterms)
         self.assertEqual(a.authors,b.authors)
-    def test(self):
-        a1 = Article(1,"T1","A1","Mol. Biol. Rep.","0301-4851",1999,
+
+    def test_parse_medline_xml(self):
+        a1 = article.Article(1,"T1","A1","Mol. Biol. Rep.","0301-4851",1999,
                      [("T1",),("T2",),("T3","Q4","Q5"),("T6","Q7")],[("F1","L1"),("F2","L2")])
-        a2 = Article(2,"T2","A2",None,None,None,
+        a2 = article.Article(2,"T2","A2",None,None,None,
                      [("T1",),("T2",),("T3","Q4","Q5"),("T6","Q7")],[])
-        result = list(parse(StringIO(xmltext)))
+        result = list(medline.parse_medline_xml(StringIO(xmltext)))
         self.art_equal(result[0],a1)
         self.art_equal(result[1],a2)
 
 
+
 class MedlineCacheTests(unittest.TestCase):
-    """
-    Tests MedlineCache updateCacheFromDir (so also makeDBEnv, putArticleList)
-    """
-    def setUp( self ):
+
+    def setUp(self):
         self.home = path(tempfile.mkdtemp(prefix="medline-"))
 
-    def tearDown( self ):
+    def tearDown(self):
         self.home.rmtree(ignore_errors=True)
 
-    def test( self ):
+    def test_MedlineCache(self):
         h = self.home
         xml = h/"test.xml"
         pmids = h/"pmids.txt"
         artdb = h/"articles.db"
         featdb = h/"features.db"
         featstream = h/"features.stream"
-        fmap = FeatureMapping(h/"featuremap.txt")
-        m = MedlineCache(fmap,
+        fmap = featuremap.FeatureMapping(h/"featuremap.txt")
+        m = medline.MedlineCache(fmap,
                          h,
                          artdb,
                          featdb,
@@ -71,9 +66,9 @@ class MedlineCacheTests(unittest.TestCase):
                          h/"narticles.txt",
                          use_transactions=True,)
         xml.write_text(xmltext)
-        m.updateCacheFromDir(h, save_delay=1)
+        m.add_directory(h, save_delay=1)
         pmids.write_lines(["1", "2"])
-        a = getArticles(artdb, pmids)
+        a = scorefile.load_articles(artdb, pmids)
         print repr(a)
         self.assertEqual(a[0].pmid, 1)
         self.assertEqual(a[1].pmid, 2)
@@ -83,24 +78,29 @@ class MedlineCacheTests(unittest.TestCase):
                 (u'Q4', 'qual'), (u'Q5', 'qual'), (u'Q7', 'qual'), 
                 (u'T1', 'mesh'), (u'T2', 'mesh'), (u'T3', 'mesh'), (u'T6', 'mesh'), 
                 (u'0301-4851', 'issn')])
-        
+
+
+
 class FileTrackerTest(unittest.TestCase):
 
     @usetempfile
-    def testFileTracker(self, fn):
+    def test_FileTracker(self, fn):
         """For FileTracker.(__init__, add, toprocess, dump)"""
-        t = FileTracker(fn)
+        t = medline.FileTracker(fn)
         t.add(path("hack/a.xml"))
         t.add(path("cough/b.xml"))
         self.assertEqual(t.toprocess([path("foo/a.xml"), path("blah/c.xml")]), ["blah/c.xml"])
         t.dump()
         del t
-        t = FileTracker(fn)
+        t = medline.FileTracker(fn)
         self.assertEqual(t, set(['a.xml', 'b.xml']))
-            
+
+
+
 xmltext = u'''<?xml version="1.0"?>
-<!DOCTYPE MedlineCitationSet PUBLIC "-//NLM//DTD Medline Citation, 1st January 2007//EN"
-                                    "http://www.nlm.nih.gov/databases/dtd/nlmmedline_070101.dtd">
+<!DOCTYPE MedlineCitationSet PUBLIC 
+"-//NLM//DTD Medline Citation, 1st January 2007//EN"
+"http://www.nlm.nih.gov/databases/dtd/nlmmedline_070101.dtd">
 <MedlineCitationSet>
 
 <MedlineCitation Owner="NLM" Status="MEDLINE">

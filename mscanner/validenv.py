@@ -1,5 +1,6 @@
 """Environment for performing cross-validation-based analyses"""
 
+from __future__ import with_statement
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
@@ -17,63 +18,52 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 from itertools import chain, izip
 import logging as log
 import numpy as nx
-import os
 
 from mscanner.configuration import rc
-from mscanner.featuredb import FeatureDatabase
-from mscanner.featuremap import FeatureMapping
-from mscanner.plotting import Plotter
-from mscanner import scorefile
-from mscanner.scoring import FeatureInfo, countFeatures
-from mscanner.support.gcheetah import TemplateMapper, FileTransaction
-from mscanner.support.utils  import preserve_cwd, randomSample
-from mscanner.validation import Validator, PerformanceStats
+from mscanner.support import utils
+from mscanner import plotting, scorefile, scoring, validation
 
-class ValidationEnvironment(object):
+
+
+class Validation(object):
     """Manages cross-validation based analyses.
     
+    @ivar performance: L{PerformanceStats} instance, from L{standard_validation}
+    @ivar featinfo: L{FeatureInfo} for calculating feature score
+
     @group From constructor: featmap,featdb
     
     @ivar featmap: Mapping feature ID <-> feature string
     @ivar featdb: Mapping doc ID -> list of feature IDs
 
-    @group From loadInputs: positives,negatives
+    @group From load_inputs: positives,negatives
 
     @ivar positives: IDs of positive articles
     @ivar negatives: IDs of negative articles
     
-    @group From getResults or loadResults: pscores,nscores
+    @group From make_results or load_results: pscores,nscores
     
     @ivar pscores: Scores of positive articles
     @ivar nscores: Scores of negative articles
-    
-    @group From writeReport: featinfo,performance
-    
-    @ivar featinfo: FeatureInfo instance for calculating feature score
-    @ivar performance: Performance statistics based on article scores
+
     """
     
-    def __init__(self):
+    def __init__(self, outdir, env=None):
         """Constructor"""
-        log.info("Loading article databases")
-        self.featdb = FeatureDatabase(rc.featuredb, 'r')
-        self.featmap = FeatureMapping(rc.featuremap)
-        
-    @property
-    def article_list(self):
-        """Array with the PubMed IDs in the database 
-        
-        Array may be over 16 million members long, so the property and will
-        take a while to load the first time it is accessed."""
-        try:
-            return self._article_list
-        except AttributeError: 
-            log.info("Loading article list")
-            self._article_list = nx.array([int(x) for x in rc.articlelist.lines()])
-            return self._article_list
-        
-    @preserve_cwd
-    def standardValidation(self, pospath, negpath=None):
+        self.outdir = outdir
+        if not outdir.exists():
+            outdir.makedirs()
+            outdir.chmod(0777)
+        self.env = env if env else scorefile.Databases()
+        self.positives = None
+        self.pscores = None
+        self.negatives = None
+        self.nscores = None
+        self.performance = None
+        self.featinfo = None
+
+
+    def standard_validation(self, pospath, negpath=None):
         """Loads data, performs validation, and writes report
         
         @keyword pospath: Location of input positive PMIDs
@@ -83,172 +73,176 @@ class ValidationEnvironment(object):
         """
         # Construct report directory
         import time
-        if rc.timestamp is None: rc.timestamp = time.time() 
-        if not rc.valid_report_dir.exists():
-            rc.valid_report_dir.makedirs()
-            rc.valid_report_dir.chmod(0777)
+        if rc.timestamp is None: 
+            rc.timestamp = time.time() 
         # FeatureInfo for this validation run
-        self.featinfo = FeatureInfo(
-            featmap = self.featmap, 
+        self.featinfo = scoring.FeatureInfo(
+            featmap = self.env.featmap, 
             pseudocount = rc.pseudocount, 
-            mask = self.featmap.featureTypeMask(rc.exclude_types),
+            mask = self.env.featmap.get_type_mask(rc.exclude_types),
             frequency_method = rc.frequency_method,
             post_masker = rc.post_masker
         )
-        os.chdir(rc.valid_report_dir)
         # Load saved results
-        if rc.report_positives.isfile() and \
-           rc.report_negatives.isfile():
-            self.loadResults()
+        if (self.outdir/rc.report_positives).isfile() and \
+           (self.outdir/rc.report_negatives).isfile():
+            self.load_results()
         # Calculate new results
         else:
-            self.loadInputs(pospath, negpath)
-            if len(self.positives) == 0:
+            self.load_inputs(pospath, negpath)
+            if len(self.positives) == 0: 
                 scorefile.no_valid_pmids_page(
-                    list(scorefile.readPMIDs(rc.report_positives_broken)))
-                return # nothing to do
-            self.getResults()
-            self.saveResults()
-        self.writeReport()
+                    self.outdir/rc.report_index,
+                    list(scorefile.read_pmids(
+                        self.outdir/rc.report_positives_broken)))
+            self.make_results()
+            self.save_results()
+        self.performance = validation.PerformanceStats(
+            self.pscores, self.nscores, rc.alpha)
+        self.write_report()
         log.info("FINISHING VALIDATION %s", rc.dataset)
         rc.timestamp = None
 
-    def loadInputs(self, pospath, negpath=None):
-        """Load PubMed IDs from files.  
 
-        @keyword pospath: Location of input positive PMIDs
+    def load_inputs(self, pospath, negpath=None):
+        """Load L{positives} and L{negatives}
+
+        @param pospath: Location of input positive PMIDs (or a list of PMIDs
+        directly(
         
-        @keyword negpath: Location of input negative PMIDs (or None)"""
-        log.info("Reading positive PubMed IDs")
-        positives = list(scorefile.readPMIDs(pospath, include=self.featdb,
-                        broken_name=rc.report_positives_broken))
-        log.info("Reading negative PubMed IDs")
-        if negpath is None:
-            # No negatives provided
-            # Clamp number of negatives if more are requested than are available
-            maxnegs = len(self.article_list) - len(positives)
-            if rc.numnegs > maxnegs:
-                rc.numnegs = maxnegs
-            # Take an appropriately sized sample of random citations
-            self.negatives = randomSample(
-                rc.numnegs, self.article_list, set(positives))
+        @param negpath: Location of input negative PMIDs (or None, in which
+        case we randomly select C{rc.numnegs} records from the list of
+        citations in Medline)"""
+
+        log.info("Loading positive PubMed IDs")
+        if isinstance(input, list):
+            positives = pospath
+        elif isinstance(pospath, basestring):
+            log.info("Loading PubMed IDs from %s", pospath.basename())
+            positives = list(scorefile.read_pmids(
+                pospath, include=self.env.featdb,
+                broken_name=self.outdir/rc.report_positives_broken))
         else:
-            # Read existing list of negatives from disk
-            negatives = list(scorefile.readPMIDs(negpath, exclude=set(positives),
-                         exclude_name=rc.report_negatives_exclude))
-            self.negatives = nx.array(negatives, nx.int32)
+            positives = list(pospath)
         self.positives = nx.array(positives, nx.int32)
         
-    @preserve_cwd
-    def loadResults(self):
-        """Load previously saved results instead of re-validating
+        log.info("Loading negative PubMed IDs")
+        if negpath is None:
+            # Clamp number of negatives if more are requested than are available
+            maxnegs = len(self.env.article_list) - len(positives)
+            if rc.numnegs > maxnegs: rc.numnegs = maxnegs
+            # Take an appropriately sized sample of random citations
+            self.negatives = utils.make_random_subset(
+                rc.numnegs, self.env.article_list, set(positives))
+        else:
+            # Read existing list of negatives from disk
+            negatives = list(scorefile.read_pmids(negpath, exclude=set(positives),
+                         exclude_name=self.outdir/rc.report_negatives_exclude))
+            self.negatives = nx.array(negatives, nx.int32)
+
+
+    def load_results(self):
+        """Load L{positives}, L{pscores}, L{negatives}, L{nscores} using saved
+        result files, instead of redoing the validation.
         
-        Assumes PubMed IDs in the files are decreasing by score, as written by
-        L{scorefile.writePMIDScores}. """
+        This is useful when the style of the output page is updated. We assume
+        PubMed IDs in the files are decreasing by score, as written by
+        L{write_scores}. """
         log.info("Loading result scores for %s", rc.dataset)
-        os.chdir(rc.valid_report_dir)
-        pscores, positives = zip(*scorefile.readPMIDs(rc.report_positives, withscores=True))
-        nscores, negatives = zip(*scorefile.readPMIDs(rc.report_negatives, withscores=True))
+        pscores, positives = zip(*scorefile.read_pmids(
+            self.outdir/rc.report_positives, withscores=True))
+        nscores, negatives = zip(*scorefile.read_pmids(
+            self.outdir/rc.report_negatives, withscores=True))
         self.positives = nx.array(positives, nx.int32)
         self.pscores = nx.array(pscores, nx.float32)
         self.negatives = nx.array(negatives, nx.int32)
         self.nscores = nx.array(nscores, nx.float32)
 
-    @preserve_cwd
-    def saveResults(self):
+
+    def save_results(self):
         """Save validation scores to disk"""
         log.info("Saving result scores")
-        os.chdir(rc.valid_report_dir)
-        scorefile.writePMIDScores(rc.report_positives, izip(self.pscores, self.positives))
-        scorefile.writePMIDScores(rc.report_negatives, izip(self.nscores, self.negatives))
+        scorefile.write_scores(self.outdir/rc.report_positives, izip(self.pscores, self.positives))
+        scorefile.write_scores(self.outdir/rc.report_negatives, izip(self.nscores, self.negatives))
 
-    def getResults(self):
-        """Calculate scores on citations using cross validation
+
+    def make_results(self):
+        """Calculate L{pscores} and L{nscores} using cross validation
         
-        @note: All the self.featdb lookups are done beforehand, since lookups
-        while busy with validation are slow."""
-        s = self
+        All the L{featdb} lookups are done beforehand, as lookups while busy
+        with validation are slow."""
         log.info("Performing cross-validation for for %s", rc.dataset)
-        self.validator = Validator(
-            featdb = dict((k,s.featdb[k]) for k in 
-                          chain(s.positives,s.negatives)),
-            featinfo = s.featinfo,
-            positives = s.positives,
-            negatives = s.negatives,
+        self.validator = validation.Validator(
+            featdb = dict((k,self.env.featdb[k]) for k in 
+                          chain(self.positives,self.negatives)),
+            featinfo = self.featinfo,
+            positives = self.positives,
+            negatives = self.negatives,
             nfolds = rc.nfolds,
             alpha = rc.alpha,
             )
         self.pscores, self.nscores = self.validator.validate()
-        
-    @preserve_cwd
-    def writeReport(self):
+
+
+    def write_report(self):
         """Write an HTML validation report. 
         
-        @note: Only redraws figures for which output files do not already exist
-        (likewise for term scores, but the index is always re-written).
-        """
-        os.chdir(rc.valid_report_dir)
-        # Calculate feature score information
-        self.featinfo.updateFeatureScores(
-            pos_counts = countFeatures(
-                len(self.featmap), self.featdb, self.positives),
-            neg_counts = countFeatures(
-                len(self.featmap), self.featdb, self.negatives),
+        Only redraws figures for which output files do not already exist
+        (likewise for term scores, but the index is always re-written)."""
+        
+        # Re-calculate feature scores using all citations
+        self.featinfo.update_features(
+            pos_counts = scoring.count_features(
+                len(self.env.featmap), self.env.featdb, self.positives),
+            neg_counts = scoring.count_features(
+                len(self.env.featmap), self.env.featdb, self.negatives),
             pdocs = len(self.positives),
-            ndocs = len(self.negatives),
-            )
+            ndocs = len(self.negatives))
+
         # Write term scores
-        if not rc.report_term_scores.exists():
+        if not (self.outdir/rc.report_term_scores).exists():
             log.debug("Writing term scores")
             import codecs
-            f = codecs.open(rc.report_term_scores, "wb", "utf-8")
-            try:
-                self.featinfo.writeScoresCSV(f)
-            finally:
-                f.close()
-        self.performance = PerformanceStats(
-            self.pscores, self.nscores, rc.alpha)
-        p = self.performance
+            with codecs.open(self.outdir/rc.report_term_scores, "wb", "utf-8") as f:
+                self.featinfo.write_csv(f)
+        
         # Graph Plotting
-        plotter = Plotter()
-        overlap = None
-        ##overlap, iX, iY = plotter.plotArticleScoreDensity(
-        ##  rc.report_artscores_img, p.pscores, p.nscores, p.threshold)
-        ##plotter.plotFeatureScoreDensity(
-        ##  rc.report_featscores_img, elf.feature_info.scores)
+        p = self.performance
+        plotter = plotting.Plotter()
         log.debug("Drawing graphs")
+        ##overlap, iX, iY = plotter.plotArticleScoreDensity(
+        ##  self.outdir/rc.report_artscores_img, p.pscores, p.nscores, p.threshold)
         # Article Score Histogram
-        if not rc.report_artscores_img.exists():
+        if not (self.outdir/rc.report_artscores_img).exists():
             plotter.plotArticleScoreHistogram(
-            rc.report_artscores_img, p.pscores, p.nscores, p.threshold)
+            self.outdir/rc.report_artscores_img, p.pscores, p.nscores, p.threshold)
         # Feature Score Histogram
-        if not rc.report_featscores_img.exists():
+        if not (self.outdir/rc.report_featscores_img).exists():
             plotter.plotFeatureScoreHistogram(
-            rc.report_featscores_img, self.featinfo.scores)
+            self.outdir/rc.report_featscores_img, self.featinfo.scores)
         # ROC Curve
-        if not rc.report_roc_img.exists():
+        if not (self.outdir/rc.report_roc_img).exists():
             plotter.plotROC(
-            rc.report_roc_img, p.FPR, p.TPR, p.tuned.FPR)
+            self.outdir/rc.report_roc_img, p.FPR, p.TPR, p.tuned.FPR)
         # Precision-Recall Curve
-        if not rc.report_prcurve_img.exists():
+        if not (self.outdir/rc.report_prcurve_img).exists():
             plotter.plotPrecisionRecall(
-            rc.report_prcurve_img, p.TPR, p.PPV, p.tuned.TPR)
+            self.outdir/rc.report_prcurve_img, p.TPR, p.PPV, p.tuned.TPR)
         # F-Measure Curve
-        if not rc.report_fmeasure_img.exists():
+        if not (self.outdir/rc.report_fmeasure_img).exists():
             plotter.plotPrecisionRecallFmeasure(
-            rc.report_fmeasure_img, p.uscores, p.TPR, p.PPV, 
+            self.outdir/rc.report_fmeasure_img, p.uscores, p.TPR, p.PPV, 
             p.FM, p.FMa, p.threshold)
+        
         # Index file
         log.debug("Writing index.html")
-        mapper = TemplateMapper(root=rc.templates)
-        ft = FileTransaction(rc.report_index, "w")
-        tpl = mapper.validation(
+        values = dict(
             stats = self.featinfo.stats,
             linkpath = rc.templates.relpath().replace('\\','/') if rc.link_headers else None,
-            overlap = overlap,
             p = self.performance,
-            rc = rc,
-            timestamp = rc.timestamp,
-            notfound_pmids = list(scorefile.readPMIDs(rc.report_positives_broken)),
-        ).respond(ft)
-        ft.close()
+            notfound_pmids = list(scorefile.read_pmids(self.outdir/rc.report_positives_broken)),
+        )
+        from Cheetah.Template import Template
+        with utils.FileTransaction(self.outdir/rc.report_index, "w") as ft:
+            Template(file=str(rc.templates/"validation.tmpl"), 
+                     filter="Filter", searchList=values).respond(ft)

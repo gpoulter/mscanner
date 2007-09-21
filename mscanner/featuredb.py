@@ -53,14 +53,10 @@ class FeatureDatabase:
         self.db = db.DB(dbenv)
         self.db.open(filename, dbname, db.DB_HASH, flags, mode, txn=txn)
 
-    def __del__(self):
-        if hasattr(self,"db"):
-            self.close()
-
     def close(self):
         """Close the database.  Do not use this object after doing so"""
         self.db.close()
-        delattr(self, "db")
+    __del__ = close
 
     def getitem(self, key, txn=None):
         """Return an ndarray object of values for a given key"""

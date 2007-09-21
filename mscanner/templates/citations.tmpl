@@ -19,6 +19,8 @@ filename -- Name of the current file (e.g. 'results_03.html')
 filelist -- List of names of all HTML files in the set
 *#
 
+#from mscanner.configuration import rc
+
 <html lang="en">
 
 <head>
@@ -39,12 +41,12 @@ filelist -- List of names of all HTML files in the set
   <link rel="stylesheet" type="text/css" href="$linkpath/style.css">
   #else
   <script type="text/javascript">
-    #include raw $_inc("hider.js")
-    #include raw $_inc("fileutils.js")
-    #include raw $_inc("citations.js")
+    #include raw str($rc.templates/"hider.js")
+    #include raw str($rc.templates/"fileutils.js")
+    #include raw str($rc.templates/"citations.js")
   </script>
   <style type="text/css">
-    #include raw $_inc("style.css")
+    #include raw str($rc.templates/"style.css")
   </style>
   #end if
 

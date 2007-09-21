@@ -32,7 +32,7 @@ from mscanner.featuredb import FeatureDatabase, FeatureStream
 from mscanner.featuremap import FeatureMapping
 
 
-def parse(source):
+def parse_medline_xml(source):
     """Convert XML file into Article objects
     
     @param source: File-like object containing XML and MedlineCitation elements
@@ -104,8 +104,10 @@ class MedlineCache:
         self.recover = False
 
 
-    def makeDBEnv(self):
-        """Initialise database environment for transactions"""
+    def create_dbenv(self):
+        """Create a Berkeley DB environment for transactions
+        
+        @return: DBEnv instance"""
         if not self.db_env_home.isdir():
             self.db_env_home.mkdir()
         dbenv = db.DBEnv()
@@ -121,7 +123,7 @@ class MedlineCache:
         return dbenv
 
 
-    def putArticles(self, articles, dbenv):
+    def add_articles(self, articles, dbenv):
         """Store Articles and feature lists in the databases
         
         @note: Databases are opened and closed inside each call, so that the
@@ -166,7 +168,7 @@ class MedlineCache:
                 if art.issn:
                     issns = [art.issn]
                 # Add features to feature mapping
-                featids = self.featmap.addArticle(mesh=headings, qual=quals, issn=issns)
+                featids = self.featmap.add_article(mesh=headings, qual=quals, issn=issns)
                 meshfeatdb.setitem(art.pmid, featids, txn)
                 featstream.write(art.pmid, featids)
             artdb.close()
@@ -188,19 +190,19 @@ class MedlineCache:
             return len(pmidlist)
 
 
-    def updateCacheFromDir(self, medlinedir, save_delay=5):
+    def add_directory(self, medlinedir, save_delay=5):
         """Adds articles from XML files to MScanner's databases
         
         @param medlinedir: Path to a directory containing .xml.gz
         files
         
         @param save_delay: Pause this many seconds between calls to
-        L{putArticles}"""
+        L{add_articles}"""
         import time
         filenames = medlinedir.files("*.xml") + medlinedir.files("*.xml.gz")
         tracker = FileTracker(self.processed_path)
         toprocess = tracker.toprocess(filenames)
-        dbenv = self.makeDBEnv()
+        dbenv = self.create_dbenv()
         for idx, filename in enumerate(toprocess):
             log.info("Adding to cache: file %d out of %d (%s)", idx+1, len(toprocess), filename.name)
             for t in xrange(save_delay):
@@ -211,7 +213,7 @@ class MedlineCache:
                 infile = gzip.open(filename, 'r')
             else:
                 infile = open(filename, 'r')
-            numadded = self.putArticles(parse(infile), dbenv)
+            numadded = self.add_articles(parse_medline_xml(infile), dbenv)
             log.debug("Added %d articles", numadded)
             tracker.add(filename)
             tracker.dump()

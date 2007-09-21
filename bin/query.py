@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-"""Performs queries using the datasets from the MScanner paper
+"""Performs queries using datasets from the MScanner paper
 
-Choose operation by executing a Python expression::
+Example::
 
-    python query.py 'query("pg04","pg07")'
+    python query.py pg04 pg07
 """
 
                                      
@@ -21,43 +21,35 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
-from path import path
 import sys
 
 from mscanner.configuration import rc, initLogger
-from mscanner.queryenv import QueryEnvironment
-            
-ds_map = {
+from mscanner import scorefile, queryenv
+
+
+dataset_map = {
     "aids"        : "aids-bioethics-Oct06.txt",
     "pg04"        : "pharmgkb-2004.txt",
     "pg07"        : "pharmgkb-070205.txt",
     "radiology"   : "daniel-radiology.txt",
     "gdsmall"     : "genedrug-small.txt",
+    "invalid"     : "testing-invalid.txt",
 }
 """Mapping from dataset code to input file"""
 
 
-def query(*datasets):
-    """Perform queries with per-feature pseudocount"""
-    env = QueryEnvironment()
+def do_query(*datasets):
+    env = scorefile.Databases()
     for dataset in datasets:
+        if dataset not in dataset_map:
+            raise ValueError("Invalid Data Set %s" % dataset)
         rc.dataset = dataset
-        env.standardQuery(rc.corpora / ds_map[dataset])
-
-
-def retrieval(*datasets):
-    """Carry out retrieval tests (adds -retrieval to the data set)"""
-    env = QueryEnvironment()
-    rc.limit = 1000 # Force 1000 results
-    rc.retrieval_test_prop = 0.2
-    for dataset in datasets:
-        rc.dataset = dataset+"-retrieval"
-        env.testRetrieval(rc.corpora / ds_map[dataset])
+        query = queryenv.Query(rc.working / "query" / rc.dataset, env)
+        query.query(rc.corpora / dataset_map[dataset])
+    env.close()
 
 
 if __name__ == "__main__":
     initLogger()
-    if len(sys.argv) != 2:
-        print "Please provide a Python expression"
-    else:
-        eval(sys.argv[1])
+    rc.citations_per_file = 100
+    do_query(*sys.argv[1:])

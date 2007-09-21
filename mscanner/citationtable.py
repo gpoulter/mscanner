@@ -1,6 +1,6 @@
 """Module for writing HTML tables of citations"""
 
-from __future__ import division
+from __future__ import division, with_statement
 
                                      
 __author__ = "Graham Poulter"                                        
@@ -16,6 +16,13 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
+from mscanner.configuration import rc
+from mscanner.support import utils
+from Cheetah.Template import Template
+
+import warnings
+warnings.simplefilter("ignore", UserWarning)
+
 
 def writecitations(mode, citations, fname, perfile):
     """Writes a set of HTML files containing citation records
@@ -24,8 +31,8 @@ def writecitations(mode, citations, fname, perfile):
 
     @param citations: List of (score, Article) in descending order of score
 
-    @param fname: Base name (e.g. results.html --> results.html,
-    results_02.html, results_03.html etc.)
+    @param fname: Basic name for output files. ../results.html becomes
+    ../results.html, ../results_02.html, ../results_03.html etc.)
 
     @param perfile: Number of citations per file (the very last file 
     may however have up to 2*perfile-1 citations)
@@ -40,16 +47,15 @@ def writecitations(mode, citations, fname, perfile):
     fnames = [fname] + [ 
         path(fname.namebase + ("_%02d" % x) + fname.ext)
         for x in range(2, 1+len(starts)) ]
-    from mscanner.configuration import rc
-    from mscanner.support.gcheetah import TemplateMapper, FileTransaction
-    mapper = TemplateMapper(root=rc.templates, kwargs=dict(filter="Filter"))
+    values = dict()
+    page = Template(file=str(rc.templates/"citations.tmpl"), 
+                    filter="Filter", searchList=[values])
     for count, start in enumerate(starts):
         if count+1 < len(starts):
             towrite = citations[start:start+perfile]
         else:
             towrite = citations[start:]
-        ft = FileTransaction(fnames[count], "w")
-        mapper.citations(
+        values.update(dict(
             cite_table = maketable(start+1, towrite),
             dataset = rc.dataset,
             linkpath = rc.templates.relpath().replace('\\','/') if rc.link_headers else None,
@@ -57,8 +63,10 @@ def writecitations(mode, citations, fname, perfile):
             report_length = len(towrite),
             filelist = fnames,
             filename = fnames[count],
-            ).respond(ft)
-        ft.close()
+            ))
+        with utils.FileTransaction(fname.dirname()/fnames[count], "w") as ft:
+            page.respond(ft)
+        
 
 
 def maketable(startrank, citations):

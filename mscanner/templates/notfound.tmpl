@@ -1,5 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 
+#from mscanner.configuration import rc
+
 <html lang="en">
 
 <head>
@@ -11,7 +13,7 @@
   <link rel="stylesheet" type="text/css" href="$linkpath/style.css">
   #else
   <style type="text/css">
-    #include raw $_inc("style.css")
+    #include raw str($rc.templates/"style.css")
   </style>
   #end if
   
@@ -25,7 +27,7 @@
 
 <div id="body">
 <div class="narrow">
-#include $_inc("invalid.tmpl")
+#include str($rc.templates/"invalid.tmpl")
 </div><!--narrow-->
 </div><!--body-->
 

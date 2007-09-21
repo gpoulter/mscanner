@@ -25,7 +25,7 @@ from path import path
 import sys
 
 from mscanner.configuration import rc, initLogger
-from mscanner.validenv import ValidationEnvironment
+from mscanner import scorefile, validenv
 
 
 dataset_map = {
@@ -36,13 +36,12 @@ dataset_map = {
     "gdsmall-vs-sample": ("genedrug-small.txt", rc.articlelist) ,
     "test-vs-sample": ("testing-random.txt", rc.articlelist),
 }
-"""Mapping from data set name to pair of (positive,negative) paths
-to example PubMed IDs."""
+"""Map data set to pair of (positive,negative) paths for PubMed IDs."""
 
 
 def validate(*datasets):
     """Perform cross-validation analysis for the Mscanner publication"""
-    env = ValidationEnvironment()
+    env = scorefile.Databases()
     rc.numnegs = 1000
     for dataset in datasets:
         if dataset not in dataset_map:
@@ -53,7 +52,9 @@ def validate(*datasets):
             pos = rc.corpora / pos
         if neg is not None and not isinstance(neg, path):
             neg = rc.corpora / neg
-        env.standardValidation(pos, neg)
+        op = validenv.Validation(rc.working / "valid" / rc.dataset, env)
+        op.standard_validation(pos, neg)
+    env.close()
 
 
 def issn_validation():
@@ -61,12 +62,13 @@ def issn_validation():
     
     The results show that keeping the ISSN features produces better
     cross-validation performance."""
-    env = ValidationEnvironment()
     rc.exclude_types = ["issn"]
     rc.dataset = "aids-noissn"
     pos = "aids-bioethics-Oct06.txt"
     neg = "medline07-100k.txt"
-    env.standardValidation(rc.corpora / pos, rc.corpora / neg)
+    op = validenv.Validation(rc.working / "valid" / rc.dataset)
+    op.standard_validation(rc.corpora / pos, rc.corpora / neg)
+    op.env.close()
 
 
 def random_bimodality():
@@ -82,10 +84,11 @@ def random_bimodality():
     rc.dataset = "random10k-vs-100k-mod"
     rc.nfolds = 10
     rc.post_masker = "maskNonPositives"
-    env = ValidationEnvironment()
     pos = "random10k-06.txt"
     neg = "medline07-100k.txt"
-    env.standardValidation(rc.corpora / pos, rc.corpora / neg)
+    op = validenv.Validation(rc.working / "valid" / rc.dataset)
+    op.standard_validation(rc.corpora / pos, rc.corpora / neg)
+    op.env.close()
 
 
 if __name__ == "__main__":

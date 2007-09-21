@@ -4,8 +4,8 @@ Usage:
 
 cscore [citations] [numcites] [numfeats] [limit] < feature_scores > results
 
-  The [citations] file consists of [numcites] records with the following format
-  in C structure notation:
+  The [citations] file consists of [numcites] records, which are
+  binary records, which can be expressed as the structure::
 
   struct {
     unsigned int pmid; // PubMed ID of citation

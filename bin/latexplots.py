@@ -61,11 +61,13 @@ def smooth(x, y, xn=npoints):
     Y = interpolator(X)
     return X, Y
 
+
 def getFeatScores(indir, dataset):
     """Read feature scores for a dataset"""
     f = open(indir/dataset/mrc.report_term_scores, "r")
     f.readline()
     return array([float(s.split(",",1)[0]) for s in f])
+
 
 def getStats(indir, dataset, title, alpha=0.5):
     """Read statistics based on score data
@@ -76,13 +78,14 @@ def getStats(indir, dataset, title, alpha=0.5):
     @param alpha: What alpha to use when recalcing performance
     """
     logging.info("Reading dataset %s", dataset)
-    pscores = array([s[0] for s in scorefile.readPMIDs(
+    pscores = array([s[0] for s in scorefile.read_pmids(
         indir/dataset/mrc.report_positives, withscores=True)])
-    nscores = array([s[0] for s in scorefile.readPMIDs(
+    nscores = array([s[0] for s in scorefile.read_pmids(
         indir/dataset/mrc.report_negatives, withscores=True)])
     stats = validation.PerformanceStats(pscores, nscores, alpha)
     stats.title = title
     return stats
+
 
 def gplot(x,y,ls,label,pos=0.6,usemarker=False):
     """Wraps plot to add a single marker marker instead of lots"""
@@ -92,6 +95,7 @@ def gplot(x,y,ls,label,pos=0.6,usemarker=False):
         plot([x[i]],[y[i]],ls,label=label)
     else:
         plot(x,y,ls[0:2],label=label)
+
 
 def custom_show(fname, doshow=interactive, type="eps"):
     """Either shows an interactive plot, or writes to EPS followed by
@@ -108,6 +112,7 @@ def custom_show(fname, doshow=interactive, type="eps"):
             os.remove(fullname)
     finally:
         close()
+
 
 def plotArticleScoreDensity(fname, statlist):
     """Plots four score density plots in a grid
@@ -248,8 +253,7 @@ def RetrievalTest():
     pubmed = mscanner_dir/"support"/"PubMed Pharmacogenetics"
     pgx1 = [int(x) for x in (pubmed/"pgx1.txt").lines()]
     # Retrieval vs rank for PubMed
-    from mscanner.scoring import retrievalTest    
-    pgx1_c = retrievalTest(pgx1, set(pg_test))
+    pgx1_c = scoring.compare_results_to_standard(pgx1, set(pg_test))
     # Plot the graph
     ax1 = subplot(111)
     ##title("PG07 Retrieval Comparison")

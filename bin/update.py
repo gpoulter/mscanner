@@ -29,9 +29,7 @@ import cPickle
 import logging as log
 import sys
 
-from mscanner import article
-from mscanner import medline
-from mscanner import featuremap
+from mscanner import article, medline, featuremap
 from mscanner.configuration import rc, initLogger
 
 def main():
@@ -53,13 +51,13 @@ def main():
     if len(sys.argv) == 2:
         log.info("Loading articles from " + sys.argv[1])
         articles = cPickle.load(open(sys.argv[1], "rb"))
-        dbenv = medcache.makeDBEnv()
-        medcache.putArticleList(articles, dbenv)
+        dbenv = medcache.create_dbenv()
+        medcache.add_articles(articles, dbenv)
         dbenv.close()
     # Parse articles from XML directory
     else:
         log.info("Starting update from %s" % rc.medline.relpath())
-        medcache.updateCacheFromDir(rc.medline, rc.save_delay)
+        medcache.add_directory(rc.medline, rc.save_delay)
     log.debug("Cleaning up")
 
 if __name__ == "__main__":

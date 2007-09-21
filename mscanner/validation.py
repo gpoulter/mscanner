@@ -27,8 +27,8 @@ from itertools import chain, izip
 import logging as log
 import numpy as nx
 
-from mscanner.scoring import countFeatures
-from mscanner.support.utils import selfupdate
+from mscanner.scoring import count_features
+from mscanner.support.utils import update
 
 class Validator:
     """Cross-validated calculation of article scores.
@@ -64,7 +64,8 @@ class Validator:
         """Constructor parameters set corresponding instance attributes."""
         pscores = None
         nscores = None
-        selfupdate()
+        update(self, locals())
+
 
     def validate(self):
         """Carry out validation. 
@@ -73,19 +74,13 @@ class Validator:
 
         @return: L{pscores}, L{nscores}"""
         if self.nfolds:
-            return self.crossValidate()
+            return self.nfold_validate()
         else:
-            return self.leaveOutOneValidate()
-        
-    def getPerformance(self):
-        """Get the performance statistics for previous run
-        
-        @return: L{PerformanceStats} object
-        """
-        return PerformanceStats(self.pscores, self.nscores, self.alpha)
+            return self.leaveout_validate()
+
 
     @staticmethod
-    def partitionSizes(nitems, nparts):
+    def make_partitions(nitems, nparts):
         """Calculate partitions of input data for cross validation
         
         @param nitems: Number of items to partition
@@ -99,7 +94,8 @@ class Validator:
         starts[1:] = nx.cumsum(sizes[:-1])
         return starts, sizes
 
-    def crossValidate(self, randomise=True):
+
+    def nfold_validate(self, randomise=True):
         """Perform n-fold validation and return the raw performance measures
         
         @param randomise: Randomise validation splits (use False for debugging)
@@ -113,22 +109,22 @@ class Validator:
         if randomise:
             nx.random.shuffle(s.positives)
             nx.random.shuffle(s.negatives)
-        s.pstarts, s.psizes = s.partitionSizes(pdocs, s.nfolds)
-        s.nstarts, s.nsizes = s.partitionSizes(ndocs, s.nfolds)
+        s.pstarts, s.psizes = s.make_partitions(pdocs, s.nfolds)
+        s.nstarts, s.nsizes = s.make_partitions(ndocs, s.nfolds)
         s.pscores = nx.zeros(pdocs, nx.float32)
         s.nscores = nx.zeros(ndocs, nx.float32)
-        pcounts = countFeatures(len(s.featinfo), s.featdb, s.positives)
-        ncounts = countFeatures(len(s.featinfo), s.featdb, s.negatives)
+        pcounts = count_features(len(s.featinfo), s.featdb, s.positives)
+        ncounts = count_features(len(s.featinfo), s.featdb, s.negatives)
         for fold, (pstart,psize,nstart,nsize) in \
             enumerate(zip(s.pstarts,s.psizes,s.nstarts,s.nsizes)):
             log.debug("Fold %d: pstart = %d, psize = %s; nstart = %d, nsize = %d", 
                       fold, pstart, psize, nstart, nsize)
             # Get new feature scores
-            s.featinfo.updateFeatureScores(
-                pos_counts = pcounts - countFeatures(
+            s.featinfo.update_features(
+                pos_counts = pcounts - count_features(
                     len(s.featinfo), s.featdb, 
                     s.positives[pstart:pstart+psize]), 
-                neg_counts = ncounts - countFeatures(
+                neg_counts = ncounts - count_features(
                     len(s.featinfo), s.featdb, 
                     s.negatives[nstart:nstart+nsize]),
                 pdocs = pdocs-psize, 
@@ -142,8 +138,9 @@ class Validator:
                 nx.sum(termscores[s.featdb[d]]) for d in 
                 s.negatives[nstart:nstart+nsize]]
         return s.pscores, s.nscores
-    
-    def leaveOutOneValidate(self):
+
+
+    def leaveout_validate(self):
         """Carries out leave-out-one validation, returning the resulting scores.
         
         @note: Feature scores by Bayesian pseudocount only - no other methods.
@@ -153,8 +150,8 @@ class Validator:
         @return: L{pscores}, L{nscores}
         """
         # Set up base feature scores
-        pcounts = countFeatures(len(self.featinfo), self.featdb, self.positives)
-        ncounts = countFeatures(len(self.featinfo), self.featdb, self.negatives)
+        pcounts = count_features(len(self.featinfo), self.featdb, self.positives)
+        ncounts = count_features(len(self.featinfo), self.featdb, self.negatives)
         self.pscores = nx.zeros(len(self.positives), nx.float32)
         self.nscores = nx.zeros(len(self.negatives), nx.float32)
         pdocs = len(self.positives)
@@ -191,7 +188,7 @@ class PerformanceStats:
 
     @ivar nscores: Scores of negative articles in increasing order.
 
-    @ivar alpha: Balance of recall and precision in FM_alpha.
+    @ivar alpha: Balance of recall and precision in the F measure.
 
     @ivar P: Number of positive articles.
 
@@ -199,41 +196,46 @@ class PerformanceStats:
 
     @ivar A: Equal to L{P}+L{N}.
     
-    @group From getCountVectors: uscores, vlen, PE, NE, TP, FN, FP, TP
+    
+    @group From counts: uscores, vlen, PE, NE, TP, FN, FP, TP
     
     @ivar uscores: Unique scores in increasing order
 
-    @ivar vlen: Length of performance vectors (= length of uscores)
+    @ivar vlen: Length of performance vectors (= length of L{uscores})
 
-    @ivar PE: Number of positives with each score in uscores
+    @ivar PE: Number of positives with each score in L{uscores}
 
-    @ivar NE: Number of negatives with each score in uscores
+    @ivar NE: Number of negatives with each score in L{uscores}
     
     @ivar TP, FN, FP, TN: Vectors for confusion matrix at each distinct threshold
     
-    @group From getRatioVectors: TPR, FPR, PPV, FM, FMa
-        
+    
+    @group From make_ratio_vectors: TPR, FPR, PPV, FM, FMa
+    
     @ivar TPR, FPR, PPV, FM, FMa: Vectors of performance ratios at each
     distinct threshold.
     
-    @group From getCurveAreas: ROC_area,PR_area
-        
+    
+    @group From make_curve_areas: ROC_area,PR_area
+    
     @ivar ROC_area: Area under ROC curve.
     
     @ivar PR_area: Aread under precision-recall curve.
-        
+    
+    
     @ivar bep_index, breakeven: Breakeven point (where precision=recall), from
-    L{getBreakEvenPoint}.
-        
+    L{find_breakeven}.
+    
     @ivar threshold_index, threshold: Tuned threshold and its index, from
-    L{getMaxFMeasurePoint}.
+    L{maximise_fmeasure}.
     
-    @ivar tuned: Tuned performance statistics, from L{getTunedStatistics}.
+    @ivar tuned: Tuned performance statistics, from L{get_tunedstats}.
     
-    @ivar W, W_stderr: Better area under ROC curve, from L{getROCError}.
+    @ivar W, W_stderr: Better area under ROC curve, from L{make_roc_error}.
     
-    @ivar AvPrec: Averaged precision, from L{getAveragePrecision}.
+    @ivar AvPrec: Averaged precision, from L{averaged_precision}.
     """
+
 
     def __init__(self, pscores, nscores, alpha):
         """Constructor - parameters correspond to instance variables."""
@@ -246,17 +248,17 @@ class PerformanceStats:
         s.P = len(s.pscores)
         s.N = len(s.nscores)
         s.A = s.P + s.N
-        s.getCountVectors()
-        s.getRatioVectors(s.alpha)
-        s.getCurveAreas()
-        s.getROCError()
-        s.getAveragePrecision()
-        s.getMaxFMeasurePoint()
-        s.getBreakEvenPoint()
-        s.getTunedStatistics()
+        s.make_confusion_matrix()
+        s.make_ratio_vectors(s.alpha)
+        s.make_curve_areas()
+        s.make_roc_error()
+        s.averaged_precision()
+        s.maximise_fmeasure()
+        s.find_breakeven()
+        s.get_tunedstats()
 
 
-    def getCountVectors(self):
+    def make_confusion_matrix(self):
         """Calculates confusion matrix counts by iterating over pscores
         
         As a side effects, sets L{uscores}, L{vlen}, L{PE}, L{NE}
@@ -306,7 +308,7 @@ class PerformanceStats:
         return s.TP, s.TN, s.FP, s.FN
 
 
-    def getRatioVectors(self, alpha):
+    def make_ratio_vectors(self, alpha):
         """Calculate performance using vector algebra
 
         @param alpha: Weight of precision in calculating FMa
@@ -328,14 +330,14 @@ class PerformanceStats:
         return s.TPR, s.FPR, s.PPV, s.FM, s.FMa
 
 
-    def getCurveAreas(self):
+    def make_curve_areas(self):
         """Calculate areas under ROC and precision-recall curves
         
         Uses trapz(y, x). TPR is decreasing as threshold climbs, so vectors
         have to be reversed.
         
         This method underestimates ROC areas because boundary points (0,0) and
-        (1,1) usually are not present in the data. Better to use L{getROCError}
+        (1,1) usually are not present in the data. Better to use L{make_roc_error}
         which does not have that problem.
         
         @return: L{ROC_area}, L{PR_area}"""
@@ -346,7 +348,7 @@ class PerformanceStats:
         return s.ROC_area, s.PR_area
 
 
-    def iterMerge(self):
+    def mergescores(self):
         """Merged the contents of pscores and nscores in a single pass.
         
         Expects L{nscores} and L{pscores} in increasing order of score.        
@@ -368,15 +370,15 @@ class PerformanceStats:
                 n_idx -= 1
 
 
-    def getAveragePrecision(self):
-        """Average the precision-recall curve
+    def averaged_precision(self):
+        """Average the precision over each point of recall
         
         @return: L{AvPrec}, the precision averaged over each point where a
         relevant document is returned"""
         AvPrec = 0.0
         TP = 0
         FP = 0
-        for score, relevant in self.iterMerge():
+        for score, relevant in self.mergescores():
             if relevant:
                 TP += 1
                 AvPrec += TP/(TP+FP)
@@ -386,7 +388,7 @@ class PerformanceStats:
         return self.AvPrec
 
 
-    def getROCError(self):
+    def make_roc_error(self):
         """Area under ROC and its standard error
         
         Uses method of Hanley1982 to calculate standard error on the Wilcoxon
@@ -422,7 +424,7 @@ class PerformanceStats:
         return W, W_stderr
 
 
-    def getBreakEvenPoint(self):
+    def find_breakeven(self):
         """Calculate break-even, where precision equals recall.
         
         @return: L{bep_index}, L{breakeven} - index into pscores,
@@ -435,7 +437,7 @@ class PerformanceStats:
         return s.bep_index, s.breakeven
 
 
-    def getMaxFMeasurePoint(self):
+    def maximise_fmeasure(self):
         """Point of maximum F measure
         
         @return: L{threshold}, L{threshold_index}, the threshold and its index
@@ -447,7 +449,7 @@ class PerformanceStats:
         return s.threshold, s.threshold_index
 
 
-    def getTunedStatistics(self):
+    def get_tunedstats(self):
         """Performance at the point of maximum F measure
     
         @return: Storage object with these keys::

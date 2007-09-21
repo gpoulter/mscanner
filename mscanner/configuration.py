@@ -64,14 +64,12 @@ rc.emails_path = lambda: rc.cache / "emails.txt"
 rc.stylesheet = lambda: rc.templates / "style.css"
 ## Path to corpora directory
 rc.corpora = lambda: rc.working / "corpora"
-## Path to outputs directory for queries
-rc.query_report_dir = lambda: rc.working / "query" / rc.dataset
-## Path to outputs directory for validation
-rc.valid_report_dir = lambda: rc.working / "validation" / rc.dataset
-## Path to outputs directory for web submissions
-rc.web_report_dir = lambda: rc.htdocs / "static" / "output"
-## Path to the cscore program
+## Path to outputs directory
+rc.report_dir = lambda: rc.htdocs / "static" / "output"
+## Path to the cscore program (more portable)
 rc.cscore_path = lambda: rc.sources / "mscanner" / "cscore" / "cscore"
+## Path to the cscore shared library (faster)
+rc.cscore_dll = lambda: rc.sources  / "mscanner" / "cscore" / "cscore2.dll"
 ## Path to the descriptor queue
 rc.queue_path = lambda: rc.working / "queue"
 ## Path to descriptor of the current task
@@ -177,20 +175,20 @@ rc.numnegs = 100000
 rc.citations_per_file = 250
 
 ## Logging configuration
-def initLogger(console=True, logfile=None):
+def initLogger(console=True, logfile=True):
     """Set up logging to file or console
     
     @param console: If True, log to the console.
     
-    @param logfile: Defaults to rc.logfile. If False, do not log to file."""
+    @param logfile: If True, log to rc.logfile."""
     import logging
     # Root logger
     rootlog = logging.getLogger()
     rootlog.setLevel(0)
     format = logging.Formatter("%(asctime)-9s %(levelname)-8s %(message)s", "%H:%M:%S")
     # File logger
-    if logfile != False:
-        filelog = logging.FileHandler(logfile if logfile else rc.logfile, "w")
+    if logfile:
+        filelog = logging.FileHandler(rc.logfile, "w")
         filelog.setFormatter(format)
         rootlog.addHandler(filelog)
     # Console logger

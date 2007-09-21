@@ -1,13 +1,14 @@
 """Performs reading/writing of various file types
 
 Functions in this file:
-    - L{readPMIDs}: Get PMIDs (and scores too) from a text file
-    - L{writePMIDScores}: Write PMIDs and scores to a text file
-    - L{getArticles}: Retrieve Articles from a DB, caching results in a Pickle
-    - L{readDescriptor}: Read paramaters from a descriptor file
-    - L{writeDescriptor}: Write paramaters to a descriptor file
+    - L{read_pmids}: Get PMIDs (and scores too) from a text file
+    - L{write_scores}: Write PMIDs and scores to a text file
+    - L{load_articles}: Retrieve Articles from a DB, caching results in a Pickle
+    - L{read_descriptor}: Read paramaters from a descriptor file
+    - L{write_descriptor}: Write paramaters to a descriptor file
 """
 
+from __future__ import with_statement
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
@@ -22,15 +23,67 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
+import logging as log
 
-def readPMIDs(filename, include=None, exclude=None, 
-              broken_name=None, exclude_name=None, withscores=False):
+
+class Databases:
+    """Connections to the MScanner databases
+
+    The environment needs to be reloaded when databases are updated,
+    because L{featmap} and L{article_list} will have changed on disk.
+
+    @ivar featdb: Mapping from PubMed ID to list of features
+
+    @ivar featmap: L{FeatureMapping} between feature names and IDs
+    
+    @ivar artdb: Mmapping from PubMed ID to Article object
+    """
+    
+    def __init__(self):
+        """Constructor for setting attributes to be used by the remaining
+        methods."""
+        log.info("Loading article databases")
+        from mscanner.configuration import rc
+        from mscanner import featuredb, featuremap
+        from mscanner.support import dbshelve
+        self.featdb = featuredb.FeatureDatabase(rc.featuredb, 'r')
+        self.featmap = featuremap.FeatureMapping(rc.featuremap)
+        self.artdb = dbshelve.open(rc.articledb, 'r')
+
+
+    @property
+    def article_list(self):
+        """Array with the PubMed IDs in the database 
+        
+        Array may be over 16 million members long, so the property and will
+        take a while to load the first time it is accessed."""
+        try:
+            return self._article_list
+        except AttributeError: 
+            log.info("Loading article list")
+            self._article_list = nx.array([int(x) for x in rc.articlelist.lines()])
+            return self._article_list
+
+
+    def close(self):
+        """Closes the feature and article databases"""
+        self.featdb.close()
+        self.artdb.close()
+    __del__ = close
+
+
+
+def read_pmids(filename, 
+              include=None, 
+              exclude=None, 
+              broken_name=None, 
+              exclude_name=None, 
+              withscores=False):
     """Read PubMed IDs one per line from filename.
 
-    @param filename: Path to file with PubMed IDs. Format is one PubMed ID per
-    line, with optional score after the PubMed ID. File format ignores blank
-    lines and lines starting with #, and only parses the line up to the first
-    whitespace character.
+    @param filename: Path to file with PubMed IDs, formatted one PubMed ID per
+    line, with optional score after the PubMed ID. Blank lines and lines
+    starting with # are ignored, as is data after the PMID and score.
     
     @param include: Only return members of this set (other PubMed IDs are
     considered "broken").
@@ -43,41 +96,40 @@ def readPMIDs(filename, include=None, exclude=None,
     
     @param withscores: Also read the score after the PubMed ID on each line.
     
-    @returns: Iterator over PubMed ID, or (Score, PubMed ID) if withscores is
+    @returns: Iterator over PubMed ID, or (Score, PubMed ID) if withscores
     True. """
-    import logging as log
     count = 0
     broken = []
     excluded = []
-    for line in open(filename, "r"):
-        sline = line.strip()
-        if sline == "" or sline.startswith("#"):
-            continue
-        splits = sline.split()
-        pmid = int(splits[0])
-        if include is not None and pmid not in include:
-            broken.append(pmid)
-            continue
-        if exclude is not None and pmid in exclude:
-            excluded.append(pmid)
-            continue
-        if withscores:
-            yield float(splits[1]), pmid
-        else:
-            yield pmid
-        count += 1
-    if broken_name != None:
-        broken_file = open(broken_name, "w")
-        broken_file.write("\n".join(str(s) for s in broken))
-        broken_file.close()
-    if exclude_name != None:
-        exclude_file = open(exclude_name, "w")
-        exclude_file.write("\n".join(str(s) for s in excluded))
-        exclude_file.close()
+    if filename.isfile(): 
+        with open(filename, "r") as infile:
+            for line in infile:
+                sline = line.strip()
+                if sline == "" or sline.startswith("#"):
+                    continue
+                splits = sline.split()
+                pmid = int(splits[0])
+                if include is not None and pmid not in include:
+                    broken.append(pmid)
+                    continue
+                if exclude is not None and pmid in exclude:
+                    excluded.append(pmid)
+                    continue
+                if withscores:
+                    yield float(splits[1]), pmid
+                else:
+                    yield pmid
+                count += 1
+    if broken_name is not None:
+        with open(broken_name, "w") as f:
+            f.write("\n".join(str(s) for s in broken))
+    if exclude_name is not None:
+        with open(exclude_name, "w") as f:
+            f.write("\n".join(str(s) for s in excluded))
     log.debug("Got %d PubMed IDs from %s", count, filename.basename())
 
-
-def writePMIDScores(filename, pairs):
+    
+def write_scores(filename, pairs):
     """Write scores and PubMed IDs to file, in decreasing order of score.
     
     @param pairs: Iterable of (score, PMID)     
@@ -87,7 +139,7 @@ def writePMIDScores(filename, pairs):
         "%-10d %f" % (p,s) for s,p in sorted(pairs, reverse=True))
     
     
-def getArticles(article_db_path, pmidlist_path):
+def load_articles(article_db_path, pmidlist_path):
     """Retrieve Article objects given a file of PubMed IDs.
 
     @param article_db_path: Path to a berkeley DB mapping PubMed IDs
@@ -105,7 +157,7 @@ def getArticles(article_db_path, pmidlist_path):
     cache_path = path(pmidlist_path + ".pickle")
     if cache_path.isfile():
         return cPickle.load(open(cache_path, "rb"))
-    pmids = readPMIDs(pmidlist_path)
+    pmids = read_pmids(pmidlist_path)
     artdb = dbshelve.open(article_db_path, 'r')
     articles = [artdb[str(p)] for p in pmids]
     cPickle.dump(articles, open(cache_path,"wb"), protocol=2)
@@ -142,12 +194,12 @@ descriptor_keys = dict(
     timestamp=float,)
 
 
-def readDescriptor(fpath):
+def read_descriptor(fpath):
     """Reads a descriptor file, returning a dictionary of parameters.
 
     Each descriptor line is formatted as "#key = value". Reading stops at the
     first line that does not start with '#'. Valid keys are in
-    L{descriptor_keys}. The same file can be used with L{readPMIDs}, which
+    L{descriptor_keys}. The same file can be used with L{read_pmids}, which
     ignores lines beginning with '#'.
 
     @return: Storage object, with additional "_filename" key that contains
@@ -166,7 +218,7 @@ def readDescriptor(fpath):
     return result
 
 
-def writeDescriptor(fpath, pmids, params):
+def write_descriptor(fpath, pmids, params):
     """Write parameters and PubMed IDs to the descriptor file.
     
     @param fpath: File to write
@@ -186,19 +238,20 @@ def writeDescriptor(fpath, pmids, params):
     f.close()
 
 
-def no_valid_pmids_page(pmids):
-    """Print a page when no valid PMIDs were found
+def no_valid_pmids_page(filename, pmids):
+    """Print an error page when no valid PMIDs were found
     
-    The page includes a list of any submitted IDs and links to PubMed (
-    however, these IDs were not part of MScanner's database). """
+    @param filename: Path to output file
+    
+    @param pmids: List of any provided PMIDs (all invalid)
+    """
     import logging
-    from mscanner.support.gcheetah import TemplateMapper, FileTransaction
+    from Cheetah.Template import Template
+    from mscanner.support import utils
     from mscanner.configuration import rc
     logging.warning("No valid PubMed IDs were found!")
-    mapper = TemplateMapper(root=rc.templates, kwargs=dict(filter="Filter"))
-    ft = FileTransaction(rc.report_index, "w")
-    index = mapper.notfound(
-        rc = rc,
-        notfound_pmids = pmids).respond(ft)
-    ft.close()
-
+    with utils.FileTransaction(filename, "w") as ft:
+        page = Template(file=str(rc.templates/"notfound.tmpl"))
+        page.rc = rc
+        page.notfound_pmids = pmids
+        page.respond(ft)

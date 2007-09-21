@@ -1,12 +1,4 @@
-"""Handle Articles, processed files, features, feature occurrence counts
-
-Module contents:
-    - L{selfupdate}: Update instance from method args and locals
-    - L{update}: Update instance dictionary
-    - L{randomSample}: Choose random items from an array
-    - L{preserve_cwd}: Decorator to preserve working directory
-    - L{usetempfile}: Decorator to call method with a self-destructing temp file
-"""
+"""Miscellaneous utility functions and classes"""
 
                                      
 __author__ = "Graham Poulter"                                        
@@ -23,38 +15,10 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
-def selfupdate(onlyargs=False, exclude=[]):
-    """Call in any method to set instance attributes from local variables.
-    
-    @param onlyargs: If True, use only named arguments and not locals
-    
-    @param exclude: Names of other variables to exclude.
-
-    @note: First argument to the caller is taken to be the "self" to update
-    
-    @note: Equivalent to 'vars(self).update(vars()); del self.self'
-    """
-    import inspect
-    # Get caller frame (must be disposed of!)
-    cf = inspect.currentframe().f_back 
-    try:
-        # Instance is first argument to the caller
-        instance = cf.f_locals[cf.f_code.co_varnames[0]]
-        # Get names of variables to use
-        if onlyargs:
-            varnames = cf.f_code.co_varnames[1:cf.f_code.co_argcount]
-        else:
-            varnames = cf.f_code.co_varnames[1:]
-        # Update instance with those names
-        for var in varnames:
-            if var not in exclude:
-                setattr(instance, var, cf.f_locals[var])
-    finally:
-        del cf
-
-
 def update(instance, variables, exclude=['self']):
-    """Update instance attributes
+    """Update instance attributes from a dictionary
+    
+    For example, C{update(self, locals())}
     
     @param instance: Instance to update via setattr()
     @param variables: Dictionary of variables
@@ -65,12 +29,12 @@ def update(instance, variables, exclude=['self']):
             setattr(instance, k, v)
 
 
-def randomSample(k, pool, exclude):
+def make_random_subset(k, pool, exclude):
     """Choose a random subset of k articles from pool
 
-    This method is only suitable when pool is large (say, 15 million items),
-    can be scrambled, and you need to rule out certain items from being
-    selected.
+    This is suitable when pool is large (say, 16 million items), is allowed to
+    come out scrambled, and you need to exclude out certain items from
+    selection.
     
     @param k: Number of items to choose from pool
     @param pool: Array of items to choose from (will be scrambled!)
@@ -88,38 +52,20 @@ def randomSample(k, pool, exclude):
         choice = randint(0, dest) # 0 ... n-i-1 inclusive
         while pool[choice] in exclude:
             choice = randint(0, dest)
-        # Move the chosen item to the end, where so it will be
-        # part of the selected items in the next iteration
+        # Move the chosen item to the end, where so it will be part of the
+        # selected items in the next iteration. Note: this works using single
+        # items - it but would break with slices due to their being views into
+        # the vector.
         pool[dest], pool[choice] = pool[choice], pool[dest]
-        #orig_dest = pool[dest]
-        #pool[dest] = pool[choice]
-        #pool[choice] = orig_dest
     # Phantom iteration: selected are n-k ... n
     return nx.array(pool[n-k:])
 
 
-def preserve_cwd(f):
-    """Decorator to save working directory and restore it afterwards."""
-    def cwd_preserver(*a, **kw):
-        import os
-        try:
-            cwd = os.getcwd()
-            return f(*a, **kw)
-        finally:
-            os.chdir(cwd)
-    def decorator_update(dest, src):
-        dest.__dict__.update(src.__dict__)
-        dest.__doc__ = src.__doc__
-        dest.__name__ = src.__name__
-        ##dest.__undecorated__ = src # help epydoc someday
-    decorator_update(cwd_preserver, f)
-    return cwd_preserver
-
-
 def usetempfile(function):
-    """Unittest method decorator. Decorates methods of the form funcname(self,
-    filename) so that filename is replaced with a temporary file which is
-    deleted at the end of the call. """
+    """Decorator to call a method with a temporary file
+    
+    We create a temporary file, pass the file path to the decorated function,
+    and finally remove the file. This is useful for unit testing."""
     import tempfile
     from path import path
     def tempfile_wrapper(self):
@@ -130,3 +76,33 @@ def usetempfile(function):
             if fpath.isfile():
                 fpath.remove()
     return tempfile_wrapper
+
+
+class FileTransaction(file):
+    """Transaction for Cheetah templates to output direct-to-file.
+    
+    Cheetah defaults to DummyTransaction which creates a huge list and
+    joins them up to create a string.  This is way slower than writing to
+    file directly.
+    
+    Usage::
+        with FileTransaction("something.html","wb") as ft:
+            Template().respond(ft)
+    """
+    
+    def __init__(self, *args, **kw):
+        """Open the file, same parameters as for the builtin"""
+        file.__init__(self, *args, **kw)
+        self.response = self
+
+    def writeln(self):
+        """Write a line of output"""
+        self.write(txt)
+        self.write('\n')
+
+    def getvalue(self):
+        """Not implemented"""
+        return None
+
+    def __call__(self):
+        return self

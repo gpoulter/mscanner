@@ -13,7 +13,6 @@ def suite():
         "test_scoring",
         "test_scorefile",
         "test_storage",
-        "test_utils",
         "test_validation"
         ]
     del modules[4]

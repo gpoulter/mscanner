@@ -15,11 +15,10 @@ import unittest
 
 from mscanner.featuredb import FeatureDatabase, FeatureStream
 
+
 class FeatureDatabaseTests(unittest.TestCase):
-    """
-    Tests FeatureDatabase getitem, __iter__, iteritems, in, len
-    """
-    def test(self):
+    
+    def test_FeatureDatabase(self):
         d = FeatureDatabase()
         d.setitem(1, array([1,3],uint16)) #eliminate duplicate features
         d.setitem(2, array([2,3],uint16))
@@ -36,10 +35,10 @@ class FeatureDatabaseTests(unittest.TestCase):
         self.failIf(2 in d)
         self.assertRaises(ValueError, d.setitem, 4, array([3.3,4]))
 
+
+
 class FeatureStreamTests(unittest.TestCase):
-    """
-    Test FeatureStream
-    """
+
     def setUp(self):
         self.fn = path(tempfile.mktemp())
         
@@ -47,7 +46,7 @@ class FeatureStreamTests(unittest.TestCase):
         if self.fn.isfile():
             self.fn.remove()
         
-    def test(self):
+    def test_FeatureStream(self):
         f = open(self.fn, "ab")
         fs = FeatureStream(f)
         pmids = (12,34,56)
@@ -62,6 +61,7 @@ class FeatureStreamTests(unittest.TestCase):
         for a, ra in zip(feats, rfeats):
             self.assert_(all(a == ra))
         f.close()
+
 
 if __name__ == "__main__":
     unittest.main()

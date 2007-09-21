@@ -2,22 +2,15 @@
 
 #* Index to the query outputs
 
-linkpath -- Include JS and CSS remotely at this location
-
-rc -- RCStorage object with configuration parameters
-
-lowest_score -- Score of lowest-scoring article
-
-num_results -- Number of results
-
-timestamp -- time.time() for start of the operation
-
-best_tfidfs -- List of termid, tfidf, (term, termtype), score, pos, neg for
-               those terms with the highest TF.IDF scores.
-
-notfound_pmids -- List of PubMed IDs that were not found in the database
-(passed to invalid.tmpl)
+$linkpath -- Include JS and CSS remotely at this location
+$lowest_score -- Score of lowest-scoring article
+$num_results -- Number of results
+$best_tfidfs -- List of (termid, tfidf, (term, termtype), score, pos, neg) for
+    the highest TF.IDF scores.
+$notfound_pmids -- List of invalid PubMed IDs
 *#
+
+#from mscanner.configuration import rc
 
 <html lang="en">
 
@@ -31,10 +24,10 @@ notfound_pmids -- List of PubMed IDs that were not found in the database
   <link rel="stylesheet" type="text/css" href="$linkpath/style.css">
   #else
   <script type="text/javascript">
-    #include raw $_inc("hider.js")
+    #include raw str($rc.templates/"hider.js")
   </script>
   <style type="text/css">
-    #include raw $_inc("style.css")
+    #include raw str($rc.templates/"style.css")
   </style>
   #end if
   
@@ -135,15 +128,15 @@ notfound_pmids -- List of PubMed IDs that were not found in the database
   ranked by decreasing score (score is also listed).""")
 
   <tr>
-    <th>Task submitted at</th>
+    <th>Started at</th>
     #import time
-    <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($timestamp))</td>
+    <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($rc.timestamp))</td>
     $help("h_timestamp")
   </tr>
   $hr("h_timestamp", "When the data set was created")
 
   <tr>
-    <th>Output written at</th>
+    <th>Finished at</th>
     #import time
     <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime())</td>
     $help("h_written")
@@ -189,7 +182,7 @@ notfound_pmids -- List of PubMed IDs that were not found in the database
  </tbody>
  </table>
 
-  #include $_inc("features.tmpl")
+  #include str($rc.templates/"features.tmpl")
 
   #if $getVar("best_tfidfs", None)
   <h2>Features with high TF.IDF</h2>
@@ -225,7 +218,7 @@ notfound_pmids -- List of PubMed IDs that were not found in the database
   </table>
   #end if tfidf
   
-  #include $_inc("invalid.tmpl")
+  #include str($rc.templates/"invalid.tmpl")
   
 </div><!--narrow-->  
   

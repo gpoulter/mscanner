@@ -15,16 +15,14 @@ import unittest
 
 from mscanner.support import dbshelve
 
-class ShelfTests(unittest.TestCase):
-    """Test for Shelf class
-    
-    Tests __get__, len, keys, items, values, iterkeys, iteritems, itervalues, __getitem__, __delitem__
-    """
+
+class DbshelveTests(unittest.TestCase):
+    """Test for Shelf class"""
 
     def setUp(self):
         self.db = dbshelve.open(None)
 
-    def testMethods(self):
+    def test_dbshelve(self):
         d = self.db
         d["A"] = ("A",2)
         d["B"] = ("B",3)
@@ -41,9 +39,10 @@ class ShelfTests(unittest.TestCase):
         self.assertRaises(KeyError, d.__getitem__, "B")
         self.assertRaises(KeyError, d.__delitem__, "B")
 
-class ShelfTnxTests(ShelfTests):
-    """Test for Shelf class transactions
-    """
+
+
+class TransactionTests(DbshelveTests):
+    """Test using transactions with L{dbshelve}"""
 
     def setUp(self):
         self.envdir = path(tempfile.mkdtemp(prefix="dbshelve-"))
@@ -58,21 +57,21 @@ class ShelfTnxTests(ShelfTests):
         self.env.close()
         self.envdir.rmtree(ignore_errors=True)
 
-    def testMethods(self):
+    def test_dbshelve(self):
         # Test aborting
         self.txn = self.env.txn_begin()
         self.db.set_txn(self.txn)
-        ShelfTests.testMethods(self)
+        super(TransactionTests, self).test_dbshelve()
         self.txn.abort()
         self.assertEqual(len(self.db), 0)
         # Test committing
         self.txn = self.env.txn_begin()
         self.db.set_txn(self.txn)
-        ShelfTests.testMethods(self)
+        super(TransactionTests, self).test_dbshelve()
         self.txn.commit()
         self.assertEqual(len(self.db), 1)
         self.txn = None
-        
+
 
 if __name__ == "__main__":
     unittest.main()

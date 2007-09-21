@@ -13,75 +13,61 @@ from path import path
 import tempfile
 import unittest
 
-from mscanner import scoring
-from mscanner.article import Article
-from mscanner.featuremap import FeatureMapping
+from mscanner.configuration import rc
+from mscanner import cscore, featuredb, featuremap, scoring
 from mscanner.support.utils import usetempfile
 
-def have_cscore2():
-    """Return true if we have ctypes library and the cscore2 DLL"""
-    try:
-        import ctypes
-    except ImportError:
-        return False
-    # What about cscore.so on Unix systems?
-    return path("cscore2.dll").exists()
-    
 
-class CScoreTests(unittest.TestCase):
+class CScoreModuleTests(unittest.TestCase):
+    """Tests of the L{cscore} package"""
     
     def test_ctypes(self):
-        if not have_cscore2(): return
+        if cscore.score != cscore.cscore_dll: return
         from ctypes import cdll, c_int, byref
-        cscore = cdll.LoadLibrary(r"cscore2.dll")
+        lib = cdll.LoadLibrary(rc.cscore_dll)
         output = c_int()
-        cscore.double_int(2, byref(output))
+        lib.double_int(2, byref(output))
         self.assertEqual(output.value, 4)
-        import numpy as nx
-        cscore.double_array.argtypes = [ c_int,
+        lib.double_array.argtypes = [ c_int,
             nx.ctypeslib.ndpointer(dtype=nx.int32, ndim=1, flags='CONTIGUOUS') ]
         a = nx.array([1,2,3,4])
-        cscore.double_array(len(a), a)
+        b = nx.array([2,4,6,8])
+        lib.double_array(len(a), a)
+        self.assert_(nx.allclose(a, b))
 
 
     @usetempfile
-    def test_CScore(self, citefname):
+    def test_cscore(self, citefname):
         """Tests that the cscore program produces the same output as
         iterScores"""
-        import numpy as nx
-        from mscanner.configuration import rc
-        from mscanner.scoring import iterScores, iterCScores, iterCScores2
-        from mscanner.featuredb import FeatureStream
-        import struct
         featscores = nx.array([0.1, 5.0, 10.0, -5.0, -6.0])
         citations = [ (4, [4]), (4, [0,1,2]), (1,[0,2,3]), (2,[0,1]), (3,[1,2,3]) ]
         # Write citations to disk
-        fs = FeatureStream(open(citefname, "w"))
+        fs = featuredb.FeatureStream(open(citefname, "w"))
         for pmid, feats in citations:
             fs.write(pmid, nx.array(feats, nx.uint16))
         fs.close()    
         # Calculate scores using Python and cscores
-        out_cscore = list(iterCScores(
-            rc.cscore_path, citefname, len(citations), featscores, 5, 3))
-        out_old = list(iterScores(citations, featscores, 5))
+        out_pyscore = list(cscore.pyscore_adaptor(citefname, len(citations), featscores, 5, 3))
+        out_cscore_pipe = list(cscore.cscore_pipe(citefname, len(citations), featscores, 5, 3))
         # Compare Python/cscore for equality
-        scores_cscore = nx.array(sorted(score for score,pmid in out_cscore))
-        scores_old = nx.array(sorted(score for score,pmid in out_old))
-        print scores_old
-        print scores_cscore
-        self.assert_(nx.allclose(scores_cscore, scores_old))
+        scores_pipe = nx.array(sorted(score for score,pmid in out_cscore_pipe))
+        scores_py = nx.array(sorted(score for score,pmid in out_pyscore))
+        self.assert_(nx.allclose(scores_pipe, scores_py))
         # Try to test the ctypes version: cscore2
-        if not have_cscore2(): return
-        out_cscore2 = list(iterCScores2(
+        print scores_py
+        print scores_pipe
+        if cscore.score != cscore.cscore_dll: return
+        out_cscore_dll = list(cscore.cscore_dll(
             citefname, len(citations), featscores, 5, 3))
-        scores_cscore2 = nx.array(sorted(score for score,pmid in out_cscore2))
-        print scores_cscore2
-        self.assert_(nx.allclose(scores_cscore2, scores_old))
+        scores_dll = nx.array(sorted(score for score,pmid in out_cscore_dll))
+        self.assert_(nx.allclose(scores_dll, scores_py))
+        print scores_dll
 
 
 
-class ScoringTests(unittest.TestCase):
-    """Tests for scoring module functions"""
+class ScoringModuleTests(unittest.TestCase):
+    """Tests of the L{scoring} module@usetempfile"""
     
     def setUp(self):
         self.prefix = path(tempfile.mkdtemp(prefix="scoring-"))
@@ -97,7 +83,7 @@ class ScoringTests(unittest.TestCase):
         nfreqs = nx.array([2,1,0])
         pdocs = 2
         ndocs = 3
-        featmap = FeatureMapping()
+        featmap = featuremap.FeatureMapping()
         # With constant pseudocount
         f = scoring.FeatureInfo(featmap, pfreqs, nfreqs, pdocs, ndocs, 
                                 pseudocount=0.1)
@@ -120,9 +106,9 @@ class ScoringTests(unittest.TestCase):
             f.scores, nx.array([-0.27193372,  1.02132061,  0.0 ])))
 
 
-    def test_countFeatures(self):
+    def test_count_features(self):
         featdb = {1:[1,2], 2:[2,3], 3:[3,4]}
-        counts = scoring.countFeatures(5, featdb, [1,2,3])
+        counts = scoring.count_features(5, featdb, [1,2,3])
         self.assert_(nx.all(counts == [0,1,2,2,1]))
 
 

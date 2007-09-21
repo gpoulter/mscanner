@@ -21,8 +21,8 @@ import numpy as nx
 class FeatureMapping:
     """Persistent mapping between string features and feature IDs
 
-    Feature types used with L{__getitem__}, L{featureTypeMask} and
-    L{addArticle} are "mesh", "qual", "issn". A feature string could have more
+    Feature types used with L{__getitem__}, L{get_type_mask} and
+    L{add_article} are "mesh", "qual", "issn". A feature string could have more
     than one type.
     
     This is really a table with columns (id,type,name,count), and keys of id
@@ -101,7 +101,7 @@ class FeatureMapping:
         """Return number of distinct features"""
         return len(self.features)
 
-    def featureTypeMask(self, exclude_types):
+    def get_type_mask(self, exclude_types):
         """Get a mask for excluded features
 
         @param exclude_types: Types of features to exclude
@@ -117,7 +117,7 @@ class FeatureMapping:
                 exclude_feats[fid] = True
         return exclude_feats
 
-    def addArticle(self, **kwargs):
+    def add_article(self, **kwargs):
         """Add an article, given lists of features of different types.
         
         @note: Dynamically creates new features IDs and feature types as necessary.

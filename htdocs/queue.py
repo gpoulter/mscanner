@@ -6,25 +6,23 @@ Queueing program checks queue directory every second for new descriptor files,
 and starts a query or validation operation. When the operation completes, the
 descriptor file is moved to the output.
 
-Basic file format for query::
-
+Example descriptor file for query::
     #operation = query
     #dataset = Whatever
     #limit = 500
     #threshold = 10.3
-    #timestamp = 23424123.3
+    #submitted = 23424123.3
     804133
     3214241
     ...
     
-Basic file format for cross validation::
-
+Example descriptor file for validation::
     #operation = validate
     #dataset = Whatever
     #nfolds = 10
     #numnegs = 100000
     #alpha = 0.5
-    #timestamp = 23424123.3
+    #submitted = 23424123.3
     804133
     3214241
     ...
@@ -51,84 +49,237 @@ import sys
 import time
 
 from mscanner.configuration import rc, initLogger
-from mscanner import scorefile
-from mscanner import validenv
-from mscanner import queryenv
-
-rc.query_report_dir = lambda: rc.web_report_dir / rc.dataset
-rc.valid_report_dir = lambda: rc.web_report_dir / rc.dataset
+from mscanner import scorefile, validenv, queryenv
+from bin import update
 
 
-def delete_old_outputs():
-    """Find the oldest outputs in the web report directory and remove them"""
-    max_keep = 100 # Max number of outputs to keep
-    # Read outupt descriptors and sort by date
-    output = [] # List of (timestamp, path)
-    for fpath in rc.web_report_dir.dirs():
-        if (fpath / rc.report_index).exists():
-            descriptor = scorefile.readDescriptor(fpath / rc.report_descriptor)
-            output.append((descriptor.timestamp, fpath))
-    output.sort(reverse=True)
-    # If more than max_keep in the list, delete the oldest ones
-    for timestamp, outpath in output[max_keep:]:
-        try:
-            log.info("Cleaning out result %s", outpath.basename())
-            for fname in outpath.files():
-                fname.remove()
-            outpath.rmdir()
-        except OSError:
-            # Whoops - failed to delete an output
-            pass
+def parsebool(s):
+    """Handler for converting strings to booleans"""
+    if isinstance(s, basestring):
+        s = s.strip()
+        if s == "0" or s == "False":
+            return False
+        elif s == "1" or s == "True":
+            return True
+        else:
+            raise ValueError("Failed to parse boolean: %s" % s)
+    else:
+        return bool(s)
 
+
+descriptor_keys = dict(
+    alpha=float,
+    code=str,
+    dataset=str,
+    delcode=str,
+    hidden=parsebool,
+    limit=int,
+    nfolds=int,
+    numnegs=int,
+    operation=str,
+    threshold=float,
+    submitted=float,
+    timestamp=float,)
+
+
+def read_descriptor(fpath):
+    """Reads a descriptor file, returning a dictionary of parameters.
+
+    Each line is "#key = value". We stops at the first line that not starting
+    with '#'.  Valid keys are in L{descriptor_keys}. The same file can be used
+    with read_pmids, which will ignores the lines beginning with '#'.
+
+    @return: Storage object, with additional "_filename" containing fpath."""
+    from mscanner.support.storage import Storage
+    result = Storage()
+    f = open(fpath, "r")
+    line = f.readline()
+    while line.startswith("#"):
+        key, value = line[1:].split(" = ",1)
+        value = descriptor_keys[key](value.strip())
+        result[key] = value
+        line = f.readline()
+    result["_filename"] = fpath
+    f.close()
+    return result
+
+
+def write_descriptor(fpath, pmids, params):
+    """Write parameters and PubMed IDs to the descriptor file.
+    @param fpath: File to write
+    @param pmids: List of PubMed IDs, may be None
+    @param params: Dictionary to write. Values are converted with str(). Only
+    keys from descriptor_keys are used."""
+    f = open(fpath, "w")
+    for key, value in params.iteritems():
+        if key in descriptor_keys: 
+            f.write("#" + key + " = " + str(value) + "\n")
+    if pmids is not None:
+        for pmid in pmids:
+            f.write(str(pmid)+"\n")
+    f.close()
+
+
+class QueueStatus:
+    """Describes the current state of the queue
+    
+    @ivar tasklist: Descriptors of tasks in the queue, oldest first.
+    
+    @ivar running: First member of L{tasklist}, which is being processed.
+    
+    @ivar donelist: Completed tasks, oldest first.
+    
+    @ivar status: Mapping from dataset to status code (DONE, RUNNING, WAITING)
+    
+    @ivar _tasks: Mapping from dataset to task object
+    """
+    
+    DONE = "done"
+    RUNNING = "running"
+    WAITING = "waiting"
+    
+    def __init__(self, with_done=True):
+        """Constructor for the status
+        
+        @param with_done: Set this to False if you don't need L{donelist}."""
+        self._load_tasklist()
+        self.donelist = []
+        if with_done: self._load_donelist()
+        self._load_maps()
+
+    
+    def _load_tasklist(self):
+        """Populate L{tasklist}"""
+        self.tasklist = [read_descriptor(f) for f in rc.queue_path.files()]
+        self.tasklist.sort(key=lambda x:x.submitted)
+        self.running = self.tasklist[0] if self.tasklist else None
+
+
+    def _load_donelist(self):
+        """Populate L{donelist}"""
+        self.donelist = []
+        for fpath in rc.web_report_dir.dirs():
+            if (fpath/rc.report_descriptor).exists():
+                self.donelist.append(
+                    read_descriptor(fpath/rc.report_descriptor))
+        self.donelist.sort(key=lambda x:x.submitted)
+
+
+    def _load_maps(self):
+        """Calculate the L{status} and L{_tasks} mapping"""
+        self.status = {}
+        self._tasks = {}
+        for task in self.tasklist:
+            self.status[task.dataset] = self.WAITING
+            self._tasks[task.dataset] = task
+        for task in self.donelist:
+            self.status[task.dataset] = self.DONE
+            self._tasks[task.dataset] = task
+        if self.tasklist:
+            self.status[self.running.dataset] = self.RUNNING
+
+    
+    def __getitem__(self, dataset):
+        """Retrieve the descriptor for a given data set."""
+        return self._tasks.__getitem__(dataset)
+
+
+    def __contains__(self, dataset):
+        """Return whether given dataset exists"""
+        return self._tasks.__contains__(dataset)
+
+
+    def position(self, dataset):
+        """Return distance of dataset from front of queue."""
+        for idx, d in enumerate(self.tasklist):
+            if d.dataset == dataset:
+                return idx
+        return None
+
+    
+    
+
+def delete_output(dataset):
+    """Delete the output directory for the given task"""
+    log.debug("Attempting to delete output for %s" % dataset)
+    dirpath = rc.web_report_dir / dataset
+    for fname in dirpath.files():
+        fname.remove()
+    dirpath.rmdir()
+    
 
 def mainloop():
     """Look for descriptor files every second"""
-    qenv = queryenv.QueryEnvironment()
-    venv = validenv.ValidationEnvironment()
-    venv.article_list # Initialise the article list for later
-    loop_count = 0
-    while True:
-        listing = rc.queue_path.files("*.txt")
-        if listing:
-            descriptor = listing[0]
-            rc.update(scorefile.readDescriptor(descriptor))
-            log.info("Performing %s on descriptor %s", 
-                     rc.operation, descriptor.basename())
-            try:
-                if rc.operation == "query":
-                    qenv.standardQuery(descriptor)
-                    descriptor.move(rc.query_report_dir / "descriptor.txt")
-                elif rc.operation == "validate":
-                    venv.standardValidation(descriptor)
-                    descriptor.move(rc.valid_report_dir / "descriptor.txt")
-            except ValueError, e:
-                log.error(e)
-                descriptor.remove()
-        time.sleep(1)
-        loop_count += 1
-        if loop_count % 3600 == 0:
-            # Every hour go delete old outputs
-            delete_old_outputs()
+    env = None
+    try:
+        last_clean = 0 # time.time() of last output-cleaning
+        last_update = 0 # time.time() of last database update
+        while True:
+            # Cron: delete the oldest outputs
+            if time.time() - last_clean > 6*3600:  
+                log.debug("Looking for old datasets")
+                queue = QueueStatus()
+                queue.donelist.reverse() # Newest first
+                for task in queue.donelist[100:]:
+                    try:
+                        delete_output(task.dataset)
+                    except OSError:
+                        pass # Failed to delete output
+                last_clean = time.time()
+            # Cron: update the databases
+            if time.time() - last_update > 12*3600:
+                if env is not None: env.close()
+                env = None
+                update.update_mscanner()
+                env = scorefile.Databases()
+                env.article_list # long first load time
+                last_update = time.time()
+            # Now perform any queued tasks
+            queue = QueueStatus()
+            task = queue.running
+            if task is not None:
+                rc.update(task)
+                outdir = rc.web_report_dir / task.dataset
+                log.info("Starting %s for %s", task.operation, task.dataset)
+                task._filename.utime(None) # Update mod time for status display
+                try:
+                    if task.operation == "query":
+                        op = queryenv.Query(outdir, env)
+                        op.query(task._filename)
+                    elif task.operation == "validate":
+                        op = validenv.Validation(outdir, env)
+                        op.validation(task._filename)
+                    task._filename.move(outdir / "descriptor.txt")
+                except ValueError, e:
+                    log.error(e)
+            else:
+                # Wait before the next iteration
+                time.sleep(1)
+    finally:
+        if env is not None: env.close()
 
 
-def makeTestQueue():
+def populate_test_queue():
+    """Place some dummy queue files to test the queue operation"""
     from mscanner.support.storage import Storage
-    pmids = list(scorefile.readPMIDs(rc.corpora / "genedrug-small.txt"))
-    ts = lambda x, d: rc.queue_path / \
-    (time.strftime("%Y%m%d%H%M%S", time.gmtime(x)) + "-" + d + ".txt")
-    params = Storage(
-        operation = "validate", dataset = "gdsmallvalidq",
+    pmids = list(scorefile.read_pmids(rc.corpora / "genedrug-small.txt"))
+    task = Storage(
+        operation = "validate", 
+        dataset = "gdqtest_valid",
         nfolds = 5, numnegs = 1000, alpha = 0.6,
-        timestamp = time.time(), limit = 500, threshold = 0)
-    scorefile.writeDescriptor(ts(params.timestamp, params.dataset), pmids, params)
-    params.timestamp += 5
-    params.operation = "query"
-    params.dataset = "gdsmallqueryq"
-    scorefile.writeDescriptor(ts(params.timestamp, params.dataset), pmids, params)
+        limit = 500, threshold = 0, submitted = time.time())
+    write_descriptor(rc.queue_path/task.dataset, pmids, task)
+    task.operation = "query"
+    task.dataset = "gdqtest_query"
+    task.submitted += 5
+    write_descriptor(rc.queue_path/task.dataset, pmids, task)
 
 
 if __name__ == "__main__":
     initLogger()
     if len(sys.argv) == 2 and sys.argv[1] == "test":
-        makeTestQueue()
-    mainloop()
+        populate_test_queue()
+    try:
+        mainloop()
+    except KeyboardInterrupt:
+        pass

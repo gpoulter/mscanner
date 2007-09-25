@@ -58,7 +58,8 @@ div.narrow {
     padding-right: 2em;
     max-width: 35em; }
 table.form th {
-    text-align: left; }
+    text-align: left;
+    font-weight: normal; }
 table.form tr.error td {
     background-color: #FFEEEE; /* pale red */ }
 
@@ -83,6 +84,18 @@ div#topmenu td {
     border: solid 2px black;
     padding: 0.5ex; }
 
+/********** STATUS BLOCK **********/
+
+table.status thead th {
+    font-weight: bold;
+    text-align: center; }
+table.status tbody th {
+    width: 10em; 
+    font-weight: normal; 
+    text-align: left; }
+table.status td {
+    width: auto; }
+
 /************************ QUERY PAGE ****************/
 
 form#query fieldset {
@@ -106,13 +119,6 @@ form#query tr.help div {
     background-color: #EEEEFF; /* pale yellow */ }
 form#query tr.error td {
     background-color: #FFEEEE; /* pale red */ }
-
-/********** STATUS BLOCK **********/
-
-table#status tbody th {
-    width: 10em; }
-table#status td {
-    width: auto; }
 
 /************* OUTPUT PAGE ************/
 

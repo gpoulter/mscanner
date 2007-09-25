@@ -18,20 +18,22 @@ ContactForm = forms.Form(
     forms.Textbox(
         "name",
         forms.Validator(lambda x: len(x) < 50, "Should be less than 50 characters"),
-        label="Your name [optional]", size=35),
+        label="Name (optional)", size=35),
     
     forms.Textbox(
         "email",
         forms.Validator(lambda x: len(x) < 80, "Should be less than 80 characters"),    
-        label="Your email address [optional]", size=35), 
+        label="Email (optional)", size=35), 
     
     forms.Textarea(
         "message",
         forms.Validator(lambda x: len(x) < 2000, "Should be less than 2000 characters"),
-        label="The message", rows=10, cols=40),
+        label="Message", rows=10, cols=40),
 
 )
 """Structure for the form on the contact page"""
+
+
 
 class ContactPage:
     """Form to contact the webmaster"""
@@ -68,7 +70,6 @@ class ContactPage:
             except Exception, e:
                 page.success = False
                 page.error = str(e)
-                sys.stderr.write(e.message)
                 page.inputs = cform
             else:
                 page.success = True

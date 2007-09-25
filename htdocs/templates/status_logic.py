@@ -5,20 +5,24 @@ __author__ = "Graham Poulter"
 __license__ = "GPL"
 
 import web
+
 import status, query_logic
-from htdocs import helpers, forms
+from htdocs import forms, queue
 from mscanner.configuration import rc
 
 
 StatusForm = forms.Form(
     forms.Hidden(
         "operation",
-        forms.Validator(lambda x: x == "delete","Invalid operation")),
+        forms.Validator(lambda x: x == "delete", "Invalid operation")),
+    
     forms.Textbox(
         "dataset",
         query_logic.dataset_validator,
+        forms.Validator(query_logic.task_exists, "Task does not exist"),
         label="Task name"
         ),
+    
     forms.Textbox(
         "delcode",
         query_logic.delcode_validator,
@@ -26,6 +30,7 @@ StatusForm = forms.Form(
         ),
 )
 """Structure for the delete-this-task form on the status page"""
+
 
 
 class StatusPage:
@@ -39,23 +44,18 @@ class StatusPage:
         """Print the status page"""
         web.header('Content-Type', 'text/html; charset=utf-8') 
         page = status.status()
-        # Descriptor of currently running task (or None)
-        page.current = helpers.get_current_task()
-        # List of files in the queue
-        page.listing = [f.basename() for f in rc.queue_path.files("*.txt")]
-        # Last 30 lines of the log file
-        page.logcontents = rc.logfile.lines()[-30:]
-        inputs = web.input()
-        if "dataset" in inputs:
-            # Offer a form for deleting outputs
-            if "delcode" not in inputs:
-                inputs.delcode = ""
-            inputs.operation = "delete"
-            sform = StatusForm(inputs)
-            if sform.valid: 
-                page.target = sform.d.dataset
-                page.target_status, page.target_descriptor = \
-                 helpers.get_task_status(page.target, page.current)
-                if page.current is None or page.current.dataset != inputs.dataset:
-                    page.inputs = sform
+        page.queue = queue.QueueStatus(with_done=False)
+        page.logdata = rc.logfile.lines()[-30:]
+        page.inputs = StatusForm()
+        dataset = "" # The task to print the status for
+        if page.queue.running is not None:
+            dataset = page.queue.running.dataset
+        page.inputs.fill({"dataset":dataset, "delcode":"", "operation":"delete"})
+        # Have we been given a dataset to print status for?
+        web_inputs = web.input()
+        if "dataset" in web_inputs:
+            web_inputs.operation = "delete"
+            if "delcode" not in web_inputs:
+                web_inputs.delcode = "" 
+            page.inputs.validates(web_inputs)
         print page

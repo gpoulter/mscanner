@@ -44,7 +44,6 @@ class FrontPage:
         """Return the front page for MScanner"""
         web.header('Content-Type', 'text/html; charset=utf-8') 
         page = htdocs.templates.front.front()
-        page.current = htdocs.helpers.get_current_task()
         print page
 
 if __name__ == "__main__":

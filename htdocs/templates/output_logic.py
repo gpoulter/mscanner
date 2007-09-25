@@ -5,8 +5,11 @@ __author__ = "Graham Poulter"
 __license__ = "GPL"
 
 import web
+import md5
+
 import output, query_logic
-from htdocs import forms, helpers
+from htdocs import forms, queue
+from mscanner.configuration import rc
 
 
 OutputForm = forms.Form(
@@ -20,7 +23,6 @@ OutputForm = forms.Form(
     
     forms.Hidden(
         "dataset",
-        forms.notnull,
         query_logic.dataset_validator),
     
     forms.Hidden(
@@ -30,86 +32,93 @@ OutputForm = forms.Form(
 """Structure for the form on the outputs page"""
 
 
+
 class OutputPage:
     """Page linking to outputs"""
     
+    def print_page(self, page):
+        """Add the final version of the queue and output the page"""
+        page.queue = queue.QueueStatus()
+        page.visible = [ d for d in page.queue.donelist 
+            if "hidden" not in d or d.hidden == False ]
+        print page
+
+
     def GET(self):
         """Just list the available output directories"""
         web.header('Content-Type', 'text/html; charset=utf-8') 
         page = output.output()
-        page.donetasks = helpers.list_visible()
-        print page
+        self.print_page(page)
         
         
     def POST(self):
         """Attempt to download or delete one of the outputs"""
         web.header('Content-Type', 'text/html; charset=utf-8') 
         page = output.output()
-        page.donetasks = helpers.list_visible()
         oform = OutputForm()
         
+        # Errors in the form
         if not oform.validates(web.input()):
             e = ["<li>%s: %s</li>\n" % (n,e) for n,e in 
                  oform.errors.iteritems() if e is not None]
             page.errors = "".join(["<p>Errors</p><ul>\n"]+e+["</ul>\n"])
-            page.inputs = oform
-            print page
+            self.print_page(page)
             return
-            
-        d = oform.d
-        page.target = d.dataset
-        if d.operation == "delete":
-            status, descriptor = helpers.get_task_status(
-                d.dataset, helpers.get_current_task())
-            if status == "current":
-                page.nodelete = "MScanner is busy with the task."
-            elif status == "notfound":
-                page.nodelete = "there is no task with that name."
-            elif status in ["queue","done"]:
-                if d.delcode != descriptor.delcode:
-                    page.nodelete = "incorrect deletion code."
+        
+        # The thing we are trying to operate on
+        page.target = oform.d.dataset 
+        
+        # Deleting something
+        if oform.d.operation == "delete":
+            target = page.target
+            q = queue.QueueStatus()
+            if target not in q:
+                page.delete_error = "there is no task with that name."
+            elif q.status[target] == q.RUNNING:
+                page.delete_error = "MScanner is busy with the task."
+            elif q.status[target] in [q.WAITING, q.DONE]:
+                md5code = md5.new(oform.d.delcode).hexdigest()
+                if "delcode" in q[target] and md5code != q[target].delcode:
+                    page.delete_error = "incorrect deletion code."
                 else:
-                    if status == "done":
-                        # Attempt to remove the output directory
-                        dirname = descriptor._filename.parent
+                    if q.status[target] == q.DONE:
                         try:
-                            for fname in dirname.files():
-                                fname.remove()
-                            dirname.rmdir()
-                        except (OSError, WindowsError), e:
-                            # Whoopsie daisy - have permission?
-                            print e
-                        page.donetasks = helpers.list_visible()
-                        page.deleted_location = "output"
-                    elif target_status == "queue":
-                        # Attempt to remove queue file for the target
-                        descriptor._filename.remove()
-                        page.deleted_location = "queue"
-            print page
-            
-        elif d.operation == "download":
-            # Save the output directory as a zip file for download
-            from mscanner.configuration import rc
-            dataset = d.dataset
-            outdir = rc.web_report_dir / dataset
-            outfile = outdir / (dataset + ".zip")
-            if not outfile.exists():
-                from zipfile import ZipFile, ZIP_DEFLATED
-                zf = ZipFile(str(outfile), "w", ZIP_DEFLATED)
-                for fpath in outdir.files():
-                    if fpath.endswith(".zip"):
+                            queue.delete_output(target)
+                        except OSError, e:
+                            page.delete_error = str(e)
+                    elif q.status[target] == q.WAITING:
+                        try:
+                            q[target]._filename.remove()
+                        except OSError, e:
+                            page.delete_error = str(e)
+            self.print_page(page)
+        
+        # Save the output directory as a zip file for download
+        elif oform.d.operation == "download":
+            q = queue.QueueStatus()
+            if page.target not in q or q.status[page.target] is not q.DONE:
+                page.download_error = "Specified output is not available"
+                self.print_page(page)
+            else:
+                outdir = rc.web_report_dir / page.target
+                outfile = outdir / (page.target + ".zip")
+                if not outfile.exists():
+                    from zipfile import ZipFile, ZIP_DEFLATED
+                    zf = ZipFile(str(outfile), "w", ZIP_DEFLATED)
+                    for fpath in outdir.files():
                         # Omit existing zip files
-                       continue
-                    if fpath.basename() == rc.report_term_scores:
-                        # Omit MeSH terms if the user requests it
-                        if forms.ischecked(oform.d.omit_mesh):
+                        if fpath.endswith(".zip"):
                             continue
-                    if fpath.basename() == rc.report_result_all:
+                        # Omit MeSH terms if the user requests it
+                        if fpath.basename() == rc.report_term_scores:
+                            if forms.ischecked(oform.d.omit_mesh):
+                                continue
                         # Omit all-in-one result file
-                        continue
-                    zf.write(str(fpath), str(fpath.basename()))
-                zf.close()
-                outfile.chmod(0777)
-            dsurl = web.urlquote(dataset)
-            web.seeother("static/output/" + dsurl + "/" + dsurl + ".zip")
-            print page
+                        if fpath.basename() == rc.report_result_all:
+                            continue
+                        zf.write(str(fpath), str(fpath.basename()))
+                    zf.close()
+                    outfile.chmod(0777)
+                ds = web.urlquote(page.target)
+                web.seeother("static/output/" + ds + "/" + ds + ".zip")
+            

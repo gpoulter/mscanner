@@ -1,10 +1,14 @@
 """Programmatic form construction and validation
 
 @note: Originally web.form (part of web.py by Aaron Swartz, http://webpy.org).
-I needed form validation, and used web.form as a starting point (virtually
-every line has been modified since then).
+I (Graham Poulter) needed form validation, and used web.form as a starting
+point. Virtually every line has been modified, but the module architecture is
+due to Aaron.
 
-@author: Aaron Swartz and Graham Poulter
+@author: Aaron Swartz 
+@author: Graham Poulter
+
+@license: Public Domain (specified by Aaron Swartz)
 """
 
 import copy
@@ -56,17 +60,29 @@ class Form:
 
     def render(self):
         """An HTML table rendering of the form inputs"""
-        erow = '<tr class="error"><td colspan="2">%s</td></tr>\n'
-        out = '<table class="form">\n'
-        if self.note: out += erow % self.note
+        e_row = '<tr class="error"><td colspan="2">%s</td></tr>\n'
+        i_row = '<tr class="input"><th>%s</th><td class="value">%s %s %s</td></tr>\n'
+        # Render non-hidden inputs
+        rows = []
+        if self.note: 
+            rows.append(e_row % self.note)
         for i in self.inputs:
-            out += '<tr class="input">\n'
-            out += '<th>%s</th>\n' % i.renderlabel()
-            out += '<td class="value">%s %s %s</td>\n' % (i.pre,i.render(),i.post)
-            out += '</tr>\n'
-            if i.note: out += erow % i.note
-        out += "</table>\n"
+            if not isinstance(i, Hidden):
+                rows.append(i_row % (i.renderlabel(), i.pre, i.render(), i.post))
+                if i.note: 
+                    rows.append(e_row % i.note)
+        out = "\n".join(['<table class="form">'] + rows + ["</table>"])
+        # Now render the hidden inputs
+        for i in self.inputs:
+            if isinstance(i, Hidden):
+                out += i.render()
         return out
+
+
+    def render_errors(self):
+        errors = ["<li>%s: %s</li>" % (n,e) for n,e in 
+                 self.errors.iteritems() if e is not None]
+        return "\n".join(["<p>Errors</p><ul>"] + errors + ["</ul>"])
     
     
     def validates(self, source, _validate=True):
@@ -75,7 +91,8 @@ class Form:
         @param source: Storage object from which to set form values
         
         @returns: True/False about whether the form validates."""
-        if hasattr(self, "d"): del self._d
+        if hasattr(self, "_d"): 
+            del self._d # Refresh the data property
         isvalid = True
         for i in self.inputs:
             value = attrget(source, i.name)
@@ -85,7 +102,7 @@ class Form:
                 i.value = value
         if _validate:
             isvalid = self._validate(source) and isvalid
-            self.valid = isvalid
+        self.valid = isvalid
         return isvalid
 
 
@@ -391,14 +408,17 @@ class RegexValidator(Validator):
 notnull = Validator(bool, "Required")
 """Use to specify that the input should not be left empty"""
 
+
 checkbox_validator = Validator(
     lambda x: x == None or x == "on", "Bad checkbox")
 """Use to be sure the checkbox has valid input"""
 
+
 def ischecked(value):
     """True if the Checkbox was pressed"""
     return True if value == "on" else bool(value)
-    
+
+
 def buttonpressed(value):
     """True if the Button was pressed"""
     return True if value == "" else bool(value)

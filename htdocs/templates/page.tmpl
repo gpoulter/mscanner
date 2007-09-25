@@ -2,7 +2,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 #end block doctype
 
-## Base URL for the website
+## Base URL for the website, for "absolute" links
 #attr base = ""
 
 #def title
@@ -29,6 +29,64 @@ Sample Title
 
 </head>
 #end block head
+
+#def statusblock(task, queue)
+## Print a table for task status
+## task -- Storage object representing the task
+## queue -- QueueStatus object
+<table class="status">
+  <thead>
+  <tr>
+  <th colspan="2">
+    Task <q>$task.dataset</q> ($task.operation)
+  </th>
+  </tr>
+  </thead>
+  <tbody>
+  <tr>
+    <th>Task status</th>
+    <td>
+      #echo $queue.status[$task.dataset]
+    </td>
+  </tr>
+  <tr>
+    <th>Destination</th>
+    <td>
+    <a href="/static/output/${task.dataset}/">$task.dataset</a>
+    </td>
+  </tr>
+  <tr>
+    <th>Submitted at</th>
+    <td>
+    #import time
+    ${time.strftime("%Y/%m/%d %H:%M:%S GMT", $time.gmtime($task.submitted))}
+    </td>
+  </tr>
+  #if $queue.status[$task.dataset] == $queue.RUNNING
+  <tr>
+    <th>Time spent running</th>
+    <td>
+    ## Mod time is updated in queue.py when starting the task
+    #echo "%d seconds" % int($time.time() - $task._filename.mtime)
+    </td>
+  </tr>
+  <tr>
+    <th>Tasks remaining</th>
+    <td>
+    #echo len($queue.tasklist) - 1
+    </td>
+  </tr>  
+  #else
+  <tr>
+    <th>Tasks to go</th>
+    <td>
+    #echo $queue.position($task.dataset)
+    </td>
+  </tr>
+  #end if
+  </tbody>
+</table>
+#end def
 
 #block body
 <body>

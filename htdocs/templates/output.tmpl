@@ -1,5 +1,15 @@
 #extends page
 
+#* PARAMETERS
+
+$queue -- QueueStatus object where we get the list of done tasks
+$errors -- Optional validation errors in the form
+$target -- Optional target of delete/download op
+$delete_errror -- Optional reason for being unable to delete $target
+$download_errror -- Optional reason for being unable to download $target
+
+*#
+
 #def title
 MScanner Output
 #end def
@@ -8,58 +18,59 @@ MScanner Output
 
 #import time
 
+## Print errors if any
 $getVar("errors", "")
 
 <div class="narrow">
 
-#if $getVar("nodelete", None) is not None
-  <p>Cannot delete <q>$target</q>: $nodelete</p>
+#if $getVar("target", None) is not None
+
+  #if $getVar("delete_error", None) is not None
+    <p>Cannot delete <q>$target</q>: $delete_error</p>
+  #else
+    <p>Task <q>$target</q> has been deleted.</p>
+  #end if
+
+  #if $getVar("download_error", None) is not None
+    <p>Cannot download <q>$target</q>: $download_error
+  #end if
+  
 #end if
 
-#if $getVar("deleted_location", None) is not None
-  <p>Have deleted the task <q>$target</q> from $deleted_location.</p>
-#end if
-
-#if len($donetasks) == 0
-  <p>There is no output currently avaiable.</p>
-#else
-  <p>Links to results for $len($donetasks) tasks. Results using the "hide"
-  feature are not listed.</p>
-#end if
+<p>Outputs for $len($queue.donelist) tasks follow. Queries for which the "hide" box
+was ticked are not listed.</p>
 
 </div><!--class=narrow-->
 
-#if len($donetasks) > 0
-  
 <form id="output" action="" method="post">
 
   <table>
-    <thead>
-      <tr>
-        <th>Selection</th>
-        <th>Timestamp</th>
-        <th>Operation</th>
-        <th>Link to Output</th>
-      </tr>
-    </thead>
-    <tbody>
-      #for d in $donetasks
-      <tr>
-        <td class="del">
-          <input type="radio" name="dataset" value="$d.dataset">
-        </td>
-        <td class="timestamp">
-          $time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($d.timestamp))
-        </td>
-        <td class="operation">
-          $d.operation
-        </td>
-        <td class="dataset">
-          <a href="/static/output/$d.dataset/">$d.dataset</a>
-        </td>
-      </tr>
-      #end for
-    </tbody>
+  <thead>
+    <tr>
+      <th>Selection</th>
+      <th>Timestamp</th>
+      <th>Operation</th>
+      <th>Link to Output</th>
+    </tr>
+  </thead>
+  <tbody>
+    #for d in $queue.donelist
+    <tr>
+      <td class="del">
+        <input type="radio" name="dataset" value="$d.dataset">
+      </td>
+      <td class="timestamp">
+        $time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($d.submitted))
+      </td>
+      <td class="operation">
+        $d.operation
+      </td>
+      <td class="dataset">
+        <a href="/static/output/$d.dataset/">$d.dataset</a>
+      </td>
+    </tr>
+    #end for
+  </tbody>
   </table>
   
   <div class="narrow">
@@ -76,7 +87,5 @@ $getVar("errors", "")
   </div>
 
 </form>
-
-#end if have_donetasks
 
 #end def contents

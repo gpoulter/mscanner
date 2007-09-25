@@ -18,6 +18,10 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 from itertools import chain, izip
 import logging as log
 import numpy as nx
+import time
+
+import warnings
+warnings.simplefilter("ignore", UserWarning)
 
 from mscanner.configuration import rc
 from mscanner.support import utils
@@ -28,8 +32,9 @@ from mscanner import plotting, scorefile, scoring, validation
 class Validation(object):
     """Manages cross-validation based analyses.
     
-    @ivar performance: L{PerformanceStats} instance, from L{standard_validation}
+    @ivar performance: L{PerformanceStats} instance, from L{validation}
     @ivar featinfo: L{FeatureInfo} for calculating feature score
+    @ivar timestamp: Time at the start of the operation
 
     @group From constructor: featmap,featdb
     
@@ -54,6 +59,7 @@ class Validation(object):
         if not outdir.exists():
             outdir.makedirs()
             outdir.chmod(0777)
+        self.timestamp = time.time() 
         self.env = env if env else scorefile.Databases()
         self.positives = None
         self.pscores = None
@@ -63,7 +69,7 @@ class Validation(object):
         self.featinfo = None
 
 
-    def standard_validation(self, pospath, negpath=None):
+    def validation(self, pospath, negpath=None):
         """Loads data, performs validation, and writes report
         
         @keyword pospath: Location of input positive PMIDs
@@ -72,9 +78,6 @@ class Validation(object):
         to select randomly from Medline)
         """
         # Construct report directory
-        import time
-        if rc.timestamp is None: 
-            rc.timestamp = time.time() 
         # FeatureInfo for this validation run
         self.featinfo = scoring.FeatureInfo(
             featmap = self.env.featmap, 
@@ -101,7 +104,6 @@ class Validation(object):
             self.pscores, self.nscores, rc.alpha)
         self.write_report()
         log.info("FINISHING VALIDATION %s", rc.dataset)
-        rc.timestamp = None
 
 
     def load_inputs(self, pospath, negpath=None):
@@ -147,7 +149,7 @@ class Validation(object):
         
         This is useful when the style of the output page is updated. We assume
         PubMed IDs in the files are decreasing by score, as written by
-        L{write_scores}. """
+        L{scorefile.write_scores}. """
         log.info("Loading result scores for %s", rc.dataset)
         pscores, positives = zip(*scorefile.read_pmids(
             self.outdir/rc.report_positives, withscores=True))
@@ -178,9 +180,7 @@ class Validation(object):
             featinfo = self.featinfo,
             positives = self.positives,
             negatives = self.negatives,
-            nfolds = rc.nfolds,
-            alpha = rc.alpha,
-            )
+            nfolds = rc.nfolds)
         self.pscores, self.nscores = self.validator.validate()
 
 
@@ -239,6 +239,7 @@ class Validation(object):
         values = dict(
             stats = self.featinfo.stats,
             linkpath = rc.templates.relpath().replace('\\','/') if rc.link_headers else None,
+            timestamp = self.timestamp,
             p = self.performance,
             notfound_pmids = list(scorefile.read_pmids(self.outdir/rc.report_positives_broken)),
         )

@@ -59,9 +59,6 @@ class PharmdemoQuery(queryenv.Query):
         
         @return: Set of articles with gene-drug associations.
         """
-        import time
-        if rc.timestamp is None: 
-            rc.timestamp = time.time() 
         self.load_pmids(input)
         if len(self.pmids) == 0: return
         self.make_featinfo()
@@ -89,8 +86,6 @@ class PharmdemoQuery(queryenv.Query):
         # Finish by writing results
         self.save_results()
         self.write_report()
-        rc.timestamp = None # reset for next run
-        log.info("FINISHING QUERY %s", rc.dataset)
 
 
 

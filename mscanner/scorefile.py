@@ -1,12 +1,5 @@
-"""Performs reading/writing of various file types
-
-Functions in this file:
-    - L{read_pmids}: Get PMIDs (and scores too) from a text file
-    - L{write_scores}: Write PMIDs and scores to a text file
-    - L{load_articles}: Retrieve Articles from a DB, caching results in a Pickle
-    - L{read_descriptor}: Read paramaters from a descriptor file
-    - L{write_descriptor}: Write paramaters to a descriptor file
-"""
+"""Reads/writes files of PubMed IDs/scores, but also loads articles
+from database and prints an error page for when no PubMed IDs are valid."""
 
 from __future__ import with_statement
                                      
@@ -24,6 +17,12 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
 import logging as log
+from contextlib import closing
+import numpy as nx
+
+from mscanner.configuration import rc
+from mscanner import featuredb, featuremap
+from mscanner.support import dbshelve
 
 
 class Databases:
@@ -43,9 +42,6 @@ class Databases:
         """Constructor for setting attributes to be used by the remaining
         methods."""
         log.info("Loading article databases")
-        from mscanner.configuration import rc
-        from mscanner import featuredb, featuremap
-        from mscanner.support import dbshelve
         self.featdb = featuredb.FeatureDatabase(rc.featuredb, 'r')
         self.featmap = featuremap.FeatureMapping(rc.featuremap)
         self.artdb = dbshelve.open(rc.articledb, 'r')
@@ -131,7 +127,6 @@ def read_pmids(filename,
     
 def write_scores(filename, pairs):
     """Write scores and PubMed IDs to file, in decreasing order of score.
-    
     @param pairs: Iterable of (score, PMID)     
     """
     from path import path
@@ -152,97 +147,21 @@ def load_articles(article_db_path, pmidlist_path):
     @note: The first called with a given PMID list caches the results in a
     .pickle, and later calls load the pickle."""
     import cPickle
-    from path import path
     from mscanner.support import dbshelve
+    from path import path # used in the line below
     cache_path = path(pmidlist_path + ".pickle")
     if cache_path.isfile():
         return cPickle.load(open(cache_path, "rb"))
     pmids = read_pmids(pmidlist_path)
-    artdb = dbshelve.open(article_db_path, 'r')
-    articles = [artdb[str(p)] for p in pmids]
-    cPickle.dump(articles, open(cache_path,"wb"), protocol=2)
-    artdb.close()
+    with closing(dbshelve.open(article_db_path, "r")) as artdb:
+        articles = [artdb[str(p)] for p in pmids]
+    cPickle.dump(articles, open(cache_path, "wb"), protocol=2)
     return articles
-
-
-def parsebool(s):
-    """Handler for converting strings to booleans"""
-    if isinstance(s, basestring):
-        s = s.strip()
-        if s == "0" or s == "False":
-            return False
-        elif s == "1" or s == "True":
-            return True
-        else:
-            raise ValueError("Failed to parse boolean: %s" % s)
-    else:
-        return bool(s)
-
-
-descriptor_keys = dict(
-    alpha=float,
-    code=str,
-    dataset=str,
-    delcode=str,
-    hidden=parsebool,
-    limit=int,
-    nfolds=int,
-    numnegs=int,
-    operation=str,
-    threshold=float,
-    starttime=float,
-    timestamp=float,)
-
-
-def read_descriptor(fpath):
-    """Reads a descriptor file, returning a dictionary of parameters.
-
-    Each descriptor line is formatted as "#key = value". Reading stops at the
-    first line that does not start with '#'. Valid keys are in
-    L{descriptor_keys}. The same file can be used with L{read_pmids}, which
-    ignores lines beginning with '#'.
-
-    @return: Storage object, with additional "_filename" key that contains
-    fpath."""
-    f = open(fpath, "r")
-    line = f.readline()
-    from mscanner.support.storage import Storage
-    result = Storage()
-    while line.startswith("#"):
-        key, value = line[1:].split(" = ",1)
-        value = descriptor_keys[key](value.strip())
-        result[key] = value
-        line = f.readline()
-    result["_filename"] = fpath
-    f.close()
-    return result
-
-
-def write_descriptor(fpath, pmids, params):
-    """Write parameters and PubMed IDs to the descriptor file.
-    
-    @param fpath: File to write
-
-    @param pmids: List of PubMed IDs, may be None
-    
-    @param params: Key-value dictionary to write. Values are converted with
-    str(). Only keys that have a member in descriptor_keys are actually written
-    to the file."""
-    f = open(fpath, "w")
-    for key, value in params.iteritems():
-        if key in descriptor_keys: 
-            f.write("#" + key + " = " + str(value) + "\n")
-    if pmids is not None:
-        for pmid in pmids:
-            f.write(str(pmid)+"\n")
-    f.close()
 
 
 def no_valid_pmids_page(filename, pmids):
     """Print an error page when no valid PMIDs were found
-    
     @param filename: Path to output file
-    
     @param pmids: List of any provided PMIDs (all invalid)
     """
     import logging
@@ -252,6 +171,5 @@ def no_valid_pmids_page(filename, pmids):
     logging.warning("No valid PubMed IDs were found!")
     with utils.FileTransaction(filename, "w") as ft:
         page = Template(file=str(rc.templates/"notfound.tmpl"))
-        page.rc = rc
         page.notfound_pmids = pmids
         page.respond(ft)

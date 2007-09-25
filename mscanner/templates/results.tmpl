@@ -4,6 +4,7 @@
 
 $linkpath -- Include JS and CSS remotely at this location
 $lowest_score -- Score of lowest-scoring article
+$timestamp -- time.time() for start of the operation
 $num_results -- Number of results
 $best_tfidfs -- List of (termid, tfidf, (term, termtype), score, pos, neg) for
     the highest TF.IDF scores.
@@ -130,7 +131,7 @@ $notfound_pmids -- List of invalid PubMed IDs
   <tr>
     <th>Started at</th>
     #import time
-    <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($rc.timestamp))</td>
+    <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($timestamp))</td>
     $help("h_timestamp")
   </tr>
   $hr("h_timestamp", "When the data set was created")

@@ -162,7 +162,6 @@ class FeatureInfo(object):
 
     def maskRarePositives(s):
         """Mask for positive-scoring features that do not occur in the positive set
-        
         @return: Boolean array for masked out features
         """
         return (s.scores > 0) & (s.pos_counts == 0)
@@ -170,7 +169,6 @@ class FeatureInfo(object):
 
     def maskNonPositives(s):
         """Mask for features not represented in the positives
-        
         @return: Boolean array for masked out features
         """
         return s.pos_counts == 0
@@ -279,7 +277,7 @@ class FeatureInfo(object):
 def count_features(nfeats, featdb, docids):
     """Count occurrenes of each feature in a set of articles
 
-    @param nfeats: Number of distinct features (size of array)
+    @param nfeats: Number of distinct features (length of L{docids})
 
     @param featdb: Mapping from document ID to array of feature IDs
 
@@ -291,21 +289,3 @@ def count_features(nfeats, featdb, docids):
     for docid in docids:
         counts[featdb[docid]] += 1
     return counts
-
-
-def compare_results_to_standard(results, test):
-    """Perform a retrieval test of query results against a gold standard.
-
-    @param results: List of result PubMed IDs
-    
-    @param test: Set of gold-standard articles to look for in results
-
-    @return: True positives as function of rank (measured with respect to the
-    test set). False positives are equal to rank minus true positives."""
-    assert isinstance(test, set)
-    TP_total = nx.zeros(len(results), nx.int32)
-    for idx, pmid in enumerate(results):
-        TP_total[idx] = TP_total[idx-1] if idx > 0 else 0
-        if pmid in test:
-            TP_total[idx] += 1
-    return TP_total

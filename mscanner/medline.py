@@ -1,10 +1,4 @@
-"""For updating the databases of articles and features
-
-Defined in this module:
-    - L{parse}: Turn Medline XML into Articles
-    - L{MedlineCache}: For consistent updating of the database/features
-    - L{FileTracker}: Track processed files (to avoid re-parsing), with persistence
-"""
+"""For updating the databases of articles and features"""
 
                                      
 __author__ = "Graham Poulter"                                        

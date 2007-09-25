@@ -19,7 +19,11 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 import codecs
 import logging as log
 import numpy as nx
+import time
 from contextlib import closing
+
+import warnings
+warnings.simplefilter("ignore", UserWarning)
 
 from mscanner.configuration import rc
 from mscanner.support import dbshelve, utils
@@ -31,13 +35,17 @@ class Query:
 
     @ivar env: L{Databases} to use.
     
+    @ivar timestamp: Time at the start of the operation
+    
     @ivar pmids: Set object with input PubMed IDs, from L{load_pmids}
     
     @ivar featinfo: FeatureInfo with feature scores, from L{query}
     
-    @ivar inputs: List of (pmid, score) for input PMIDs, from L{make_results} or L{load_results}
+    @group From make_results or load_results: inputs, results
     
-    @ivar results: List of (pmid, score) for result PMIDs, from L{make_results} or L{load_results}
+    @ivar inputs: List of (pmid, score) for input PMIDs
+    
+    @ivar results: List of (pmid, score) for result PMIDs
     """
 
     def __init__(self, outdir, env=None):
@@ -52,6 +60,7 @@ class Query:
         if not outdir.exists():
             outdir.makedirs()
             outdir.chmod(0777)
+        self.timestamp = time.time()
         self.env = env if env else scorefile.Databases()
         self.pmids = None
         self.featinfo = None
@@ -102,9 +111,6 @@ class Query:
         
         @param input: Path to a list of PubMed IDs, or the list itself.
         """
-        import time
-        if rc.timestamp is None: 
-            rc.timestamp = time.time() 
         self.load_pmids(input)
         if len(self.pmids) == 0: return
         self.make_featinfo()
@@ -115,7 +121,6 @@ class Query:
             self.make_results()
             self.save_results()
         self.write_report()
-        rc.timestamp = None # reset for next run
         log.info("FINISHING QUERY %s", rc.dataset)
 
 
@@ -155,7 +160,7 @@ class Query:
     def write_report(self):
         """Write the HTML report for the query results
         
-        @note: L{env.artdb} lookups are carried out beforehand because lookups
+        @note: Article database lookups are carried out beforehand because lookups
         while doing template output is extremely slow."""
         log.debug("Creating report for data set %s", rc.dataset)
         
@@ -196,6 +201,7 @@ class Query:
             lowest_score = self.results[-1][0] if len(self.results) else 0,
             num_results = len(self.results),
             best_tfidfs = self.featinfo.get_best_tfidfs(20),
+            timestamp = self.timestamp,
             notfound_pmids = list(scorefile.read_pmids(self.outdir/rc.report_input_broken))
         )
         from Cheetah.Template import Template

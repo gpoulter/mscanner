@@ -4,6 +4,7 @@
 
 $stats -- FeatureInfo statistics
 $linkpath -- None, or where to link for JS/CSS instead of #include
+$timestamp -- time.time() for start of the operation
 $p -- PerformanceStats instance (with p.tuned)
 $notfound_pmids -- List of invalid PubMed IDs
 *#
@@ -88,7 +89,7 @@ $notfound_pmids -- List of invalid PubMed IDs
     <tr>
       <th>Timestamp</th>
       #import time
-      <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($rc.timestamp))</td>
+      <td>$time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($timestamp))</td>
       $help("h_timestamp")
     </tr>
     $hr("h_timestamp", """Date and time at which the query was submitted.""")

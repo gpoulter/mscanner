@@ -45,8 +45,6 @@ class Validator:
     
     @ivar nfolds: Number of validation folds (0 for leave-out-one)
     
-    @ivar alpha: For statistics via L{getPerformance}
-    
     @group From validate: pscores,nscores
     
     @ivar pscores: Scores of positive articles after validation
@@ -59,8 +57,7 @@ class Validator:
         featinfo,
         positives,
         negatives,
-        nfolds = 10,
-        alpha = 0.5):
+        nfolds = 10):
         """Constructor parameters set corresponding instance attributes."""
         pscores = None
         nscores = None

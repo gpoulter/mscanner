@@ -65,15 +65,13 @@ rc.stylesheet = lambda: rc.templates / "style.css"
 ## Path to corpora directory
 rc.corpora = lambda: rc.working / "corpora"
 ## Path to outputs directory
-rc.report_dir = lambda: rc.htdocs / "static" / "output"
+rc.web_report_dir = lambda: rc.htdocs / "static" / "output"
 ## Path to the cscore program (more portable)
 rc.cscore_path = lambda: rc.sources / "mscanner" / "cscore" / "cscore"
 ## Path to the cscore shared library (faster)
 rc.cscore_dll = lambda: rc.sources  / "mscanner" / "cscore" / "cscore2.dll"
 ## Path to the descriptor queue
 rc.queue_path = lambda: rc.working / "queue"
-## Path to descriptor of the current task
-rc.queue_current = lambda: rc.queue_path / "current"
 
 ### ALL OUTPUTS
 ## Name of index file
@@ -98,14 +96,6 @@ rc.report_result_citations = path("results.html")
 rc.report_result_all = path("all_results.html")
 ## Name of zip file with ALL output citations records
 rc.report_result_all_zip = rc.report_result_all + ".zip"
-
-### RETRIEVAL TEST
-## Name of file with list of testing PMIDs
-rc.report_retrieval_test_pmids = path("retrieval_test.txt")
-## Name of file with cumulative count of retrieved test PMIDs
-rc.report_retrieval_stats = path("retrieval_stats.txt")
-## Name of retrieval vs rank graph
-rc.report_retrieval_graph = path("retrieval.png")
 
 ### VALIDATION
 ## Name of file with positive PMIDs and scores
@@ -137,8 +127,6 @@ rc.save_delay = 6
 rc.smtpserver = "smtp.uct.ac.za" # "smtp.stanford.edu"
 ## Proportion of data to use in retrieval test
 rc.retrieval_test_prop = 0.1
-## Timestamp to use in the output
-rc.timestamp = None
 ## Email to send website queries to
 rc.webmaster_email = "xxxxxxxxxxxxxxxxxxxxxxxx"
 ## Base directory for the website
@@ -177,9 +165,7 @@ rc.citations_per_file = 250
 ## Logging configuration
 def initLogger(console=True, logfile=True):
     """Set up logging to file or console
-    
     @param console: If True, log to the console.
-    
     @param logfile: If True, log to rc.logfile."""
     import logging
     # Root logger

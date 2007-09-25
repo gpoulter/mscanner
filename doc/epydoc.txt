@@ -1,5 +1,5 @@
 [epydoc]
-modules: bin/, mscanner/, utils/, htdocs/
+modules: bin/, mscanner/, htdocs/
 output: html
 target: doc/api/
 docformat: epytext

@@ -2,9 +2,13 @@
 
 """Performs queries using datasets from the MScanner paper
 
+Usage::
+
+    python query.py <dataset> [ <dataset> ... ]
+
 Example::
 
-    python query.py pg04 pg07
+    python query.py pg07 radiology aids
 """
 
                                      

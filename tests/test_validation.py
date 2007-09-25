@@ -64,7 +64,6 @@ class ValidatorTests(unittest.TestCase):
             positives = nx.array([0, 1, 2, 3]),
             negatives = nx.array([4, 5, 6, 7]),
             nfolds = 4,
-            alpha = 0.5,
         )
         pscores, nscores = val.nfold_validate(randomise=False)
         cpscores = nx.array([-2.39789534,  1.03609192,  1.03609192,  3.43398714])
@@ -83,7 +82,6 @@ class ValidatorTests(unittest.TestCase):
             positives = nx.array([0, 1, 2, 3]),
             negatives = nx.array([4, 5, 6, 7]),
             nfolds = None, # Triggers leave-out-one
-            alpha = 0.5,
         )
         pscores, nscores = val.leaveout_validate()
         cpscores = nx.array([-2.14126396, 1.30037451, 1.30037451, 1.30037451])

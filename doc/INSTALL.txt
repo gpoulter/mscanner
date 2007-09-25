@@ -24,11 +24,13 @@ public service on the MScanner_ homepage.
 Installation
 ============
 
-  * Unzip the source distribution into some directory ``INSTALL``
-    ``/opt/mscanner`` for example) on a Unix-like system.  See the
-    `Directory Layout`_.
+  * Unzip the source distribution into some directory ``INSTALL`` (for
+    example, where ``INSTALL`` is ``/home/joe/mscanner`` on a Unix system) 
 
-  * Add ``INSTALL/source`` to the ``PYTHONPATH`` environment variable.
+  * Create any directories required by the `Directory Layout`_.
+
+  * Add ``INSTALL/source`` to the ``PYTHONPATH`` environment variable
+    (so that you can execute ``from mscanner import configuration`` in Python)
 
   * Go to ``INSTALL/source/mscanner/cscore`` and run GNU ``make`` to
     compile the ``cscore.c`` program.
@@ -42,18 +44,18 @@ Installation
   * Run the unit tests by going into ``INSTALL/source/tests`` and
     running ``python __init__.py``
 
+  * Run ``INSTALL/source/bin/update.py`` to parse Medline and create
+    the databases in ``INSTALL/data/cache``.
+
+  * Run the `Web Interface`_ or use ``INSTALL/source/bin/query.py`` as
+    as starting point for constructing a custom query operation.
+
 
 Directory Layout
 ================
 
-The default structure under the ``INSTALL`` directory is as follows::
+The structure of  the ``INSTALL`` directory after extraction is as follows::
                                           
-     data/cache -- MScanner databases
-     data/corpora -- Input files
-     data/medline -- The downloaded Medline distribution
-     data/query -- Outputs for query-based operations
-     data/queue -- Web interface task queue
-     data/validation -- Outputs for validation-based operations
      source/bin -- Executables (utilities and customised analyses)
      source/doc -- INSTALL.txt
      source/doc/api -- Generated API documentation in HTML
@@ -62,6 +64,16 @@ The default structure under the ``INSTALL`` directory is as follows::
      source/htdocs/static/output -- Web interface outputs
      source/mscanner -- Core MScanner package
      source/tests -- Unit tests for the MScanner package
+
+Additionally these directories are required by the default
+configuration (create them if they do not exist)::
+
+     data/cache -- MScanner databases
+     data/corpora -- Input files
+     data/medline -- The downloaded Medline distribution
+     data/query -- Outputs for query-based operations
+     data/queue -- Web interface task queue
+     data/validation -- Outputs for validation-based operations
     
 
 Input Data
@@ -113,8 +125,8 @@ Cheetah_
 .. _web.py: http://webpy.org
 
 
-Starting the web Interface
-==========================
+Web Interface
+=============
 
 The web interface requires `web.py`_ to be installed. It can be run
 under Apache as a CGI script, although web.py also has a built-in
@@ -123,16 +135,17 @@ webserver.
 Start the queue process:
 
   Execute ``INSTALL/source/htdocs/queue.py``.  This long-running
-  process which watches ``INSTALL/data/queue`` for descriptor files
+  process watches ``INSTALL/data/queue`` for descriptor files
   deposited by the web interface, performs the requested
-  query/validation tasks, depositing the output in the static HTML
+  query/validation tasks, and deposits the output in the static HTML
   directory.
 
 Start the internal web server:
 
-  Execute ``INSALL/source/htdocs/controller.py``.  The web server will run on
-  ``http://localhost:8080``.  This validates input and places
-  descriptor files in the queue.
+  Execute ``INSTALL/source/htdocs/controller.py``.  The web server
+  will run on ``http://localhost:8080``.  The web interface takes user
+  input, reports on status of MScanner, and places descriptor files in
+  the queue directory on submission of a query.
 
 To run under Apache:
 
@@ -144,7 +157,8 @@ To run under Apache:
 Re-generating API Documentation
 -------------------------------
 
-API documentation is linked from the MScanner_ home page.
+API documentation is linked from the MScanner_ home page, and may
+already be provided under ``INSTALL/source/doc/api``.
 
 To re-generate the documentation, first install Epydoc_ , then navigate to
 the the ``INSTALL/source`` directory, and run::

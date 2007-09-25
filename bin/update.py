@@ -5,11 +5,12 @@
 Usage::
     python update.py [somepickle]
 
-Without no arguments, parses .xml[.gz] files in configured Medline path and add
-Article objects to the database.
+If a path to a pickle is given, load Article objects from the Pickle into
+the MScanner database.
 
-With one argument it loads Article objects from a Pickle and adds them to the
-database."""
+With no arguments, look for new XML files in the Medline path and add their
+contents to the database. 
+"""
 
                                      
 __author__ = "Graham Poulter"                                        
@@ -29,13 +30,15 @@ import cPickle
 import logging as log
 import sys
 
-from mscanner import article, medline, featuremap
+from mscanner import medline, featuremap
 from mscanner.configuration import rc, initLogger
 
-def main():
-    # Initialise database
-    initLogger(logfile=False)
-    log.info("Initialising databases")
+
+def update_mscanner(pickle=None):
+    """Look for MScanner updates in the rc.medline direcotry
+    
+    @param pickle: Path to a pickle of Article objects to be added instead.
+    """
     medcache = medline.MedlineCache(
             featuremap.FeatureMapping(rc.featuremap),
             rc.db_env_home,
@@ -48,22 +51,23 @@ def main():
             rc.use_transactions,
             )
     # Load articles from a pickle
-    if len(sys.argv) == 2:
-        log.info("Loading articles from " + sys.argv[1])
-        articles = cPickle.load(open(sys.argv[1], "rb"))
+    if pickle is not None:
+        log.info("Updating MScanner from " + pickle )
+        articles = cPickle.load(open(pickle , "rb"))
         dbenv = medcache.create_dbenv()
         medcache.add_articles(articles, dbenv)
         dbenv.close()
     # Parse articles from XML directory
     else:
-        log.info("Starting update from %s" % rc.medline.relpath())
+        log.info("Updating MScanner from " + rc.medline.relpath())
         medcache.add_directory(rc.medline, rc.save_delay)
-    log.debug("Cleaning up")
+
 
 if __name__ == "__main__":
-    # Usage information
-    if len(sys.argv)>1:
-        if "-h" in sys.argv or "--help" in sys.argv:
-            print __doc__
-            sys.exit(0)
-    main()
+    initLogger(logfile=False)
+    if len(sys.argv) == 1:
+        update_mscanner()
+    elif len(sys.argv) == 2:
+        update_mscanner(sys.argv[1])
+    else:
+        print __doc__

@@ -23,7 +23,6 @@ from Cheetah.Template import Template
 import warnings
 warnings.simplefilter("ignore", UserWarning)
 
-
 def writecitations(mode, citations, fname, perfile):
     """Writes a set of HTML files containing citation records
     

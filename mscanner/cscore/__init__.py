@@ -171,6 +171,6 @@ def choose_score():
             score = cscore_dll
     except ImportError:
         pass
-    if score == pyscore and rc.cscore_path.isfile():
+    if score == pyscore_adaptor and rc.cscore_path.isfile():
         score = cscore_pipe
 choose_score()

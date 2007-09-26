@@ -24,61 +24,26 @@ import numpy as n
 def bincount(data):
     """Return best number of histogram bins for the data 
     
-    @note: Uses the formula M{K = R/(2*IQR*N^(-1/3))}
-
-    @note: Expects data to be sorted increasing order.
+    Uses the formula M{K = R/(2*IQR*N^(-1/3))}
+    
+    @param data: Array of numbers, sorted in increasing order.
     """
     N = len(data) # Number of data points
     IQR = data[3*N//4] - data[N//4] # Inter-Quartile Range
     R = data[-1] - data[0] # Range
     bins = R//(2*IQR*N**(-1/3)) # Number of bins
     #print N, IQR, R, bins
-    return min(150,max(10, bins))
-
-
-def calculateOverlap(px, py, nx, ny):
-    """Calculate overlap between two bell curves (curve p must be
-    to the right of curve n)
-    
-    Procedure is first to interpolate both curves onto a common X-axis ranging
-    from min(nx) to max(px), then find highest where pY and nY intersect,
-    then create a curve using pY up to intersection, and nY thereafter. Then
-    calculate the area underneath using trapezoidal rule."""
-    from scipy.interpolate import interp1d
-    from scipy.integrate import trapz
-    X = n.linspace(n.min(nx), n.max(px), 1000)
-    p_interp = interp1d(px, py, bounds_error=False, fill_value=0.0)
-    n_interp = interp1d(nx, ny, bounds_error=False, fill_value=0.0)
-    pY = p_interp(X)
-    nY = n_interp(X)
-    # Attempt to find point of intersection, 
-    # but leave out interpolated sections with zero density
-    diffs = n.absolute(pY-nY)
-    diffs[pY==0] = 1
-    diffs[nY==0] = 1
-    interidx = n.nonzero(diffs == n.min(diffs))[0][0]
-    iY = n.concatenate((pY[:interidx],nY[interidx:]))
-    area = trapz(iY,X)
-    include = iY != 0
-    ingraph = False
-    for idx in xrange(len(iY)):
-        if not ingraph and include[idx]:
-            include[idx-1] = True
-            ingraph = True
-        if ingraph and not include[idx]:
-            include[idx] = True
-            break
-    return area, X[include], iY[include]
+    return min(150, max(10, bins))
 
 
 def kernelPDF(values, npoints=512):
-    """Given 1D values, return an approximate probability density function
+    """Given 1D values, return the probability density function
     
     @param values: Sorted list of floats representing the sample
     
     @param npoints: Number of equal-spaced points at which to estimate the PDF
     
-    @return: (xvalues,yvalues) for y=f(x) of the pdf.
+    @return: (xvalues, yvalues) for y=f(x) of the pdf.
     """
     from scipy import stats
     points = n.linspace(values[0], values[-1], npoints)

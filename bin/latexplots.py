@@ -28,17 +28,19 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 import logging
 from path import path
-
 from pylab import *
 
 from mscanner.configuration import rc as mrc, initLogger
 from mscanner import plotting, scorefile, validation
+from bin import retrievaltest
+
 
 interactive = False
 npoints = 400
 mscanner_dir = path(r"C:\Documents and Settings\Graham\My Documents\data\mscanner")
 source_dir = mscanner_dir / "output"
 outdir = path(r"C:\Documents and Settings\Graham\My Documents\temporary")
+
 
 rc("figure", figsize=(8,6), dpi=100)
 rc("figure.subplot", hspace=0.3)
@@ -48,6 +50,7 @@ rc("lines", linewidth=1.0)
 rc("savefig", dpi=100)
 rc("xtick.major", pad=6.0)
 rc("ytick.major", pad=6.0)
+
 
 def smooth(x, y, xn=npoints):
     """Resample a curve (x,y) using interpolation. xn is either a float with the
@@ -62,14 +65,14 @@ def smooth(x, y, xn=npoints):
     return X, Y
 
 
-def getFeatScores(indir, dataset):
+def read_featscores(indir, dataset):
     """Read feature scores for a dataset"""
     f = open(indir/dataset/mrc.report_term_scores, "r")
     f.readline()
     return array([float(s.split(",",1)[0]) for s in f])
 
 
-def getStats(indir, dataset, title, alpha=0.5):
+def load_stats(indir, dataset, title, alpha=0.5):
     """Read statistics based on score data
     
     @param indir: Directory in which to find data sets
@@ -78,6 +81,8 @@ def getStats(indir, dataset, title, alpha=0.5):
     @param alpha: What alpha to use when recalcing performance
     """
     logging.info("Reading dataset %s", dataset)
+    if not (indir/dataset).isdir():
+        raise ValueError("Could not directory %s" % (indir/dataset)) 
     pscores = array([s[0] for s in scorefile.read_pmids(
         indir/dataset/mrc.report_positives, withscores=True)])
     nscores = array([s[0] for s in scorefile.read_pmids(
@@ -114,7 +119,44 @@ def custom_show(fname, doshow=interactive, type="eps"):
         close()
 
 
-def plotArticleScoreDensity(fname, statlist):
+def calculate_overlap(px, py, nx, ny):
+    """Calculate overlap between two bell curves (curve p must be
+    to the right of curve n).  
+    
+    @deprecated: Overlap is not a meaningful performance statistic.
+    
+    Procedure is first to interpolate both curves onto a common X-axis ranging
+    from min(nx) to max(px), then find highest where pY and nY intersect,
+    then create a curve using pY up to intersection, and nY thereafter. Then
+    calculate the area underneath using trapezoidal rule."""
+    from scipy.interpolate import interp1d
+    from scipy.integrate import trapz
+    X = n.linspace(n.min(nx), n.max(px), 1000)
+    p_interp = interp1d(px, py, bounds_error=False, fill_value=0.0)
+    n_interp = interp1d(nx, ny, bounds_error=False, fill_value=0.0)
+    pY = p_interp(X)
+    nY = n_interp(X)
+    # Attempt to find point of intersection, 
+    # but leave out interpolated sections with zero density
+    diffs = n.absolute(pY-nY)
+    diffs[pY==0] = 1
+    diffs[nY==0] = 1
+    interidx = n.nonzero(diffs == n.min(diffs))[0][0]
+    iY = n.concatenate((pY[:interidx],nY[interidx:]))
+    area = trapz(iY,X)
+    include = iY != 0
+    ingraph = False
+    for idx in xrange(len(iY)):
+        if not ingraph and include[idx]:
+            include[idx-1] = True
+            ingraph = True
+        if ingraph and not include[idx]:
+            include[idx] = True
+            break
+    return area, X[include], iY[include]
+
+
+def plot_score_density(fname, statlist):
     """Plots four score density plots in a grid
 
     @param statlist: A tuple of a four PerformanceStats objects
@@ -130,8 +172,8 @@ def plotArticleScoreDensity(fname, statlist):
         line_neg, = plot(nx, ny, color='blue', label=r"$\rm{Negative}$")
         line_threshold = axvline(
             s.threshold, color='green', linewidth=1, label=r"$\rm{Threshold}$")
-        # No longer plotting the overlapping area
-        #area, iX, iY = plotting.calculateOverlap(px, py, nx, ny)
+        # We don't plot overlapping area any more
+        #area, iX, iY = plotting.calculate_overlap(px, py, nx, ny)
         #patch_overlap, = fill(iX, iY, facecolor='magenta', alpha=0.7, label=r"$\rm{Overlap}$")
         if idx == 0 or idx == 2:
             ylabel("Density")
@@ -141,7 +183,8 @@ def plotArticleScoreDensity(fname, statlist):
             legend(loc="upper left")
     custom_show(fname)
 
-def plotArticleScoreHistogram(fname, pscores, nscores):
+
+def plot_score_histogram(fname, pscores, nscores):
     """Plot histograms for pos/neg scores, with line to mark threshold"""
     logging.info("Plotting article score histogram to %s", fname)
     ##title("Article Score Histograms")
@@ -156,8 +199,9 @@ def plotArticleScoreHistogram(fname, pscores, nscores):
     #p_l = plot(p_bins, p_y, 'r--', label=r"$\rm{Relevants}$")
     #n_l = plot(n_bins, n_y, 'b--', label=r"$\rm{Irrelevant}$")
     custom_show(fname)
-    
-def plotFeatureScoreHistogram(fname, fscores):
+
+
+def plot_featscore_histogram(fname, fscores):
     """Plot histogram for individual feature scores"""
     logging.info("Plotting feature score histogram to %s", fname)
     ##title("Feature Score Histogram")
@@ -168,7 +212,8 @@ def plotFeatureScoreHistogram(fname, fscores):
     setp(patches, 'facecolor', 'r', 'linewidth', 0.0)
     custom_show(fname)
 
-def plotROC(fname, statlist):
+
+def plot_roc(fname, statlist):
     """Plots ROC curves overlayed"""
     logging.info("Plotting ROC grid to %s", fname)
     figure(figsize=(10,5))
@@ -193,7 +238,8 @@ def plotROC(fname, statlist):
     axis([0.0, amount, 1-amount, 1.0])
     custom_show(fname)
 
-def plotPR(fname, statlist):
+
+def plot_precision(fname, statlist):
     """Plots PR curves overlayed"""
     logging.info("Plotting PR curve to %s", fname)
     ##title(r"Precision versus Recall")
@@ -215,7 +261,8 @@ def plotPR(fname, statlist):
     axis([0.0, 1.0, 0.0, 1.0])
     custom_show(fname)
 
-def plotPRF(fname, s):
+
+def plot_fmeasure(fname, s):
     """Plots a single Precision/Recall/F-Measure curve"""
     logging.info("Plotting PRF curve to %s", fname)
     ##title(s.title + " performance versus threshold")
@@ -239,7 +286,9 @@ def plotPRF(fname, s):
     legend(loc="upper right")
     custom_show(fname)
 
-def RetrievalTest():
+#### FUNCTIONS THAT USE THE ABOVE ####
+
+def do_retrievaltest():
     """Plots retrieval test results for 20% of PharmGKB to see how MScanner
     and PubMed compare at retrieving the remaining 80%.
     """
@@ -253,7 +302,7 @@ def RetrievalTest():
     pubmed = mscanner_dir/"support"/"PubMed Pharmacogenetics"
     pgx1 = [int(x) for x in (pubmed/"pgx1.txt").lines()]
     # Retrieval vs rank for PubMed
-    pgx1_c = scoring.compare_results_to_standard(pgx1, set(pg_test))
+    pgx1_c = retrievaltest.compare_results_to_standard(pgx1, set(pg_test))
     # Plot the graph
     ax1 = subplot(111)
     ##title("PG07 Retrieval Comparison")
@@ -273,48 +322,55 @@ def RetrievalTest():
     ylabel("True Positives")
     custom_show("fig4_pg07retrieval")
 
-def Publication():
+
+def do_publication():
     """Draws figures for the BMC paper: including densities, ROC curve, PR
-    curve, and PRF curve.
-    """
-    indir = source_dir / "070621 CV10 100k a_i"
-    aids = getStats(indir, "aids-vs-100k", "AIDSBio")
-    rad = getStats(indir, "radiology-vs-100k", "Radiology")
-    pg07 = getStats(indir, "pg07-vs-100k", "PG07")
-    ran10 = getStats(indir, "random10k-vs-100k", "Random")
+    curve, and PRF curve. """
+    indir = source_dir / "070622 CV10 100k a_i"
+    aids = load_stats(indir, "aids-vs-100k", "AIDSBio")
+    rad = load_stats(indir, "radiology-vs-100k", "Radiology")
+    pg07 = load_stats(indir, "pg07-vs-100k", "PG07")
+    ran10 = load_stats(indir, "random10k-vs-100k", "Random")
     all = (aids,rad,pg07,ran10)
-    plotROC("fig2_roc", all)
-    plotPR("fig3_pr", all)
+    plot_roc("fig2_roc", all)
+    plot_precision("fig3_pr", all)
     fmplot = validation.PerformanceStats(pg07.pscores, pg07.nscores, alpha=0.95)
     fmplot.title = pg07.title
-    plotPRF("fig6_prf", fmplot)
-    plotArticleScoreDensity("fig1_density", all)
-    RetrievalTest()
+    plot_fmeasure("fig6_prf", fmplot)
+    plot_score_density("fig1_density", all)
+    do_retrievaltest()
 
-def Testing():
+
+def do_testplots():
+    """Tests the plot functions using some old smaller datasets"""
     global indir
-    indir = source_dir / "070206 LOO w s=0.01"
-    pg04 = getStats(indir, "pg04-vs-30k", "PG04")
-    pg07 = getStats(indir, "pg07-vs-30k", "PG07")
-    plotArticleScoreDensity("test_density", (pg04,pg07,pg07,pg04))
-    plotROC("test_roc", (pg04,pg07))
-    plotPR("test_pr", (pg04,pg07))
+    indir = source_dir / "Old Validation" / "070223 CV10 Daniel 2s"
+    if not indir.isdir():
+        raise ValueError("Cannot find %s" % indir)
+    pg04 = load_stats(indir, "pg04-vs-30k", "PG04")
+    pg07 = load_stats(indir, "pg07-vs-30k", "PG07")
+    plot_score_density("test_density", (pg04,pg07,pg07,pg04))
+    plot_roc("test_roc", (pg04,pg07))
+    plot_precision("test_pr", (pg04,pg07))
     pg04alpha = validation.PerformanceStats(pg04.pscores, pg04.nscores, alpha=0.9)
     pg04alpha.title = pg04.title
-    plotPRF("test_prf", pg04alpha)
+    plot_fmeasure("test_prf", pg04alpha)
 
-def Custom(subdirs):
-    statlist = [getStats(source_dir/d, d, d) for d in subdirs]
-    fscores = [getFeatScores(source_dir/d, d) for d in subdirs]
-    #plotArticleScoreDensity("cus_density", stats)
-    #plotROC("cus_roc", statlist)
-    #plotPR("cus_pr", statlist)
+
+def do_subdirplots(subdirs):
+    """Plots selected graphs for the datasets passed as parameters"""
+    statlist = [load_stats(source_dir/path(d), d, d) for d in subdirs]
+    fscores = [read_featscores(source_dir/path(d), d) for d in subdirs]
+    #plot_score_density("cus_density", stats)
+    #plot_roc("cus_roc", statlist)
+    #plot_precision("cus_pr", statlist)
     for stats, fscores in zip(statlist, fscores):
-        #plotPRF("cus_%s_prf" % stats.title, stats)
-        plotArticleScoreHistogram(
+        #plot_fmeasure("cus_%s_prf" % stats.title, stats)
+        plot_score_histogram(
             "cus_%s_arthist" % stats.title, stats.pscores, stats.nscores)
-        plotFeatureScoreHistogram(
+        plot_featscore_histogram(
             "cus_%s_feathist" % stats.title, fscores)
+
 
 if __name__ == "__main__":
     initLogger(logfile=False)

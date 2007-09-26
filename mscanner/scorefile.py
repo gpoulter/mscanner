@@ -153,11 +153,13 @@ def load_articles(article_db_path, pmidlist_path):
     from path import path # used in the line below
     cache_path = path(pmidlist_path + ".pickle")
     if cache_path.isfile():
-        return cPickle.load(open(cache_path, "rb"))
+        with open(cache_path, "rb") as f:
+            return cPickle.load(f)
     pmids = read_pmids(pmidlist_path)
     with closing(dbshelve.open(article_db_path, "r")) as artdb:
         articles = [artdb[str(p)] for p in pmids]
-    cPickle.dump(articles, open(cache_path, "wb"), protocol=2)
+    with open(cache_path, "wb") as f:
+        cPickle.dump(articles, f, protocol=2)
     return articles
 
 

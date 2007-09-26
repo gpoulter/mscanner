@@ -163,7 +163,7 @@ rc.numnegs = 100000
 rc.citations_per_file = 250
 
 ## Logging configuration
-def initLogger(console=True, logfile=True):
+def start_logger(console=True, logfile=True):
     """Set up logging to file or console
     @param console: If True, log to the console.
     @param logfile: If True, log to rc.logfile."""

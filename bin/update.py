@@ -12,6 +12,8 @@ With no arguments, look for new XML files in the Medline path and add their
 contents to the database. 
 """
 
+from __future__ import with_statement
+
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
@@ -31,7 +33,7 @@ import logging as log
 import sys
 
 from mscanner import medline, featuremap
-from mscanner.configuration import rc, initLogger
+from mscanner.configuration import rc, start_logger
 
 
 def update_mscanner(pickle=None):
@@ -53,7 +55,8 @@ def update_mscanner(pickle=None):
     # Load articles from a pickle
     if pickle is not None:
         log.info("Updating MScanner from " + pickle )
-        articles = cPickle.load(open(pickle , "rb"))
+        with open(pickle , "rb") as f:
+            articles = cPickle.load(f)
         dbenv = medcache.create_dbenv()
         medcache.add_articles(articles, dbenv)
         dbenv.close()
@@ -64,7 +67,7 @@ def update_mscanner(pickle=None):
 
 
 if __name__ == "__main__":
-    initLogger(logfile=False)
+    start_logger(logfile=False)
     if len(sys.argv) == 1:
         update_mscanner()
     elif len(sys.argv) == 2:

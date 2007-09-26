@@ -32,7 +32,7 @@ import logging
 from path import path
 from pylab import *
 
-from mscanner.configuration import rc as mrc, initLogger
+from mscanner.configuration import rc as mrc, start_logger
 from mscanner import plotting, scorefile, validation
 from bin import retrievaltest
 
@@ -69,9 +69,9 @@ def smooth(x, y, xn=npoints):
 
 def read_featscores(indir, dataset):
     """Read feature scores for a dataset"""
-    f = open(indir/dataset/mrc.report_term_scores, "r")
-    f.readline()
-    return array([float(s.split(",",1)[0]) for s in f])
+    with open(indir/dataset/mrc.report_term_scores, "r") as f:
+        f.readline()
+        return array([float(s.split(",",1)[0]) for s in f])
 
 
 def load_stats(indir, dataset, title, alpha=0.5):
@@ -166,8 +166,8 @@ def plot_score_density(fname, statlist):
     logging.info("Plotting score densities to %s", fname)
     for idx, s in enumerate(statlist):
         t = s.threshold
-        px, py = plotting.kernelPDF(s.pscores)
-        nx, ny = plotting.kernelPDF(s.nscores)
+        px, py = plotting.gaussian_kernel_pdf(s.pscores)
+        nx, ny = plotting.gaussian_kernel_pdf(s.nscores)
         subplot(2,2,idx+1)
         title(s.title)
         line_pos, = plot(px, py, color='red', label=r"$\rm{Positive}$")
@@ -375,7 +375,7 @@ def do_subdirplots(subdirs):
 
 
 if __name__ == "__main__":
-    initLogger(logfile=False)
+    start_logger(logfile=False)
     if len(sys.argv) != 2:
         print "Please give python expression"
     else:

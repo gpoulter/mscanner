@@ -8,6 +8,9 @@ Members of this module:
     - L{getGeneDrugFilter}: Return a caching gene-drug association lister
 """
 
+from __future__ import with_statement
+from __future__ import division
+
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
@@ -424,7 +427,8 @@ def getGeneDrugFilter(gdcache, drugtable, gapscorecache):
 
     @param gapscorecache: Dictionary or path to DB for stroing gapscore outputs
     """
-    drugs = parseDrugs(open(drugtable, "rb").read())
+    with open(drugtable, "rb") as f:
+        drugs = parseDrugs(f.read())
     genefinder = GeneFinder(gapscorecache)
     gdlister = GeneDrugLister(drugs, genefinder)
     return GeneDrugListerCache(gdcache, gdlister)

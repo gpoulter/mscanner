@@ -20,7 +20,7 @@ import random
 import sys
 from path import path
 
-from mscanner.configuration import rc, initLogger
+from mscanner.configuration import rc, start_logger
 from mscanner import plotting, queryenv
 
 
@@ -106,7 +106,7 @@ def retrieval(dataset, filename):
 
 
 if __name__ == "__main__":
-    initLogger()
+    start_logger()
     if len(sys.argv) != 3:
         print "Please provide dataset and input file name"
     else:

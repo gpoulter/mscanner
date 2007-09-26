@@ -24,7 +24,7 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 from path import path
 import sys
 
-from mscanner.configuration import rc, initLogger
+from mscanner.configuration import rc, start_logger
 from mscanner import scorefile, validenv
 
 
@@ -92,7 +92,7 @@ def random_bimodality():
 
 
 if __name__ == "__main__":
-    initLogger()
+    start_logger()
     if len(sys.argv) != 2:
         print "Please provide a Python expression"
     else:

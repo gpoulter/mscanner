@@ -27,7 +27,7 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 import sys
 
-from mscanner.configuration import rc, initLogger
+from mscanner.configuration import rc, start_logger
 from mscanner import scorefile, queryenv
 
 
@@ -54,6 +54,6 @@ def do_query(*datasets):
 
 
 if __name__ == "__main__":
-    initLogger()
+    start_logger()
     rc.citations_per_file = 100
     do_query(*sys.argv[1:])

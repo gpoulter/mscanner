@@ -36,7 +36,7 @@ def bincount(data):
     return min(150, max(10, bins))
 
 
-def kernelPDF(values, npoints=512):
+def gaussian_kernel_pdf(values, npoints=512):
     """Given 1D values, return the probability density function
     
     @param values: Sorted list of floats representing the sample
@@ -64,8 +64,8 @@ class Plotter(Gnuplot):
         """ 
         from itertools import chain
         log.debug("Plotting article score density to %s", fname)
-        px, py = kernelPDF(pdata)
-        nx, ny = kernelPDF(ndata)
+        px, py = gaussian_kernel_pdf(pdata)
+        nx, ny = gaussian_kernel_pdf(ndata)
         overlap = calculateOverlap(px, py, nx, ny)
         g.reset()
         g.title("Article Score Densities")
@@ -83,7 +83,7 @@ class Plotter(Gnuplot):
     def plotFeatureScoreDensity(g, fname, scores):
         """Probability density function for feature scores"""
         log.debug("Plotting feature score density to %s", fname)
-        x, y = kernelPDF(scores, npoints=1024)
+        x, y = gaussian_kernel_pdf(scores, npoints=1024)
         g.reset()
         g.title("Feature Score Density")
         g.xlabel("Feature Score")

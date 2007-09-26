@@ -1,5 +1,7 @@
 """For updating the databases of articles and features"""
 
+from __future__ import with_statement
+
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
@@ -203,11 +205,14 @@ class MedlineCache:
                 log.debug("Saving in %d seconds...", save_delay-t)
                 time.sleep(1)
             log.debug("Parsing XML file %s", filename.basename())
-            if filename.endswith(".gz"):
-                infile = gzip.open(filename, 'r')
-            else:
-                infile = open(filename, 'r')
-            numadded = self.add_articles(parse_medline_xml(infile), dbenv)
+            try:
+                if filename.endswith(".gz"):
+                    infile = gzip.open(filename, 'r')
+                else:
+                    infile = open(filename, 'r')
+                numadded = self.add_articles(parse_medline_xml(infile), dbenv)
+            finally:
+                infile.close()
             log.debug("Added %d articles", numadded)
             tracker.add(filename)
             tracker.dump()

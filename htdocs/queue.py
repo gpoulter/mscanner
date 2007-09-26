@@ -28,6 +28,9 @@ Example descriptor file for validation::
     ...
 """
 
+from __future__ import with_statement
+from __future__ import division
+
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
@@ -48,7 +51,7 @@ from path import path
 import sys
 import time
 
-from mscanner.configuration import rc, initLogger
+from mscanner.configuration import rc, start_logger
 from mscanner import scorefile, validenv, queryenv
 from bin import update
 
@@ -85,22 +88,21 @@ descriptor_keys = dict(
 def read_descriptor(fpath):
     """Reads a descriptor file, returning a dictionary of parameters.
 
-    Each line is "#key = value". We stops at the first line that not starting
+    Each line is '#key = value'. We stops at the first line that not starting
     with '#'.  Valid keys are in L{descriptor_keys}. The same file can be used
     with read_pmids, which will ignores the lines beginning with '#'.
 
-    @return: Storage object, with additional "_filename" containing fpath."""
+    @return: Storage object, with additional '_filename' containing fpath."""
     from mscanner.support.storage import Storage
     result = Storage()
-    f = open(fpath, "r")
-    line = f.readline()
-    while line.startswith("#"):
-        key, value = line[1:].split(" = ",1)
-        value = descriptor_keys[key](value.strip())
-        result[key] = value
+    with open(fpath, "r") as f:
         line = f.readline()
-    result["_filename"] = fpath
-    f.close()
+        while line.startswith("#"):
+            key, value = line[1:].split(" = ",1)
+            value = descriptor_keys[key](value.strip())
+            result[key] = value
+            line = f.readline()
+        result["_filename"] = fpath
     return result
 
 
@@ -110,15 +112,14 @@ def write_descriptor(fpath, pmids, params):
     @param pmids: List of PubMed IDs, may be None
     @param params: Dictionary to write. Values are converted with str(). Only
     keys from descriptor_keys are used."""
-    f = open(fpath, "w")
-    for key, value in params.iteritems():
-        if key in descriptor_keys: 
-            f.write("#" + key + " = " + str(value) + "\n")
-    if pmids is not None:
-        for pmid in pmids:
-            f.write(str(pmid)+"\n")
-    f.close()
-    fpath.chmod(0777)
+    with open(fpath, "w") as f:
+        fpath.chmod(0777)
+        for key, value in params.iteritems():
+            if key in descriptor_keys: 
+                f.write("#" + key + " = " + str(value) + "\n")
+        if pmids is not None:
+            for pmid in pmids:
+                f.write(str(pmid)+"\n")
 
 
 class QueueStatus:
@@ -277,7 +278,7 @@ def populate_test_queue():
 
 
 if __name__ == "__main__":
-    initLogger()
+    start_logger()
     if len(sys.argv) == 2 and sys.argv[1] == "test":
         populate_test_queue()
     try:

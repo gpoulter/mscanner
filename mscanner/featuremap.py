@@ -1,5 +1,7 @@
 """Provides a mapping between features and integer IDs"""
 
+from __future__ import with_statement
+
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
@@ -61,28 +63,26 @@ class FeatureMapping:
         """
         self.features = []
         self.feature_ids = {}
-        f = codecs.open(self.featfile, "rb", "utf-8")
-        self.numdocs = int(f.readline().strip())
-        for fid, line in enumerate(f):
-            feat, ftype, count = line.strip().split("\t")
-            self.features.append((feat,ftype))
-            self.counts.append(int(count))
-            if ftype not in self.feature_ids:
-                self.feature_ids[ftype] = {feat:fid}
-            else:
-                self.feature_ids[ftype][feat] = fid
-        f.close()
+        with codecs.open(self.featfile, "rb", "utf-8") as f:
+            self.numdocs = int(f.readline().strip())
+            for fid, line in enumerate(f):
+                feat, ftype, count = line.strip().split("\t")
+                self.features.append((feat,ftype))
+                self.counts.append(int(count))
+                if ftype not in self.feature_ids:
+                    self.feature_ids[ftype] = {feat:fid}
+                else:
+                    self.feature_ids[ftype][feat] = fid
 
     def dump(self):
         """Write the feature mapping to disk as a table of
         (name, type, count) where line number is ID+1"""
         if self.featfile is None:
             return
-        f = codecs.open(self.featfile_new, "wb", "utf-8")
-        f.write("%s\n" % self.numdocs)
-        for (feat, ftype), count in zip(self.features, self.counts):
-            f.write(feat+"\t"+ftype+"\t"+str(count)+"\n")
-        f.close()
+        with codecs.open(self.featfile_new, "wb", "utf-8") as f:
+            f.write("%s\n" % self.numdocs)
+            for (feat, ftype), count in zip(self.features, self.counts):
+                f.write(feat+"\t"+ftype+"\t"+str(count)+"\n")
         if self.featfile.isfile():
             self.featfile.remove()
         self.featfile_new.rename(self.featfile)

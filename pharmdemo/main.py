@@ -29,7 +29,7 @@ from itertools import chain
 import logging as log
 import sys
 
-from mscanner.configuration import rc, initLogger
+from mscanner.configuration import rc, start_logger
 from mscanner import scorefile, queryenv, validenv
 from pharmdemo import genedrug, dbexport
 
@@ -128,5 +128,5 @@ def pharmdemo():
 
 
 if __name__ == "__main__":
-    initLogger()
+    start_logger()
     pharmdemo()

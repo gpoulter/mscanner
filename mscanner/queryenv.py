@@ -1,6 +1,7 @@
 """Environment for performing query-based analyses."""
 
-from __future__ import division, with_statement, absolute_import
+from __future__ import with_statement
+from __future__ import division
 
                                      
 __author__ = "Graham Poulter"                                        

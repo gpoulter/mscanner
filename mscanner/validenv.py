@@ -1,6 +1,8 @@
 """Environment for performing cross-validation-based analyses"""
 
 from __future__ import with_statement
+from __future__ import division
+
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or

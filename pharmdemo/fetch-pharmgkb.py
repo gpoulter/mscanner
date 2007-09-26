@@ -17,6 +17,7 @@ it under the Do Whatever You Want Public License. Terms and conditions:
 """
 
 from __future__ import with_statement
+
 import sys
 
 def getpharmgkb(outfile):

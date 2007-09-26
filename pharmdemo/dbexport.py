@@ -155,25 +155,13 @@ class GeneDrugExport:
 
 
 schema = """
+-- So ampersands in the data do not cause user prompts
+set define off;
+
+-- Drop tables in reverse order
 drop table dg_pmids;
 drop table genedrug;
 drop table cbs;
-
--- PMIDs associated with the gene-drug pairs from the previous table.
-create table dg_pmids (
-  pmid varchar2(15),
-  text clob,
-  dg_id integer,
-  foreign key (dg_id) references genedrug(id)
-);
-
--- Gene-drug pairs, and number of articles containing both in their abstract.
-create table genedrug (
-  id number(10,0) primary key, 
-  gene varchar2(100), 
-  drug varchar2(100),
-  numarticles number(10,0) 
-);
 
 -- Articles, categories of evidence, and genes/drugs in the abstract
 create table cbs (
@@ -185,8 +173,25 @@ create table cbs (
   coes varchar2(50),
   evid_loc varchar2(50)
 );
+
+-- Gene-drug pairs, and number of articles containing both in their abstract.
+create table genedrug (
+  id number(10,0) primary key,
+  gene varchar2(100),
+  drug varchar2(100),
+  numarticles number(10,0)
+);
+
+-- PMIDs associated with the gene-drug pairs from the previous table.
+create table dg_pmids (
+  pmid varchar2(15),
+  text clob,
+  dg_id integer,
+  foreign key (dg_id) references genedrug(id)
+);
 """
 """Database schema prepended to the exports"""
+
 
 schema_unused = """
 drop table dg_pmid_coes;
@@ -197,4 +202,4 @@ create table dg_pmid_coes (
   coe varchar2(3)
 );
 """
-"""Unused portion of database schema - not doing category of evidence"""
+"""Unused schema - we're not doing category of evidence"""

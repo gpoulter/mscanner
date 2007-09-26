@@ -13,8 +13,8 @@ MScanner Status Report
 #def extraheaders
 <script type="text/javascript">
     window.onload = function() {
-        setTimeout(window.location.reload, 10000);
-    }   
+        setTimeout(function() {window.location.reload()}, 10000);
+    }
 </script>
 #end def extraheaders
 
@@ -74,12 +74,12 @@ $inputs.render()
 
 ##### LOG CONTENTS #####
 
-#if len($getVar('logcontents', [])) > 0
+#if len($getVar('log_lines', [])) > 0
 <h2>Contents of the log</h2>
 <pre>
-#echo "".join($logcontents)
+#echo "".join($log_lines)
 </pre>
-#end if logcontents
+#end if log_lines
 
 </div><!--class=narrow-->
 #end def contents

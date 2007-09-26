@@ -60,7 +60,7 @@ was ticked are not listed.</p>
         <input type="radio" name="dataset" value="$d.dataset">
       </td>
       <td class="timestamp">
-        $time.strftime("%Y/%m/%d %H:%M:%S UTC", $time.gmtime($d.submitted))
+        $time.strftime("%Y/%m/%d %H:%M:%S GMT", $time.gmtime($d.submitted))
       </td>
       <td class="operation">
         $d.operation

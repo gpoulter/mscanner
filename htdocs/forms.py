@@ -73,9 +73,10 @@ class Form:
                     rows.append(e_row % i.note)
         out = "\n".join(['<table class="form">'] + rows + ["</table>"])
         # Now render the hidden inputs
-        for i in self.inputs:
-            if isinstance(i, Hidden):
-                out += i.render()
+        out += "\n".join(
+            ["<div>"] + 
+            [i.render() for i in self.inputs if isinstance(i, Hidden)] + 
+            ["</div>"])
         return out
 
 

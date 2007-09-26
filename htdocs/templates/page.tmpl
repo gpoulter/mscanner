@@ -76,7 +76,7 @@ Sample Title
     #echo len($queue.tasklist) - 1
     </td>
   </tr>  
-  #else
+  #elif $queue.status[$task.dataset] == $queue.WAITING
   <tr>
     <th>Tasks to go</th>
     <td>

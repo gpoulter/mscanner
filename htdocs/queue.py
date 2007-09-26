@@ -118,6 +118,7 @@ def write_descriptor(fpath, pmids, params):
         for pmid in pmids:
             f.write(str(pmid)+"\n")
     f.close()
+    fpath.chmod(0777)
 
 
 class QueueStatus:

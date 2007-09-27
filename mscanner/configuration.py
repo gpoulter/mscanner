@@ -126,7 +126,7 @@ rc.save_delay = 6
 ## Server for sending e-mails
 rc.smtpserver = "smtp.uct.ac.za" # "smtp.stanford.edu"
 ## Proportion of data to use in retrieval test
-rc.retrieval_test_prop = 0.1
+rc.retrieval_test_prop = 0.2
 ## Email to send website queries to
 rc.webmaster_email = "xxxxxxxxxxxxxxxxxxxxxxxx"
 ## Base directory for the website

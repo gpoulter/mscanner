@@ -42,7 +42,7 @@ dataset_map = {
 def validate(*datasets):
     """Perform cross-validation analysis for the Mscanner publication"""
     env = scorefile.Databases()
-    rc.numnegs = 1000
+    rc.numnegs = 100000
     for dataset in datasets:
         if dataset not in dataset_map:
             raise ValueError("Invalid Data Set %s" % dataset)

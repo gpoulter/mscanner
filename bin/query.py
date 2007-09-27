@@ -55,5 +55,4 @@ def do_query(*datasets):
 
 if __name__ == "__main__":
     start_logger()
-    rc.citations_per_file = 100
     do_query(*sys.argv[1:])

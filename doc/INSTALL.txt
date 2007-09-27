@@ -10,10 +10,10 @@ MScanner: Retrieving Medline citations using examples
 MScanner takes a set Medline citations, and trains a classifier to
 search for citations similar to the set as a whole.  
 
-This source code is provided for people who wish to use MScanner as
-a starting point for another Medline classifier, and those who
-wish to construct more advanced operations - such as using MScanner
-output as the input to a Natural Language Processing system.
+This source code is provided for people who wish to use MScanner as a
+starting point for another Medline classifier, and those who wish to
+construct more advanced operations - such as using MScanner output as
+the input to a Natural Language Processing system.
 
 If you just wish to query with some of your own data, rather use the
 public service on the MScanner_ homepage.
@@ -24,16 +24,18 @@ public service on the MScanner_ homepage.
 Installation
 ============
 
-  * Unzip the source distribution into some directory ``INSTALL`` (for
-    example, where ``INSTALL`` is ``/home/joe/mscanner`` on a Unix system) 
+  * Unzip the source distribution into some directory ``INSTALL``.  On
+    a Unix-like system, ``INSTALL`` might be ``/home/joe/mscanner``.
 
   * Create any directories required by the `Directory Layout`_.
 
-  * Add ``INSTALL/source`` to the ``PYTHONPATH`` environment variable
-    (so that you can execute ``from mscanner import configuration`` in Python)
+  * Add ``INSTALL/source`` to the ``PYTHONPATH`` environment variable.
+    If done correctly, you should be able to ``import mscanner`` in a
+    Python shell.
 
   * Go to ``INSTALL/source/mscanner/cscore`` and run GNU ``make`` to
-    compile the ``cscore.c`` program.
+    compile the ``cscore.c`` program (Windows .exe and dll are
+    provided)
 
   * Install the Dependencies_ 
 
@@ -61,19 +63,16 @@ The structure of  the ``INSTALL`` directory after extraction is as follows::
      source/doc/api -- Generated API documentation in HTML
      source/htdocs -- Web interface package
      source/htdocs/static -- Static data available over the web
-     source/htdocs/static/output -- Web interface outputs
+     source/htdocs/static/output -- Where web outputs are placed
      source/mscanner -- Core MScanner package
      source/tests -- Unit tests for the MScanner package
 
-Additionally these directories are required by the default
-configuration (create them if they do not exist)::
+Additionally create these directories to hold data::
 
      data/cache -- MScanner databases
      data/corpora -- Input files
      data/medline -- The downloaded Medline distribution
-     data/query -- Outputs for query-based operations
      data/queue -- Web interface task queue
-     data/validation -- Outputs for validation-based operations
     
 
 Input Data
@@ -187,8 +186,9 @@ constants used by the MScanner library.
 Defaults can be overridden dynamically as follows::
          
    from mscanner.configuration import rc
+   from mscanner.queryenv import Query
+   rc.dataset = "something"
    rc.limit = 500 # At most 500 articles to be returned
-   from mscanner.queryenv import QueryEnvironment
-   env = QueryEnvironment()
-   env.standardQuery(rc.corpora / "my_data.txt")
+   query = Query(rc.working / "query" / rc.dataset)
+   query.query(rc.corpora / "something-pmids.txt")
 

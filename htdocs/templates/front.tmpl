@@ -14,33 +14,42 @@ MScanner
 <h2>Queries</h2>
 
 <p>On the <a href="query">query</a> page, give MScanner examples of the
-citations you are looking for, then click "Submit Query". About 90 seconds from
-the front of the queue the result will be ready. The difference between
-MScanner and the PubMed <a
-href="http://www.ncbi.nlm.nih.gov/entrez/query/static/computation.html">Related
-Articles</a> feature is that MScanner can use many examples to define the topic
-of interest, instead of just one.</p>
+citations you are looking for, then click "Submit Query".   MScanner
+looks at the MeSH terms and journals represented in your examples to
+identify the best matching citations in the rest of Medline.  It takes
+about 90 seconds to complete after reaching the front of the queue.</p>
 
-<p>See the <a href="static/sample/pg07">sample output</a> of a query that used
-as input 1,595 citations from the Pharmacogenetics KnowledgeBase (<a
+<p>You can view <a href="static/sample/pg07">results</a> of a query
+which used 1,595 examples of pharmacogenetics articles retrieved from the
+Pharmacogenetics KnowledgeBase (<a
 href="http://www.pharmgkb.org">PharmGKB</a>).</p>
 
 <h2>Cross validation</h2> 
 
-<p>If MScanner is given random articles for input, those citations are
-indistinguishable from the rest of <a
+<p>When random articles are used for input, they are indistinguishable from the
+rest of <a
 href="http://www.nlm.nih.gov/pubs/factsheets/medline.html">Medline</a>. To
-measure how well MScanner can distinguish your input from Medline, use the
-10-fold cross validation option on the query page (which requires 30 or more
-training citations). See the <a href="static/sample/pg07-vs-100k">sample
-output</a> for cross validation using the PharmGKB citations as input.</p>
+measure how well MScanner can perform on your input, use the 10-fold cross
+validation option on the query page (this feature requires 30 or more training
+citations). You can view <a href="static/sample/pg07-vs-100k">results</a>
+validation on the PharmGKB citations.</p>
 
-<h2>Published data sets</h2>
+<h2>Source Code</h2>
 
-<p> The MScanner publication presents condensed results for cross validation on
-data sets named PG07, AIDSBio, Radiology and Random10k. What follow are links
-to the original query and cross-validation outputs for those data sets. See the
-paper for descriptions of the data sets.</p>
+<p>MScanner is released under the <a href="http://www.gnu.org/licenses"> GNU
+General Public License</a>. The latest revision is dated 2007.09.27 and is a
+significant refactoring of the 2007.09.07 version, with have better functional
+decomposition, adherence to the Python style guidelines, and robustness to
+errors.</p>
+
+which is also more robust to 
+
+<h2>Publication Results</h2>
+
+<p> The MScanner publication has condensed results for cross validation on data
+sets named PG07, AIDSBio, Radiology and Random10k. Below are links to the
+complete query and cross-validation output.   Descriptions of the
+data sets are in the paper.</p>
 
 <table>
 <tr>
@@ -71,7 +80,7 @@ paper for descriptions of the data sets.</p>
 </table>
 
 <p>
-MScanner has been tested with
+The MScanner web interface has been tested with
 <a href="http://www.mozilla.com/firefox/">Mozilla Firefox 2</a>, 
 <a href="http://www.microsoft.com/windows/downloads/ie/getitnow.mspx">Internet Explorer 7</a>, 
 <a href="http://www.apple.com/safari/download/">Safari 3</a> and 

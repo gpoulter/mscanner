@@ -83,7 +83,7 @@ def random_bimodality():
     zero."""
     rc.dataset = "random10k-vs-100k-mod"
     rc.nfolds = 10
-    rc.post_masker = "maskNonPositives"
+    rc.post_masker = "mask_nonpositives"
     pos = "random10k-06.txt"
     neg = "medline07-100k.txt"
     op = validenv.Validation(rc.working / "valid" / rc.dataset)

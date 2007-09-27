@@ -141,7 +141,7 @@ rc.pseudocount = None
 ## Types of features to exclude
 rc.exclude_types = []
 ## Method name for calculating feature probabilities
-rc.frequency_method = "getProbabilitiesBayes"
+rc.frequency_method = "probabilities_bayes"
 ## Method name for calculating mask after scores (may be None)
 rc.post_masker = None
 

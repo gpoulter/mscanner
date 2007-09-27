@@ -54,7 +54,7 @@ def gaussian_kernel_pdf(values, npoints=512):
 
 class Plotter(Gnuplot):
     
-    def plotArticleScoreDensity(g, fname, pdata, ndata, threshold):
+    def plot_score_density(g, fname, pdata, ndata, threshold):
         """Probability density of pos and neg scores, with line to mark threshold
     
         @param fname: Filename to plot to
@@ -80,7 +80,7 @@ class Plotter(Gnuplot):
         return overlap
 
 
-    def plotFeatureScoreDensity(g, fname, scores):
+    def plot_feature_density(g, fname, scores):
         """Probability density function for feature scores"""
         log.debug("Plotting feature score density to %s", fname)
         x, y = gaussian_kernel_pdf(scores, npoints=1024)
@@ -93,7 +93,7 @@ class Plotter(Gnuplot):
         g.plot(Data(x, y, with="lines"))
 
 
-    def plotArticleScoreHistogram(g, fname, pdata, ndata, threshold):
+    def plot_score_histogram(g, fname, pdata, ndata, threshold):
         """Histograms for pos and neg scores, with line to mark threshold""" 
         log.debug("Plotting article score histogram to %s", fname)
         from itertools import chain
@@ -116,7 +116,7 @@ class Plotter(Gnuplot):
                     title="threshold", with="lines lw 3"))
 
 
-    def plotFeatureScoreHistogram(g, fname, scores):
+    def plot_feature_histogram(g, fname, scores):
         """Histogram for feature scores
         
         @param scores: List with scores of each feature"""
@@ -135,7 +135,7 @@ class Plotter(Gnuplot):
         g.plot(Data(x, y, with="boxes"))
 
 
-    def plotROC(g, fname, FPR, TPR, marker_FPR):
+    def plot_roc(g, fname, FPR, TPR, marker_FPR):
         """ROC curve (TPR vs FPR)"""
         log.debug("Plotting ROC curve to %s", fname)
         g.reset()
@@ -148,7 +148,7 @@ class Plotter(Gnuplot):
                Data([marker_FPR, marker_FPR], [0,0.99], title="threshold", with="lines"))
 
 
-    def plotPrecisionRecall(g, fname, TPR, PPV, marker_TPR):
+    def plot_precision(g, fname, TPR, PPV, marker_TPR):
         """Precision vs recall"""
         log.debug("Plotting Precision-Recall curve to %s", fname)
         g.reset()
@@ -161,7 +161,7 @@ class Plotter(Gnuplot):
                Data([marker_TPR, marker_TPR], [0,0.99], title="threshold", with="lines"))
 
 
-    def plotPrecisionRecallFmeasure(g, fname, pscores, TPR, PPV, FM, FMa, threshold):
+    def plot_fmeasure(g, fname, pscores, TPR, PPV, FM, FMa, threshold):
         """Precision, Recall, F-Measure vs threshold"""
         log.debug("Plotting F-Measure curve to %s", fname)
         g.reset()
@@ -177,7 +177,7 @@ class Plotter(Gnuplot):
                Data([threshold, threshold], [0,0.99], title="threshold", with="lines"))
 
 
-    def plotRetrievalGraph(g, fname, nretrieved, total):
+    def plot_retrieved_positives(g, fname, nretrieved, total):
         """Proportion of testing set retrieved, versus result rank"""
         log.debug("Plotting Retrieval curve to %s", fname)
         g.reset()

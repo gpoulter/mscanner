@@ -212,27 +212,27 @@ class Validation(object):
         p = self.performance
         plotter = plotting.Plotter()
         log.debug("Drawing graphs")
-        ##overlap, iX, iY = plotter.plotArticleScoreDensity(
+        ##overlap, iX, iY = plotter.plot_score_density(
         ##  self.outdir/rc.report_artscores_img, p.pscores, p.nscores, p.threshold)
         # Article Score Histogram
         if not (self.outdir/rc.report_artscores_img).exists():
-            plotter.plotArticleScoreHistogram(
+            plotter.plot_score_histogram(
             self.outdir/rc.report_artscores_img, p.pscores, p.nscores, p.threshold)
         # Feature Score Histogram
         if not (self.outdir/rc.report_featscores_img).exists():
-            plotter.plotFeatureScoreHistogram(
+            plotter.plot_feature_histogram(
             self.outdir/rc.report_featscores_img, self.featinfo.scores)
         # ROC Curve
         if not (self.outdir/rc.report_roc_img).exists():
-            plotter.plotROC(
+            plotter.plot_roc(
             self.outdir/rc.report_roc_img, p.FPR, p.TPR, p.tuned.FPR)
         # Precision-Recall Curve
         if not (self.outdir/rc.report_prcurve_img).exists():
-            plotter.plotPrecisionRecall(
+            plotter.plot_precision(
             self.outdir/rc.report_prcurve_img, p.TPR, p.PPV, p.tuned.TPR)
         # F-Measure Curve
         if not (self.outdir/rc.report_fmeasure_img).exists():
-            plotter.plotPrecisionRecallFmeasure(
+            plotter.plot_fmeasure(
             self.outdir/rc.report_fmeasure_img, p.uscores, p.TPR, p.PPV, 
             p.FM, p.FMa, p.threshold)
         

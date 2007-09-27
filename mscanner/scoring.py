@@ -69,7 +69,7 @@ class FeatureInfo(object):
                  ndocs=None,
                  pseudocount=None, 
                  mask=None,
-                 frequency_method="getProbabilitiesBayes",
+                 frequency_method="probabilities_bayes",
                  post_masker=None):
         """Initialise FeatureInfo object (parameters are instance variables)"""
         update(self, locals())
@@ -122,7 +122,7 @@ class FeatureInfo(object):
         return self._scores
 
 
-    def getProbabilitiesRubin(s):
+    def probabilities_rubin(s):
         """Uses Daniel Rubin's frequency smoothing heuristic, which
         replaces zero-frequency with 1e-8"""
         pfreqs = s.pos_counts / float(s.pdocs)
@@ -132,7 +132,7 @@ class FeatureInfo(object):
         return pfreqs, nfreqs
 
 
-    def getProbabilitiesBayes(s):
+    def probabilities_bayes(s):
         """Use a pseudocount vector, or a constant pseudocount to get
         posterior feature probablilities.
         
@@ -145,7 +145,7 @@ class FeatureInfo(object):
         return pfreqs, nfreqs
 
 
-    def getProbabilitiesOldBayes(s):
+    def probabilities_oldbayes(s):
         """Use a pseudocount vector, or a constant pseudocount to get
         posterior feature probablilities.   Instead of +1 in the
         denominator, we use +2*pseudocount.
@@ -160,14 +160,14 @@ class FeatureInfo(object):
         return pfreqs, nfreqs
 
 
-    def maskRarePositives(s):
+    def make_rare_positives(s):
         """Mask for positive-scoring features that do not occur in the positive set
         @return: Boolean array for masked out features
         """
         return (s.scores > 0) & (s.pos_counts == 0)
 
 
-    def maskNonPositives(s):
+    def mask_nonpositives(s):
         """Mask for features not represented in the positives
         @return: Boolean array for masked out features
         """

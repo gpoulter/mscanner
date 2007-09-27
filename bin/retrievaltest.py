@@ -86,7 +86,7 @@ class RetrievalTest(queryenv.Query):
             [str(x) for x in cumulative])
         # Graph TP vs FP (FP = rank-TP)
         plotter = plotting.Plotter()
-        plotter.plotRetrievalGraph(
+        plotter.plot_retrieved_positives(
             self.outdir/rc.report_retrieval_graph, 
             cumulative, len(test_pmids))
 

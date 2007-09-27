@@ -31,11 +31,11 @@ class GeneDrugExport:
     
     def __init__(self, gdarticles):
         self.gdarticles = gdarticles
-        self.gdcounts = self.countGeneDrug(gdarticles)
+        self.gdcounts = self.count_genedrug(gdarticles)
 
 
     @staticmethod
-    def countGeneDrug(articles):
+    def count_genedrug(articles):
         """Return global gene-drug associations given per-article associations
         
         @param articles: List of Article objects. Requires pmid, title,
@@ -54,7 +54,7 @@ class GeneDrugExport:
         return gdcounter
 
 
-    def writeGeneDrugCountsCSV(self, fname):
+    def write_genedrug_csv(self, fname):
         """Write PubMed IDs gene-drug associations as CSV
         
         @param fname: Path to output file."""
@@ -66,7 +66,7 @@ class GeneDrugExport:
                     f.write("%s,%s,%s\n" % (pmid, gene, drug))
 
 
-    def exportDatabase(self, con):
+    def export_dbapi(self, con):
         """Export articles to a database connection
         
         @param con: Connection to destination database. Database should 
@@ -98,7 +98,7 @@ class GeneDrugExport:
         con.commit()
 
 
-    def exportText(self, outfile):
+    def export_sqlfile(self, outfile):
         """Export to text file"""
         class TextOutput:
             """'Connection' that just writes SQL to file
@@ -130,10 +130,10 @@ class GeneDrugExport:
                 for sub in subs:
                     self.execute(sql, sub)
         with closing(TextOutput(outfile)) as con:
-            self.exportDatabase(con)
+            self.export_dbapi(con)
 
 
-    def exportSQLite(self, outfile):
+    def export_sqlite(self, outfile):
         """Export to an SQLite database
         
         @param outfile: Path of SQLite database write to."""
@@ -141,16 +141,16 @@ class GeneDrugExport:
         if outfile.isfile():
             outfile.remove()
         with closing(sqlite.connect(outfile)) as con:
-            self.exportDatabase(con)
+            self.export_dbapi(con)
 
 
-    def exportOracleCon(self, conpath):
+    def export_dcoracle2(self, conpath):
         """Export to an Oracle database.
         
         @param conpath: user/password@host connection string for the database"""
         import DCOracle2
         with closing(DCOracle2.connect(conpath)) as con:
-            self.exportDatabase(cont)
+            self.export_dbapi(cont)
 
 
 

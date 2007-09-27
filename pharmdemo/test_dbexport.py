@@ -37,7 +37,7 @@ articles[1].genedrug={'PKID1':["GENE2","GENE3"],'PKID2':["GENE3","GENE4"]}
 class DbexportTests(unittest.TestCase):
     """Tests for dbexport module
 
-    Tests: exportText
+    Tests: export_sqlfile
     Missing: exportSQlite, exportOracle*
     """
     def setUp(self):
@@ -48,11 +48,11 @@ class DbexportTests(unittest.TestCase):
         
     def test(self):
         exporter = dbexport.GeneDrugExport(articles);
-        exporter.exportText(self.fn)
+        exporter.export_sqlfile(self.fn)
         """
         dbname = ":memory:"
         self.con = sqlite.connect( self.dbname )
-        dbexport.exportDatabase( self.con, articles )
+        dbexport.export_dbapi( self.con, articles )
         cur = self.con.cursor()
         cur.execute( 'SELECT * from genedrug order by id' )
 

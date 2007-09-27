@@ -65,24 +65,24 @@ class PharmdemoQuery(queryenv.Query):
         self.make_results()
         # Do associations
         log.debug("Gene-drug associations on results")
-        gdfilter = genedrug.getGeneDrugFilter(
+        gdfinder = genedrug.open_genedrug_finder(
             rc.genedrug_db, rc.drugtable, rc.gapscore_db)
         gd_articles = []
         gd_pmids = set()
         for score, pmid in chain(self.results, self.inputs):
             a = self.env.artdb[str(pmid)]
-            a.genedrug = gdfilter(a)
+            a.genedrug = gdfinder[a]
             if len(a.genedrug) > 0:
                 gd_articles.append(a)
                 gd_pmids.add(pmid)
-        gdfilter.close()
+        gdfinder.close()
         self.inputs  = [ (s,p) for s,p in self.inputs  if p in gd_pmids ]
         self.results = [ (s,p) for s,p in self.results if p in gd_pmids ]
         if export_db == True:
             log.debug("Exporting database")
             gdexport = dbexport.GeneDrugExport(gd_articles)
-            gdexport.writeGeneDrugCountsCSV(rc.genedrug_csv)
-            gdexport.exportText(rc.genedrug_sql)
+            gdexport.write_genedrug_csv(rc.genedrug_csv)
+            gdexport.export_sqlfile(rc.genedrug_sql)
         # Finish by writing results
         self.save_results()
         self.write_report()
@@ -101,11 +101,11 @@ class PharmdemoValidation(validenv.Validation):
         log.info("Getting gene-drug associations") 
         pos_arts = scorefile.load_articles(rc.articledb, self.positives)
         neg_arts = scorefile.load_articles(rc.articledb, self.negatives)
-        gdfilter = genedrug.getGeneDrugFilter(
+        gdfinder = genedrug.open_genedrug_finder(
             rc.genedrug, rc.drugtable, rc.gapscore)
         postfilter = set()
         for art in chain(pos_arts, neg_arts):
-            gdresult = gdfilter(art)
+            gdresult = gdfinder[art]
             art.genedrug = gdresult
             if len(gdresult) > 0:
                 postfilter.add(art.pmid)
@@ -118,8 +118,8 @@ def pharmdemo():
     
     @param pmidfile: Name of the file under rc.corpora to use for input PubMed IDs
     """
-    filename = rc.corpora / "pharmgkb-070205.txt"
-    #filename = rc.corpora / "genedrug-small.txt"
+    #filename = rc.corpora / "pharmgkb-070205.txt"
+    filename = rc.corpora / "genedrug-small.txt"
     rc.dataset = "pharmdemo"
     rc.threshold = 20.0 # Higher than usual threshold
     rc.limit = 10000 # Want lots of results

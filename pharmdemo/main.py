@@ -51,13 +51,12 @@ rc.genedrug_sql = lambda: rc.genedrug / "pharmdemo.sql"
 class PharmdemoQuery(queryenv.Query):
 
     def genedrug_query(self, input, export_db=False):
-        """Filter L{results} and L{inputs} for those gene-drug co-occurrences
+        """Query where L{results} and L{inputs} are filtered for gene-drug
+        co-occurrences, and the associations are exported as an SQL file.
         
-        @param filename: Path to input PubMed IDs
+        @param input: Path to PubMed IDs
         
         @param export_db: If True, export associations for PharmDemo
-        
-        @return: Set of articles with gene-drug associations.
         """
         self.load_pmids(input)
         if len(self.pmids) == 0: return
@@ -92,9 +91,7 @@ class PharmdemoQuery(queryenv.Query):
 class PharmdemoValidation(validenv.Validation):
     
     def genedrug_filter(self):
-        """Create a membership test for gene-drug association.
-        
-        To use the filter, assign this method to self.postFilterFunction
+        """Membership test for gene-drug association.
         
         @return: Set of PubMed IDs which have gene-drug co-occurrences.
         """
@@ -114,10 +111,7 @@ class PharmdemoValidation(validenv.Validation):
 
 
 def pharmdemo():
-    """Perform a standard query, then filter the Query which exports to the PharmDemo database for PharmGKB
-    
-    @param pmidfile: Name of the file under rc.corpora to use for input PubMed IDs
-    """
+    """Perform a query with exporting of Pharmdemo associations"""
     #filename = rc.corpora / "pharmgkb-070205.txt"
     filename = rc.corpora / "genedrug-small.txt"
     rc.dataset = "pharmdemo"

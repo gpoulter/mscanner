@@ -1,7 +1,15 @@
-"""Module for writing HTML tables of citations"""
+"""Writes HTML pages with interactive citation tables"""
 
 from __future__ import with_statement
 from __future__ import division
+
+from mscanner.configuration import rc
+from mscanner import utils
+from Cheetah.Template import Template
+
+import warnings
+warnings.simplefilter("ignore", UserWarning)
+
 
                                      
 __author__ = "Graham Poulter"                                        
@@ -17,12 +25,6 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
-from mscanner.configuration import rc
-from mscanner.support import utils
-from Cheetah.Template import Template
-
-import warnings
-warnings.simplefilter("ignore", UserWarning)
 
 def writecitations(mode, citations, fname, perfile):
     """Writes a set of HTML files containing citation records
@@ -90,7 +92,7 @@ def maketable(startrank, citations):
     SubElement(cg, "col", {"class":"rank"})
     SubElement(cg, "col", {"class":"score"})
     SubElement(cg, "col", {"class":"pmid"})
-    SubElement(cg, "col", {"class":"year"})
+    SubElement(cg, "col", {"class":"date"})
     SubElement(cg, "col", {"class":"author"})
     SubElement(cg, "col", {"class":"abstract"})
     SubElement(cg, "col", {"class":"title"})
@@ -101,7 +103,7 @@ def maketable(startrank, citations):
     SubElement(tr, "th", title="Rank").text = "R"
     SubElement(tr, "th").text = "Score"
     SubElement(tr, "th").text = "PMID"
-    SubElement(tr, "th").text = "Year"
+    SubElement(tr, "th").text = "Date"
     SubElement(tr, "th", title="Author").text = "Au"
     SubElement(tr, "th", title="Abstract").text = "Ab"
     SubElement(tr, "th").text = "Title"
@@ -122,12 +124,9 @@ def maketable(startrank, citations):
         # PMID
         td = SubElement(tr, "td")
         SubElement(td, "a", href=ncbi_pmid+pmid).text = pmid
-        # Year
+        # Date the record acquired "Medline" status
         td = SubElement(tr, "td")
-        if (art.year is not None):
-            td.text = str(art.year)
-        else:
-            td.text = "0" # so we can use JavaScript parseInt 
+        td.text = "%04d.%02d.%02d" % art.date_completed
         # Expand Author button
         td = SubElement(tr, "td")
         td.text = "+" if art.authors else " "

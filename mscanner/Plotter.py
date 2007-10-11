@@ -1,6 +1,10 @@
 """Plotting functions for all graphs produced in cross validation."""
 
 from __future__ import division
+from Gnuplot import Data, Gnuplot
+import logging as log
+import numpy as nx
+
 
                                      
 __author__ = "Graham Poulter"                                        
@@ -16,74 +20,47 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
-from Gnuplot import Data, Gnuplot
-import logging as log
-import numpy as n
-
-
-def bincount(data):
-    """Return best number of histogram bins for the data 
-    
-    Uses the formula M{K = R/(2*IQR*N^(-1/3))}
-    
-    @param data: Array of numbers, sorted in increasing order.
-    """
-    N = len(data) # Number of data points
-    IQR = data[3*N//4] - data[N//4] # Inter-Quartile Range
-    R = data[-1] - data[0] # Range
-    bins = R//(2*IQR*N**(-1/3)) # Number of bins
-    #print N, IQR, R, bins
-    return min(150, max(10, bins))
-
-
-def gaussian_kernel_pdf(values, npoints=512):
-    """Given 1D values, return the probability density function
-    
-    @param values: Sorted list of floats representing the sample
-    
-    @param npoints: Number of equal-spaced points at which to estimate the PDF
-    
-    @return: (xvalues, yvalues) for y=f(x) of the pdf.
-    """
-    from scipy import stats
-    points = n.linspace(values[0], values[-1], npoints)
-    density = stats.kde.gaussian_kde(n.array(values)).evaluate(points)
-    return points, density
-
-
 
 class Plotter(Gnuplot):
+    """Implements the plots used in MScanner
+    
+    When adding a new analysis, the plotting function for its output
+    graphs should be added here.
+    
+    All functions take the fname parameter, which is the path to 
+    the PNG file to which the graph will be written.
+    """
     
     def plot_score_density(g, fname, pdata, ndata, threshold):
         """Probability density of pos and neg scores, with line to mark threshold
     
-        @param fname: Filename to plot to
         @param pdata: Scores of positive documents
         @param ndata: Scores of negative documents
         @param threshold: Threshold score for counting a document positive
         """ 
         from itertools import chain
         log.debug("Plotting article score density to %s", fname)
-        px, py = gaussian_kernel_pdf(pdata)
-        nx, ny = gaussian_kernel_pdf(ndata)
-        overlap = calculateOverlap(px, py, nx, ny)
+        px, py = g.gaussian_kernel_pdf(pdata)
+        zx, zy = g.gaussian_kernel_pdf(ndata)
+        overlap = calculateOverlap(px, py, zx, zy)
         g.reset()
         g.title("Article Score Densities")
         g.ylabel("Probability Density")
         g.xlabel("Article score")
         g("set terminal png")
         g("set output '%s'" % fname)
-        threshold_height = max(chain(py, ny))
-        g.plot(Data([threshold, threshold], [0, threshold_height], title="threshold", with="lines"),
+        threshold_height = max(chain(py, zy))
+        g.plot(Data([threshold, threshold], [0, threshold_height], 
+                    title="threshold", with="lines"),
                Data(px, py, title="Positives", with="lines"),
-               Data(nx, ny, title="Negatives", with="lines"))
+               Data(zx, zy, title="Negatives", with="lines"))
         return overlap
 
 
     def plot_feature_density(g, fname, scores):
         """Probability density function for feature scores"""
         log.debug("Plotting feature score density to %s", fname)
-        x, y = gaussian_kernel_pdf(scores, npoints=1024)
+        x, y = g.gaussian_kernel_pdf(scores, npoints=1024)
         g.reset()
         g.title("Feature Score Density")
         g.xlabel("Feature Score")
@@ -97,8 +74,8 @@ class Plotter(Gnuplot):
         """Histograms for pos and neg scores, with line to mark threshold""" 
         log.debug("Plotting article score histogram to %s", fname)
         from itertools import chain
-        py, px = n.histogram(pdata, bins=bincount(pdata), normed=True)
-        ny, nx = n.histogram(ndata, bins=bincount(ndata), normed=True)
+        py, px = nx.histogram(pdata, bins=g.bincount(pdata), normed=True)
+        zy, zx = nx.histogram(ndata, bins=g.bincount(ndata), normed=True)
         g.reset()
         g("set terminal png")
         g("set output '%s'" % fname)
@@ -109,9 +86,9 @@ class Plotter(Gnuplot):
         #g("set arrow from %f,0 to %f,%f nohead lw 4 " % (
         #    threshold, threshold, max(chain(py,ny))))
         g("set style fill solid 1.0")
-        threshold_height = max(chain(py, ny))
+        threshold_height = max(chain(py, zy))
         g.plot(Data(px, py, title="Positives", with="boxes"),
-               Data(nx, ny, title="Negatives", with="boxes"),
+               Data(zx, zy, title="Negatives", with="boxes"),
                Data([threshold, threshold], [0, threshold_height], 
                     title="threshold", with="lines lw 3"))
 
@@ -123,7 +100,7 @@ class Plotter(Gnuplot):
         log.debug("Plotting feature score histogram to %s", fname)
         sscores = scores.copy()
         sscores.sort()
-        y, x = n.histogram(scores, bins=bincount(sscores))
+        y, x = nx.histogram(scores, bins=g.bincount(sscores))
         g.reset()
         g.title("Feature Score Histogram")
         g.xlabel("Feature Score")
@@ -187,3 +164,35 @@ class Plotter(Gnuplot):
         g("set terminal png")
         g("set output '%s'" % fname)
         g.plot(Data(range(0,len(nretrieved)), nretrieved / total, with="lines"))
+
+
+    @staticmethod
+    def bincount(data):
+        """Calculate the best number of histogram bins for the data
+        
+        Uses the formula M{K = R/(2*IQR*N^(-1/3))}
+        
+        @param data: Array of numbers, sorted in increasing order.
+        """
+        N = len(data) # Number of data points
+        IQR = data[3*N//4] - data[N//4] # Inter-Quartile Range
+        R = data[-1] - data[0] # Range
+        bins = R//(2*IQR*N**(-1/3)) # Number of bins
+        #print N, IQR, R, bins
+        return min(150, max(10, bins))
+
+
+    @staticmethod
+    def gaussian_kernel_pdf(values, npoints=512):
+        """Given 1D values, return the probability density function
+        
+        @param values: Sorted list of floats representing the sample
+        
+        @param npoints: Number of equal-spaced points at which to estimate the PDF
+        
+        @return: (xvalues, yvalues) for y=f(x) of the pdf.
+        """
+        from scipy import stats
+        points = nx.linspace(values[0], values[-1], npoints)
+        density = stats.kde.gaussian_kde(nx.array(values)).evaluate(points)
+        return points, density

@@ -15,7 +15,7 @@ import re
 import tempfile
 import unittest
 
-from mscanner.article import Article
+from mscanner.medline.Article import Article
 from pharmdemo import genedrug
 
 def log(string, *format):

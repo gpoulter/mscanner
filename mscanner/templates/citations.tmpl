@@ -143,9 +143,9 @@ Navigation:
   </tr>
   
   <tr>
-  <th>Year of publication is between</th>
-  <td><input type="text" size="5" name="year_min" value="1900"> and
-  <input type="text" size="5" name="year_max" value="2020"></td>
+  <th>Medline record date between</th>
+  <td><input type="text" size="10" name="date_min" value="1900.01.01"> and
+  <input type="text" size="10" name="date_max" value="2020.01.01"></td>
   </tr>
   
   <tr>
@@ -168,7 +168,7 @@ Navigation:
   <td>
   <select name="orderby">
     <option value="score" selected="selected">Score (decreasing)</option>
-    <option value="year">Year (decreasing)</option>
+    <option value="date">Date (decreasing)</option>
     <option value="journal">Journal (increasing)</option>
     <option value="author">Author (increasing)</option>
   </select>
@@ -187,11 +187,16 @@ Navigation:
 
   <div class="help" id="h_filter">
   
-    <p>The filter button hides any rows not matching the filter (but does not
-    unhide anything). The second button unhides all rows. The invert selection
-    button makes the visible rows hidden and the hidden rows visible.</p>
+    <p><em>Filter visible</em> hides any currently visible rows that do not
+    match the filter criteria. <em>Show all citations</em> unhides all hidden
+    rows. <em>Invert selection</em> makes the visible rows hidden and the
+    hidden rows visible.</p>
   
-    <p>The filters are case-insensitive <a
+    <p>The <q>Medline record date</q> is not the date of publication: it is the
+    date on which the completed Medline citation record became available,
+    so that recently added citations can be filtered for.</p>
+    
+    <p>The title and abstract filters are case-insensitive <a
     href="http://www.javascriptkit.com/jsref/regexp.shtml">regular
     expressions</a>. They match substrings, but have many additional features.
     For example, "rat" matches both "rat" and "aberration", but "\brat\b" will

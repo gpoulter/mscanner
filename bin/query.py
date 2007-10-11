@@ -28,7 +28,9 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 import sys
 
 from mscanner.configuration import rc, start_logger
-from mscanner import scorefile, queryenv
+from mscanner.medline.Databases import Databases
+from mscanner.QueryManager import QueryManager
+from mscanner import utils
 
 
 dataset_map = {
@@ -43,12 +45,12 @@ dataset_map = {
 
 
 def do_query(*datasets):
-    env = scorefile.Databases()
+    env = Databases()
     for dataset in datasets:
         if dataset not in dataset_map:
             raise ValueError("Invalid Data Set %s" % dataset)
         rc.dataset = dataset
-        query = queryenv.Query(rc.working / "query" / rc.dataset, env)
+        query = QueryManager(rc.working / "query" / rc.dataset, env)
         query.query(rc.corpora / dataset_map[dataset])
     env.close()
 

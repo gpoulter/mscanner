@@ -15,8 +15,9 @@ from random import seed
 import tempfile
 import unittest
 
-from mscanner.scoring import FeatureInfo
-from mscanner.validation import Validator, PerformanceStats
+from mscanner.FeatureScores import FeatureScores
+from mscanner.Validator import Validator
+from mscanner.PerformanceStats import PerformanceStats
 
 logging.basicConfig(level=0)
 
@@ -56,7 +57,7 @@ class ValidatorTests(unittest.TestCase):
 
     def test_nfold_validate(self):
         """Test that cross-validated scores are correctly calculated"""
-        featinfo = FeatureInfo([2,5,7], pseudocount = 0.1)
+        featinfo = FeatureScores([2,5,7], pseudocount = 0.1)
         val = Validator(
             featdb = {0:[0,1,2], 1:[0,1], 2:[0,1], 3:[0,1], 4:[1,2], 
                       5:[1,2], 6:[1,2], 7:[0,1,2]},
@@ -75,7 +76,7 @@ class ValidatorTests(unittest.TestCase):
     def test_leaveout_validate(self):
         """Test of leave-out-one cross validation.  Manually calculate
         scores on the articles to see if they are correct"""
-        featinfo = FeatureInfo([2,5,7], pseudocount = 0.1)
+        featinfo = FeatureScores([2,5,7], pseudocount = 0.1)
         val = Validator(
             featdb = {0:[0,1,2], 1:[0,1], 2:[0,1], 3:[0,1], 4:[1,2], 5:[1,2], 6:[1,2], 7:[0,1,2]},
             featinfo = featinfo,

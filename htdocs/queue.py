@@ -52,7 +52,10 @@ import sys
 import time
 
 from mscanner.configuration import rc, start_logger
-from mscanner import scorefile, validenv, queryenv
+from mscanner.medline.Databases import Databases
+from mscanner.QueryManager import QueryManager
+from mscanner.ValidationManager import ValidationManager
+from mscanner import utils
 from bin import update
 
 
@@ -93,7 +96,7 @@ def read_descriptor(fpath):
     with read_pmids, which will ignores the lines beginning with '#'.
 
     @return: Storage object, with additional '_filename' containing fpath."""
-    from mscanner.support.storage import Storage
+    from mscanner.Storage import Storage
     result = Storage()
     with open(fpath, "r") as f:
         line = f.readline()
@@ -233,7 +236,7 @@ def mainloop():
                 if env is not None: env.close()
                 env = None
                 update.update_mscanner()
-                env = scorefile.Databases()
+                env = Databases()
                 env.article_list # long first load time
                 last_update = time.time()
             # Now perform any queued tasks
@@ -246,10 +249,10 @@ def mainloop():
                 task._filename.utime(None) # Update mod time for status display
                 try:
                     if task.operation == "query":
-                        op = queryenv.Query(outdir, env)
+                        op = QueryManager(outdir, env)
                         op.query(task._filename)
                     elif task.operation == "validate":
-                        op = validenv.Validation(outdir, env)
+                        op = ValidationManager(outdir, env)
                         op.validation(task._filename)
                     task._filename.move(outdir / "descriptor.txt")
                 except ValueError, e:
@@ -263,8 +266,8 @@ def mainloop():
 
 def populate_test_queue():
     """Place some dummy queue files to test the queue operation"""
-    from mscanner.support.storage import Storage
-    pmids = list(scorefile.read_pmids(rc.corpora / "genedrug-small.txt"))
+    from mscanner.Storage import Storage
+    pmids = list(utils.read_pmids(rc.corpora / "genedrug-small.txt"))
     task = Storage(
         operation = "validate", 
         dataset = "gdqtest_valid",

@@ -4,6 +4,8 @@
 """
 
 from __future__ import with_statement
+from contextlib import closing
+
 
                                      
 __author__ = "Graham Poulter"                                        
@@ -18,8 +20,6 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
-
-from contextlib import closing
 
 
 class GeneDrugExport:
@@ -155,15 +155,23 @@ class GeneDrugExport:
 
 
 schema = """
--- So ampersands in the data do not cause user prompts
-set define off;
+-- suppress sql in result set
+set echo off
+-- eliminate row count message
+set feedback off
+-- disable ampersand substitution
+set define off
+-- suppress headings and page breaks
+set pagesize 0
+-- suppress all terminal echo
+set term off
 
 -- Drop tables in reverse order
 drop table dg_pmids;
 drop table genedrug;
 drop table cbs;
 
--- Articles, categories of evidence, and genes/drugs in the abstract
+-- Articles, categories of evidence, and genes/drugs
 create table cbs (
   pmid varchar2(20) primary key,
   title varchar2(2000),
@@ -174,7 +182,7 @@ create table cbs (
   evid_loc varchar2(50)
 );
 
--- Gene-drug pairs, and number of articles containing both in their abstract.
+-- Gene-drug pairs, and number of articles containing both
 create table genedrug (
   id number(10,0) primary key,
   gene varchar2(100),
@@ -182,7 +190,7 @@ create table genedrug (
   numarticles number(10,0)
 );
 
--- PMIDs associated with the gene-drug pairs from the previous table.
+-- PMIDs associated with the gene-drug pairs
 create table dg_pmids (
   pmid varchar2(15),
   text clob,
@@ -202,4 +210,4 @@ create table dg_pmid_coes (
   coe varchar2(3)
 );
 """
-"""Unused schema - we're not doing category of evidence"""
+"""Unused schema - since we're not doing category of evidence"""

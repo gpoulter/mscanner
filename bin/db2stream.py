@@ -19,9 +19,9 @@ it under the Do Whatever You Want Public License. Terms and conditions:
 import sys
 
 def main(dbfile, streamfile):
-    from mscanner import featuredb
-    d = featuredb.FeatureDatabase(dbfile, 'r')
-    s = featuredb.FeatureStream(open(streamfile, "wb"))
+    from mscanner.FeatureDatabase import FeatureDatabase, FeatureStream
+    d = FeatureDatabase(dbfile, 'r')
+    s = FeatureStream(open(streamfile, "wb"))
     for key, val in d.iteritems():
         s.write(key, val)
     d.close()

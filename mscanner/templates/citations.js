@@ -276,11 +276,11 @@ function filterCitations() {
    var rows = document.getElementById("citations").rows
    form = document.filter_form
 
-   var year_min = parseInt(form.year_min.value)
-   var year_max = parseInt(form.year_max.value)
+   var date_min = form.date_min.value
+   if(date_min == "") date_min = "1900.01.01"
+   var date_max = form.date_max.value
+   if(date_max == "") date_max = "2100.01.01"
    var score_min = parseFloat(form.score_min.value)
-   if(form.year_min.value == "") year_min = 1900
-   if(form.year_max.value == "") year_min = 2300
    if(form.score_min.value == "") score_min = -100.0
    
    var title_filt = form.title_regex.value
@@ -300,13 +300,14 @@ function filterCitations() {
       if (rows[i].className == "main" && rows[i].style.display != "none") {
             var cells = rows[i].cells
             var score = parseFloat(cells[2].innerHTML)
-            var year = parseInt(cells[4].innerHTML)
+            var mdate = cells[4].innerHTML
             var title = cells[7].innerHTML
             var journal = cells[8].firstChild.innerHTML // hyperlink in cell
             var author = rows[i+1].cells[0].innerHTML
             var abst = title + rows[i+2].cells[0].innerHTML
             /* Apply filter criteria */
-            if ( (score >= score_min) && (year >= year_min && year <= year_max)
+            if ( (score >= score_min) 
+               && (mdate >= date_min && mdate <= date_max)
                && (title_filt == "" || r_title.test(title))
                && (abstract_filt == "" || r_abstract.test(abst))
                && (exclude_filt == "" || !r_exclude.test(abst))
@@ -331,23 +332,26 @@ function sortCitations() {
 
    var rows = document.getElementById("citations").rows
 
-   function score_cmp(a,b) {
-      // Faster and more stable: sorting by increasing rank
-      return parseInt(a[0].childNodes[1].innerHTML) -
-             parseInt(b[0].childNodes[1].innerHTML)
-   }
-   function year_cmp(a,b) {
-      return parseInt(b[0].childNodes[4].innerHTML) -
-             parseInt(a[0].childNodes[4].innerHTML)
-   }
    function str_cmp(a, b) {
       if(a < b) return -1
       else if (a == b) return 0
       else return +1
    }
+
+   function score_cmp(a,b) {
+      // Faster and more stable: sorting by increasing rank
+      return parseInt(a[0].childNodes[1].innerHTML) -
+             parseInt(b[0].childNodes[1].innerHTML)
+   }
+   function date_cmp(a,b) {
+      // decreasing by date stamp
+      return str_cmp(b[0].childNodes[4].innerHTML,
+                    a[0].childNodes[4].innerHTML)
+   }
    function journal_cmp(a,b) {
+      // increasing by journal name
       return str_cmp(a[0].childNodes[8].firstChild.innerHTML,
-             b[0].childNodes[8].firstChild.innerHTML)
+                     b[0].childNodes[8].firstChild.innerHTML)
    }
    function author_cmp(a,b) {
       // increasing by last name of the first author
@@ -355,8 +359,10 @@ function sortCitations() {
       mb = b[1].childNodes[0].innerHTML.match(/[a-z]\ ([^\ ]+)/i)
       if (ma != null && mb != null)
          return str_cmp(ma[1], mb[1])
-      else if (ma != null) return -1
-      else return +1
+      else if (ma != null) 
+         return -1
+      else 
+         return +1
    }
 
    var new_sort = document.filter_form.orderby.value
@@ -364,7 +370,7 @@ function sortCitations() {
    var compare = null
    switch (new_sort) {
       case "score": compare = score_cmp; break
-      case "year": compare = year_cmp; break
+      case "date": compare = date_cmp; break
       case "journal": compare = journal_cmp; break
       case "author": compare = author_cmp; break
       default: throw "Invalid orderby comparison: " + new_sort

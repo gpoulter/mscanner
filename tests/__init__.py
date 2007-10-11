@@ -6,13 +6,11 @@ import unittest
 
 def suite():
     modules = [
-        "test_dbshelve",
-        "test_featuredb",
-        "test_featuremap",
+        "test_shelf",
         "test_medline",
         "test_scoring",
-        "test_scorefile",
         "test_storage",
+        "test_utils",
         "test_validation"
         ]
     del modules[4]

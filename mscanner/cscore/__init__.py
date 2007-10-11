@@ -1,6 +1,10 @@
 """Calculates citation scores"""
 
 from __future__ import division
+from mscanner.configuration import rc
+import logging as log
+import numpy as nx
+
 
                                      
 __author__ = "Graham Poulter"                                        
@@ -15,10 +19,6 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
-
-from mscanner.configuration import rc
-import logging as log
-import numpy as nx
 
 
 def pyscore(docs, featscores, limit, threshold=None, exclude=[]):
@@ -59,8 +59,8 @@ def pyscore(docs, featscores, limit, threshold=None, exclude=[]):
 def pyscore_adaptor(docstream, numdocs, featscores, 
                     limit, safety, threshold=None, exclude=[]):
     """Calls pyscore, given arguments suitable for cscore_pipe/dll"""
-    from mscanner import featuredb
-    docs = featuredb.FeatureStream(open(docstream, "rb"))
+    from mscanner.medline.FeatureDatabase import FeatureStream
+    docs = FeatureStream(open(docstream, "rb"))
     try:
         return pyscore(docs, featscores, limit, threshold, exclude)
     finally:
@@ -118,7 +118,7 @@ def cscore_dll(docstream, numdocs, featscores,
     """Get article scores, using the cscores function via ctypes 
     
     @param docstream: Path to file containing feature vectors for documents to
-    score (formatted as in mscanner.featuredb.FeatureStream)
+    score (formatted as in mscanner.medline.FeatureDatabase.FeatureStream)
     
     @param numdocs: Number of documents in the stream of feature vectors.
     

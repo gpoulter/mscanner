@@ -3,6 +3,23 @@
 from __future__ import with_statement
 from __future__ import division
 
+from itertools import chain, izip
+import logging as log
+import numpy as nx
+import time
+
+import warnings
+warnings.simplefilter("ignore", UserWarning)
+
+from mscanner import utils
+from mscanner.configuration import rc
+from mscanner.medline.Databases import Databases
+from mscanner.FeatureScores import FeatureScores, FeatureCounts
+from mscanner.PerformanceStats import PerformanceStats
+from mscanner.Plotter import Plotter
+from mscanner.Validator import Validator
+
+
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
@@ -17,25 +34,16 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
-from itertools import chain, izip
-import logging as log
-import numpy as nx
-import time
-
-import warnings
-warnings.simplefilter("ignore", UserWarning)
-
-from mscanner.configuration import rc
-from mscanner.support import utils
-from mscanner import plotting, scorefile, scoring, validation
 
 
-
-class Validation(object):
-    """Manages cross-validation based analyses.
+class ValidationManager(object):
+    """Manages the cross validation process.
+    
+    Jobs include loading input, saving and loading results files,
+    and generating the validation report and figures.
     
     @ivar performance: L{PerformanceStats} instance, from L{validation}
-    @ivar featinfo: L{FeatureInfo} for calculating feature score
+    @ivar featinfo: L{FeatureScores} for calculating feature score
     @ivar timestamp: Time at the start of the operation
 
     @group From constructor: featmap,featdb
@@ -62,7 +70,7 @@ class Validation(object):
             outdir.makedirs()
             outdir.chmod(0777)
         self.timestamp = time.time() 
-        self.env = env if env else scorefile.Databases()
+        self.env = env if env else Databases()
         self.positives = None
         self.pscores = None
         self.negatives = None
@@ -80,13 +88,13 @@ class Validation(object):
         to select randomly from Medline)
         """
         # Construct report directory
-        # FeatureInfo for this validation run
-        self.featinfo = scoring.FeatureInfo(
+        # FeatureScores for this validation run
+        self.featinfo = FeatureScores(
             featmap = self.env.featmap, 
             pseudocount = rc.pseudocount, 
             mask = self.env.featmap.get_type_mask(rc.exclude_types),
-            frequency_method = rc.frequency_method,
-            post_masker = rc.post_masker
+            get_frequencies = rc.get_frequencies,
+            get_postmask = rc.get_postmask
         )
         # Load saved results
         if (self.outdir/rc.report_positives).isfile() and \
@@ -96,13 +104,13 @@ class Validation(object):
         else:
             self.load_inputs(pospath, negpath)
             if len(self.positives) == 0: 
-                scorefile.no_valid_pmids_page(
+                utils.no_valid_pmids_page(
                     self.outdir/rc.report_index,
-                    list(scorefile.read_pmids(
+                    list(utils.read_pmids(
                         self.outdir/rc.report_positives_broken)))
             self.make_results()
             self.save_results()
-        self.performance = validation.PerformanceStats(
+        self.performance = PerformanceStats(
             self.pscores, self.nscores, rc.alpha)
         self.write_report()
         log.info("FINISHING VALIDATION %s", rc.dataset)
@@ -123,7 +131,7 @@ class Validation(object):
             positives = pospath
         elif isinstance(pospath, basestring):
             log.info("Loading PubMed IDs from %s", pospath.basename())
-            positives = list(scorefile.read_pmids(
+            positives = list(utils.read_pmids(
                 pospath, include=self.env.featdb,
                 broken_name=self.outdir/rc.report_positives_broken))
         else:
@@ -140,7 +148,7 @@ class Validation(object):
                 rc.numnegs, self.env.article_list, set(positives))
         else:
             # Read existing list of negatives from disk
-            negatives = list(scorefile.read_pmids(negpath, exclude=set(positives),
+            negatives = list(utils.read_pmids(negpath, exclude=set(positives),
                          exclude_name=self.outdir/rc.report_negatives_exclude))
             self.negatives = nx.array(negatives, nx.int32)
 
@@ -151,14 +159,16 @@ class Validation(object):
         
         This is useful when the style of the output page is updated. We assume
         PubMed IDs in the files are decreasing by score, as written by
-        L{scorefile.write_scores}. """
+        L{utils.write_scores}. """
         log.info("Loading result scores for %s", rc.dataset)
-        pscores, positives = zip(*scorefile.read_pmids(
+        # Read positives scores
+        pscores, positives = zip(*utils.read_pmids(
             self.outdir/rc.report_positives, withscores=True))
-        nscores, negatives = zip(*scorefile.read_pmids(
-            self.outdir/rc.report_negatives, withscores=True))
         self.positives = nx.array(positives, nx.int32)
         self.pscores = nx.array(pscores, nx.float32)
+        # Read negatives scores
+        nscores, negatives = zip(*utils.read_pmids(
+            self.outdir/rc.report_negatives, withscores=True))
         self.negatives = nx.array(negatives, nx.int32)
         self.nscores = nx.array(nscores, nx.float32)
 
@@ -166,8 +176,8 @@ class Validation(object):
     def save_results(self):
         """Save validation scores to disk"""
         log.info("Saving result scores")
-        scorefile.write_scores(self.outdir/rc.report_positives, izip(self.pscores, self.positives))
-        scorefile.write_scores(self.outdir/rc.report_negatives, izip(self.nscores, self.negatives))
+        utils.write_scores(self.outdir/rc.report_positives, izip(self.pscores, self.positives))
+        utils.write_scores(self.outdir/rc.report_negatives, izip(self.nscores, self.negatives))
 
 
     def make_results(self):
@@ -176,7 +186,7 @@ class Validation(object):
         All the L{featdb} lookups are done beforehand, as lookups while busy
         with validation are slow."""
         log.info("Performing cross-validation for for %s", rc.dataset)
-        self.validator = validation.Validator(
+        self.validator = Validator(
             featdb = dict((k,self.env.featdb[k]) for k in 
                           chain(self.positives,self.negatives)),
             featinfo = self.featinfo,
@@ -194,9 +204,9 @@ class Validation(object):
         
         # Re-calculate feature scores using all citations
         self.featinfo.update_features(
-            pos_counts = scoring.count_features(
+            pos_counts = FeatureCounts(
                 len(self.env.featmap), self.env.featdb, self.positives),
-            neg_counts = scoring.count_features(
+            neg_counts = FeatureCounts(
                 len(self.env.featmap), self.env.featdb, self.negatives),
             pdocs = len(self.positives),
             ndocs = len(self.negatives))
@@ -210,7 +220,7 @@ class Validation(object):
         
         # Graph Plotting
         p = self.performance
-        plotter = plotting.Plotter()
+        plotter = Plotter()
         log.debug("Drawing graphs")
         ##overlap, iX, iY = plotter.plot_score_density(
         ##  self.outdir/rc.report_artscores_img, p.pscores, p.nscores, p.threshold)
@@ -243,7 +253,7 @@ class Validation(object):
             linkpath = rc.templates.relpath().replace('\\','/') if rc.link_headers else None,
             timestamp = self.timestamp,
             p = self.performance,
-            notfound_pmids = list(scorefile.read_pmids(self.outdir/rc.report_positives_broken)),
+            notfound_pmids = list(utils.read_pmids(self.outdir/rc.report_positives_broken)),
         )
         from Cheetah.Template import Template
         with utils.FileTransaction(self.outdir/rc.report_index, "w") as ft:

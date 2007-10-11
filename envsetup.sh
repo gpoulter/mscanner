@@ -7,14 +7,14 @@ if [ "$host" == "jonbn" ]; then
 
   py25=/media/jonbn/Python25
   export CHEETAH="$py25/python $(cygpath -m $py25/Scripts/cheetah)"
-  export PYTHONPATH='C:\Documents and Settings\Graham\My Documents\data\mscanner\source'
+  export PYTHONPATH='C:\Documents and Settings\Graham\My Documents\data\MScanner\source'
   munge before PATH "$py25"
 
 elif [ "${host:0:5}" == "eldar" ]; then
 
   py25=/media/eldar/Python25
   export CHEETAH="$py25/python $(cygpath -m $py25/Scripts/cheetah)"
-  export PYTHONPATH='C:\Documents and Settings\Graham\My Documents\mirror\jonbn\mscanner\source'
+  export PYTHONPATH='C:\Documents and Settings\Graham\My Documents\mirror\jonbn\MScanner\source'
   munge before PATH "$py25"
 
 elif [ "$host" == "maples" ]; then

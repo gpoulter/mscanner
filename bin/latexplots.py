@@ -14,6 +14,17 @@ The figures are::
 from __future__ import with_statement
 from __future__ import division
 
+import logging
+from path import path
+from pylab import *
+
+from mscanner import utils
+from mscanner.configuration import rc as mrc, start_logger
+from mscanner.Plotter import Plotter
+from mscanner.PerformanceStats import PerformanceStats
+from bin import retrievaltest
+
+
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
@@ -27,15 +38,6 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
-
-import logging
-from path import path
-from pylab import *
-
-from mscanner.configuration import rc as mrc, start_logger
-from mscanner import plotting, scorefile, validation
-from bin import retrievaltest
-
 
 interactive = False
 npoints = 400
@@ -85,11 +87,11 @@ def load_stats(indir, dataset, title, alpha=0.5):
     logging.info("Reading dataset %s", dataset)
     if not (indir/dataset).isdir():
         raise ValueError("Could not directory %s" % (indir/dataset)) 
-    pscores = array([s[0] for s in scorefile.read_pmids(
+    pscores = array([s[0] for s in utils.read_pmids(
         indir/dataset/mrc.report_positives, withscores=True)])
-    nscores = array([s[0] for s in scorefile.read_pmids(
+    nscores = array([s[0] for s in utils.read_pmids(
         indir/dataset/mrc.report_negatives, withscores=True)])
-    stats = validation.PerformanceStats(pscores, nscores, alpha)
+    stats = PerformanceStats(pscores, nscores, alpha)
     stats.title = title
     return stats
 
@@ -166,8 +168,8 @@ def plot_score_density(fname, statlist):
     logging.info("Plotting score densities to %s", fname)
     for idx, s in enumerate(statlist):
         t = s.threshold
-        px, py = plotting.gaussian_kernel_pdf(s.pscores)
-        nx, ny = plotting.gaussian_kernel_pdf(s.nscores)
+        px, py = Plotter.gaussian_kernel_pdf(s.pscores)
+        nx, ny = Plotter.gaussian_kernel_pdf(s.nscores)
         subplot(2,2,idx+1)
         title(s.title)
         line_pos, = plot(px, py, color='red', label=r"$\rm{Positive}$")
@@ -192,8 +194,8 @@ def plot_score_histogram(fname, pscores, nscores):
     ##title("Article Score Histograms")
     xlabel("Article Score")
     ylabel("Article Density")
-    p_n, p_bins, p_patches = hist(pscores, bins=plotting.bincount(pscores), normed=True)
-    n_n, n_bins, n_patches = hist(nscores, bins=plotting.bincount(nscores), normed=True)
+    p_n, p_bins, p_patches = hist(pscores, bins=Plotter.bincount(pscores), normed=True)
+    n_n, n_bins, n_patches = hist(nscores, bins=Plotter.bincount(nscores), normed=True)
     setp(p_patches, 'facecolor', 'r', 'alpha', 0.50, 'linewidth', 0.0)
     setp(n_patches, 'facecolor', 'b', 'alpha', 0.50, 'linewidth', 0.0)
     #p_y = normpdf(p_bins, mean(pscores), std(pscores))
@@ -210,7 +212,7 @@ def plot_featscore_histogram(fname, fscores):
     xlabel("Feature Score")
     ylabel("Number of Features")
     fscores.sort()
-    n, bins, patches = hist(fscores, bins=plotting.bincount(fscores))
+    n, bins, patches = hist(fscores, bins=Plotter.bincount(fscores))
     setp(patches, 'facecolor', 'r', 'linewidth', 0.0)
     custom_show(fname)
 
@@ -336,7 +338,7 @@ def do_publication():
     all = (aids,rad,pg07,ran10)
     plot_roc("fig2_roc", all)
     plot_precision("fig3_pr", all)
-    fmplot = validation.PerformanceStats(pg07.pscores, pg07.nscores, alpha=0.95)
+    fmplot = PerformanceStats(pg07.pscores, pg07.nscores, alpha=0.95)
     fmplot.title = pg07.title
     plot_fmeasure("fig6_prf", fmplot)
     plot_score_density("fig1_density", all)
@@ -354,7 +356,7 @@ def do_testplots():
     plot_score_density("test_density", (pg04,pg07,pg07,pg04))
     plot_roc("test_roc", (pg04,pg07))
     plot_precision("test_pr", (pg04,pg07))
-    pg04alpha = validation.PerformanceStats(pg04.pscores, pg04.nscores, alpha=0.9)
+    pg04alpha = PerformanceStats(pg04.pscores, pg04.nscores, alpha=0.9)
     pg04alpha.title = pg04.title
     plot_fmeasure("test_prf", pg04alpha)
 

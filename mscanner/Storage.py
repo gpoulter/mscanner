@@ -1,9 +1,5 @@
-"""Dictionary subclasses supporting dotted access
+"""Dictionary subclasses supporting dotted access"""
 
-Module members:
-    - L{Storage}: Dictionary which supports d.foo attribute access
-    - L{RCStorage}: Storage where d.foo returns d.foo() if d['foo'] is callable
-"""
 
                                      
 __author__ = "Graham Poulter"                                        
@@ -22,7 +18,7 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
 class Storage(dict):
-    """Dictionary with attribute access to keys.
+    """Dictionary supporting d.foo attribute access to keys.
     
     Raises AttributeError instead of KeyError when attribute-style access
     fails."""
@@ -54,13 +50,17 @@ class Storage(dict):
 class RCStorage(Storage):
     """Dictionary with attribute access and auto-calling of stored functions.
     
-    Any callable retrieved using dotted syntax is called with no parameters
-    (rc.foo is equivalent to rc.foo() if rc.foo has __call__). Intended use::
+    @note: d.foo returns d.foo() if d['foo'] is callable
+
+    Example::
         rc = RCStorage()
         rc.bar = 2
         rc.foo = lambda: rc.bar + 2
-        x = rc.foo # x is now 4
+        rc.foo == 4
+        rc.bar = 3
+        rc.foo == 5
     """
+
     def __getattr__(self, key):
         v = Storage.__getattr__(self, key)
         return (v() if hasattr(v, "__call__") else v)

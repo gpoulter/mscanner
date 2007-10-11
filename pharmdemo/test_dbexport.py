@@ -13,7 +13,7 @@ import sys
 import tempfile
 import unittest
 
-from mscanner.article import Article
+from mscanner.medline.Article import Article
 from pharmdemo import dbexport
 
 articles=[

@@ -1,1 +1,1 @@
-"""Package for the core functionality of MScanner"""
+"""The core MScanner modules"""

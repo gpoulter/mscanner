@@ -1,5 +1,12 @@
 """Maps PubMed IDs to feature vectors"""
 
+from bsddb import db
+import numpy as nx
+import logging as log
+from path import path
+import struct
+
+
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
@@ -13,12 +20,6 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
-
-from bsddb import db
-import numpy as nx
-import logging as log
-from path import path
-import struct
 
 
 class FeatureDatabase:
@@ -72,7 +73,7 @@ class FeatureDatabase:
         try:
             self.db.put(str(key), values.tostring(), txn=txn)
         except ValueError, e:
-            log.error("featuredb: Failed to place " + str(key) + " : " +  str(values))
+            log.error("Failed to add to db " + str(key) + " : " +  str(values))
             raise
         
     def delitem(self, key, txn=None):

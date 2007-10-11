@@ -3,6 +3,15 @@
 from __future__ import with_statement
 from __future__ import division
 
+import logging as log
+import os
+import re
+import xmlrpclib
+from path import path
+
+from mscanner.medline import Shelf
+
+
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
@@ -16,15 +25,6 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
-
-
-import logging as log
-import os
-import re
-import xmlrpclib
-from path import path
-
-from mscanner.support import dbshelve
 
 
 class DrugFinder:
@@ -182,7 +182,7 @@ class GeneFinder:
         self._connect_bionlp()
         # Set up the results cache
         if isinstance(cache, path):
-            self.cache = dbshelve.open(cache, "c")
+            self.cache = Shelf.open(cache, "c")
         elif isinstance(cache, dict):
             self.cache = cache
         else:
@@ -269,7 +269,7 @@ class GeneDrugFinder:
         self.genefinder = genefinder
         self.drugfinder = drugfinder
         if isinstance(gdcache, basestring):
-            self.gdcache = dbshelve.open(gdcache, 'c')
+            self.gdcache = Shelf.open(gdcache, 'c')
         elif isinstance(gdcache, dict):
             self.gdcache = gdcache
         else:

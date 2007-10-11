@@ -21,7 +21,8 @@ import sys
 from path import path
 
 from mscanner.configuration import rc, start_logger
-from mscanner import plotting, queryenv
+from mscanner.QueryManager import QueryManager
+from mscanner.Plotter import Plotter
 
 
 ### RETRIEVAL TEST
@@ -52,7 +53,7 @@ def compare_results_to_standard(results, test):
     return TP_total
 
 
-class RetrievalTest(queryenv.Query):
+class RetrievalTest(QueryManager):
     """Performs retrieval-testing analysis, in which a subset of the data is
     used to query, and the results are tested against the rest of the data."""
     
@@ -85,7 +86,7 @@ class RetrievalTest(queryenv.Query):
         (self.outdir/rc.report_retrieval_stats).write_lines(
             [str(x) for x in cumulative])
         # Graph TP vs FP (FP = rank-TP)
-        plotter = plotting.Plotter()
+        plotter = Plotter()
         plotter.plot_retrieved_positives(
             self.outdir/rc.report_retrieval_graph, 
             cumulative, len(test_pmids))

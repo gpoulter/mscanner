@@ -14,8 +14,10 @@ import tempfile
 import unittest
 
 from mscanner.configuration import rc
-from mscanner import cscore, featuredb, featuremap, scoring
-from mscanner.support.utils import usetempfile
+from mscanner.medline.FeatureDatabase import FeatureDatabase, FeatureStream
+from mscanner.medline.FeatureMapping import FeatureMapping
+from mscanner.FeatureScores import FeatureScores, FeatureCounts
+from mscanner import cscore, utils
 
 
 class CScoreModuleTests(unittest.TestCase):
@@ -36,14 +38,14 @@ class CScoreModuleTests(unittest.TestCase):
         self.assert_(nx.allclose(a, b))
 
 
-    @usetempfile
+    @utils.usetempfile
     def test_cscore(self, citefname):
         """Tests that the cscore program produces the same output as
         iterScores"""
         featscores = nx.array([0.1, 5.0, 10.0, -5.0, -6.0])
         citations = [ (4, [4]), (4, [0,1,2]), (1,[0,2,3]), (2,[0,1]), (3,[1,2,3]) ]
         # Write citations to disk
-        fs = featuredb.FeatureStream(open(citefname, "w"))
+        fs = FeatureStream(open(citefname, "w"))
         for pmid, feats in citations:
             fs.write(pmid, nx.array(feats, nx.uint16))
         fs.close()    
@@ -67,7 +69,7 @@ class CScoreModuleTests(unittest.TestCase):
 
 
 class ScoringModuleTests(unittest.TestCase):
-    """Tests of the L{scoring} module@usetempfile"""
+    """Tests of the L{scoring} module"""
     
     def setUp(self):
         self.prefix = path(tempfile.mkdtemp(prefix="scoring-"))
@@ -78,37 +80,35 @@ class ScoringModuleTests(unittest.TestCase):
         self.prefix.rmtree(ignore_errors=True)
 
 
-    def test_FeatureInfo(self):
+    def test_FeatureScores(self):
         pfreqs = nx.array([1,2,0])
         nfreqs = nx.array([2,1,0])
         pdocs = 2
         ndocs = 3
-        featmap = featuremap.FeatureMapping()
+        featmap = FeatureMapping()
         # With constant pseudocount
-        f = scoring.FeatureInfo(featmap, pfreqs, nfreqs, pdocs, ndocs, 
-                                pseudocount=0.1)
+        f = FeatureScores(featmap, pfreqs, nfreqs, pdocs, ndocs, pseudocount=0.1)
         self.assert_(nx.allclose(
             f.scores, nx.array([-0.35894509,  0.93430924,  0.28768207])))
         print f.tfidf
         # With background pseudocount
         featmap.numdocs = 10
         featmap.counts = [3,2,1]
-        f = scoring.FeatureInfo(featmap, pfreqs, nfreqs, pdocs, ndocs, 
-                                pseudocount=None)
+        f = FeatureScores(featmap, pfreqs, nfreqs, pdocs, ndocs, pseudocount=None)
         self.assert_(nx.allclose(
             f.scores, nx.array([-0.28286278,  0.89381787,  0.28768207])))
         # Constant pseudocount and cutoff
-        f = scoring.FeatureInfo(featmap, pfreqs, nfreqs, pdocs, ndocs, 
-                                pseudocount=0.1, 
-                                frequency_method="probabilities_oldbayes",
-                                post_masker="make_rare_positives")
+        f = FeatureScores(featmap, pfreqs, nfreqs, pdocs, ndocs, 
+                            pseudocount=0.1, 
+                            get_frequencies="probabilities_oldbayes",
+                            get_postmask="make_rare_positives")
         self.assert_(nx.allclose(
             f.scores, nx.array([-0.27193372,  1.02132061,  0.0 ])))
 
 
-    def test_count_features(self):
+    def test_FeatureCounts(self):
         featdb = {1:[1,2], 2:[2,3], 3:[3,4]}
-        counts = scoring.count_features(5, featdb, [1,2,3])
+        counts = FeatureCounts(5, featdb, [1,2,3])
         self.assert_(nx.all(counts == [0,1,2,2,1]))
 
 

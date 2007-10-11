@@ -11,6 +11,18 @@ the results for gene-drug occurrences, and export a database for
 used on http://pharmdemo.stanford.edu
 """
 
+
+from itertools import chain
+import logging as log
+import sys
+
+from mscanner.configuration import rc, start_logger
+from mscanner.QueryManager import QueryManager
+from mscanner.ValidationManager import ValidationManager
+from mscanner import utils
+from pharmdemo import genedrug, dbexport
+
+
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
@@ -24,14 +36,6 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
-
-from itertools import chain
-import logging as log
-import sys
-
-from mscanner.configuration import rc, start_logger
-from mscanner import scorefile, queryenv, validenv
-from pharmdemo import genedrug, dbexport
 
 
 ### GENE-DRUG CONFIGURATION
@@ -48,7 +52,7 @@ rc.genedrug_csv = lambda: rc.genedrug / "pharmdemo.csv"
 rc.genedrug_sql = lambda: rc.genedrug / "pharmdemo.sql"
 
 
-class PharmdemoQuery(queryenv.Query):
+class PharmdemoQuery(QueryManager):
 
     def genedrug_query(self, input, export_db=False):
         """Query where L{results} and L{inputs} are filtered for gene-drug
@@ -88,7 +92,7 @@ class PharmdemoQuery(queryenv.Query):
 
 
 
-class PharmdemoValidation(validenv.Validation):
+class PharmdemoValidation(ValidationManager):
     
     def genedrug_filter(self):
         """Membership test for gene-drug association.
@@ -96,8 +100,8 @@ class PharmdemoValidation(validenv.Validation):
         @return: Set of PubMed IDs which have gene-drug co-occurrences.
         """
         log.info("Getting gene-drug associations") 
-        pos_arts = scorefile.load_articles(rc.articledb, self.positives)
-        neg_arts = scorefile.load_articles(rc.articledb, self.negatives)
+        pos_arts = utils.load_articles(rc.articledb, self.positives)
+        neg_arts = utils.load_articles(rc.articledb, self.negatives)
         gdfinder = genedrug.open_genedrug_finder(
             rc.genedrug, rc.drugtable, rc.gapscore)
         postfilter = set()

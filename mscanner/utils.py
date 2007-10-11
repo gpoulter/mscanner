@@ -1,8 +1,9 @@
-"""Reads/writes files of PubMed IDs/scores, but also loads articles
-from database and prints an error page for when no PubMed IDs are valid."""
+"""Dumping ground for utility functions that don't naturally fit anywhere and
+are used in several modules."""
 
 from __future__ import with_statement
 from __future__ import division
+
 
                                      
 __author__ = "Graham Poulter"                                        
@@ -18,57 +19,99 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
-import logging as log
-from contextlib import closing
-import numpy as nx
 
-from mscanner.configuration import rc
-from mscanner import featuredb, featuremap
-from mscanner.support import dbshelve
-
-
-class Databases:
-    """Connections to the MScanner databases
-
-    The environment needs to be reloaded when databases are updated,
-    because L{featmap} and L{article_list} will have changed on disk.
-
-    @ivar featdb: Mapping from PubMed ID to list of features
-
-    @ivar featmap: L{FeatureMapping} between feature names and IDs
+def update(instance, variables, exclude=['self']):
+    """Update instance attributes from a dictionary
     
-    @ivar artdb: Mmapping from PubMed ID to Article object
+    For example, C{update(self, locals())}
+    
+    @param instance: Instance to update via setattr()
+    @param variables: Dictionary of variables
+    @param exclude: Variables to exclude, defaults to ['self']
+    """
+    for k, v in variables.iteritems():
+        if k not in exclude:
+            setattr(instance, k, v)
+
+
+def make_random_subset(k, pool, exclude):
+    """Choose a random subset of k articles from pool
+
+    Use this function when the pool is large (say, 16 million items), we don't
+    mind if the order of pool gets scrambled in the process, and we need to
+    exclude certain items from being selected.
+    
+    @param k: Number of items to choose from pool
+    @param pool: Array of items to choose from (will be scrambled!)
+    @param exclude: Set of items that may not be chosen
+    @return: A new array of chosen items
+    """
+    from random import randint
+    import numpy as nx
+    n = len(pool)
+    assert 0 <= k <= n
+    for i in xrange(k):
+        # Non-selected items are in 0 ... n-i-1
+        # Selected items are n-i ... n
+        dest = n-i-1
+        choice = randint(0, dest) # 0 ... n-i-1 inclusive
+        while pool[choice] in exclude:
+            choice = randint(0, dest)
+        # Move the chosen item to the end, where so it will be part of the
+        # selected items in the next iteration. Note: this works using single
+        # items - it but would break with slices due to their being views into
+        # the vector.
+        pool[dest], pool[choice] = pool[choice], pool[dest]
+    # Phantom iteration: selected are n-k ... n
+    return nx.array(pool[n-k:])
+
+
+def usetempfile(function):
+    """Decorator to call a method with a temporary file
+    
+    Create a temporary file, pass the file path to the wrapped function and
+    finally remove the file afterwards. Meant for wrapping unit testing methods
+    which require access to a temporary file."""
+    import tempfile
+    from path import path
+    def tempfile_wrapper(self):
+        try:
+            fpath = path(tempfile.mktemp())
+            return function(self, fpath)
+        finally:
+            if fpath.isfile():
+                fpath.remove()
+    return tempfile_wrapper
+
+
+class FileTransaction(file):
+    """Transaction for Cheetah templates to output direct-to-file.
+    
+    Cheetah defaults to DummyTransaction which creates a huge list and
+    joins them up to create a string.  This is way slower than writing to
+    file directly.
+    
+    Usage::
+        with FileTransaction("something.html","wb") as ft:
+            Template().respond(ft)
     """
     
-    def __init__(self):
-        """Constructor for setting attributes to be used by the remaining
-        methods."""
-        log.info("Loading article databases")
-        self.featdb = featuredb.FeatureDatabase(rc.featuredb, 'r')
-        self.featmap = featuremap.FeatureMapping(rc.featuremap)
-        self.artdb = dbshelve.open(rc.articledb, 'r')
+    def __init__(self, *args, **kw):
+        """Open the file, same parameters as for the builtin"""
+        file.__init__(self, *args, **kw)
+        self.response = self
 
+    def writeln(self):
+        """Write a line of output"""
+        self.write(txt)
+        self.write('\n')
 
-    @property
-    def article_list(self):
-        """Array with the PubMed IDs in the database 
-        
-        Array may be over 16 million members long, so the property and will
-        take a while to load the first time it is accessed."""
-        try:
-            return self._article_list
-        except AttributeError: 
-            log.info("Loading article list")
-            self._article_list = nx.array([int(x) for x in rc.articlelist.lines()])
-            return self._article_list
+    def getvalue(self):
+        """Not implemented"""
+        return None
 
-
-    def close(self):
-        """Closes the feature and article databases"""
-        self.featdb.close()
-        self.artdb.close()
-    __del__ = close
-
+    def __call__(self):
+        return self
 
 
 def read_pmids(filename, 
@@ -96,6 +139,7 @@ def read_pmids(filename,
     
     @returns: Iterator over PubMed ID, or (Score, PubMed ID) if withscores
     True. """
+    import logging as log
     count = 0
     broken = []
     excluded = []
@@ -149,14 +193,15 @@ def load_articles(article_db_path, pmidlist_path):
     @note: The first called with a given PMID list caches the results in a
     .pickle, and later calls load the pickle."""
     import cPickle
-    from mscanner.support import dbshelve
+    from mscanner.medline import Shelf
+    from contextlib import closing
     from path import path # used in the line below
     cache_path = path(pmidlist_path + ".pickle")
     if cache_path.isfile():
         with open(cache_path, "rb") as f:
             return cPickle.load(f)
     pmids = read_pmids(pmidlist_path)
-    with closing(dbshelve.open(article_db_path, "r")) as artdb:
+    with closing(Shelf.open(article_db_path, "r")) as artdb:
         articles = [artdb[str(p)] for p in pmids]
     with open(cache_path, "wb") as f:
         cPickle.dump(articles, f, protocol=2)
@@ -168,11 +213,11 @@ def no_valid_pmids_page(filename, pmids):
     @param filename: Path to output file
     @param pmids: List of any provided PMIDs (all invalid)
     """
-    import logging
     from Cheetah.Template import Template
-    from mscanner.support import utils
+    from mscanner import utils
     from mscanner.configuration import rc
-    logging.warning("No valid PubMed IDs were found!")
+    import logging as log
+    log.warning("No valid PubMed IDs were found!")
     with utils.FileTransaction(filename, "w") as ft:
         page = Template(file=str(rc.templates/"notfound.tmpl"))
         page.notfound_pmids = pmids

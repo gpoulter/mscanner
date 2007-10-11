@@ -1,5 +1,14 @@
 """Persistent shelf backed by Berkeley DB"""
 
+import bsddb
+import cPickle
+import os
+import unittest
+from path import path
+from UserDict import DictMixin
+import zlib
+
+
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
@@ -14,13 +23,6 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
-import bsddb
-import cPickle
-import os
-import unittest
-from path import path
-from UserDict import DictMixin
-import zlib
 
 def open(filename, flags='c', mode=0660, dbenv=None, txn=None, dbname=None, compress=True):
     """Open a shelf with Berkeley DB backend

@@ -1,6 +1,17 @@
 """For updating the databases of articles and features"""
 
 from __future__ import with_statement
+from bsddb import db
+import gzip
+import logging as log
+from path import path
+
+from mscanner.medline import Shelf
+from mscanner.medline.Article import Article
+from mscanner.medline.FeatureDatabase import FeatureDatabase, FeatureStream
+from mscanner.medline.FileTracker import FileTracker
+from mscanner.medline.FeatureMapping import FeatureMapping
+
 
                                      
 __author__ = "Graham Poulter"                                        
@@ -15,50 +26,6 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
-
-from bsddb import db
-import gzip
-import logging as log
-from path import path
-import xml.etree.cElementTree as ET
-
-from mscanner.support import dbshelve
-from mscanner.article import Article
-from mscanner.featuredb import FeatureDatabase, FeatureStream
-from mscanner.featuremap import FeatureMapping
-
-
-def parse_medline_xml(source):
-    """Convert XML file into Article objects
-    
-    @param source: File-like object containing XML and MedlineCitation elements
-    
-    @return: Iterator over Article objects
-    """
-    context = ET.iterparse(source, events=("start", "end"))
-    context = iter(context)
-    event, root = context.next()
-    for event, record in context:
-        if event == "end" and record.tag == "MedlineCitation":
-            if record.get("Status") == "MEDLINE":
-                result = Article()
-                result.pmid = int(record.findtext("PMID"))
-                art = record.find("Article")
-                result.issn = art.findtext("Journal/ISSN")
-                result.year = art.findtext("Journal/JournalIssue/PubDate/Year")
-                if result.year is not None:
-                    result.year = int(result.year)
-                result.title = art.findtext("ArticleTitle")
-                result.abstract = art.findtext("Abstract/AbstractText")
-                result.authors = [(a.findtext("Initials"), a.findtext("LastName")) 
-                                  for a in art.findall("AuthorList/Author")]
-                result.journal = record.findtext("MedlineJournalInfo/MedlineTA")
-                for heading in record.findall("MeshHeadingList/MeshHeading"):
-                    descriptor = heading.findtext("DescriptorName")
-                    quals = [ q.text for q in heading.findall("QualifierName") ]
-                    result.meshterms.append(tuple([descriptor] + quals))
-                yield result
-            root.clear()
 
 
 class MedlineCache:    
@@ -77,15 +44,15 @@ class MedlineCache:
     """
 
     def __init__(
-        self, 
-        featmap, 
+        self,
+        featmap,
         db_env_home,
-        article_db, 
-        feature_db, 
-        feature_stream, 
+        article_db,
+        feature_db,
+        feature_stream,
         article_list,
-        processed_path, 
-        narticles_path, 
+        processed_path,
+        narticles_path,
         use_transactions=True):
         """Constructor parameters set corresponding instance variables."""
         self.db_env_home = db_env_home
@@ -136,7 +103,7 @@ class MedlineCache:
         if self.use_transactions:
             txn = dbenv.txn_begin()
         try:
-            artdb = dbshelve.open(self.article_db, dbenv=dbenv, txn=txn)
+            artdb = Shelf.open(self.article_db, dbenv=dbenv, txn=txn)
             meshfeatdb = FeatureDatabase(self.feature_db, dbenv=dbenv, txn=txn)
             featstream = FeatureStream(open(self.feature_stream,"ab"))
             if not self.narticles_path.isfile():
@@ -210,7 +177,7 @@ class MedlineCache:
                     infile = gzip.open(filename, 'r')
                 else:
                     infile = open(filename, 'r')
-                numadded = self.add_articles(parse_medline_xml(infile), dbenv)
+                numadded = self.add_articles(Article.parse_medline_xml(infile), dbenv)
             finally:
                 infile.close()
             log.debug("Added %d articles", numadded)
@@ -221,40 +188,6 @@ class MedlineCache:
 
 
 
-class FileTracker(set):
-    """A persistent set for tracking of processed files.
-    
-    @note: membership is checked according to basename()
-    
-    @note: Overloads the method "add", so 
-    
-    @ivar trackfile: Path where to save the list of precessed files
-    """
 
-    def __init__(self, trackfile=None):
-        """Constructor - sets L{trackfile}"""
-        self.trackfile = trackfile
-        self.trackfile_new = trackfile+".new"
-        if isinstance(trackfile,path) and trackfile.isfile():
-            self.update(trackfile.lines(retain=False))
-
-    def dump(self):
-        """Write the list of tracked files, one per line"""
-        if self.trackfile is None:
-            return
-        self.trackfile_new.write_lines(sorted(self))
-        self.trackfile_new.rename(self.trackfile)
-
-    def add(self, fname):
-        """Add fname.basename() to the set"""
-        set.add(self, fname.basename())
-
-    def toprocess(self, files):
-        """Filter for files that have not been processed yet
-        
-        @param files: List of candidate files
-        
-        @return: Paths whose base names are not found in the set"""
-        return sorted(f for f in files if f.basename() not in self)
 
 

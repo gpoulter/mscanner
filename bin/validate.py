@@ -25,7 +25,8 @@ from path import path
 import sys
 
 from mscanner.configuration import rc, start_logger
-from mscanner import scorefile, validenv
+from mscanner.medline.Databases import Databases
+from mscanner.ValidationManager import ValidationManager
 
 
 dataset_map = {
@@ -41,7 +42,7 @@ dataset_map = {
 
 def validate(*datasets):
     """Perform cross-validation analysis for the Mscanner publication"""
-    env = scorefile.Databases()
+    env = Databases()
     rc.numnegs = 100000
     for dataset in datasets:
         if dataset not in dataset_map:
@@ -52,7 +53,7 @@ def validate(*datasets):
             pos = rc.corpora / pos
         if neg is not None and not isinstance(neg, path):
             neg = rc.corpora / neg
-        op = validenv.Validation(rc.working / "valid" / rc.dataset, env)
+        op = ValidationManager(rc.working / "valid" / rc.dataset, env)
         op.validation(pos, neg)
     env.close()
 
@@ -66,7 +67,7 @@ def issn_validation():
     rc.dataset = "aids-noissn"
     pos = "aids-bioethics-Oct06.txt"
     neg = "medline07-100k.txt"
-    op = validenv.Validation(rc.working / "valid" / rc.dataset)
+    op = ValidationManager(rc.working / "valid" / rc.dataset)
     op.validation(rc.corpora / pos, rc.corpora / neg)
     op.env.close()
 
@@ -83,10 +84,10 @@ def random_bimodality():
     zero."""
     rc.dataset = "random10k-vs-100k-mod"
     rc.nfolds = 10
-    rc.post_masker = "mask_nonpositives"
+    rc.get_postmask = "mask_nonpositives"
     pos = "random10k-06.txt"
     neg = "medline07-100k.txt"
-    op = validenv.Validation(rc.working / "valid" / rc.dataset)
+    op = ValidationManager(rc.working / "valid" / rc.dataset)
     op.validation(rc.corpora / pos, rc.corpora / neg)
     op.env.close()
 

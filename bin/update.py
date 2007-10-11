@@ -32,7 +32,8 @@ import cPickle
 import logging as log
 import sys
 
-from mscanner import medline, featuremap
+from mscanner.medline.MedlineCache import MedlineCache
+from mscanner.medline.FeatureMapping import FeatureMapping
 from mscanner.configuration import rc, start_logger
 
 
@@ -41,8 +42,8 @@ def update_mscanner(pickle=None):
     
     @param pickle: Path to a pickle of Article objects to be added instead.
     """
-    medcache = medline.MedlineCache(
-            featuremap.FeatureMapping(rc.featuremap),
+    medcache = MedlineCache(
+            FeatureMapping(rc.featuremap),
             rc.db_env_home,
             rc.articledb,
             rc.featuredb,

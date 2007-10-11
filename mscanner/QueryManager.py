@@ -3,6 +3,21 @@
 from __future__ import with_statement
 from __future__ import division
 
+import codecs
+import logging as log
+import numpy as nx
+import time
+from contextlib import closing
+import warnings
+warnings.simplefilter("ignore", UserWarning)
+
+from mscanner.configuration import rc
+from mscanner.medline import Shelf
+from mscanner.medline.Databases import Databases
+from mscanner.FeatureScores import FeatureScores, FeatureCounts
+from mscanner import citationtable, cscore, utils
+
+
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
@@ -17,21 +32,8 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
-import codecs
-import logging as log
-import numpy as nx
-import time
-from contextlib import closing
 
-import warnings
-warnings.simplefilter("ignore", UserWarning)
-
-from mscanner.configuration import rc
-from mscanner.support import dbshelve, utils
-from mscanner import citationtable, cscore, featuredb, featuremap, scoring, scorefile
-
-
-class Query:
+class QueryManager:
     """Class for performing a single query
 
     @ivar env: L{Databases} to use.
@@ -40,7 +42,7 @@ class Query:
     
     @ivar pmids: Set object with input PubMed IDs, from L{load_pmids}
     
-    @ivar featinfo: FeatureInfo with feature scores, from L{query}
+    @ivar featinfo: FeatureScores with feature scores, from L{query}
     
     @group From make_results or load_results: inputs, results
     
@@ -62,7 +64,7 @@ class Query:
             outdir.makedirs()
             outdir.chmod(0777)
         self.timestamp = time.time()
-        self.env = env if env else scorefile.Databases()
+        self.env = env if env else Databases()
         self.pmids = None
         self.featinfo = None
         self.inputs = None
@@ -78,13 +80,13 @@ class Query:
             self.pmids = input
         elif isinstance(input, basestring):
             log.info("Loading PubMed IDs from %s", input.basename())
-            self.pmids = set(scorefile.read_pmids(
+            self.pmids = set(utils.read_pmids(
                 input, include=self.env.featdb,
                 broken_name=self.outdir/rc.report_input_broken))
             if len(self.pmids) == 0: # No valid PMIDs found
-                scorefile.no_valid_pmids_page(
+                utils.no_valid_pmids_page(
                     self.outdir/rc.report_index,
-                    list(scorefile.read_pmids(self.outdir/rc.report_input_broken)))
+                    list(utils.read_pmids(self.outdir/rc.report_input_broken)))
         else:
             self.pmids = set(input)
 
@@ -93,9 +95,9 @@ class Query:
         """Generate the L{featinfo} attribute using the L{pmids}
         as examples of relevant citations."""
         log.info("Calculating feature scores")
-        pos_counts = scoring.count_features(
+        pos_counts = FeatureCounts(
             len(self.env.featmap), self.env.featdb, self.pmids)
-        self.featinfo = scoring.FeatureInfo(
+        self.featinfo = FeatureScores(
             featmap = self.env.featmap,
             pos_counts = pos_counts,
             neg_counts = nx.array(self.env.featmap.counts, nx.int32) - pos_counts,
@@ -103,8 +105,8 @@ class Query:
             ndocs = self.env.featmap.numdocs - len(self.pmids),
             pseudocount = rc.pseudocount,
             mask = self.env.featmap.get_type_mask(rc.exclude_types),
-            frequency_method = rc.frequency_method,
-            post_masker = rc.post_masker)
+            get_frequencies = rc.get_frequencies,
+            get_postmask = rc.get_postmask)
 
 
     def query(self, input):
@@ -128,16 +130,16 @@ class Query:
     def load_results(self):
         """Read L{inputs} and L{results} from the report directory"""
         log.info("Loading saved results for %s", rc.dataset)
-        self.inputs = list(scorefile.read_pmids(
+        self.inputs = list(utils.read_pmids(
             self.outdir/rc.report_input_scores, withscores=True))
-        self.results = list(scorefile.read_pmids(
+        self.results = list(utils.read_pmids(
             self.outdir/rc.report_result_scores, withscores=True))
 
 
     def save_results(self):
         """Write L{inputs} and L{results} with scores in the report directory."""
-        scorefile.write_scores(self.outdir/rc.report_input_scores, self.inputs)
-        scorefile.write_scores(self.outdir/rc.report_result_scores, self.results)
+        utils.write_scores(self.outdir/rc.report_input_scores, self.inputs)
+        utils.write_scores(self.outdir/rc.report_result_scores, self.results)
 
 
     def make_results(self):
@@ -203,7 +205,7 @@ class Query:
             num_results = len(self.results),
             best_tfidfs = self.featinfo.get_best_tfidfs(20),
             timestamp = self.timestamp,
-            notfound_pmids = list(scorefile.read_pmids(self.outdir/rc.report_input_broken))
+            notfound_pmids = list(utils.read_pmids(self.outdir/rc.report_input_broken))
         )
         from Cheetah.Template import Template
         with utils.FileTransaction(self.outdir/rc.report_index, "w") as ft:

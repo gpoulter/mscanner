@@ -6,6 +6,11 @@ validation parameters.
 Parameters can be made to depend on others by using lambda, which the rc object
 auto-calls those so they appear as normal data attributes."""
 
+
+from path import path
+from mscanner.Storage import RCStorage
+
+
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
@@ -20,10 +25,8 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
-from path import path
-import mscanner.support.storage
 
-rc = mscanner.support.storage.RCStorage()
+rc = RCStorage()
 """Global configuration options"""
 
 #### PATH CONFIGURATION
@@ -122,7 +125,7 @@ rc.report_fmeasure_img = path("fmeasure.png")
 ## Whether to use transactions while updating
 rc.use_transactions = False
 ## Number of seconds to pause before next file while updating
-rc.save_delay = 6
+rc.save_delay = 3
 ## Server for sending e-mails
 rc.smtpserver = "smtp.uct.ac.za" # "smtp.stanford.edu"
 ## Proportion of data to use in retrieval test
@@ -134,16 +137,16 @@ rc.siteurl = "http://mscanner.stanford.edu"
 ## Whether to link to .js and .css files instead of including them
 rc.link_headers = False
 
-## Parameters affecting FeatureInfo 
+## Parameters affecting FeatureScores 
 
 ## Per-term pseudocount to use (None for background frequency)
 rc.pseudocount = None
 ## Types of features to exclude
 rc.exclude_types = []
 ## Method name for calculating feature probabilities
-rc.frequency_method = "probabilities_bayes"
+rc.get_frequencies = "probabilities_bayes"
 ## Method name for calculating mask after scores (may be None)
-rc.post_masker = None
+rc.get_postmask = None
 
 #### Defaults for descriptor parameters
 

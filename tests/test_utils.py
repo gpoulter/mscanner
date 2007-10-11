@@ -1,4 +1,4 @@
-"""Test suite for mscanner.scorefile
+"""Test suite for mscanner.utils
 
                                
 
@@ -9,19 +9,19 @@ it under the Do Whatever You Want Public License. Terms and conditions:
 """
 
 import unittest
-from mscanner import scorefile
-from mscanner.support.utils import usetempfile
+from mscanner import utils
+
 
 class ScorefileModuleTests(unittest.TestCase):
     
-    @usetempfile
+    @utils.usetempfile
     def test_read_pmids(self, fn):
         fn.write_lines(["# comment", "1 10", "2 20 blah", "3 30", "4 40", "5 50"])
         includes = [1,2,3,4]
         excludes = [1]
-        pmids = list(scorefile.read_pmids(fn, includes, excludes, withscores=False))
+        pmids = list(utils.read_pmids(fn, includes, excludes, withscores=False))
         self.assertEqual(pmids, [2,3,4])
-        pairs = list(scorefile.read_pmids(fn, includes, excludes, withscores=True))
+        pairs = list(utils.read_pmids(fn, includes, excludes, withscores=True))
         self.assertEqual(pairs, [(20.0,2),(30.0,3),(40.0,4)])
 
 

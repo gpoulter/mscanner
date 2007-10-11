@@ -1,4 +1,4 @@
-"""Test suite for mscanner.support.dbshelve
+"""Test suite for mscanner.medline.Shelf
 
                                
 
@@ -13,16 +13,16 @@ from path import path
 import tempfile
 import unittest
 
-from mscanner.support import dbshelve
+from mscanner.medline import Shelf
 
 
 class DbshelveTests(unittest.TestCase):
     """Test for Shelf class"""
 
     def setUp(self):
-        self.db = dbshelve.open(None)
+        self.db = Shelf.open(None)
 
-    def test_dbshelve(self):
+    def test(self):
         d = self.db
         d["A"] = ("A",2)
         d["B"] = ("B",3)
@@ -42,13 +42,13 @@ class DbshelveTests(unittest.TestCase):
 
 
 class TransactionTests(DbshelveTests):
-    """Test using transactions with L{dbshelve}"""
+    """Test using transactions with L{Shelf}"""
 
     def setUp(self):
-        self.envdir = path(tempfile.mkdtemp(prefix="dbshelve-"))
+        self.envdir = path(tempfile.mkdtemp(prefix="Shelf-"))
         self.env = db.DBEnv()
         self.env.open(self.envdir, db.DB_INIT_MPOOL|db.DB_INIT_TXN|db.DB_CREATE)
-        self.db = dbshelve.open(self.envdir/'dbshelf.db', db.DB_CREATE|db.DB_AUTO_COMMIT, dbenv=self.env)
+        self.db = Shelf.open(self.envdir/'dbshelf.db', db.DB_CREATE|db.DB_AUTO_COMMIT, dbenv=self.env)
 
     def tearDown(self):
         if self.txn is not None:
@@ -57,17 +57,17 @@ class TransactionTests(DbshelveTests):
         self.env.close()
         self.envdir.rmtree(ignore_errors=True)
 
-    def test_dbshelve(self):
+    def test(self):
         # Test aborting
         self.txn = self.env.txn_begin()
         self.db.set_txn(self.txn)
-        super(TransactionTests, self).test_dbshelve()
+        super(TransactionTests, self).test()
         self.txn.abort()
         self.assertEqual(len(self.db), 0)
         # Test committing
         self.txn = self.env.txn_begin()
         self.db.set_txn(self.txn)
-        super(TransactionTests, self).test_dbshelve()
+        super(TransactionTests, self).test()
         self.txn.commit()
         self.assertEqual(len(self.db), 1)
         self.txn = None

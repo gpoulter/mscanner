@@ -154,8 +154,14 @@ class QueueStatus:
 
     
     def _load_tasklist(self):
-        """Populate L{tasklist}"""
-        self.tasklist = [read_descriptor(f) for f in rc.queue_path.files()]
+        """Populate L{tasklist}.
+        
+        @note: We only load files that are older than one second.  Without
+        this we sometimes catch files half-written by the web interface."""
+        current_time = time.time()
+        eligible_files = [f for f in rc.queue_path.files() \
+                          if f.mtime < current_time-1]
+        self.tasklist = [read_descriptor(f) for f in eligible_files]
         self.tasklist.sort(key=lambda x:x.submitted)
         self.running = self.tasklist[0] if self.tasklist else None
 

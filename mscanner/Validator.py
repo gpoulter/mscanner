@@ -107,7 +107,7 @@ class Validator:
             log.debug("Fold %d: pstart = %d, psize = %s; nstart = %d, nsize = %d", 
                       fold, pstart, psize, nstart, nsize)
             # Get new feature scores
-            s.featinfo.update_features(
+            s.featinfo.update(
                 pos_counts = pcounts - FeatureCounts(
                     len(s.featinfo), s.featdb, 
                     s.positives[pstart:pstart+psize]), 
@@ -117,20 +117,22 @@ class Validator:
                 pdocs = pdocs-psize, 
                 ndocs = ndocs-nsize)
             # Calculate the article scores for the test fold
-            termscores = s.featinfo.scores
             s.pscores[pstart:pstart+psize] = [
-                nx.sum(termscores[s.featdb[d]]) for d in 
+                nx.sum(s.featinfo.scores[s.featdb[d]]) for d in
                 s.positives[pstart:pstart+psize]]
             s.nscores[nstart:nstart+nsize] = [
-                nx.sum(termscores[s.featdb[d]]) for d in 
+                nx.sum(s.featinfo.scores[s.featdb[d]]) for d in
                 s.negatives[nstart:nstart+nsize]]
+        s.pscores += s.featinfo.offset
+        s.nscores += s.featinfo.offset
         return s.pscores, s.nscores
 
 
     def leaveout_validate(self):
         """Carries out leave-out-one validation, returning the resulting scores.
         
-        @note: Feature scores by Bayesian pseudocount only - no other methods.
+        @note: Feature scores by Bayesian background pseudocount with no article
+        score offset - no other methods implemented.
         
         @deprecated: 10-fold is standard, and leave-out-one is rather slow.
         

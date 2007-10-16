@@ -99,14 +99,16 @@ class QueryManager:
             len(self.env.featmap), self.env.featdb, self.pmids)
         self.featinfo = FeatureScores(
             featmap = self.env.featmap,
+            pseudocount = rc.pseudocount,
+            mask = self.env.featmap.get_type_mask(rc.exclude_types),
+            make_scores = rc.make_scores,
+            get_postmask = rc.get_postmask)
+        self.featinfo.update(
             pos_counts = pos_counts,
             neg_counts = nx.array(self.env.featmap.counts, nx.int32) - pos_counts,
             pdocs = len(self.pmids),
-            ndocs = self.env.featmap.numdocs - len(self.pmids),
-            pseudocount = rc.pseudocount,
-            mask = self.env.featmap.get_type_mask(rc.exclude_types),
-            get_frequencies = rc.get_frequencies,
-            get_postmask = rc.get_postmask)
+            ndocs = self.env.featmap.numdocs - len(self.pmids))
+
 
 
     def query(self, input):
@@ -147,7 +149,8 @@ class QueryManager:
         log.info("Peforming query for dataset %s", rc.dataset)
         # Calculate score for each input PMID
         self.inputs = [ 
-            (nx.sum(self.featinfo.scores[self.env.featdb[pmid]]), pmid)
+            (self.featinfo.offset+
+             nx.sum(self.featinfo.scores[self.env.featdb[pmid]]), pmid)
             for pmid in self.pmids ]
         self.inputs.sort(reverse=True)
         # Calculate score for each result PMID
@@ -155,6 +158,7 @@ class QueryManager:
             rc.featurestream,
             self.env.featmap.numdocs,
             self.featinfo.scores,
+            self.featinfo.offset,
             rc.limit, len(self.pmids),
             rc.threshold, self.pmids))
         self.results.sort(reverse=True)

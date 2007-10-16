@@ -144,7 +144,7 @@ rc.pseudocount = None
 ## Types of features to exclude
 rc.exclude_types = []
 ## Method name for calculating feature probabilities
-rc.get_frequencies = "probabilities_bayes"
+rc.make_scores = "scores_newbayes"
 ## Method name for calculating mask after scores (may be None)
 rc.get_postmask = None
 
@@ -153,7 +153,7 @@ rc.get_postmask = None
 ## Name of dataset
 rc.dataset = "default"
 ## Float for minimum score threshold
-rc.threshold = 10
+rc.threshold = 0
 ## Integer for maximum number of results (may be fewer due to threshold)
 rc.limit = 1000
 ## Number of validation folds to use

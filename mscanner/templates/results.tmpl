@@ -154,6 +154,19 @@ $notfound_pmids -- List of invalid PubMed IDs
   feature occurrence.""")
   #end if
 
+  #if $stats.offset != 0
+  <tr>
+    <th>Offset</th>
+    <td>$stats.offset</td> $help("h_offset")
+  </tr>
+
+  $hr("h_offset", """This value includes an offset to account for absent
+  features, and a prior, and is added to each citation score. It just shifts
+  the score, so does not affect performance. It's only use is to make the score
+  represent the natural logarithm of the ratio of posterior probabilities for
+  the article being relevant versus non-relevant, given its features.""")
+  #end if
+
   <tr>
     <th>Limit</th>
     <td>$rc.limit</td>

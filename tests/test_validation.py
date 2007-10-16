@@ -11,6 +11,7 @@ it under the Do Whatever You Want Public License. Terms and conditions:
 import logging
 import numpy as nx
 from path import path
+import pprint as pp
 from random import seed
 import tempfile
 import unittest
@@ -67,8 +68,15 @@ class ValidatorTests(unittest.TestCase):
             nfolds = 4,
         )
         pscores, nscores = val.nfold_validate(randomise=False)
-        cpscores = nx.array([-2.39789534,  1.03609192,  1.03609192,  3.43398714])
-        cnscores = nx.array([-3.43398714, -1.03609192, -1.03609192,  2.39789534])
+        #pp.pprint(pscores)
+        #pp.pprint(nscores)
+        # Old scoring method
+        #cpscores = nx.array([-2.39789534,  1.03609192,  1.03609192,  3.43398714])
+        #cnscores = nx.array([-3.43398714, -1.03609192, -1.03609192,  2.39789534])
+        # New scoring method
+        cpscores = nx.array([-2.99042702,  1.90989733,  1.90989733,  4.60405874])
+        cnscores = nx.array([-5.19658995, -2.50242901, -2.50242901,  2.39789534])
+        # Test scores
         self.assert_(nx.allclose(pscores,cpscores,rtol=1e-3))
         self.assert_(nx.allclose(nscores,cnscores,rtol=1e-3))
 

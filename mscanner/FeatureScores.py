@@ -27,19 +27,11 @@ class FeatureScores(object):
     """Feature score calculation and saving, with choice of calculation method,
     and methods to exclude certain kinds of features.
     
-    FeatureScores can be re-used via L{update_features} if the data changes,
-    but if the rc-parameters change a new instance must be created.
-
+    @group featmap, pseudocount, mask, make_scores, get_postmask:
+    Constructor parameters
+    
     @ivar featmap: L{FeatureMapping} object
-    
-    @ivar pos_counts: Array of feature counts in positive documents. 
-    
-    @ivar neg_counts: Array of feature counts in negatives documents
-    
-    @ivar pdocs: Number of positive documents
-    
-    @ivar ndocs: Number of negative documents
-    
+
     @ivar pseudocount: Either a float which is the pseudocount for all
     features, or numpy array of per-feature counts, or None which triggers
     once-off creation of per-features counts equal to Medline frequency if
@@ -48,116 +40,140 @@ class FeatureScores(object):
     @ivar mask: Boolean array for masking some features scores to zero
     (this is to exclude features by category, not by score).
     
-    @ivar get_frequencies: Method for calculating feature 
-    probabilities (constructor takes method name).
+    @ivar make_scores: Method used to calculate the feature scores.
     
-    @ivar get_postmask: Method for calculating mask after feature
-    scores are known (constructor takes method name or None)
+    @ivar get_postmask: Method used to calculate a dynamic mask
+    array once the feature scores are known.
+    
+    
+    @group pos_counts, neg_counts, pdocs, ndocs: Set by L{update}
+    
+    @ivar pos_counts: Array of feature counts in positive documents
+    
+    @ivar neg_counts: Array of feature counts in negatives documents
+    
+    @ivar pdocs: Number of positive documents
+    
+    @ivar ndocs: Number of negative documents
+    
+    
+    @group scores, pfreqs, nfreqs, offset: Set by L{make_scores}
+    
+    @ivar scores: Score of each feature
   
-    @ivar pfreqs: Probability of each feature given positive article
+    @ivar pfreqs: Numerator of score fraction
     
-    @ivar nfreqs: Probability of each feature given negative article
+    @ivar nfreqs: Denominator of score fraction
+    
+    @ivar offset: Value to be added to all article scores
+   
     """
 
     def __init__(self, 
-                 featmap, 
-                 pos_counts=None, 
-                 neg_counts=None, 
-                 pdocs=None, 
-                 ndocs=None,
-                 pseudocount=None, 
+                 featmap,
+                 pseudocount=None,
                  mask=None,
-                 get_frequencies="probabilities_bayes",
+                 make_scores="scores_newbayes",
                  get_postmask=None):
         """Initialise FeatureScores object (parameters are instance variables)"""
-        utils.update(self, locals())
-        if isinstance(get_frequencies, basestring):
-            self.get_frequencies = getattr(self, get_frequencies)
+        self.featmap = featmap
+        self.pseudocount = pseudocount
+        self.mask = mask
+        self.make_scores = getattr(self, make_scores)
         if isinstance(get_postmask, basestring):
             self.get_postmask = getattr(self, get_postmask)
+        else:
+            self.get_postmask = None
+
 
     def __len__(self):
         """Length is the number of features"""
         return len(self.featmap)
 
 
-    def _reset(self):
-        """Reset properties because something changed"""
-        for aname in ["_scores","pfreqs","nfreqs","_stats","_tfidf"]:
+    def update(self, pos_counts, neg_counts, pdocs, ndocs):
+        """Change the feature counts and numbers of documents, clear
+        old score calculations, and calculate new scores."""
+        utils.update(self, locals())
+        self.offset = 0
+        self.make_scores()
+        self._mask_scores()
+        for aname in ["_stats","_tfidf"]:
             try:
                 delattr(self, aname)
-            except AttributeError: 
+            except AttributeError:
                 pass
 
 
-    def update_features(self, pos_counts, neg_counts, pdocs, ndocs):
-        """Change the feature counts and numbers of documents, clear
-        old score calculations, and calculate new scores."""
-        self._reset()
-        utils.update(self, locals())
-
-
-    @property
-    def scores(self):
-        """Log likelihood support score of each feature. 
-        
-        Side effect of calling stores the first time is that feature
-        probabilities are also placed in the pfreqs and nfreqs attributes.
-        """
-        try:
-            return self._scores
-        except AttributeError: 
-            pass
-        pfreqs, nfreqs = self.get_frequencies()
-        scores = nx.log(pfreqs / nfreqs)
+    def _mask_scores(self):
+        """Set some feature scores to zero, effectively excluding them
+        from consideration.  Uses L{mask} and L{get_postmask}"""
         if self.mask is not None:
-            pfreqs[self.mask] = 0
-            nfreqs[self.mask] = 0
-            scores[self.mask] = 0
-        self.pfreqs = pfreqs
-        self.nfreqs = nfreqs
-        self._scores = scores
+            self.pfreqs[self.mask] = 0
+            self.nfreqs[self.mask] = 0
+            self.scores[self.mask] = 0
         if self.get_postmask:
-            self._scores[self.get_postmask()] = 0
-        return self._scores
+            self.scores[self.get_postmask()] = 0
 
 
-    def probabilities_rubin(s):
+    def scores_newbayes(s):
+        """Bayesian scores including including absent-term features,
+        and a prior. Article scores are then equal to log of posterior
+        probability ratio."""
+        if s.pseudocount is None:
+            s.pseudocount = nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
+        z = s.pseudocount
+        mz = 1-s.pseudocount
+        s.pfreqs = (s.pos_counts+z) / (mz+s.pdocs-s.pos_counts)
+        s.nfreqs = (s.neg_counts+z) / (mz+s.ndocs-s.neg_counts)
+        s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
+        # Calculate the offset to article scores
+        s._constant_offset = nx.sum(
+            (nx.log(mz+s.pdocs-s.pos_counts) - nx.log(s.pdocs+1)) -\
+            (nx.log(mz+s.ndocs-s.neg_counts) - nx.log(s.ndocs+1)))
+        s._bayes_prior = nx.log(s.pdocs) - nx.log(s.ndocs)
+        s.offset = s._constant_offset + s._bayes_prior
+
+
+    def scores_rubin(s):
         """Uses Daniel Rubin's frequency smoothing heuristic, which
         replaces zero-frequency with 1e-8"""
-        pfreqs = s.pos_counts / float(s.pdocs)
-        nfreqs = s.neg_counts / float(s.ndocs)
-        pfreqs[pfreqs == 0.0] = 1e-8
-        nfreqs[nfreqs == 0.0] = 1e-8
-        return pfreqs, nfreqs
+        s.offset = 0
+        s.pfreqs = s.pos_counts / float(s.pdocs)
+        s.nfreqs = s.neg_counts / float(s.ndocs)
+        s.pfreqs[s.pfreqs == 0.0] = 1e-8
+        s.nfreqs[s.nfreqs == 0.0] = 1e-8
+        s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
 
 
-    def probabilities_bayes(s):
+    def scores_oldbayes_newpseudo(s):
         """Use a pseudocount vector, or a constant pseudocount to get
         posterior feature probablilities.
         
         @return: Probability vectors for positive and negative features
         """
+        s.offset = 0
         if s.pseudocount is None:
             s.pseudocount = nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
-        pfreqs = (s.pos_counts+s.pseudocount) / (s.pdocs+1)
-        nfreqs = (s.neg_counts+s.pseudocount) / (s.ndocs+1)
-        return pfreqs, nfreqs
+        s.pfreqs = (s.pos_counts+s.pseudocount) / (s.pdocs+1)
+        s.nfreqs = (s.neg_counts+s.pseudocount) / (s.ndocs+1)
+        s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
 
 
-    def probabilities_oldbayes(s):
+    def scores_oldbayes_oldpseudo(s):
         """Use a pseudocount vector, or a constant pseudocount to get
         posterior feature probablilities.   Instead of +1 in the
         denominator, we use +2*pseudocount.
         
         @deprecated: Performs poorly when number of inputs is small.
-
+        
         @return: Probability arrays for positive and negative features"""
+        s.offset = 0
         if s.pseudocount is None:
             s.pseudocount = nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
-        pfreqs = (s.pos_counts+s.pseudocount) / (s.pdocs+2*s.pseudocount)
-        nfreqs = (s.neg_counts+s.pseudocount) / (s.ndocs+2*s.pseudocount)
-        return pfreqs, nfreqs
+        s.pfreqs = (s.pos_counts+s.pseudocount) / (s.pdocs+2*s.pseudocount)
+        s.nfreqs = (s.neg_counts+s.pseudocount) / (s.ndocs+2*s.pseudocount)
+        s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
 
 
     def make_rare_positives(s):
@@ -192,6 +208,7 @@ class FeatureScores(object):
         except AttributeError: 
             pass
         s = Storage()
+        s.offset = self.offset
         s.pdocs = self.pdocs
         s.ndocs = self.ndocs
         s.num_feats = len(self)
@@ -255,13 +272,12 @@ class FeatureScores(object):
         """Write features scores as CSV to an output stream"""
         stream.write(u"score,positives,negatives,numerator,"\
                      u"denominator,pseudocount,termid,tfidf,type,term\n")
-        self.scores
-        self.tfidf
-        if isinstance(self.pseudocount, float):
-            pseudocount = nx.zeros_like(self.scores) + self.pseudocount
-        else:
-            pseudocount = self.pseudocount
         s = self
+        s.tfidf
+        if isinstance(s.pseudocount, float):
+            pseudocount = nx.zeros_like(s.scores) + s.pseudocount
+        else:
+            pseudocount = s.pseudocount
         for t, score in sorted(
             enumerate(s.scores), key=lambda x:x[1], reverse=True):
             if s.mask is not None and s.mask[t]:

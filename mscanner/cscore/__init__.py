@@ -21,7 +21,7 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
-def pyscore(docs, featscores, limit, threshold=None, exclude=[]):
+def pyscore(docs, featscores, offset, limit, threshold=None, exclude=[]):
     """Get scores for given documents
     
     We iterates over docs to yield scores. Skips members of exclude, and
@@ -30,6 +30,8 @@ def pyscore(docs, featscores, limit, threshold=None, exclude=[]):
     @param docs: Iterator over (integer doc ID, array of feature ID) pairs
 
     @param featscores: Array of feature scores (mapping feature ID to score)
+    
+    @param offset: Arbitrary amount to add to citation score
     
     @param limit: Max number of results to return
     
@@ -46,7 +48,7 @@ def pyscore(docs, featscores, limit, threshold=None, exclude=[]):
         if idx == marker:
             log.debug("Scored %d citations so far", idx)
             marker += 100000
-        score = nx.sum(featscores[features])
+        score = offset + nx.sum(featscores[features])
         if (threshold is None or score >= threshold) and docid not in exclude:
             ndocs += 1
             if score >= results[0][0]:
@@ -56,18 +58,18 @@ def pyscore(docs, featscores, limit, threshold=None, exclude=[]):
     return heapq.nlargest(limit, results)
 
 
-def pyscore_adaptor(docstream, numdocs, featscores, 
+def pyscore_adaptor(docstream, numdocs, featscores, offset,
                     limit, safety, threshold=None, exclude=[]):
     """Calls pyscore, given arguments suitable for cscore_pipe/dll"""
     from mscanner.medline.FeatureDatabase import FeatureStream
     docs = FeatureStream(open(docstream, "rb"))
     try:
-        return pyscore(docs, featscores, limit, threshold, exclude)
+        return pyscore(docs, featscores, offset, limit, threshold, exclude)
     finally:
         docs.close()
 
 
-def cscore_pipe(docstream, numdocs, featscores, 
+def cscore_pipe(docstream, numdocs, featscores, offset,
                 limit, safety, threshold=None, exclude=[]):
     """Get article scores by communicating with the cscore program
     
@@ -81,6 +83,8 @@ def cscore_pipe(docstream, numdocs, featscores,
     
     @param featscores: Vector of feature score doubles
     
+    @param offset: Arbitrary amount to add to citation score
+
     @param limit: Maximum number of results to return.
     
     @param safety: Number of spare results in processing (because
@@ -96,7 +100,7 @@ def cscore_pipe(docstream, numdocs, featscores,
     import subprocess as sp
     p = sp.Popen(
         [rc.cscore_path, docstream, str(numdocs), 
-         str(len(featscores)), str(limit+safety)],
+         str(len(featscores)), str(limit+safety), str(offset)],
         stdout=sp.PIPE, stdin=sp.PIPE)
     p.stdin.write(featscores.tostring())
     s = p.stdout.read(8)
@@ -113,7 +117,7 @@ def cscore_pipe(docstream, numdocs, featscores,
     p.stdout.close()
 
 
-def cscore_dll(docstream, numdocs, featscores, 
+def cscore_dll(docstream, numdocs, featscores, offset,
                limit, safety, threshold=None, exclude=[]):
     """Get article scores, using the cscores function via ctypes 
     
@@ -123,6 +127,8 @@ def cscore_dll(docstream, numdocs, featscores,
     @param numdocs: Number of documents in the stream of feature vectors.
     
     @param featscores: Vector of feature score doubles
+    
+    @param offset: Arbitrary amount to add to citation score
     
     @param limit: Maximum number of results to return.
     
@@ -135,19 +141,19 @@ def cscore_dll(docstream, numdocs, featscores,
 
     @return: List of (score, PMID) pairs in decreasing order of score
     """
-    from ctypes import cdll, c_int, c_char_p
+    from ctypes import cdll, c_int, c_char_p, c_float, c_double
     from itertools import izip
     import numpy as nx
     # Set up arguments and call cscore2 function using ctypes
     carray = lambda x: nx.ctypeslib.ndpointer(dtype=x, ndim=1, flags='CONTIGUOUS')
     cscore = cdll.LoadLibrary(rc.cscore_dll)
     cscore.cscore.argtypes = [ 
-        c_char_p, c_int, c_int, c_int, carray(nx.float64),
-        carray(nx.float32), carray(nx.int32) ]
+        c_char_p, c_int, c_int, c_int, c_float,
+        carray(nx.float64), carray(nx.float32), carray(nx.int32) ]
     o_scores = nx.zeros(limit+safety, dtype=nx.float32)
     o_pmids = nx.zeros(limit+safety, dtype=nx.int32)
     cscore.cscore(
-        docstream, numdocs, len(featscores), limit+safety, 
+        docstream, numdocs, len(featscores), limit+safety, offset,
         featscores, o_scores, o_pmids)
     # Go through results in decreasing order to filter them
     count = 0

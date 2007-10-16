@@ -2,7 +2,7 @@
 
 Usage:
 
-cscore [citations] [numcites] [numfeats] [limit] < feature_scores > results
+cscore [citations] [numcites] [numfeats] [limit] [offset] < feature_scores > results
 
   The [citations] file consists of [numcites] records, which are
   binary records, which can be expressed as the structure::
@@ -16,7 +16,8 @@ cscore [citations] [numcites] [numfeats] [limit] < feature_scores > results
   The feature scores from standard input are a list of [numfeats]
   64-bit doubles.
 
-  The output is a list of [limit] citation scores as score_t structures.
+  The output is a list of [limit] citation scores as score_t structures,
+  where each citation score has [offset] added to it beforehand.
   
                                  
 */
@@ -54,6 +55,7 @@ int main (int argc, char **argv) {
     int numcites = atoi (argv[2]); // number of citations
     int numfeats = atoi (argv[3]); // number of features
     int limit = atoi (argv[4]);  // number of results to return
+    float offset = atof (argv[5]); // amount to add to scores
     FILE *citefile = NULL; // File with citation scores
 
     // Loop variables
@@ -81,7 +83,7 @@ int main (int argc, char **argv) {
         fread(featvec, sizeof(unsigned short), featvec_size, citefile);
 
         // Calculate citation score
-        scores[pi].score = 0.0;
+        scores[pi].score = offset; // start with the offset score
         for(fi = 0; fi < featvec_size; fi++) {
             scores[pi].score += (float)featscores[featvec[fi]];
         }

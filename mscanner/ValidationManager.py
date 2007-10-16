@@ -93,7 +93,7 @@ class ValidationManager(object):
             featmap = self.env.featmap, 
             pseudocount = rc.pseudocount, 
             mask = self.env.featmap.get_type_mask(rc.exclude_types),
-            get_frequencies = rc.get_frequencies,
+            make_scores = rc.make_scores,
             get_postmask = rc.get_postmask
         )
         # Load saved results
@@ -203,7 +203,7 @@ class ValidationManager(object):
         (likewise for term scores, but the index is always re-written)."""
         
         # Re-calculate feature scores using all citations
-        self.featinfo.update_features(
+        self.featinfo.update(
             pos_counts = FeatureCounts(
                 len(self.env.featmap), self.env.featdb, self.positives),
             neg_counts = FeatureCounts(

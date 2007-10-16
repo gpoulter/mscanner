@@ -22,6 +22,7 @@ void cscore(
     int numcites,         // Number of citations
     int numfeats,         // Number of features
     int limit,            // Number of pmid,score pairs to return
+    float offset,        // Amount to add to citation score
     double *featscores,   // Array of feature scores
     float *o_scores,      // Output array to store returned scores
     int *o_pmids          // Output array to store returned pmids
@@ -49,7 +50,7 @@ void cscore(
         fread(featvec, sizeof(unsigned short), featvec_size, citefile);
 
         // Calculate citation score
-        scores[pi].score = 0.0;
+        scores[pi].score = offset; // start with the offset score
         for(fi = 0; fi < featvec_size; fi++) {
             scores[pi].score += (float)featscores[featvec[fi]];
         }

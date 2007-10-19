@@ -168,6 +168,8 @@ def read_pmids(filename,
     if exclude_name is not None:
         with open(exclude_name, "w") as f:
             f.write("\n".join(str(s) for s in excluded))
+    if count == 0:
+        raise ValueError("No valid PMIDs found in file")
     log.debug("Got %d PubMed IDs from %s", count, filename.basename())
 
     

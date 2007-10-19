@@ -99,15 +99,23 @@ class ValidationManager(object):
         # Load saved results
         if (self.outdir/rc.report_positives).isfile() and \
            (self.outdir/rc.report_negatives).isfile():
-            self.load_results()
+            try:
+                self.load_results()
+            except ValueError, e:
+                log.error(str(e))
+                return
         # Calculate new results
         else:
-            self.load_inputs(pospath, negpath)
-            if len(self.positives) == 0: 
+            try:
+                self.load_inputs(pospath, negpath)
+            except ValueError:
+                log.error(str(e))
+                # Unable to read some PMIDs
                 utils.no_valid_pmids_page(
                     self.outdir/rc.report_index,
                     list(utils.read_pmids(
                         self.outdir/rc.report_positives_broken)))
+                return
             self.make_results()
             self.save_results()
         self.performance = PerformanceStats(
@@ -135,6 +143,7 @@ class ValidationManager(object):
                 pospath, include=self.env.featdb,
                 broken_name=self.outdir/rc.report_positives_broken))
         else:
+            # Attempt to convert to list
             positives = list(pospath)
         self.positives = nx.array(positives, nx.int32)
         

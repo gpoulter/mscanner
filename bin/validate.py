@@ -85,10 +85,10 @@ def random_bimodality():
     rc.dataset = "random10k-vs-100k-mod"
     rc.nfolds = 10
     rc.get_postmask = "mask_nonpositives"
-    pos = "random10k-06.txt"
-    neg = "medline07-100k.txt"
+    pos = rc.corpora / "random10k-06.txt"
+    neg = rc.corpora / "medline07-100k.txt"
     op = ValidationManager(rc.working / "valid" / rc.dataset)
-    op.validation(rc.corpora / pos, rc.corpora / neg)
+    op.validation(pos, neg)
     op.env.close()
 
 

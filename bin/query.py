@@ -53,7 +53,7 @@ def do_query(*datasets):
         query = QueryManager(rc.working / "query" / rc.dataset, env)
         query.query(rc.corpora / dataset_map[dataset])
     env.close()
-
+    
 
 if __name__ == "__main__":
     start_logger()

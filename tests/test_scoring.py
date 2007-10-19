@@ -59,16 +59,16 @@ class CScoreModuleTests(unittest.TestCase):
         # Compare Python/cscore for equality
         scores_pipe = nx.array(sorted(score for score,pmid in out_cscore_pipe))
         scores_py = nx.array(sorted(score for score,pmid in out_pyscore))
+        print "scores_pipe: ", pp.pformat(scores_pipe)
+        print "scores_py: ", pp.pformat(scores_py)
         self.assert_(nx.allclose(scores_pipe, scores_py))
         # Try to test the ctypes version: cscore2
-        print scores_py
-        print scores_pipe
         if cscore.score != cscore.cscore_dll: return
         out_cscore_dll = list(cscore.cscore_dll(
             citefname, len(citations), featscores, offset, 5, 3))
         scores_dll = nx.array(sorted(score for score,pmid in out_cscore_dll))
+        print "scores_dll: ", pp.pformat(scores_dll)
         self.assert_(nx.allclose(scores_dll, scores_py))
-        print scores_dll
 
 
 
@@ -85,7 +85,7 @@ class FeatureScoresTests(unittest.TestCase):
     def test_pseudocount(s):
         """Constant pseudocount"""
         f = FeatureScores(s.featmap, pseudocount=0.1,
-                          make_scores="scores_oldbayes_newpseudo")
+                          make_scores="scores_newpseudo")
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
         s.assert_(nx.allclose(
             f.scores, nx.array([-0.35894509,  0.93430924,  0.28768207])))
@@ -101,7 +101,7 @@ class FeatureScoresTests(unittest.TestCase):
         s.featmap.numdocs = 10
         s.featmap.counts = [3,2,1]
         f = FeatureScores(s.featmap, pseudocount=None,
-                          make_scores="scores_oldbayes_newpseudo")
+                          make_scores="scores_newpseudo")
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
         print "Scores (old): %s" % (pp.pformat(f.scores),)
         s.assert_(nx.allclose(
@@ -119,7 +119,7 @@ class FeatureScoresTests(unittest.TestCase):
     def test_cutoff(s):
         """Constant pseudocount and cutoff"""
         f = FeatureScores(s.featmap, pseudocount=0.1,
-                          make_scores="scores_oldbayes_oldpseudo",
+                          make_scores="scores_oldpseudo",
                           get_postmask="make_rare_positives")
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
         #print "Scores (old): %s" % (pp.pformat(f.scores_old),)

@@ -144,7 +144,9 @@ rc.pseudocount = None
 ## Types of features to exclude
 rc.exclude_types = []
 ## Method name for calculating feature probabilities
-rc.make_scores = "scores_newbayes"
+rc.make_scores = "scores_newpseudo"
+#rc.make_scores = "scores_withabsence"
+#rc.make_scores = "scores_noadjust"
 ## Method name for calculating mask after scores (may be None)
 rc.get_postmask = None
 

@@ -73,7 +73,7 @@ class FeatureScores(object):
                  featmap,
                  pseudocount=None,
                  mask=None,
-                 make_scores="scores_newbayes",
+                 make_scores="scores_newpseudo",
                  get_postmask=None):
         """Initialise FeatureScores object (parameters are instance variables)"""
         self.featmap = featmap
@@ -116,37 +116,39 @@ class FeatureScores(object):
             self.scores[self.get_postmask()] = 0
 
 
-    def scores_newbayes(s):
-        """Bayesian scores including including absent-term features,
-        and a prior. Article scores are then equal to log of posterior
-        probability ratio."""
+    def scores_noadjust(s):
+        """Like L{scores_withabsence}, but neglects to adjust the feature scores.
+        
+        The motivation is that mysteriously we get a drop in averaged precision,
+        so I'm seeing if the offset alone does anything, using the old feature scores."""
+        s.scores_withabsence()
+        s.pfreqs = s._pfreqs
+        s.nfreqs = s._nfreqs
+        s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
+        print nx.sum(s.pfreqs), nx.sum(s.nfreqs)
+
+
+    def scores_withabsence(s):
+        """We model the document as a vector of occurring and non-occurring terms.
+        
+        The method pretends the probability of non-occurrence is 1, which is
+        statistically incorrect in the multivariate Bernoulli model (the
+        probability of a document with no features is 1 - adding features
+        can only make the document more likely).
+        """
         if s.pseudocount is None:
             s.pseudocount = nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
-        z = s.pseudocount
-        mz = 1-s.pseudocount
-        s.pfreqs = (s.pos_counts+z) / (mz+s.pdocs-s.pos_counts)
-        s.nfreqs = (s.neg_counts+z) / (mz+s.ndocs-s.neg_counts)
+        s._pfreqs = (s.pseudocount+s.pos_counts) / (1+s.pdocs)
+        s._nfreqs = (s.pseudocount+s.neg_counts) / (1+s.ndocs)
+        s.pfreqs = s._pfreqs / (1-s._pfreqs)
+        s.nfreqs = s._nfreqs / (1-s._nfreqs)
         s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
-        # Calculate the offset to article scores
-        s._constant_offset = nx.sum(
-            (nx.log(mz+s.pdocs-s.pos_counts) - nx.log(s.pdocs+1)) -\
-            (nx.log(mz+s.ndocs-s.neg_counts) - nx.log(s.ndocs+1)))
+        s._constant_offset = nx.sum(nx.log(1-s._pfreqs)-nx.log(1-s._nfreqs))
         s._bayes_prior = nx.log(s.pdocs) - nx.log(s.ndocs)
         s.offset = s._constant_offset + s._bayes_prior
 
 
-    def scores_rubin(s):
-        """Uses Daniel Rubin's frequency smoothing heuristic, which
-        replaces zero-frequency with 1e-8"""
-        s.offset = 0
-        s.pfreqs = s.pos_counts / float(s.pdocs)
-        s.nfreqs = s.neg_counts / float(s.ndocs)
-        s.pfreqs[s.pfreqs == 0.0] = 1e-8
-        s.nfreqs[s.nfreqs == 0.0] = 1e-8
-        s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
-
-
-    def scores_oldbayes_newpseudo(s):
+    def scores_newpseudo(s):
         """Use a pseudocount vector, or a constant pseudocount to get
         posterior feature probablilities.
         
@@ -155,12 +157,12 @@ class FeatureScores(object):
         s.offset = 0
         if s.pseudocount is None:
             s.pseudocount = nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
-        s.pfreqs = (s.pos_counts+s.pseudocount) / (s.pdocs+1)
-        s.nfreqs = (s.neg_counts+s.pseudocount) / (s.ndocs+1)
+        s.pfreqs = (s.pseudocount+s.pos_counts) / (1+s.pdocs)
+        s.nfreqs = (s.pseudocount+s.neg_counts) / (1+s.ndocs)
         s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
 
 
-    def scores_oldbayes_oldpseudo(s):
+    def scores_oldpseudo(s):
         """Use a pseudocount vector, or a constant pseudocount to get
         posterior feature probablilities.   Instead of +1 in the
         denominator, we use +2*pseudocount.
@@ -171,8 +173,19 @@ class FeatureScores(object):
         s.offset = 0
         if s.pseudocount is None:
             s.pseudocount = nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
-        s.pfreqs = (s.pos_counts+s.pseudocount) / (s.pdocs+2*s.pseudocount)
-        s.nfreqs = (s.neg_counts+s.pseudocount) / (s.ndocs+2*s.pseudocount)
+        s.pfreqs = (s.pseudocount+s.pos_counts) / (2*s.pseudocount+s.pdocs)
+        s.nfreqs = (s.pseudocount+s.neg_counts) / (2*s.pseudocount+s.ndocs)
+        s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
+
+
+    def scores_rubin(s):
+        """Uses Daniel Rubin's frequency smoothing heuristic, which
+        replaces zero-frequency with 1e-8"""
+        s.offset = 0
+        s.pfreqs = s.pos_counts / float(s.pdocs)
+        s.nfreqs = s.neg_counts / float(s.ndocs)
+        s.pfreqs[s.pfreqs == 0.0] = 1e-8
+        s.nfreqs[s.nfreqs == 0.0] = 1e-8
         s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
 
 

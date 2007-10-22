@@ -80,10 +80,12 @@ class QueryManager:
             self.pmids = input
         elif isinstance(input, basestring):
             log.info("Loading PubMed IDs from %s", input.basename())
+            try:
             self.pmids = set(utils.read_pmids(
                 input, include=self.env.featdb,
                 broken_name=self.outdir/rc.report_input_broken))
-            if len(self.pmids) == 0: # No valid PMIDs found
+            except ValueError, e:
+                log.error(str(e))
                 utils.no_valid_pmids_page(
                     self.outdir/rc.report_index,
                     list(utils.read_pmids(self.outdir/rc.report_input_broken)))

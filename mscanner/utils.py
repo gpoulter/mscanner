@@ -20,18 +20,33 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
-def update(instance, variables, exclude=['self']):
-    """Update instance attributes from a dictionary
+def update(obj, vars, exclude=['self']):
+    """Update instance attributes (using a dictionary)
     
-    For example, C{update(self, locals())}
+    Example: C{update(self, locals())}
     
-    @param instance: Instance to update via setattr()
-    @param variables: Dictionary of variables
+    @param obj: Instance to update using setattr()
+    @param vars: Dictionary of variables to store
     @param exclude: Variables to exclude, defaults to ['self']
     """
-    for k, v in variables.iteritems():
+    for k, v in vars.iteritems():
         if k not in exclude:
-            setattr(instance, k, v)
+            setattr(obj, k, v)
+
+
+def delattrs(obj, *vars):
+    """Remove named attributes from instance
+    
+    Example: C{delattrs(self, "_property", "_other")}
+    
+    @param objs: Object to update via delattr
+    @param vars: Instance attribute names to delete
+    """
+    for ivar in vars:
+        try:
+            delattr(obj, ivar)
+        except AttributeError:
+            pass
 
 
 def make_random_subset(k, pool, exclude):

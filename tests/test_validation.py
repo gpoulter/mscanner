@@ -58,7 +58,8 @@ class ValidatorTests(unittest.TestCase):
 
     def test_nfold_validate(self):
         """Test that cross-validated scores are correctly calculated"""
-        featinfo = FeatureScores([2,5,7], pseudocount = 0.1)
+        featinfo = FeatureScores([2,5,7], pseudocount = 0.1,
+                             make_scores="scores_withabsence")
         val = Validator(
             featdb = {0:[0,1,2], 1:[0,1], 2:[0,1], 3:[0,1], 4:[1,2], 
                       5:[1,2], 6:[1,2], 7:[0,1,2]},

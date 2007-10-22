@@ -76,14 +76,10 @@ class FeatureScores(object):
                  make_scores="scores_newpseudo",
                  get_postmask=None):
         """Initialise FeatureScores object (parameters are instance variables)"""
-        self.featmap = featmap
-        self.pseudocount = pseudocount
-        self.mask = mask
-        self.make_scores = getattr(self, make_scores)
+        make_scores = getattr(self, make_scores)
         if isinstance(get_postmask, basestring):
-            self.get_postmask = getattr(self, get_postmask)
-        else:
-            self.get_postmask = None
+            get_postmask = getattr(self, get_postmask)
+        utils.update(self, locals())
 
 
     def __len__(self):
@@ -98,11 +94,7 @@ class FeatureScores(object):
         self.offset = 0
         self.make_scores()
         self._mask_scores()
-        for aname in ["_stats","_tfidf"]:
-            try:
-                delattr(self, aname)
-            except AttributeError:
-                pass
+        utils.delattrs(self, "_stats", "_tfidf")
 
 
     def _mask_scores(self):
@@ -116,72 +108,66 @@ class FeatureScores(object):
             self.scores[self.get_postmask()] = 0
 
 
+    def _make_pseudovec(s):
+        """Calculates a pseudocount vector based on background frequencies
+        if no constant pseudocount was specified"""
+        if s.pseudocount is None:
+            s.pseudocount = \
+             nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
+
+
     def scores_noadjust(s):
-        """Like L{scores_withabsence}, but neglects to adjust the feature scores.
-        
-        The motivation is that mysteriously we get a drop in averaged precision,
-        so I'm seeing if the offset alone does anything, using the old feature scores."""
+        """Only keeps the constant-offset part of L{scores_withabsence}"""
         s.scores_withabsence()
         s.pfreqs = s._pfreqs
         s.nfreqs = s._nfreqs
         s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
-        print nx.sum(s.pfreqs), nx.sum(s.nfreqs)
 
 
     def scores_withabsence(s):
-        """We model the document as a vector of occurring and non-occurring terms.
+        """Document generated using multivariate Bernoulli distribution.
         
-        The method pretends the probability of non-occurrence is 1, which is
-        statistically incorrect in the multivariate Bernoulli model (the
-        probability of a document with no features is 1 - adding features
-        can only make the document more likely).
-        """
-        if s.pseudocount is None:
-            s.pseudocount = nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
+        This becomes a constant offset to the score, and changes feature scores
+        from log likelihood ratios to log odds ratios."""
+        s._make_pseudovec()
         s._pfreqs = (s.pseudocount+s.pos_counts) / (1+s.pdocs)
         s._nfreqs = (s.pseudocount+s.neg_counts) / (1+s.ndocs)
         s.pfreqs = s._pfreqs / (1-s._pfreqs)
         s.nfreqs = s._nfreqs / (1-s._nfreqs)
         s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
-        s._constant_offset = nx.sum(nx.log(1-s._pfreqs)-nx.log(1-s._nfreqs))
+        s._constant_offset = nx.sum(nx.log(1-s._pfreqs) - nx.log(1-s._nfreqs))
         s._bayes_prior = nx.log(s.pdocs) - nx.log(s.ndocs)
         s.offset = s._constant_offset + s._bayes_prior
 
 
     def scores_newpseudo(s):
-        """Use a pseudocount vector, or a constant pseudocount to get
-        posterior feature probablilities.
-        
-        @return: Probability vectors for positive and negative features
-        """
+        """Calculates document probability as product of log likelihood ratios,
+        with pseudocount weight equal to one article."""
         s.offset = 0
-        if s.pseudocount is None:
-            s.pseudocount = nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
+        s._make_pseudovec()
         s.pfreqs = (s.pseudocount+s.pos_counts) / (1+s.pdocs)
         s.nfreqs = (s.pseudocount+s.neg_counts) / (1+s.ndocs)
         s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
 
 
     def scores_oldpseudo(s):
-        """Use a pseudocount vector, or a constant pseudocount to get
-        posterior feature probablilities.   Instead of +1 in the
-        denominator, we use +2*pseudocount.
+        """Like {scores_newpseudo}, but prior is always 0.5, with smaller
+        pseudocounts constituting less evidence.
         
-        @deprecated: Performs poorly when number of inputs is small.
-        
-        @return: Probability arrays for positive and negative features"""
+        @deprecated: This performs poorly when only a few input articles are
+        provided."""
         s.offset = 0
-        if s.pseudocount is None:
-            s.pseudocount = nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
+        s._make_pseudovec()
         s.pfreqs = (s.pseudocount+s.pos_counts) / (2*s.pseudocount+s.pdocs)
         s.nfreqs = (s.pseudocount+s.neg_counts) / (2*s.pseudocount+s.ndocs)
         s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
 
 
     def scores_rubin(s):
-        """Uses Daniel Rubin's frequency smoothing heuristic, which
-        replaces zero-frequency with 1e-8"""
+        """Models document as product of log likelihood ratios, using MLE
+        feature probabilities - replacing zeroes with 1e-8"""
         s.offset = 0
+        s.pseudocount = 0
         s.pfreqs = s.pos_counts / float(s.pdocs)
         s.nfreqs = s.neg_counts / float(s.ndocs)
         s.pfreqs[s.pfreqs == 0.0] = 1e-8
@@ -191,6 +177,7 @@ class FeatureScores(object):
 
     def make_rare_positives(s):
         """Mask for positive-scoring features that do not occur in the positive set
+        
         @return: Boolean array for masked out features
         """
         return (s.scores > 0) & (s.pos_counts == 0)
@@ -198,6 +185,7 @@ class FeatureScores(object):
 
     def mask_nonpositives(s):
         """Mask for features not represented in the positives
+        
         @return: Boolean array for masked out features
         """
         return s.pos_counts == 0

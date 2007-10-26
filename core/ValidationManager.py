@@ -16,6 +16,7 @@ from mscanner.medline.Databases import Databases
 from mscanner.core import iofuncs
 from mscanner.core.FeatureScores import FeatureScores, FeatureCounts
 from mscanner.core.PerformanceStats import PerformanceStats
+from mscanner.core.PerformanceRange import PerformanceRange
 from mscanner.core.Plotter import Plotter
 from mscanner.core.Validator import Validator
 
@@ -42,23 +43,22 @@ class ValidationManager(object):
     Jobs include loading input, saving and loading results files,
     and generating the validation report and figures.
     
-    @ivar performance: L{PerformanceStats} instance, from L{validation}
+    @ivar performance: L{PerformanceStats} instance
+    @ivar perfrange: L{PerformanceRange} instance
     @ivar featinfo: L{FeatureScores} for calculating feature score
     @ivar timestamp: Time at the start of the operation
 
-    @group From constructor: featmap,featdb
+    @ivar nfolds: Number of validation folds
+    @ivar positives: IDs of positive articles (from L{_load_positives})
+    @ivar negatives: IDs of negative articles (from L{_load_negatives})
     
+    @group From constructor: featmap, featdb
     @ivar featmap: Mapping feature ID <-> feature string
     @ivar featdb: Mapping doc ID -> list of feature IDs
 
-    @ivar positives: IDs of positive articles (from L{load_positives})
-    @ivar negatives: IDs of negative articles (from L{load_negatives})
-    
-    @group From make_results or load_results: pscores,nscores
-    
+    @group From _make_results or _load_results: pscores, nscores
     @ivar pscores: Scores of positive articles
     @ivar nscores: Scores of negative articles
-
     """
     
     def __init__(self, outdir, env=None):
@@ -69,6 +69,7 @@ class ValidationManager(object):
             outdir.chmod(0777)
         self.timestamp = time.time() 
         self.env = env if env else Databases()
+        self.nfolds = None
         self.positives = None
         self.pscores = None
         self.negatives = None
@@ -77,7 +78,7 @@ class ValidationManager(object):
         self.featinfo = None
 
 
-    def validation(self, pospath, negpath=None):
+    def validation(self, pospath, negpath, nfolds):
         """Loads data, performs validation, and writes report
         
         @keyword pospath: Location of input positive PMIDs
@@ -85,6 +86,8 @@ class ValidationManager(object):
         @keyword negpath: Location of input negative PMIDs (or None,
         to select randomly from Medline)
         """
+        # Keep our own number of folds variables
+        self.nfolds = nfolds
         # Configure the FeatureScores object
         self.featinfo = FeatureScores(
             featmap = self.env.featmap, 
@@ -117,6 +120,9 @@ class ValidationManager(object):
             self._save_results()
         self.performance = PerformanceStats(
             self.pscores, self.nscores, rc.alpha)
+        self.perfrange = PerformanceRange(
+            self.pscores, self.nscores, self.nfolds, 
+            self.performance.threshold)
         self._write_report()
         log.info("FINISHING VALIDATION %s", rc.dataset)
 
@@ -223,9 +229,9 @@ class ValidationManager(object):
         """Save validation scores to disk"""
         log.info("Saving result scores")
         iofuncs.write_scores(self.outdir/rc.report_positives, 
-                             izip(self.pscores, self.positives))
+                             izip(self.pscores, self.positives), sorted=False)
         iofuncs.write_scores(self.outdir/rc.report_negatives, 
-                             izip(self.nscores, self.negatives))
+                             izip(self.nscores, self.negatives), sorted=False)
 
 
     def _make_results(self):
@@ -240,7 +246,7 @@ class ValidationManager(object):
             featinfo = self.featinfo,
             positives = self.positives,
             negatives = self.negatives,
-            nfolds = rc.nfolds)
+            nfolds = self.nfolds)
         self.pscores, self.nscores = self.validator.validate()
 
 
@@ -301,6 +307,7 @@ class ValidationManager(object):
             linkpath = rc.templates.relpath().replace('\\','/') if rc.link_headers else None,
             timestamp = self.timestamp,
             p = self.performance,
+            perfrange = self.perfrange,
             notfound_pmids = list(iofuncs.read_pmids(self.outdir/rc.report_positives_broken)),
         )
         from Cheetah.Template import Template

@@ -3,7 +3,6 @@ negative citations"""
 
 from __future__ import division
 import numpy as nx
-from Validator import Validator
 
 
                                      
@@ -295,7 +294,8 @@ class PerformanceStats:
 
 
     def get_tunedstats(self):
-        """Performance at the point of maximum F measure
+        """Performance at the chosen threshold (usually the point of maximum F
+        measure).
     
         @return: Storage object with these keys::
           P, N, A, T, F      (summary of input)

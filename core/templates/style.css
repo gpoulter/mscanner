@@ -59,7 +59,7 @@ div#header > h1 {
 
 div.narrow {
     /* keep everything within this div to a readable width */
-    max-width: 35em;
+    max-width: 45em;
 }
 
 h2 {
@@ -101,23 +101,27 @@ div.help {
 
 /******************* RESULTS.TMPL ONLY *************************/
 
-table#results col.label {
+table.results col.label {
     /* column with name of the quantity */
-    width: 11em;
+    width: 13em;
 }
-table#results col.value {
+table.results col.value {
     /* column with value of the quantity */
 }
-table#results col.help {
+table.results col.help {
     /* column with help buttons */
     background-color: #EEEEFF; /* light mauve */
     width: 2em;
 }
-table#results tr.help {
+table.results tr.help {
     /* rows with help info */
     background-color: #EEEEFF; /* light mauve */
     text-align: justify;
     padding: 1ex;
+}
+table.results tr.endsection td {
+    /* make a thick line after this row */
+    border-bottom-width: 3px;
 }
 
 /*********************** FEATURES.TMPL ONLY ***********************/

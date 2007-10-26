@@ -54,7 +54,7 @@ def validate(*datasets):
         if neg is not None and not isinstance(neg, path):
             neg = rc.corpora / neg
         op = ValidationManager(rc.working / "valid" / rc.dataset, env)
-        op.validation(pos, neg)
+        op.validation(pos, neg, rc.nfolds)
     env.close()
 
 
@@ -68,7 +68,7 @@ def issn_validation():
     pos = "aids-bioethics-Oct06.txt"
     neg = "medline07-100k.txt"
     op = ValidationManager(rc.working / "valid" / rc.dataset)
-    op.validation(rc.corpora / pos, rc.corpora / neg)
+    op.validation(rc.corpora / pos, rc.corpora / neg, rc.nfolds)
     op.env.close()
 
 
@@ -88,7 +88,7 @@ def random_bimodality():
     pos = rc.corpora / "random10k-06.txt"
     neg = rc.corpora / "medline07-100k.txt"
     op = ValidationManager(rc.working / "valid" / rc.dataset)
-    op.validation(pos, neg)
+    op.validation(pos, neg, rc.nfolds)
     op.env.close()
 
 

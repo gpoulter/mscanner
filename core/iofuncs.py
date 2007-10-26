@@ -1,5 +1,4 @@
-"""Dumping ground for utility functions that don't naturally fit anywhere and
-are used in several modules."""
+"""I/O functions - for reading and writing certain file formats."""
 
 from __future__ import with_statement
 from __future__ import division
@@ -109,13 +108,15 @@ def read_pmids(filename,
     log.debug("Got %d PubMed IDs from %s", count, filename.basename())
 
     
-def write_scores(filename, pairs):
+def write_scores(filename, pairs, sorted=True):
     """Write scores and PubMed IDs to file, in decreasing order of score.
     @param pairs: Iterable of (score, PMID)     
     """
     from path import path
+    if sorted:
+        pairs = sorted(pairs, reverse=True)
     path(filename).write_lines(
-        "%-10d %f" % (p,s) for s,p in sorted(pairs, reverse=True))
+        "%-10d %f" % (p,s) for s,p in pairs)
 
 
 def no_valid_pmids_page(filename, pmids):

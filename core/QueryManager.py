@@ -40,7 +40,7 @@ class QueryManager:
     
     @ivar timestamp: Time at the start of the operation
     
-    @ivar pmids: Set object with input PubMed IDs, from L{load_pmids}
+    @ivar pmids: Set object with input PubMed IDs, from L{_load_pmids}
     
     @ivar featinfo: FeatureScores with feature scores, from L{query}
     

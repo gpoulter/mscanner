@@ -65,8 +65,8 @@ class RetrievalTest(QueryManager):
         """
         rc.threshold = None # No threshold for this stuff
         # Split the input into train and test sections
-        self._load_input(input)
-        if len(self.pmids) == 0: return
+        if not self._load_input(input):
+            return
         pmids_list = list(self.pmids)
         random.shuffle(pmids_list)
         subset_size = int(rc.retrieval_test_prop * len(pmids_list))

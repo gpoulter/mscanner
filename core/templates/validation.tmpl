@@ -113,7 +113,7 @@ $notfound_pmids -- List of invalid PubMed IDs
   and their validation scores.  The file can be divided into the 
   original N folds used for validation.""")
 
-  <tr class="endsection">
+  <tr>
     <td>Negative PMIDs</td>
     <td><a href="$rc.report_negatives">$rc.report_negatives</a></td>
     $help("h_negatives")
@@ -122,7 +122,7 @@ $notfound_pmids -- List of invalid PubMed IDs
   and their validation scores.  The file can be divided into the 
   original N folds used for validation.""")
 
-  <tr>
+  <tr class="newsection">
     <td>Number of folds</td>
     <td>$rc.nfolds</td>
     $help("h_nfolds")
@@ -145,7 +145,7 @@ $notfound_pmids -- List of invalid PubMed IDs
   the article being relevant versus non-relevant, given its features.""")
   #end if
   
-  <tr class="endsection">
+  <tr>
     <td>F-Measure Alpha</td>
     <td>$rc.alpha</td>
     $help("h_alpha")
@@ -155,7 +155,7 @@ $notfound_pmids -- List of invalid PubMed IDs
   &alpha;=0.5 weights precision and recall equally, &alpha; closer
   to 1.0 trades recall for increased precision.""")
 
-  <tr>
+  <tr class="newsection">
     <td>Averaged Precision</td>
     <td>#echo "%.5f" % $p.AvPrec #</td>
     $help("h_avprec")
@@ -164,7 +164,7 @@ $notfound_pmids -- List of invalid PubMed IDs
   each point where a relevant citation is retrieved.  This is the most
   important summary metric.""")
   
-  <tr class="endsection">
+  <tr>
     <td>Area under PR curve</td>
     <td>#echo "%.5f" % $p.PR_area #</td>
     $help("h_prcurve")
@@ -173,7 +173,7 @@ $notfound_pmids -- List of invalid PubMed IDs
   trapezoidal rule over each distinct threshold. This is almost the same
   numerical value as the average precision.""")
   
-  <tr>
+  <tr class="newsection">
     <td>Area under ROC curve A(z)</td>
     <td>#echo "%.5f" % $p.W #</td>
     $help("h_roc")
@@ -182,7 +182,7 @@ $notfound_pmids -- List of invalid PubMed IDs
   measure of performance.  Worst case is 0.5 (diagonal line: true positives 
   increase at same rate as false positives), and best case is 1.0.""")
 
-  <tr class="endsection">
+  <tr>
     <td>Standard Error of A(z)</td>
     <td>#echo "%.5f" % $p.W_stderr #</td>
     $help("h_roc_stderr")
@@ -190,7 +190,7 @@ $notfound_pmids -- List of invalid PubMed IDs
   $hr("h_roc_stderr", """Area is equivalent to the Wilcoxon statistic W, for which 
   we use the method of Hanley1982 to calculate the standard error.""")
 
-  <tr>
+  <tr class="newsection">
     <td>Break-Even <span class="footnote">(where precision=recall)</span></td>
     <td>#echo "%.5f" % $p.breakeven #</td>
     $help("h_break_even")
@@ -314,6 +314,15 @@ $notfound_pmids -- List of invalid PubMed IDs
         Maximum possible value of the F<sub>1</sub>-Measure (which
         is achieved if &alpha;=0.5).
       </dd>
+      
+      <dt>Utility</td>
+      <dd>
+        A linear function of TP and FP: 
+        <tt>U = (u<sub>r</sub> * TP - FP)/U<sub>max</sub></tt>
+        where <tt>U<sub>max</sub> = u<sub>r</sub> * P</tt>,
+        and u<sub>r</sub> defaults to N/P.   In that case,
+        it reduces to <tt>U=(TP/P)-(FP/N)</tt>.
+      </dd>
 
       <!-- *************** -->
       <dt>Prevalence</dt>
@@ -399,11 +408,20 @@ $notfound_pmids -- List of invalid PubMed IDs
       <span class="footnote">(1/(&alpha;/&pi;+(1-&alpha;)/&rho;))</span></td>
       <td>#echo "%.5f" % $t.fmeasure_alpha #</td>
     </tr>
-    <tr class="endsection">
+    <tr>
       <td><b>Maximum possible F<sub>1</sub>-Measure</b></td>
       <td>#echo "%.5f" % $t.fmeasure_max #</td>
     </tr>
+    <tr class="newsection">
+      <td><b>Utility (u<sub>r</sub>=#echo "%.2f" % $p.utility_r #</b>) 
+      <span class="footnote">U=(u<sub>r</sub>*TP-FP)/U<sub>max</sub></span></td>
+      <td>#echo "%.5f" % $t.U #</td>
+    </tr>
     <tr>
+      <td><b>Maximum possible utility</td>
+      <td>#echo "%.5f" % $t.U_max #</td>
+    </tr>
+    <tr class="newsection">
       <td><b>Prevalence</b> 
       <span class="footnote">P/(P+N)</span></td>
       <td>#echo "%.5f" % $t.prevalence #</td>
@@ -418,11 +436,11 @@ $notfound_pmids -- List of invalid PubMed IDs
       <span class="footnote">(FP+FN)/(P+N)=1-Accuracy</span></td>
       <td>#echo "%.5f" % (1-$t.accuracy) #</td>
     </tr>
-    <tr class="endsection">
+    <tr>
       <td><b>False Discovery Rate (1-precision)</b></td>
       <td>#echo "%.5f" % $t.FDR #</td>
     </tr>
-    <tr>
+    <tr class="newsection">
       <td><b>Specificity (TNR)</b> 
       <span class="footnote">TNR=TN/(TN+FP)=1-FPR</span></td>
       <td>#echo "%.5f" % $t.TNR #</td>
@@ -437,7 +455,7 @@ $notfound_pmids -- List of invalid PubMed IDs
       <span class="footnote">NPV=TN/(TN+FN)</span></td>
       <td>#echo "%.5f" % $t.NPV #</td>
     </tr>
-    <tr>
+    <tr class="newsection">
       <td><b>FP/TP Ratio</b></td>
       <td>#echo "%.5f" % t.fp_tp_ratio #</td>
     </tr>

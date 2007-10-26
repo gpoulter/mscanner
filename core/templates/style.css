@@ -119,9 +119,9 @@ table.results tr.help {
     text-align: justify;
     padding: 1ex;
 }
-table.results tr.endsection td {
+table.results tr.newsection td {
     /* make a thick line after this row */
-    border-bottom-width: 3px;
+    border-top-width: 3px;
 }
 
 /*********************** FEATURES.TMPL ONLY ***********************/

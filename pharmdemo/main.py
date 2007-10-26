@@ -63,11 +63,11 @@ class PharmdemoQuery(QueryManager):
         
         @param export_db: If True, export associations for PharmDemo
         """
-        self._load_input(input)
-        if len(self.pmids) == 0: return
+        if not self._load_input(input):
+            return
         self._make_feature_info()
         self._make_results()
-        # Do associations
+        # Carry out associations
         log.debug("Gene-drug associations on results")
         gdfinder = genedrug.open_genedrug_finder(
             rc.genedrug_db, rc.drugtable, rc.gapscore_db)

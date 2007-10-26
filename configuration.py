@@ -162,6 +162,8 @@ rc.limit = 1000
 rc.nfolds = 10
 ## 0<Alpha<1.  Alpha=0.5 maximises standard F-Measure.
 rc.alpha = 0.5
+## The utility of retrieving a positive article (defaults to N/P)
+rc.utility_r = None
 ## Number of negatives to use
 rc.numnegs = 100000
 ## Number of citations per output file

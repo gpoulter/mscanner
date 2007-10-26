@@ -3,6 +3,8 @@
 from __future__ import with_statement
 from __future__ import division
 
+import numpy as nx
+from itertools import izip
 
                                      
 __author__ = "Graham Poulter"                                        
@@ -17,6 +19,94 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
+
+
+def write_pmids(filename, pmids):
+    """Write list of PMIDs one per line to file"""
+    with open(filename, "w") as f:
+        f.write("\n".join(str(s) for s in pmids))
+
+
+def read_pmids(filename):
+    """Yield PubMed IDs listed one per line in a file
+    @note: Empty lines and lines starting with # are ignored.
+    """
+    with open(filename) as f:
+        for line in f:
+            sline = line.strip()
+            if sline == "" or sline.startswith("#"):
+                continue
+            yield int(sline.split()[0])
+
+
+def read_pmids_array(filename):
+    """Read array of PubMed IDs one per line from file"""
+    return nx.array(read_pmids(filename), nx.int32)
+
+
+def read_pmids_careful(filename, include=None, exclude=[]):
+    """Reads array of PubMed IDs one per line, with checking.
+
+    @param include: Only return members of this set (other PubMed IDs are
+    considered "broken").
+
+    @param exclude: Do not return members of this set
+    
+    @return: Arrays for result, broken and excluded PubMed IDs
+    """
+    results = []
+    broken = []
+    excluded = []
+    for pmid in read_pmids(filename):
+        if include is not None and pmid not in include:
+            broken.append(pmid)
+        elif pmid in exclude:
+            excluded.append(pmid)
+        else:
+            results.append(pmid)
+    return tuple(nx.array(a, nx.int32) for a in [results,broken,excluded])
+
+
+def write_scores(filename, pairs, sort=False):
+    """Write scores and PubMed IDs to file
+    @param pairs: Iterable over (score, PMID)     
+    """
+    sorted_pairs = sorted(pairs, reverse=True) if sort else pairs
+    filename.write_lines("%-10d %f" % (p,s) for s,p in sorted_pairs)
+
+
+def read_scores(filename):
+    """Yield (score, pmid) pairs from file written by L{write_scores}"""
+    with open(filename) as f:
+        for line in f:
+            sline = line.strip()
+            if sline == "" or sline.startswith("#"):
+                continue
+            splits = sline.split()
+            yield float(splits[1]), int(splits[0])
+    
+
+def read_scores_array(filename):
+    """Reads a file written by L{write_scores}
+    @param filename: Path to file from which to read the pmid,score
+    @return: An array of PubMed IDs, and an array of scores"""
+    scores, pmids = izip(*read_scores(filename))
+    return nx.array(pmids,nx.int32), nx.array(scores,nx.float32)
+
+
+def no_valid_pmids_page(filename, pmids):
+    """Print an error page when no valid PMIDs were found
+    @param filename: Path to output file
+    @param pmids: List of any provided PMIDs (all invalid)
+    """
+    from Cheetah.Template import Template
+    from mscanner.configuration import rc
+    import logging as log
+    log.warning("No valid PubMed IDs were found!")
+    with FileTransaction(filename, "w") as ft:
+        page = Template(file=str(rc.templates/"notfound.tmpl"))
+        page.notfound_pmids = pmids
+        page.respond(ft)
 
 
 class FileTransaction(file):
@@ -47,87 +137,3 @@ class FileTransaction(file):
 
     def __call__(self):
         return self
-
-
-def read_pmids(filename, 
-              include=None, 
-              exclude=None, 
-              broken_name=None, 
-              exclude_name=None, 
-              withscores=False):
-    """Read PubMed IDs one per line from filename.
-
-    @param filename: Path to file with PubMed IDs, formatted one PubMed ID per
-    line, with optional score after the PubMed ID. Blank lines and lines
-    starting with # are ignored, as is data after the PMID and score.
-    
-    @param include: Only return members of this set (other PubMed IDs are
-    considered "broken").
-
-    @param broken_name: File to write non-included ("broken") PubMed IDs
-    
-    @param exclude: Do not return members of this set
-    
-    @param exclude_name: File to write excluded PubMed IDs
-    
-    @param withscores: Also read the score after the PubMed ID on each line.
-    
-    @returns: Iterator over PubMed ID, or (Score, PubMed ID) if withscores
-    True. """
-    import logging as log
-    count = 0
-    broken = []
-    excluded = []
-    if filename.isfile(): 
-        with open(filename, "r") as infile:
-            for line in infile:
-                sline = line.strip()
-                if sline == "" or sline.startswith("#"):
-                    continue
-                splits = sline.split()
-                pmid = int(splits[0])
-                if include is not None and pmid not in include:
-                    broken.append(pmid)
-                    continue
-                if exclude is not None and pmid in exclude:
-                    excluded.append(pmid)
-                    continue
-                if withscores:
-                    yield float(splits[1]), pmid
-                else:
-                    yield pmid
-                count += 1
-    if broken_name is not None:
-        with open(broken_name, "w") as f:
-            f.write("\n".join(str(s) for s in broken))
-    if exclude_name is not None:
-        with open(exclude_name, "w") as f:
-            f.write("\n".join(str(s) for s in excluded))
-    if count == 0:
-        raise ValueError("No valid PMIDs found in file")
-    log.debug("Got %d PubMed IDs from %s", count, filename.basename())
-
-    
-def write_scores(filename, pairs, sort=True):
-    """Write scores and PubMed IDs to file, in decreasing order of score.
-    @param pairs: Iterable of (score, PMID)     
-    """
-    from path import path
-    spairs = sorted(pairs, reverse=True) if sort else pairs
-    path(filename).write_lines(
-        "%-10d %f" % (p,s) for s,p in spairs)
-
-
-def no_valid_pmids_page(filename, pmids):
-    """Print an error page when no valid PMIDs were found
-    @param filename: Path to output file
-    @param pmids: List of any provided PMIDs (all invalid)
-    """
-    from Cheetah.Template import Template
-    from mscanner.configuration import rc
-    import logging as log
-    log.warning("No valid PubMed IDs were found!")
-    with FileTransaction(filename, "w") as ft:
-        page = Template(file=str(rc.templates/"notfound.tmpl"))
-        page.notfound_pmids = pmids
-        page.respond(ft)

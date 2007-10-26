@@ -8,19 +8,19 @@ it under the Do Whatever You Want Public License. Terms and conditions:
    0. Do Whatever You Want
 """
 
-import logging
 import numpy as nx
 from path import path
 import pprint as pp
-from random import seed
 import tempfile
 import unittest
 
 from mscanner.core.FeatureScores import FeatureScores
-from mscanner.core.Validator import Validator
+from mscanner.core.Validator import LeaveOutValidator, CrossValidator
 from mscanner.core.PerformanceStats import PerformanceStats
 
+import logging
 logging.basicConfig(level=0)
+
 
 
 class PerformanceStatsTests(unittest.TestCase):
@@ -48,16 +48,16 @@ class ValidatorTests(unittest.TestCase):
 
     def test_make_partitions(self):
         """Test that partitioning function for cross-validation"""
-        starts, sizes = Validator.make_partitions(10,5)
+        starts, sizes = CrossValidator.make_partitions(10,5)
         self.assert_((starts == [0,2,4,6,8]).all())
         self.assert_((sizes == [2,2,2,2,2]).all())
-        starts, sizes = Validator.make_partitions(33,5)
+        starts, sizes = CrossValidator.make_partitions(33,5)
         self.assert_((starts == [0,7,14,21,27]).all())
         self.assert_((sizes == [7,7,7,6,6]).all())
 
 
     def _make_validator(self, featinfo):
-        return Validator(
+        return CrossValidator(
             featdb = {0:[0,1,2], 1:[0,1], 2:[0,1], 3:[0,1], 4:[1,2], 
                       5:[1,2], 6:[1,2], 7:[0,1,2]},
             featinfo = featinfo,
@@ -69,7 +69,7 @@ class ValidatorTests(unittest.TestCase):
 
     def _check_scores(self, featinfo, cpscores, cnscores):
         val = self._make_validator(featinfo)
-        pscores, nscores = val.nfold_validate(randomise=False)
+        pscores, nscores = val.validate(randomise=False)
         pp.pprint(pscores)
         pp.pprint(cpscores)
         pp.pprint(nscores)
@@ -121,16 +121,15 @@ class ValidatorTests(unittest.TestCase):
     def test_leaveout_validate(self):
         """Test of leave-out-one cross validation.  Manually calculate
         scores on the articles to see if they are correct"""
-        featinfo = FeatureScores([2,5,7], pseudocount = 0.1)
-        val = Validator(
+        val = LeaveOutValidator(
             featdb = {0:[0,1,2], 1:[0,1], 2:[0,1], 3:[0,1], 4:[1,2], 
                       5:[1,2], 6:[1,2], 7:[0,1,2]},
-            featinfo = featinfo,
+            featinfo = FeatureScores([2,5,7], pseudocount = 0.1),
             positives = nx.array([0, 1, 2, 3]),
             negatives = nx.array([4, 5, 6, 7]),
-            nfolds = None, # Triggers leave-out-one
+            nfolds = None,
         )
-        pscores, nscores = val.leaveout_validate()
+        pscores, nscores = val.validate()
         cpscores = nx.array([-2.14126396, 1.30037451, 1.30037451, 1.30037451])
         cnscores = nx.array([-1.30037451, -1.30037451, -1.30037451,  2.14126396])
         #pp.pprint(pscores)

@@ -30,6 +30,10 @@ class PerformanceStats:
     @ivar nscores: Increasing scores of negative articles.
 
     @ivar alpha: Balance of recall and precision in the F measure.
+    
+    @ivar utility_r: Utility of retrieving one relevant article (retrieving
+    an irrelevant article has utility -1).  If None, use ratio of
+    negatives to positives in the data.
 
     @ivar P: Number of positive articles.
 
@@ -78,7 +82,7 @@ class PerformanceStats:
     """
 
 
-    def __init__(self, pscores, nscores, alpha):
+    def __init__(self, pscores, nscores, alpha, utility_r=None):
         """Constructor - parameters correspond to instance variables.
 
         @note: Sorted copies are made of L{pscores} and L{nscores}.
@@ -92,12 +96,14 @@ class PerformanceStats:
         s.P = len(s.pscores)
         s.N = len(s.nscores)
         s.A = s.P + s.N
+        s.utility_r = s.N/s.P if utility_r is None else utility_r
         s.make_confusion_matrix()
         s.make_ratio_vectors(s.alpha)
         s.make_curve_areas()
         s.roc_error()
         s.averaged_precision()
-        s.maximise_fmeasure()
+        #s.maximise_fmeasure()
+        s.maximise_utility()
         s.find_breakeven()
         s.get_tunedstats()
 
@@ -171,6 +177,8 @@ class PerformanceStats:
         s.FM = 2 * s.TPR * s.PPV / (s.TPR + s.PPV) 
         # FMa is the alpha-weighted F-Measures
         s.FMa = 1 / (alpha / s.PPV + (1 - alpha) / s.TPR)
+        # U is the utility function
+        s.U = (s.utility_r * s.TP - s.FP) / (self.utility_r * s.P)
         return s.TPR, s.FPR, s.PPV, s.FM, s.FMa
 
 
@@ -283,12 +291,20 @@ class PerformanceStats:
 
     def maximise_fmeasure(self):
         """Point of maximum F measure
-        
-        @return: L{threshold}, L{threshold_index}, the threshold and its index
-        into uscores."""
+        @return: L{threshold} and L{threshold_index}"""
         s = self
         max_FMa = nx.max(s.FMa)
         s.threshold_index = nx.nonzero(s.FMa == max_FMa)[0][0]
+        s.threshold = self.uscores[s.threshold_index]
+        return s.threshold, s.threshold_index
+    
+    
+    def maximise_utility(self):
+        """Point of maximum utility
+        @return: L{threshold} and L{threshold_index}"""
+        s = self
+        max_U = nx.max(s.U)
+        s.threshold_index = nx.nonzero(s.U == max_U)[0][0]
         s.threshold = self.uscores[s.threshold_index]
         return s.threshold, s.threshold_index
 
@@ -296,7 +312,7 @@ class PerformanceStats:
     def get_tunedstats(self):
         """Performance at the chosen threshold (usually the point of maximum F
         measure).
-    
+        
         @return: Storage object with these keys::
           P, N, A, T, F      (summary of input)
           TP, FP, TN, FN     (confusion matrix)
@@ -323,6 +339,8 @@ class PerformanceStats:
         A = self.A
         T = TP + TN
         F = FP + FN
+        U = (self.utility_r * TP - FP) / (self.utility_r * P)
+        U_max = nx.max(self.U)
         TPR, FNR, TNR, FPR, PPV, NPV, FDR = 0, 0, 0, 0, 0, 0, 0
         if TP + FN != 0:
             TPR = TP / (TP + FN) # TPR=TP/P = sensitivity = recall
@@ -347,7 +365,7 @@ class PerformanceStats:
             fmeasure = 2 * recall * precision / (recall + precision)
             fmeasure_alpha = 1.0 / ( (self.alpha / precision) + 
                                      ((1 - self.alpha) / recall))
-            fmeasure_max = max(self.FM)
+            fmeasure_max = nx.max(self.FM)
         enrichment = 0
         if prevalence > 0:
             enrichment = precision / prevalence

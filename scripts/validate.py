@@ -26,7 +26,7 @@ import sys
 
 from mscanner.configuration import rc, start_logger
 from mscanner.medline.Databases import Databases
-from mscanner.core.ValidationManager import ValidationManager
+from mscanner.core.ValidationManager import SplitValidation, ValidationManager
 
 
 dataset_map = {
@@ -36,6 +36,8 @@ dataset_map = {
     "random10k-vs-100k": ("random10k-06.txt", "medline07-100k.txt"), 
     "gdsmall-vs-sample": ("genedrug-small.txt", rc.articlelist) ,
     "test-vs-sample": ("testing-random.txt", rc.articlelist),
+    "trec2005G" : ("trec_positives.txt", "trec_all.txt"),
+    "trec2005G-vs-100k" : ("trec_positives.txt", "medline07-100k.txt"),    
 }
 """Map data set to pair of (positive,negative) paths for PubMed IDs."""
 
@@ -89,6 +91,19 @@ def random_bimodality():
     neg = rc.corpora / "medline07-100k.txt"
     op = ValidationManager(rc.working / "valid" / rc.dataset)
     op.validation(pos, neg, rc.nfolds)
+    op.env.close()
+    
+    
+def trec_split_validation():
+    """Performs split-sample validation"""
+    rc.dataset = "trec2005G-split"
+    ptrain = rc.corpora / "trec_pos_train.txt"
+    ptest = rc.corpora / "trec_pos_test.txt"
+    ntrain = rc.corpora / "trec_bg_train.txt"
+    ntest = rc.corpora / "trec_bg_test.txt"
+    rc.utility_r = 11.0
+    op = SplitValidation(rc.working / "valid" / rc.dataset)
+    op.validation(ptrain, ntrain, ptest, ntest)
     op.env.close()
 
 

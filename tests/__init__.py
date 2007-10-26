@@ -25,11 +25,11 @@ def usetempfile(function):
 
 def suite():
     modules = [
-        "test_shelf",
+        "test_iofuncs",
         "test_medline",
         "test_scoring",
+        "test_shelf",
         "test_storage",
-        "test_iofuncs",
         "test_validation"
         ]
     del modules[4]

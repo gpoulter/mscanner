@@ -25,20 +25,20 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
-class Validator:
+class CrossValidator:
     """Cross-validated calculation of article scores.
     
     @group Constructor Parameters: featdb,featinfo,positives,negatives,nfolds,alpha,postfilter
 
     @ivar featdb: Mapping from doc id to list of feature ids
     
-    @ivar featinfo: FeatureScores instance for stuff about features
+    @ivar featinfo: L{FeatureScores} instance to handle training
     
     @ivar positives: Array of positive PMIDs for validation
     
     @ivar negatives: Array of negative PMIDs for validation
     
-    @ivar nfolds: Number of validation folds (0 for leave-out-one)
+    @ivar nfolds: Number of validation folds
 
     
     @group From validate: pscores,nscores
@@ -48,23 +48,11 @@ class Validator:
     @ivar nscores: Scores of negative articles after validation
     """
 
-    def __init__(self, featdb, featinfo,  positives,  negatives, nfolds = 10):
+    def __init__(self, featdb, featinfo, positives,  negatives, nfolds = 10):
         """Constructor parameters set corresponding instance attributes."""
         pscores = None
         nscores = None
         update(self, locals())
-
-
-    def validate(self):
-        """Carry out validation. 
-        
-        When L{nfolds}==0 we use leave-out-one instead of k-fold.
-        
-        @return: L{pscores}, L{nscores}"""
-        if self.nfolds:
-            return self.nfold_validate()
-        else:
-            return self.leaveout_validate()
 
 
     @staticmethod
@@ -83,7 +71,7 @@ class Validator:
         return starts, sizes
 
 
-    def nfold_validate(self, randomise=True):
+    def validate(self, randomise=True):
         """Perform n-fold validation and return the raw performance measures
         
         @param randomise: Randomise validation splits (use False for debugging)
@@ -125,13 +113,14 @@ class Validator:
         return s.pscores, s.nscores
 
 
-    def leaveout_validate(self):
+
+class LeaveOutValidator(CrossValidator):
+    
+    def validate(self):
         """Performs leave-out-one validation, returning the resulting scores.
         
         @note: Feature scores use background pseudocount - no other methods
-        implemented.
-        
-        @deprecated: 10-fold is standard, and leave-out-one is rather slow.
+        implemented.  Leave-out-one is also rather slow.
         
         @return: L{pscores}, L{nscores}
         """
@@ -162,7 +151,3 @@ class Validator:
         for idx, doc in enumerate(self.negatives):
             self.nscores[idx] = score_of(doc, 0, -1)
         return self.pscores, self.nscores
-
-
-
-

@@ -3,7 +3,7 @@ across the validation folds."""
 
 from __future__ import division
 import numpy as nx
-from mscanner.core.Validator import Validator
+from mscanner.core.Validator import CrossValidator
 from mscanner import update
 
 
@@ -45,8 +45,10 @@ class PerformanceRange:
         """Finds TP, TN, FP, FN at the threshold over each validation fold"""
         for vname in ["TP", "TN", "FP", "FN"]:
             setattr(self, vname, nx.zeros(self.nfolds, nx.float32))
-        pstarts, psizes = Validator.make_partitions(len(self.pscores), self.nfolds)
-        nstarts, nsizes = Validator.make_partitions(len(self.nscores), self.nfolds)
+        pstarts, psizes = CrossValidator.make_partitions(
+            len(self.pscores), self.nfolds)
+        nstarts, nsizes = CrossValidator.make_partitions(
+            len(self.nscores), self.nfolds)
         for fold, (pstart,psize,nstart,nsize) in \
             enumerate(zip(pstarts,psizes,nstarts,nsizes)):
             self.do_confusion_single(

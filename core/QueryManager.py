@@ -80,43 +80,39 @@ class QueryManager:
         
         @param input: Path to a list of PubMed IDs, or the list itself.
         """
-        try:
-            self._load_input(input)
-        except ValueError, e:
-            log.error(str(e))
-            iofuncs.no_valid_pmids_page(
-                self.outdir/rc.report_index,
-                list(iofuncs.read_pmids(self.outdir/rc.report_input_broken)))
+        self.notfound_pmids = []
+        if not self._load_input(input):
             return
         self._make_feature_info()
-        if (self.outdir/rc.report_input_scores).exists() \
-           and (self.outdir/rc.report_result_scores).exists(): 
+        try:
             self._load_results()
-        else: 
+        except IOError: 
             self._make_results()
             self._save_results()
-        try:
-            self.notfound_pmids = list(iofuncs.read_pmids(self.outdir/rc.report_input_broken))
-        except ValueError:
-            self.notfound_pmids = []            
         self._write_report()
         log.info("FINISHING QUERY %s", rc.dataset)
-
-
-    def _load_input(self, input):
-        """Generate the L{pmids} attribute from input, with validity checking
         
+        
+    def _load_input(self, input):
+        """Construct L{pmids} and L{notfound_pmids}
+        
+        @note: Handles ValueErrors from L{iofuncs.read_pmids}
         @param input: List of PubMed IDs, or path to file containing the list.
-        """
-        if isinstance(input, set):
-            self.pmids = input
-        elif isinstance(input, basestring):
+        @return: True on success, False on failure."""
+        if isinstance(input, basestring):
             log.info("Loading PubMed IDs from %s", input.basename())
-            self.pmids = set(iofuncs.read_pmids(
-                input, include=self.env.featdb,
-                broken_name=self.outdir/rc.report_input_broken))
+            self.pmids, self.notfound_pmids, exclude = \
+                iofuncs.read_pmids_careful(input, self.env.featdb)
+            iofuncs.write_pmids(
+                self.outdir/rc.report_input_broken, self.notfound_pmids)
         else:
             self.pmids = set(input)
+        if len(self.pmids) > 0:
+            return True
+        else:
+            iofuncs.no_valid_pmids_page(
+                self.outdir/rc.report_index, self.notfound_pmids)
+            return False
 
 
     def _make_feature_info(self):
@@ -141,16 +137,16 @@ class QueryManager:
     def _load_results(self):
         """Read L{inputs} and L{results} from the report directory"""
         log.info("Loading saved results for %s", rc.dataset)
-        self.inputs = list(iofuncs.read_pmids(
-            self.outdir/rc.report_input_scores, withscores=True))
-        self.results = list(iofuncs.read_pmids(
-            self.outdir/rc.report_result_scores, withscores=True))
+        self.inputs = list(iofuncs.read_scores(self.outdir/rc.report_input_scores))
+        self.results = list(iofuncs.read_scores(self.outdir/rc.report_result_scores))
 
 
     def _save_results(self):
         """Write L{inputs} and L{results} with scores in the report directory."""
-        iofuncs.write_scores(self.outdir/rc.report_input_scores, self.inputs)
-        iofuncs.write_scores(self.outdir/rc.report_result_scores, self.results)
+        iofuncs.write_scores(self.outdir/rc.report_input_scores, 
+                             self.inputs, sort=True)
+        iofuncs.write_scores(self.outdir/rc.report_result_scores, 
+                             self.results, sort=True)
 
 
     def _make_results(self):

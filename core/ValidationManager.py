@@ -51,6 +51,7 @@ class ValidationManager(object):
     @ivar nfolds: Number of validation folds
     @ivar positives: IDs of positive articles (from L{_load_positives})
     @ivar negatives: IDs of negative articles (from L{_load_negatives})
+    @ivar notfound_pmids: List of input PMIDs not found in the database
     
     @group From constructor: featmap, featdb
     @ivar featmap: Mapping feature ID <-> feature string
@@ -118,6 +119,10 @@ class ValidationManager(object):
                 return
             self._make_results()
             self._save_results()
+        try:
+            self.notfound_pmids = list(iofuncs.read_pmids(self.outdir/rc.report_positives_broken))
+        except ValueError:
+            self.notfound_pmids = []
         self.performance = PerformanceStats(
             self.pscores, self.nscores, rc.alpha)
         self.perfrange = PerformanceRange(
@@ -231,9 +236,9 @@ class ValidationManager(object):
         """Save validation scores to disk"""
         log.info("Saving result scores")
         iofuncs.write_scores(self.outdir/rc.report_positives, 
-                             izip(self.pscores, self.positives), sorted=False)
+                             izip(self.pscores, self.positives), sort=False)
         iofuncs.write_scores(self.outdir/rc.report_negatives, 
-                             izip(self.nscores, self.negatives), sorted=False)
+                             izip(self.nscores, self.negatives), sort=False)
 
 
     def _make_results(self):
@@ -310,7 +315,7 @@ class ValidationManager(object):
             timestamp = self.timestamp,
             p = self.performance,
             perfrange = self.perfrange,
-            notfound_pmids = list(iofuncs.read_pmids(self.outdir/rc.report_positives_broken)),
+            notfound_pmids = self.notfound_pmids,
         )
         from Cheetah.Template import Template
         with iofuncs.FileTransaction(self.outdir/rc.report_index, "w") as ft:

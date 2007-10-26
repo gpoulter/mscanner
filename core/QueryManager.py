@@ -49,6 +49,8 @@ class QueryManager:
     @ivar inputs: List of (pmid, score) for input PMIDs
     
     @ivar results: List of (pmid, score) for result PMIDs
+    
+    @ivar notfound_pmids: List of input PMIDs not found in the database
     """
 
     def __init__(self, outdir, env=None):
@@ -93,6 +95,10 @@ class QueryManager:
         else: 
             self._make_results()
             self._save_results()
+        try:
+            self.notfound_pmids = list(iofuncs.read_pmids(self.outdir/rc.report_input_broken))
+        except ValueError:
+            self.notfound_pmids = []            
         self._write_report()
         log.info("FINISHING QUERY %s", rc.dataset)
 
@@ -210,7 +216,7 @@ class QueryManager:
             num_results = len(self.results),
             best_tfidfs = self.featinfo.get_best_tfidfs(20),
             timestamp = self.timestamp,
-            notfound_pmids = list(iofuncs.read_pmids(self.outdir/rc.report_input_broken))
+            notfound_pmids = self.notfound_pmids,
         )
         from Cheetah.Template import Template
         with iofuncs.FileTransaction(self.outdir/rc.report_index, "w") as ft:

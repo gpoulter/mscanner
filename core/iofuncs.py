@@ -108,15 +108,14 @@ def read_pmids(filename,
     log.debug("Got %d PubMed IDs from %s", count, filename.basename())
 
     
-def write_scores(filename, pairs, sorted=True):
+def write_scores(filename, pairs, sort=True):
     """Write scores and PubMed IDs to file, in decreasing order of score.
     @param pairs: Iterable of (score, PMID)     
     """
     from path import path
-    if sorted:
-        pairs = sorted(pairs, reverse=True)
+    spairs = sorted(pairs, reverse=True) if sort else pairs
     path(filename).write_lines(
-        "%-10d %f" % (p,s) for s,p in pairs)
+        "%-10d %f" % (p,s) for s,p in spairs)
 
 
 def no_valid_pmids_page(filename, pmids):

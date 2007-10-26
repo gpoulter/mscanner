@@ -14,8 +14,8 @@ warnings.simplefilter("ignore", UserWarning)
 from mscanner.configuration import rc
 from mscanner.medline import Shelf
 from mscanner.medline.Databases import Databases
-from mscanner.FeatureScores import FeatureScores, FeatureCounts
-from mscanner import citationtable, cscore, utils
+from mscanner.core.FeatureScores import FeatureScores, FeatureCounts
+from mscanner.core import citationtable, cscore, iofuncs
 
 
                                      
@@ -69,9 +69,35 @@ class QueryManager:
         self.featinfo = None
         self.inputs = None
         self.results = None
+        # Use C score implementation if possible
+        cscore.choose_score()
 
 
-    def load_pmids(self, input):
+    def query(self, input):
+        """Performs a query given PubMed IDs as input
+        
+        @param input: Path to a list of PubMed IDs, or the list itself.
+        """
+        try:
+            self._load_input(input)
+        except ValueError, e:
+            log.error(str(e))
+            iofuncs.no_valid_pmids_page(
+                self.outdir/rc.report_index,
+                list(iofuncs.read_pmids(self.outdir/rc.report_input_broken)))
+            return
+        self._make_feature_info()
+        if (self.outdir/rc.report_input_scores).exists() \
+           and (self.outdir/rc.report_result_scores).exists(): 
+            self._load_results()
+        else: 
+            self._make_results()
+            self._save_results()
+        self._write_report()
+        log.info("FINISHING QUERY %s", rc.dataset)
+
+
+    def _load_input(self, input):
         """Generate the L{pmids} attribute from input, with validity checking
         
         @param input: List of PubMed IDs, or path to file containing the list.
@@ -80,31 +106,25 @@ class QueryManager:
             self.pmids = input
         elif isinstance(input, basestring):
             log.info("Loading PubMed IDs from %s", input.basename())
-            try:
-            self.pmids = set(utils.read_pmids(
+            self.pmids = set(iofuncs.read_pmids(
                 input, include=self.env.featdb,
                 broken_name=self.outdir/rc.report_input_broken))
-            except ValueError, e:
-                log.error(str(e))
-                utils.no_valid_pmids_page(
-                    self.outdir/rc.report_index,
-                    list(utils.read_pmids(self.outdir/rc.report_input_broken)))
         else:
             self.pmids = set(input)
 
 
-    def make_featinfo(self):
+    def _make_feature_info(self):
         """Generate the L{featinfo} attribute using the L{pmids}
         as examples of relevant citations."""
         log.info("Calculating feature scores")
-        pos_counts = FeatureCounts(
-            len(self.env.featmap), self.env.featdb, self.pmids)
         self.featinfo = FeatureScores(
             featmap = self.env.featmap,
             pseudocount = rc.pseudocount,
             mask = self.env.featmap.get_type_mask(rc.exclude_types),
             make_scores = rc.make_scores,
             get_postmask = rc.get_postmask)
+        pos_counts = FeatureCounts(
+            len(self.env.featmap), self.env.featdb, self.pmids)
         self.featinfo.update(
             pos_counts = pos_counts,
             neg_counts = nx.array(self.env.featmap.counts, nx.int32) - pos_counts,
@@ -112,48 +132,27 @@ class QueryManager:
             ndocs = self.env.featmap.numdocs - len(self.pmids))
 
 
-
-    def query(self, input):
-        """Performs a query given PubMed IDs as input
-        
-        @param input: Path to a list of PubMed IDs, or the list itself.
-        """
-        self.load_pmids(input)
-        if len(self.pmids) == 0: return
-        self.make_featinfo()
-        if (self.outdir/rc.report_input_scores).exists() \
-           and (self.outdir/rc.report_result_scores).exists(): 
-            self.load_results()
-        else: 
-            self.make_results()
-            self.save_results()
-        self.write_report()
-        log.info("FINISHING QUERY %s", rc.dataset)
-
-
-    def load_results(self):
+    def _load_results(self):
         """Read L{inputs} and L{results} from the report directory"""
         log.info("Loading saved results for %s", rc.dataset)
-        self.inputs = list(utils.read_pmids(
+        self.inputs = list(iofuncs.read_pmids(
             self.outdir/rc.report_input_scores, withscores=True))
-        self.results = list(utils.read_pmids(
+        self.results = list(iofuncs.read_pmids(
             self.outdir/rc.report_result_scores, withscores=True))
 
 
-    def save_results(self):
+    def _save_results(self):
         """Write L{inputs} and L{results} with scores in the report directory."""
-        utils.write_scores(self.outdir/rc.report_input_scores, self.inputs)
-        utils.write_scores(self.outdir/rc.report_result_scores, self.results)
+        iofuncs.write_scores(self.outdir/rc.report_input_scores, self.inputs)
+        iofuncs.write_scores(self.outdir/rc.report_result_scores, self.results)
 
 
-    def make_results(self):
+    def _make_results(self):
         """Perform the query to generate L{inputs} and L{results}"""
         log.info("Peforming query for dataset %s", rc.dataset)
         # Calculate score for each input PMID
-        self.inputs = [ 
-            (self.featinfo.offset+
-             nx.sum(self.featinfo.scores[self.env.featdb[pmid]]), pmid)
-            for pmid in self.pmids ]
+        self.inputs = zip(
+            self.featinfo.scores_of(self.env.featdb, self.pmids), self.pmids)
         self.inputs.sort(reverse=True)
         # Calculate score for each result PMID
         self.results = list(cscore.score(
@@ -166,7 +165,7 @@ class QueryManager:
         self.results.sort(reverse=True)
 
 
-    def write_report(self):
+    def _write_report(self):
         """Write the HTML report for the query results
         
         @note: Article database lookups are carried out beforehand because lookups
@@ -211,9 +210,9 @@ class QueryManager:
             num_results = len(self.results),
             best_tfidfs = self.featinfo.get_best_tfidfs(20),
             timestamp = self.timestamp,
-            notfound_pmids = list(utils.read_pmids(self.outdir/rc.report_input_broken))
+            notfound_pmids = list(iofuncs.read_pmids(self.outdir/rc.report_input_broken))
         )
         from Cheetah.Template import Template
-        with utils.FileTransaction(self.outdir/rc.report_index, "w") as ft:
+        with iofuncs.FileTransaction(self.outdir/rc.report_index, "w") as ft:
             Template(file=str(rc.templates/"results.tmpl"), 
                      filter="Filter", searchList=values).respond(ft)

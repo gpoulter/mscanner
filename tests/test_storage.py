@@ -9,7 +9,7 @@ it under the Do Whatever You Want Public License. Terms and conditions:
 """
 
 import unittest
-from mscanner.Storage import Storage, RCStorage
+from mscanner.core.Storage import Storage, RCStorage
 
 
 class StorageModuleTests(unittest.TestCase):

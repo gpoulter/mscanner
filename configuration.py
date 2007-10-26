@@ -8,7 +8,7 @@ auto-calls those so they appear as normal data attributes."""
 
 
 from path import path
-from mscanner.Storage import RCStorage
+from mscanner.core.Storage import RCStorage
 
 
                                      
@@ -32,9 +32,9 @@ rc = RCStorage()
 #### PATH CONFIGURATION
 
 ## Path to MScanner source directory
-rc.sources = path(__file__).dirname().parent
+rc.sources = path(__file__).dirname()
 ## Path to directory for report templates
-rc.templates = lambda: rc.sources / "mscanner" / "templates"
+rc.templates = lambda: rc.sources / "core" / "templates"
 ## Path to working information directory
 rc.working = lambda: rc.sources.parent / "data"
 ## Path to cache directory
@@ -70,9 +70,9 @@ rc.corpora = lambda: rc.working / "corpora"
 ## Path to outputs directory
 rc.web_report_dir = lambda: rc.htdocs / "static" / "output"
 ## Path to the cscore program (more portable)
-rc.cscore_path = lambda: rc.sources / "mscanner" / "cscore" / "cscore"
+rc.cscore_path = lambda: rc.sources / "core" / "cscore" / "cscore"
 ## Path to the cscore shared library (faster)
-rc.cscore_dll = lambda: rc.sources  / "mscanner" / "cscore" / "cscore2.dll"
+rc.cscore_dll = lambda: rc.sources  / "core" / "cscore" / "cscore2.dll"
 ## Path to the descriptor queue
 rc.queue_path = lambda: rc.working / "queue"
 

@@ -22,7 +22,7 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
-class GeneDrugExport:
+class Exporter:
     """Exports database of gene-drug interactions 
     
     @ivar gdarticles: List of articles (with additional genedrug members)

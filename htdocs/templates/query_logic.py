@@ -9,7 +9,7 @@ import time
 import md5
 
 import query
-from htdocs import forms, queue
+from mscanner.htdocs import forms, queue
 from mscanner.configuration import rc
 
 

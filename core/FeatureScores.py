@@ -4,8 +4,8 @@ from __future__ import division
 import logging as log
 import numpy as nx
 
-from mscanner import utils
-from mscanner.Storage import Storage
+from mscanner import update, delattrs
+from mscanner.core.Storage import Storage
 
 
                                      
@@ -79,8 +79,20 @@ class FeatureScores(object):
         make_scores = getattr(self, make_scores)
         if isinstance(get_postmask, basestring):
             get_postmask = getattr(self, get_postmask)
-        utils.update(self, locals())
+        update(self, locals())
 
+
+    def scores_of(self, featdb, pmids):
+        """Calculate the scores of a list of PubMed IDs.
+        
+        @param featdb: Mapping from PMID to feature vector
+        @param pmids: Iterable of keys into L{featdb}
+        @return: List of document scores corresponding to pmids.
+        """
+        offset = self.offset
+        scores = self.scores
+        return [ offset+nx.sum(scores[featdb[d]]) for d in pmids ]
+    
 
     def __len__(self):
         """Length is the number of features"""
@@ -90,11 +102,11 @@ class FeatureScores(object):
     def update(self, pos_counts, neg_counts, pdocs, ndocs):
         """Change the feature counts and numbers of documents, clear
         old score calculations, and calculate new scores."""
-        utils.update(self, locals())
+        update(self, locals())
         self.offset = 0
         self.make_scores()
         self._mask_scores()
-        utils.delattrs(self, "_stats", "_tfidf")
+        delattrs(self, "_stats", "_tfidf")
 
 
     def _mask_scores(self):
@@ -116,7 +128,7 @@ class FeatureScores(object):
              nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
 
 
-    def scores_noadjust(s):
+    def scores_offsetonly(s):
         """Only keeps the constant-offset part of L{scores_withabsence}"""
         s.scores_withabsence()
         s.pfreqs = s._pfreqs
@@ -196,6 +208,7 @@ class FeatureScores(object):
         """A Storage instance with statistics about the features
         
         The following keys are present:
+            - offset: Constant added to document scores
             - pos_occurrences: Total feature occurrences in positives
             - neg_occurrences: Total feature occurrences in negatives
             - feats_per_pos: Number of features per positive article
@@ -254,7 +267,7 @@ class FeatureScores(object):
 
 
     def get_best_tfidfs(self, count):
-        """Construct a table about the terms with the bets TF.IDF
+        """Construct a table about the terms with the best TF.IDF
         
         @param count: Number of rows to return
         
@@ -275,8 +288,8 @@ class FeatureScores(object):
                      u"denominator,pseudocount,termid,tfidf,type,term\n")
         s = self
         s.tfidf
-        if isinstance(s.pseudocount, float):
-            pseudocount = nx.zeros_like(s.scores) + s.pseudocount
+        if not isinstance(s.pseudocount, nx.ndarray):
+            pseudocount = nx.zeros_like(s.scores) + float(s.pseudocount)
         else:
             pseudocount = s.pseudocount
         for t, score in sorted(

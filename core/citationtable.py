@@ -4,7 +4,7 @@ from __future__ import with_statement
 from __future__ import division
 
 from mscanner.configuration import rc
-from mscanner import utils
+from mscanner.core import iofuncs
 from Cheetah.Template import Template
 
 import warnings
@@ -66,7 +66,7 @@ def writecitations(mode, citations, fname, perfile):
             filelist = fnames,
             filename = fnames[count],
             ))
-        with utils.FileTransaction(fname.dirname()/fnames[count], "w") as ft:
+        with iofuncs.FileTransaction(fname.dirname()/fnames[count], "w") as ft:
             page.respond(ft)
         
 

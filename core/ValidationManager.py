@@ -11,13 +11,13 @@ import time
 import warnings
 warnings.simplefilter("ignore", UserWarning)
 
-from mscanner import utils
 from mscanner.configuration import rc
 from mscanner.medline.Databases import Databases
-from mscanner.FeatureScores import FeatureScores, FeatureCounts
-from mscanner.PerformanceStats import PerformanceStats
-from mscanner.Plotter import Plotter
-from mscanner.Validator import Validator
+from mscanner.core import iofuncs
+from mscanner.core.FeatureScores import FeatureScores, FeatureCounts
+from mscanner.core.PerformanceStats import PerformanceStats
+from mscanner.core.Plotter import Plotter
+from mscanner.core.Validator import Validator
 
 
                                      
@@ -51,10 +51,8 @@ class ValidationManager(object):
     @ivar featmap: Mapping feature ID <-> feature string
     @ivar featdb: Mapping doc ID -> list of feature IDs
 
-    @group From load_inputs: positives,negatives
-
-    @ivar positives: IDs of positive articles
-    @ivar negatives: IDs of negative articles
+    @ivar positives: IDs of positive articles (from L{load_positives})
+    @ivar negatives: IDs of negative articles (from L{load_negatives})
     
     @group From make_results or load_results: pscores,nscores
     
@@ -87,8 +85,7 @@ class ValidationManager(object):
         @keyword negpath: Location of input negative PMIDs (or None,
         to select randomly from Medline)
         """
-        # Construct report directory
-        # FeatureScores for this validation run
+        # Configure the FeatureScores object
         self.featinfo = FeatureScores(
             featmap = self.env.featmap, 
             pseudocount = rc.pseudocount, 
@@ -100,96 +97,138 @@ class ValidationManager(object):
         if (self.outdir/rc.report_positives).isfile() and \
            (self.outdir/rc.report_negatives).isfile():
             try:
-                self.load_results()
+                self._load_results()
             except ValueError, e:
                 log.error(str(e))
                 return
         # Calculate new results
         else:
             try:
-                self.load_inputs(pospath, negpath)
+                self._load_positives(pospath)
+                self._load_negatives(negpath)
             except ValueError:
+                # Error: unable to read any PMIDs
                 log.error(str(e))
-                # Unable to read some PMIDs
-                utils.no_valid_pmids_page(
+                iofuncs.no_valid_pmids_page(
                     self.outdir/rc.report_index,
-                    list(utils.read_pmids(
-                        self.outdir/rc.report_positives_broken)))
+                    list(iofuncs.read_pmids(self.outdir/rc.report_positives_broken)))
                 return
-            self.make_results()
-            self.save_results()
+            self._make_results()
+            self._save_results()
         self.performance = PerformanceStats(
             self.pscores, self.nscores, rc.alpha)
-        self.write_report()
+        self._write_report()
         log.info("FINISHING VALIDATION %s", rc.dataset)
 
 
-    def load_inputs(self, pospath, negpath=None):
-        """Load L{positives} and L{negatives}
-
+    def _load_positives(self, pospath):
+        """Read positive PubMed IDs
+        
         @param pospath: Location of input positive PMIDs (or a list of PMIDs
-        directly(
-        
-        @param negpath: Location of input negative PMIDs (or None, in which
-        case we randomly select C{rc.numnegs} records from the list of
-        citations in Medline)"""
-
+        directly.
+        """
         log.info("Loading positive PubMed IDs")
-        if isinstance(input, list):
-            positives = pospath
-        elif isinstance(pospath, basestring):
+        if isinstance(pospath, basestring):
             log.info("Loading PubMed IDs from %s", pospath.basename())
-            positives = list(utils.read_pmids(
+            self.positives = nx.array(list(iofuncs.read_pmids(
                 pospath, include=self.env.featdb,
-                broken_name=self.outdir/rc.report_positives_broken))
+                broken_name=self.outdir/rc.report_positives_broken)))
         else:
-            # Attempt to convert to list
-            positives = list(pospath)
-        self.positives = nx.array(positives, nx.int32)
+            # See if we can convert to array
+            self.positives = nx.array(pospath)
+
+
+    @staticmethod
+    def make_random_subset(k, pool, exclude):
+        """Choose a random subset of k articles from pool
         
+        This is better than the usual algorithm when the pool is large (say, 16
+        million items), we don't mind if the order of pool gets scrambled, and
+        we have to exclude certain items from being selected.
+        
+        @param k: Number of items to choose from pool
+        @param pool: Array of items to choose from (will be scrambled!)
+        @param exclude: Set of items that may not be chosen
+        @return: A new array of the chosen items
+        """
+        from random import randint
+        import numpy as nx
+        n = len(pool)
+        assert 0 <= k <= n
+        for i in xrange(k):
+            # Non-selected items are in 0 ... n-i-1
+            # Selected items are n-i ... n
+            dest = n-i-1
+            choice = randint(0, dest) # 0 ... n-i-1 inclusive
+            while pool[choice] in exclude:
+                choice = randint(0, dest)
+            # Move the chosen item to the end, where so it will be part of the
+            # selected items in the next iteration. Note: this works using single
+            # items - it but would break with slices due to their being views into
+            # the vector.
+            pool[dest], pool[choice] = pool[choice], pool[dest]
+        # Phantom iteration: selected are n-k ... n
+        return nx.array(pool[n-k:])
+
+
+    def _load_negatives(self, negpath=None):
+        """Load L{negatives} from file
+        
+        @note: Requires that L{positives} have already been loaded
+        
+        @note: If L{negpath} is None, we randomly select C{rc.numnegs} records
+        from the list of citations in Medline.
+    
+        @param negpath: Location of input negative PMIDs 
+        """
         log.info("Loading negative PubMed IDs")
         if negpath is None:
             # Clamp number of negatives if more are requested than are available
-            maxnegs = len(self.env.article_list) - len(positives)
-            if rc.numnegs > maxnegs: rc.numnegs = maxnegs
+            maxnegs = len(self.env.article_list) - len(self.positives)
+            if rc.numnegs > maxnegs: 
+                rc.numnegs = maxnegs
             # Take an appropriately sized sample of random citations
-            self.negatives = utils.make_random_subset(
-                rc.numnegs, self.env.article_list, set(positives))
+            self.negatives = self.make_random_subset(
+                rc.numnegs, self.env.article_list, set(self.positives))
         else:
             # Read existing list of negatives from disk
-            negatives = list(utils.read_pmids(negpath, exclude=set(positives),
-                         exclude_name=self.outdir/rc.report_negatives_exclude))
+            negatives = list(
+                iofuncs.read_pmids(
+                    negpath, exclude=set(self.positives),
+                    exclude_name=self.outdir/rc.report_negatives_exclude))
             self.negatives = nx.array(negatives, nx.int32)
-
-
-    def load_results(self):
+        
+        
+    def _load_results(self):
         """Load L{positives}, L{pscores}, L{negatives}, L{nscores} using saved
         result files, instead of redoing the validation.
         
         This is useful when the style of the output page is updated. We assume
         PubMed IDs in the files are decreasing by score, as written by
-        L{utils.write_scores}. """
+        L{iofuncs.write_scores}. """
         log.info("Loading result scores for %s", rc.dataset)
         # Read positives scores
-        pscores, positives = zip(*utils.read_pmids(
+        pscores, positives = zip(*iofuncs.read_pmids(
             self.outdir/rc.report_positives, withscores=True))
         self.positives = nx.array(positives, nx.int32)
         self.pscores = nx.array(pscores, nx.float32)
         # Read negatives scores
-        nscores, negatives = zip(*utils.read_pmids(
+        nscores, negatives = zip(*iofuncs.read_pmids(
             self.outdir/rc.report_negatives, withscores=True))
         self.negatives = nx.array(negatives, nx.int32)
         self.nscores = nx.array(nscores, nx.float32)
 
 
-    def save_results(self):
+    def _save_results(self):
         """Save validation scores to disk"""
         log.info("Saving result scores")
-        utils.write_scores(self.outdir/rc.report_positives, izip(self.pscores, self.positives))
-        utils.write_scores(self.outdir/rc.report_negatives, izip(self.nscores, self.negatives))
+        iofuncs.write_scores(self.outdir/rc.report_positives, 
+                             izip(self.pscores, self.positives))
+        iofuncs.write_scores(self.outdir/rc.report_negatives, 
+                             izip(self.nscores, self.negatives))
 
 
-    def make_results(self):
+    def _make_results(self):
         """Calculate L{pscores} and L{nscores} using cross validation
         
         All the L{featdb} lookups are done beforehand, as lookups while busy
@@ -205,13 +244,8 @@ class ValidationManager(object):
         self.pscores, self.nscores = self.validator.validate()
 
 
-    def write_report(self):
-        """Write an HTML validation report. 
-        
-        Only redraws figures for which output files do not already exist
-        (likewise for term scores, but the index is always re-written)."""
-        
-        # Re-calculate feature scores using all citations
+    def _use_global_feature_scores(self):
+        """Calculate feature scores using all citations"""
         self.featinfo.update(
             pos_counts = FeatureCounts(
                 len(self.env.featmap), self.env.featdb, self.positives),
@@ -220,51 +254,56 @@ class ValidationManager(object):
             pdocs = len(self.positives),
             ndocs = len(self.negatives))
 
+
+    def _write_report(self):
+        """Write an HTML validation report. 
+        
+        Only redraws figures for which output files do not already exist
+        (likewise for term scores, but the index is always re-written)."""
+        self._use_global_feature_scores()
         # Write term scores
         if not (self.outdir/rc.report_term_scores).exists():
             log.debug("Writing term scores")
             import codecs
             with codecs.open(self.outdir/rc.report_term_scores, "wb", "utf-8") as f:
                 self.featinfo.write_csv(f)
-        
-        # Graph Plotting
+        # Draw graphs
         p = self.performance
         plotter = Plotter()
         log.debug("Drawing graphs")
         ##overlap, iX, iY = plotter.plot_score_density(
         ##  self.outdir/rc.report_artscores_img, p.pscores, p.nscores, p.threshold)
-        # Article Score Histogram
+        # Article score histogram
         if not (self.outdir/rc.report_artscores_img).exists():
             plotter.plot_score_histogram(
             self.outdir/rc.report_artscores_img, p.pscores, p.nscores, p.threshold)
-        # Feature Score Histogram
+        # Feature score histogram
         if not (self.outdir/rc.report_featscores_img).exists():
             plotter.plot_feature_histogram(
             self.outdir/rc.report_featscores_img, self.featinfo.scores)
-        # ROC Curve
+        # ROC curve
         if not (self.outdir/rc.report_roc_img).exists():
             plotter.plot_roc(
             self.outdir/rc.report_roc_img, p.FPR, p.TPR, p.tuned.FPR)
-        # Precision-Recall Curve
+        # Precision-recall curve
         if not (self.outdir/rc.report_prcurve_img).exists():
             plotter.plot_precision(
             self.outdir/rc.report_prcurve_img, p.TPR, p.PPV, p.tuned.TPR)
-        # F-Measure Curve
+        # F-Measure curve
         if not (self.outdir/rc.report_fmeasure_img).exists():
             plotter.plot_fmeasure(
             self.outdir/rc.report_fmeasure_img, p.uscores, p.TPR, p.PPV, 
             p.FM, p.FMa, p.threshold)
-        
-        # Index file
+        # Write index file
         log.debug("Writing index.html")
         values = dict(
             stats = self.featinfo.stats,
             linkpath = rc.templates.relpath().replace('\\','/') if rc.link_headers else None,
             timestamp = self.timestamp,
             p = self.performance,
-            notfound_pmids = list(utils.read_pmids(self.outdir/rc.report_positives_broken)),
+            notfound_pmids = list(iofuncs.read_pmids(self.outdir/rc.report_positives_broken)),
         )
         from Cheetah.Template import Template
-        with utils.FileTransaction(self.outdir/rc.report_index, "w") as ft:
+        with iofuncs.FileTransaction(self.outdir/rc.report_index, "w") as ft:
             Template(file=str(rc.templates/"validation.tmpl"), 
                      filter="Filter", searchList=values).respond(ft)

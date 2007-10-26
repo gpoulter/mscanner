@@ -3,6 +3,7 @@ negative citations"""
 
 from __future__ import division
 import numpy as nx
+from Validator import Validator
 
 
                                      
@@ -25,9 +26,9 @@ class PerformanceStats:
 
     @group From constructor: pscores, nscores, alpha, P, N, A
     
-    @ivar pscores: Scores of positive articles in increasing order.
+    @ivar pscores: Increasing scores of positive articles.
 
-    @ivar nscores: Scores of negative articles in increasing order.
+    @ivar nscores: Increasing scores of negative articles.
 
     @ivar alpha: Balance of recall and precision in the F measure.
 
@@ -72,14 +73,17 @@ class PerformanceStats:
     
     @ivar tuned: Tuned performance statistics, from L{get_tunedstats}.
     
-    @ivar W, W_stderr: Better area under ROC curve, from L{make_roc_error}.
+    @ivar W, W_stderr: Better area under ROC curve, from L{roc_error}.
     
     @ivar AvPrec: Averaged precision, from L{averaged_precision}.
     """
 
 
     def __init__(self, pscores, nscores, alpha):
-        """Constructor - parameters correspond to instance variables."""
+        """Constructor - parameters correspond to instance variables.
+
+        @note: Sorted copies are made of L{pscores} and L{nscores}.
+        """
         s = self
         s.alpha = alpha
         s.pscores = pscores.copy()
@@ -92,7 +96,7 @@ class PerformanceStats:
         s.make_confusion_matrix()
         s.make_ratio_vectors(s.alpha)
         s.make_curve_areas()
-        s.make_roc_error()
+        s.roc_error()
         s.averaged_precision()
         s.maximise_fmeasure()
         s.find_breakeven()
@@ -178,7 +182,7 @@ class PerformanceStats:
         have to be reversed.
         
         This method underestimates ROC areas because boundary points (0,0) and
-        (1,1) usually are not present in the data. Better to use L{make_roc_error}
+        (1,1) usually are not present in the data. Better to use L{roc_error}
         which does not have that problem.
         
         @return: L{ROC_area}, L{PR_area}"""
@@ -229,7 +233,7 @@ class PerformanceStats:
         return self.AvPrec
 
 
-    def make_roc_error(self):
+    def roc_error(self):
         """Area under ROC and its standard error
         
         Uses method of Hanley1982 to calculate standard error on the Wilcoxon
@@ -348,7 +352,7 @@ class PerformanceStats:
         if prevalence > 0:
             enrichment = precision / prevalence
         # Return local variables in a Storage object
-        from mscanner.Storage import Storage
+        from mscanner.core.Storage import Storage
         self.tuned = Storage(locals())
         del self.tuned.self
         return self.tuned

@@ -53,10 +53,10 @@ import time
 
 from mscanner.configuration import rc, start_logger
 from mscanner.medline.Databases import Databases
-from mscanner.QueryManager import QueryManager
-from mscanner.ValidationManager import ValidationManager
-from mscanner import utils
-from bin import update
+from mscanner.core.QueryManager import QueryManager
+from mscanner.core.ValidationManager import ValidationManager
+from mscanner.core import iofuncs
+from mscanner.scripts import update
 
 
 def parsebool(s):
@@ -96,7 +96,7 @@ def read_descriptor(fpath):
     with read_pmids, which will ignores the lines beginning with '#'.
 
     @return: Storage object, with additional '_filename' containing fpath."""
-    from mscanner.Storage import Storage
+    from mscanner.core.Storage import Storage
     result = Storage()
     with open(fpath, "r") as f:
         line = f.readline()
@@ -191,7 +191,7 @@ class QueueStatus:
 
     
     def __getitem__(self, dataset):
-        """Retrieve the descriptor for a given data set."""
+        """Retrieve the task descriptor for a given data set."""
         return self._tasks.__getitem__(dataset)
 
 
@@ -272,8 +272,8 @@ def mainloop():
 
 def populate_test_queue():
     """Place some dummy queue files to test the queue operation"""
-    from mscanner.Storage import Storage
-    pmids = list(utils.read_pmids(rc.corpora / "genedrug-small.txt"))
+    from mscanner.core.Storage import Storage
+    pmids = list(iofuncs.read_pmids(rc.corpora / "genedrug-small.txt"))
     task = Storage(
         operation = "validate", 
         dataset = "gdqtest_valid",

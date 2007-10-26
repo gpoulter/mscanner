@@ -17,9 +17,9 @@ import unittest
 from mscanner.configuration import rc
 from mscanner.medline.FeatureDatabase import FeatureDatabase, FeatureStream
 from mscanner.medline.FeatureMapping import FeatureMapping
-from mscanner.FeatureScores import FeatureScores, FeatureCounts
-from mscanner import cscore, utils
-
+from mscanner.core.FeatureScores import FeatureScores, FeatureCounts
+from mscanner.core import cscore
+from mscanner import tests
 
 class CScoreModuleTests(unittest.TestCase):
     """Tests of the L{cscore} package"""
@@ -39,7 +39,7 @@ class CScoreModuleTests(unittest.TestCase):
         self.assert_(nx.allclose(a, b))
 
 
-    @utils.usetempfile
+    @tests.usetempfile
     def test_cscore(self, citefname):
         """Tests that the cscore program produces the same output as
         iterScores"""

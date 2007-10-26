@@ -21,8 +21,8 @@ import sys
 from path import path
 
 from mscanner.configuration import rc, start_logger
-from mscanner.QueryManager import QueryManager
-from mscanner.Plotter import Plotter
+from mscanner.core.QueryManager import QueryManager
+from mscanner.core.Plotter import Plotter
 
 
 ### RETRIEVAL TEST
@@ -65,7 +65,7 @@ class RetrievalTest(QueryManager):
         """
         rc.threshold = None # No threshold for this stuff
         # Split the input into train and test sections
-        self.load_pmids(input)
+        self._load_input(input)
         if len(self.pmids) == 0: return
         pmids_list = list(self.pmids)
         random.shuffle(pmids_list)
@@ -76,9 +76,9 @@ class RetrievalTest(QueryManager):
         (self.outdir/rc.report_retrieval_test_pmids).write_lines(
             [str(x) for x in test_pmids])
         # Get feature info and result scores
-        self.make_featinfo()
-        self.make_results()
-        self.save_results()
+        self._make_feature_info()
+        self._make_results()
+        self._save_results()
         # Test the results against the test PMIDs
         cumulative = compare_results_to_standard(
             [p for s,p in self.results], test_pmids)

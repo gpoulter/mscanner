@@ -2,7 +2,7 @@
 
 import web
 import contact
-from htdocs import forms
+from mscanner.htdocs import forms
 
                                      
 __author__ = "Graham Poulter"                                        

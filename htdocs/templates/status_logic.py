@@ -7,7 +7,7 @@ __license__ = "GPL"
 import web
 
 import status, query_logic
-from htdocs import forms, queue
+from mscanner.htdocs import forms, queue
 from mscanner.configuration import rc
 
 

@@ -16,9 +16,9 @@ from random import seed
 import tempfile
 import unittest
 
-from mscanner.FeatureScores import FeatureScores
-from mscanner.Validator import Validator
-from mscanner.PerformanceStats import PerformanceStats
+from mscanner.core.FeatureScores import FeatureScores
+from mscanner.core.Validator import Validator
+from mscanner.core.PerformanceStats import PerformanceStats
 
 logging.basicConfig(level=0)
 
@@ -56,11 +56,8 @@ class ValidatorTests(unittest.TestCase):
         self.assert_((sizes == [7,7,7,6,6]).all())
 
 
-    def test_nfold_validate(self):
-        """Test that cross-validated scores are correctly calculated"""
-        featinfo = FeatureScores([2,5,7], pseudocount = 0.1,
-                             make_scores="scores_withabsence")
-        val = Validator(
+    def _make_validator(self, featinfo):
+        return Validator(
             featdb = {0:[0,1,2], 1:[0,1], 2:[0,1], 3:[0,1], 4:[1,2], 
                       5:[1,2], 6:[1,2], 7:[0,1,2]},
             featinfo = featinfo,
@@ -68,18 +65,57 @@ class ValidatorTests(unittest.TestCase):
             negatives = nx.array([4, 5, 6, 7]),
             nfolds = 4,
         )
+    
+
+    def _check_scores(self, featinfo, cpscores, cnscores):
+        val = self._make_validator(featinfo)
         pscores, nscores = val.nfold_validate(randomise=False)
-        #pp.pprint(pscores)
-        #pp.pprint(nscores)
-        # Old scoring method
-        #cpscores = nx.array([-2.39789534,  1.03609192,  1.03609192,  3.43398714])
-        #cnscores = nx.array([-3.43398714, -1.03609192, -1.03609192,  2.39789534])
-        # New scoring method
-        cpscores = nx.array([-2.99042702,  1.90989733,  1.90989733,  4.60405874])
-        cnscores = nx.array([-5.19658995, -2.50242901, -2.50242901,  2.39789534])
-        # Test scores
+        pp.pprint(pscores)
+        pp.pprint(cpscores)
+        pp.pprint(nscores)
+        pp.pprint(cnscores)
         self.assert_(nx.allclose(pscores,cpscores,rtol=1e-3))
         self.assert_(nx.allclose(nscores,cnscores,rtol=1e-3))
+
+
+    def test1_offsetonly(self):
+        print "scores_offsetonly"
+        self._check_scores(
+            FeatureScores([2,5,7], pseudocount = 0.1, make_scores="scores_offsetonly"),
+            nx.array([-2.1016295 ,  1.03609192,  1.03609192,  3.1377213 ]),
+            nx.array([-3.1377213 , -1.03609192, -1.03609192,  2.1016295 ]))
+
+
+    def test2_withabsence(self):
+        print "scores_withabsence"
+        self._check_scores(
+            FeatureScores([2,5,7], pseudocount = 0.1, make_scores="scores_withabsence"),
+            nx.array([-2.39789534,  2.20616317,  2.20616317,  4.60405827]),
+            nx.array([-4.60405827, -2.20616317, -2.20616317,  2.39789534]))
+
+
+    def test3_newpseudo(self):
+        print "scores_newpseudo"
+        self._check_scores(
+            FeatureScores([2,5,7], pseudocount = 0.1, make_scores="scores_newpseudo"),
+            nx.array([-2.39789534,  1.03609192,  1.03609192,  3.43398714]),
+            nx.array([-3.43398714, -1.03609192, -1.03609192,  2.39789534]))
+
+
+    def test4_oldpseudo(self):
+        print "scores_oldpseudo"
+        self._check_scores(
+            FeatureScores([2,5,7], pseudocount = 0.1, make_scores="scores_oldpseudo"),
+            nx.array([-2.39789534,  1.03609192,  1.03609192,  3.43398714]),
+            nx.array([-3.43398714, -1.03609192, -1.03609192,  2.39789534]))
+
+
+    def test5_rubin(self):
+        print "scores_rubin"
+        self._check_scores(
+            FeatureScores([2,5,7], make_scores="scores_rubin"),
+            nx.array([-17.32206917,   1.09861231,   1.09861231,  18.420681  ]),
+            nx.array([-18.420681  ,  -1.09861231,  -1.09861231,  17.32206917]))
 
 
     def test_leaveout_validate(self):
@@ -87,7 +123,8 @@ class ValidatorTests(unittest.TestCase):
         scores on the articles to see if they are correct"""
         featinfo = FeatureScores([2,5,7], pseudocount = 0.1)
         val = Validator(
-            featdb = {0:[0,1,2], 1:[0,1], 2:[0,1], 3:[0,1], 4:[1,2], 5:[1,2], 6:[1,2], 7:[0,1,2]},
+            featdb = {0:[0,1,2], 1:[0,1], 2:[0,1], 3:[0,1], 4:[1,2], 
+                      5:[1,2], 6:[1,2], 7:[0,1,2]},
             featinfo = featinfo,
             positives = nx.array([0, 1, 2, 3]),
             negatives = nx.array([4, 5, 6, 7]),
@@ -96,6 +133,10 @@ class ValidatorTests(unittest.TestCase):
         pscores, nscores = val.leaveout_validate()
         cpscores = nx.array([-2.14126396, 1.30037451, 1.30037451, 1.30037451])
         cnscores = nx.array([-1.30037451, -1.30037451, -1.30037451,  2.14126396])
+        #pp.pprint(pscores)
+        #pp.pprint(cpscores)
+        #pp.pprint(nscores)
+        #pp.pprint(cnscores)
         self.assert_(nx.allclose(pscores,cpscores,rtol=1e-3))
         self.assert_(nx.allclose(nscores,cnscores,rtol=1e-3))
 

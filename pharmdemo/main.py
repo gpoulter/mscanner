@@ -17,10 +17,11 @@ import logging as log
 import sys
 
 from mscanner.configuration import rc, start_logger
-from mscanner.QueryManager import QueryManager
-from mscanner.ValidationManager import ValidationManager
-from mscanner import utils
-from pharmdemo import genedrug, dbexport
+from mscanner.core.QueryManager import QueryManager
+from mscanner.core.ValidationManager import ValidationManager
+from mscanner.medline import Databases
+from mscanner.pharmdemo import genedrug
+from mscanner.pharmdemo.Exporter import Exporter
 
 
                                      
@@ -62,10 +63,10 @@ class PharmdemoQuery(QueryManager):
         
         @param export_db: If True, export associations for PharmDemo
         """
-        self.load_pmids(input)
+        self._load_input(input)
         if len(self.pmids) == 0: return
-        self.make_featinfo()
-        self.make_results()
+        self._make_feature_info()
+        self._make_results()
         # Do associations
         log.debug("Gene-drug associations on results")
         gdfinder = genedrug.open_genedrug_finder(
@@ -83,12 +84,12 @@ class PharmdemoQuery(QueryManager):
         self.results = [ (s,p) for s,p in self.results if p in gd_pmids ]
         if export_db == True:
             log.debug("Exporting database")
-            gdexport = dbexport.GeneDrugExport(gd_articles)
+            gdexport = Exporter(gd_articles)
             gdexport.write_genedrug_csv(rc.genedrug_csv)
             gdexport.export_sqlfile(rc.genedrug_sql)
         # Finish by writing results
-        self.save_results()
-        self.write_report()
+        self._save_results()
+        self._write_report()
 
 
 
@@ -100,8 +101,8 @@ class PharmdemoValidation(ValidationManager):
         @return: Set of PubMed IDs which have gene-drug co-occurrences.
         """
         log.info("Getting gene-drug associations") 
-        pos_arts = utils.load_articles(rc.articledb, self.positives)
-        neg_arts = utils.load_articles(rc.articledb, self.negatives)
+        pos_arts = Databases.load_articles(rc.articledb, self.positives)
+        neg_arts = Databases.load_articles(rc.articledb, self.negatives)
         gdfinder = genedrug.open_genedrug_finder(
             rc.genedrug, rc.drugtable, rc.gapscore)
         postfilter = set()

@@ -16,7 +16,7 @@ import tempfile
 import unittest
 
 from mscanner.medline.Article import Article
-from pharmdemo import genedrug
+from mscanner.pharmdemo import genedrug
 
 def log(string, *format):
     """Logging function, can avoid printing output"""

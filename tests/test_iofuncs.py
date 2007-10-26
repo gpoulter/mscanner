@@ -9,12 +9,11 @@ it under the Do Whatever You Want Public License. Terms and conditions:
 """
 
 import unittest
-from mscanner import utils
-
+from mscanner import tests
 
 class ScorefileModuleTests(unittest.TestCase):
     
-    @utils.usetempfile
+    @tests.usetempfile
     def test_read_pmids(self, fn):
         fn.write_lines(["# comment", "1 10", "2 20 blah", "3 30", "4 40", "5 50"])
         includes = [1,2,3,4]

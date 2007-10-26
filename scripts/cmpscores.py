@@ -11,12 +11,11 @@ import sys
 
 from mscanner.configuration import rc, start_logger
 from mscanner.medline.Databases import Databases
-from mscanner.ValidationManager import ValidationManager
-from mscanner import utils
+from mscanner.core.ValidationManager import ValidationManager
 
 
 score_methods = [
-    "scores_noadjust",
+    "scores_offsetonly",
     "scores_withabsence",
     "scores_newpseudo",
     "scores_oldpseudo",

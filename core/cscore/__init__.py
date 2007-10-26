@@ -71,13 +71,13 @@ def pyscore_adaptor(docstream, numdocs, featscores, offset,
 
 def cscore_pipe(docstream, numdocs, featscores, offset,
                 limit, safety, threshold=None, exclude=[]):
-    """Get article scores by communicating with the cscore program
+    """Calculate article scores by piping to the cscore program
     
     The cscore program processes a feature stream to return a (score, pmid)
     pairs as a binary stream.
     
     @param docstream: Path to file containing feature vectors for documents to
-    score, in L{FeatureStream} format.
+    score, in L{mscanner.medline.FeatureDatabase.FeatureStream} format.
     
     @param numdocs: Number of documents in the stream of feature vectors.
     
@@ -119,7 +119,7 @@ def cscore_pipe(docstream, numdocs, featscores, offset,
 
 def cscore_dll(docstream, numdocs, featscores, offset,
                limit, safety, threshold=None, exclude=[]):
-    """Get article scores, using the cscores function via ctypes 
+    """Calculate article scores, using ctypes to call cscores
     
     @param docstream: Path to file containing feature vectors for documents to
     score (formatted as in mscanner.medline.FeatureDatabase.FeatureStream)
@@ -169,7 +169,8 @@ score = pyscore_adaptor
 """Default score calculation function (parameters as for L{cscore_pipe})"""
 
 def choose_score():
-    """Select the fastest available score calculator"""
+    """Select the fastest available score calculator and assign it
+    to the module variable L{score}"""
     global score
     try:
         import ctypes
@@ -179,4 +180,4 @@ def choose_score():
         pass
     if score == pyscore_adaptor and rc.cscore_path.isfile():
         score = cscore_pipe
-choose_score()
+

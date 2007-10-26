@@ -29,8 +29,7 @@ import sys
 
 from mscanner.configuration import rc, start_logger
 from mscanner.medline.Databases import Databases
-from mscanner.QueryManager import QueryManager
-from mscanner import utils
+from mscanner.core.QueryManager import QueryManager
 
 
 dataset_map = {

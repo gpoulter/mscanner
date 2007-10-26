@@ -1,6 +1,7 @@
 """For consumers of the database, this opens L{FeatureDatabase}, 
 L{FeatureMapping} and the article list"""
 
+from __future__ import with_statement
 import logging as log
 import numpy as nx
 from contextlib import closing
@@ -67,3 +68,31 @@ class Databases:
         self.artdb.close()
     __del__ = close
 
+
+def load_articles(db_path, pmids_path):
+    """Retrieve Articles listed in a file of PubMed IDs
+
+    @param db_path: Path to a berkeley DB mapping PubMed IDs
+    to Article objects.
+
+    @param pmids_path: Path to a text file listing one PubMed ID per line.
+
+    @return: List of Article objects in the order given in the text file.
+
+    @note: The first called with a given PMID list caches the results in a
+    .pickle, and later calls load the pickle."""
+    import cPickle
+    from mscanner.medline import Shelf
+    from contextlib import closing
+    from mscanner.core.iofuncs import read_pmids
+    from path import path # used in the line below
+    cache_path = path(pmids_path + ".pickle")
+    if cache_path.isfile():
+        with open(cache_path, "rb") as f:
+            return cPickle.load(f)
+    pmids = read_pmids(pmids_path)
+    with closing(Shelf.open(db_path, "r")) as artdb:
+        articles = [artdb[str(p)] for p in pmids]
+    with open(cache_path, "wb") as f:
+        cPickle.dump(articles, f, protocol=2)
+    return articles

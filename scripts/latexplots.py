@@ -18,11 +18,11 @@ import logging
 from path import path
 from pylab import *
 
-from mscanner import utils
 from mscanner.configuration import rc as mrc, start_logger
-from mscanner.Plotter import Plotter
-from mscanner.PerformanceStats import PerformanceStats
-from bin import retrievaltest
+from mscanner.core import iofuncs
+from mscanner.core.Plotter import Plotter
+from mscanner.core.PerformanceStats import PerformanceStats
+from mscanner.scripts import retrievaltest
 
 
                                      
@@ -87,9 +87,9 @@ def load_stats(indir, dataset, title, alpha=0.5):
     logging.info("Reading dataset %s", dataset)
     if not (indir/dataset).isdir():
         raise ValueError("Could not directory %s" % (indir/dataset)) 
-    pscores = array([s[0] for s in utils.read_pmids(
+    pscores = array([s[0] for s in iofuncs.read_pmids(
         indir/dataset/mrc.report_positives, withscores=True)])
-    nscores = array([s[0] for s in utils.read_pmids(
+    nscores = array([s[0] for s in iofuncs.read_pmids(
         indir/dataset/mrc.report_negatives, withscores=True)])
     stats = PerformanceStats(pscores, nscores, alpha)
     stats.title = title

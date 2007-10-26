@@ -6,8 +6,8 @@ from itertools import chain, izip
 import logging as log
 import numpy as nx
 
-from mscanner.FeatureScores import FeatureScores, FeatureCounts
-from mscanner import utils
+from mscanner import update
+from mscanner.core.FeatureScores import FeatureScores, FeatureCounts
 
 
                                      
@@ -39,6 +39,7 @@ class Validator:
     @ivar negatives: Array of negative PMIDs for validation
     
     @ivar nfolds: Number of validation folds (0 for leave-out-one)
+
     
     @group From validate: pscores,nscores
     
@@ -51,7 +52,7 @@ class Validator:
         """Constructor parameters set corresponding instance attributes."""
         pscores = None
         nscores = None
-        utils.update(self, locals())
+        update(self, locals())
 
 
     def validate(self):
@@ -117,22 +118,18 @@ class Validator:
                 pdocs = pdocs-psize, 
                 ndocs = ndocs-nsize)
             # Calculate the article scores for the test fold
-            s.pscores[pstart:pstart+psize] = [
-                nx.sum(s.featinfo.scores[s.featdb[d]]) for d in
-                s.positives[pstart:pstart+psize]]
-            s.nscores[nstart:nstart+nsize] = [
-                nx.sum(s.featinfo.scores[s.featdb[d]]) for d in
-                s.negatives[nstart:nstart+nsize]]
-        s.pscores += s.featinfo.offset
-        s.nscores += s.featinfo.offset
+            s.pscores[pstart:pstart+psize] = s.featinfo.scores_of(
+                s.featdb, s.positives[pstart:pstart+psize])
+            s.nscores[nstart:nstart+nsize] = s.featinfo.scores_of(
+                s.featdb, s.negatives[nstart:nstart+nsize])
         return s.pscores, s.nscores
 
 
     def leaveout_validate(self):
-        """Carries out leave-out-one validation, returning the resulting scores.
+        """Performs leave-out-one validation, returning the resulting scores.
         
-        @note: Feature scores by Bayesian background pseudocount with no article
-        score offset - no other methods implemented.
+        @note: Feature scores use background pseudocount - no other methods
+        implemented.
         
         @deprecated: 10-fold is standard, and leave-out-one is rather slow.
         
@@ -147,23 +144,23 @@ class Validator:
         ndocs = len(self.negatives)
         mask = self.featinfo.mask
         # Set up pseudocount
-        if isinstance(self.featinfo.pseudocount, float):
-            ps = nx.zeros(len(self.featinfo), nx.float32) + self.featinfo.pseudocount
-        else:
+        if isinstance(self.featinfo.pseudocount, nx.ndarray):
             ps = self.featinfo.pseudocount
+        else:
+            ps = nx.zeros(len(self.featinfo), nx.float32) + self.featinfo.pseudocount
         marker = 0
         # Discount this article in feature score calculations
-        def score_article(pmid, p_mod, n_mod):
+        def score_of(pmid, p_mod, n_mod):
             f = [fid for fid in self.featdb[doc] if not mask or not mask[fid]]
             return nx.sum(nx.log(
                 ((pcounts[f]+p_mod+ps[f])/(pdocs+p_mod+2*ps[f]))/
                 ((ncounts[f]+n_mod+ps[f])/(ndocs+n_mod+2*ps[f]))))
         # Get scores for positive articles
         for idx, doc in enumerate(self.positives):
-            self.pscores[idx] = score_article(doc, -1, 0)
+            self.pscores[idx] = score_of(doc, -1, 0)
         # Get scores for negative articles
         for idx, doc in enumerate(self.negatives):
-            self.nscores[idx] = score_article(doc, 0, -1)
+            self.nscores[idx] = score_of(doc, 0, -1)
         return self.pscores, self.nscores
 
 

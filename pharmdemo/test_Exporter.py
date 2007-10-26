@@ -1,4 +1,4 @@
-"""Test suite for mscanner.pharmdemo.dbexport
+"""Test suite for mscanner.pharmdemo.Exporter
 
                                
 
@@ -14,7 +14,7 @@ import tempfile
 import unittest
 
 from mscanner.medline.Article import Article
-from pharmdemo import dbexport
+from mscanner.pharmdemo.Exporter import Exporter
 
 articles=[
     Article(
@@ -34,8 +34,8 @@ articles=[
 articles[0].genedrug={'PKID1':["GENE1","GENE2"],'PKID2':["GENE2","GENE3"]}
 articles[1].genedrug={'PKID1':["GENE2","GENE3"],'PKID2':["GENE3","GENE4"]}
         
-class DbexportTests(unittest.TestCase):
-    """Tests for dbexport module
+class ExporterTests(unittest.TestCase):
+    """Tests for Exporter module
 
     Tests: export_sqlfile
     Missing: exportSQlite, exportOracle*
@@ -47,14 +47,14 @@ class DbexportTests(unittest.TestCase):
         self.fn.remove()
         
     def test(self):
-        exporter = dbexport.GeneDrugExport(articles);
+        exporter = Exporter(articles);
         exporter.export_sqlfile(self.fn)
         """
         dbname = ":memory:"
-        self.con = sqlite.connect( self.dbname )
-        dbexport.export_dbapi( self.con, articles )
+        self.con = sqlite.connect(self.dbname)
+        exporter.export_dbapi(self.con, articles)
         cur = self.con.cursor()
-        cur.execute( 'SELECT * from genedrug order by id' )
+        cur.execute('SELECT * from genedrug order by id')
 
         rows=cur.fetchall()
         #for row in rows: print row

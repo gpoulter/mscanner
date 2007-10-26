@@ -23,7 +23,7 @@ import sys
 sys.path.insert(0,"/export/home/medscan/source")
 import web
 
-import htdocs
+from mscanner.htdocs import templates
 
 # Set informative error handler
 web.webapi.internalerror = web.debugerror
@@ -31,10 +31,10 @@ web.webapi.internalerror = web.debugerror
 # URLs for the application
 urls = (
     '/', 'FrontPage',
-    '/query', 'htdocs.templates.query_logic.QueryPage',
-    '/status', 'htdocs.templates.status_logic.StatusPage',
-    '/output', 'htdocs.templates.output_logic.OutputPage',
-    '/contact', 'htdocs.templates.contact_logic.ContactPage',
+    '/query', 'templates.query_logic.QueryPage',
+    '/status', 'templates.status_logic.StatusPage',
+    '/output', 'templates.output_logic.OutputPage',
+    '/contact', 'templates.contact_logic.ContactPage',
 )
 """Mapping between URLs and objects to process the requests"""
 
@@ -43,7 +43,7 @@ class FrontPage:
     def GET(self):
         """Return the front page for MScanner"""
         web.header('Content-Type', 'text/html; charset=utf-8') 
-        page = htdocs.templates.front.front()
+        page = templates.front.front()
         print page
 
 if __name__ == "__main__":

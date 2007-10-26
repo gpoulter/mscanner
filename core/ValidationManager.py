@@ -200,7 +200,9 @@ class ValidationManager(object):
             # Read existing list of negatives from disk
             negatives = list(
                 iofuncs.read_pmids(
-                    negpath, exclude=set(self.positives),
+                    negpath, 
+                    include=self.env.featdb,
+                    exclude=set(self.positives),
                     exclude_name=self.outdir/rc.report_negatives_exclude))
             self.negatives = nx.array(negatives, nx.int32)
         

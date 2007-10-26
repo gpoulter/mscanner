@@ -144,6 +144,8 @@ class ProxyTransport(xmlrpclib.Transport):
     """
     def __init__(self, proxy, use_datetime=0):
         xmlrpclib.Transport.__init__(self, use_datetime)
+        if proxy.startswith("http://"):
+            proxy = proxy[len("http://"):]
         self.proxy = proxy
 
     def make_connection(self,host):
@@ -202,9 +204,8 @@ class GeneFinder:
         if proxy is None:
             rpc_server = xmlrpclib.ServerProxy(bionlp_uri)
         else:
-            if proxy.startswith("http://"):
-                proxy = proxy[len("http://"):]
-            rpc_server = xmlrpclib.ServerProxy(bionlp_uri, transport=ProxyTransport(proxy))
+            rpc_server = xmlrpclib.ServerProxy(
+                bionlp_uri, transport=ProxyTransport(proxy))
         self.find_gene_and_protein_names = rpc_server.find_gene_and_protein_names
 
 

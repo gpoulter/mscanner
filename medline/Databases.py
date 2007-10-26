@@ -35,6 +35,7 @@ class Databases:
     @ivar featdb: Mapping from PubMed ID to list of features
 
     @ivar featmap: L{FeatureMapping} between feature names and IDs
+    (by default, featmap[id] == feature string)
     
     @ivar artdb: Mmapping from PubMed ID to Article object
     """

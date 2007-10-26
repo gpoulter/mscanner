@@ -38,7 +38,22 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
 class SplitValidation:
+    """Carries out split-sample validation.
     
+    @ivar performance: L{PerformanceStats} instance
+
+    @ivar perfrange: L{PerformanceRange} instance
+
+    @ivar featinfo: L{FeatureScores} for calculating feature score
+
+    @ivar timestamp: Time at the start of the operation
+
+    @ivar notfound_pmids: List of input PMIDs not found in the database
+
+    @ivar pscores: Result scores for positive articles
+
+    @ivar nscores: Result scores for negative articles
+    """
     def __init__(self, outdir, env=None):
         """Constructor"""
         self.outdir = outdir
@@ -48,11 +63,21 @@ class SplitValidation:
         self.timestamp = time.time() 
         self.env = env if env else Databases()
         self.pscores, self.nscores = None, None
-
+        self.featinfo = None
+        self.performance = None
+        self.perfrange = None
+        self.notfound_pmids = []
 
     def validation(self, fptrain, fntrain, fptest, fntest):
-        """Carry out split-sample validation"""
+        """Carry out split-sample validation
+        
+        @param fptrain: File with positive training examples
+        @param fntrain: File with negative training examples
+        @param fptest: File with positive testing examples
+        @param fntest: File with negative testing examples
+        """
         s = self
+        s.nfolds = 1 # Effectively a single fold
         s.ptrain, s.ntrain = None, None
         s.ptest, s.ntest = None, None
         s.notfound_pmids = []
@@ -155,45 +180,32 @@ class SplitValidation:
                      filter="Filter", searchList=values).respond(ft)
 
 
+
 class ValidationManager(SplitValidation):
-    """Manages the cross validation process.
-    
-    Jobs include loading input, saving and loading results files,
-    and generating the validation report and figures.
-    
-    @ivar performance: L{PerformanceStats} instance
-    @ivar perfrange: L{PerformanceRange} instance
-    @ivar featinfo: L{FeatureScores} for calculating feature score
-    @ivar timestamp: Time at the start of the operation
+    """Carries out N-fold cross validation.
 
     @ivar nfolds: Number of validation folds
-    @ivar positives: IDs of positive articles (from L{_load_positives})
-    @ivar negatives: IDs of negative articles (from L{_load_negatives})
-    @ivar notfound_pmids: List of input PMIDs not found in the database
-    
-    @group From constructor: featmap, featdb
-    @ivar featmap: Mapping feature ID <-> feature string
-    @ivar featdb: Mapping doc ID -> list of feature IDs
 
-    @group From _make_results or _load_results: pscores, nscores
-    @ivar pscores: Scores of positive articles
-    @ivar nscores: Scores of negative articles
+    @ivar positives: IDs of positive articles
+
+    @ivar negatives: IDs of negative articles
     """
     
     def __init__(self, outdir, env=None):
-        """Constructor"""
+        """Constructor, as for SplitValidation"""
         SplitValidation.__init__(self, outdir, env)
         self.nfolds = None
-        self.featinfo = None
 
 
     def validation(self, pospath, negpath, nfolds):
         """Loads data, performs validation, and writes report
         
-        @keyword pospath: Location of input positive PMIDs
+        @param pospath: File with positive PubMed IDs
         
-        @keyword negpath: Location of input negative PMIDs (or None,
+        @param negpath: File with negative PubMed IDs (or None
         to select randomly from Medline)
+        
+        @param nfolds: Number of validation folds.
         """
         # Keep our own number of folds variables
         self.nfolds = nfolds
@@ -222,7 +234,7 @@ class ValidationManager(SplitValidation):
 
 
     def _load_input(self, pospath, negpath):
-        """Try to load positive and negative PubMed IDs
+        """Load positive and negative PubMed IDs for validation
         
         @param pospath: Location of input positive PMIDs
         @param negpath: Location of input negative PMIDs
@@ -299,8 +311,8 @@ class ValidationManager(SplitValidation):
     def _make_results(self):
         """Calculate L{pscores} and L{nscores} using cross validation
         
-        All the L{featdb} lookups are done beforehand, as lookups while busy
-        with validation are slow."""
+        All the feature database lookups are cached beforehand, as lookups
+        while busy with validation are slow."""
         log.info("Performing cross-validation for for %s", rc.dataset)
         self.validator = CrossValidator(
             featdb = dict((k,self.env.featdb[k]) for k in 

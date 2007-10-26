@@ -259,7 +259,7 @@ def mainloop():
                         op.query(task._filename)
                     elif task.operation == "validate":
                         op = ValidationManager(outdir, env)
-                        op.validation(task._filename)
+                        op.validation(task._filename, None, rc.nfolds)
                     task._filename.move(outdir / "descriptor.txt")
                 except ValueError, e:
                     log.error(e)

@@ -97,6 +97,7 @@ def random_bimodality():
 def trec_split_validation():
     """Performs split-sample validation"""
     rc.dataset = "trec2005G-split"
+    rc.nfolds = 1
     ptrain = rc.corpora / "trec_pos_train.txt"
     ptest = rc.corpora / "trec_pos_test.txt"
     ntrain = rc.corpora / "trec_bg_train.txt"

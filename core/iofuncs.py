@@ -101,8 +101,6 @@ def no_valid_pmids_page(filename, pmids):
     """
     from Cheetah.Template import Template
     from mscanner.configuration import rc
-    import logging as log
-    log.warning("No valid PubMed IDs were found!")
     with FileTransaction(filename, "w") as ft:
         page = Template(file=str(rc.templates/"notfound.tmpl"))
         page.notfound_pmids = pmids

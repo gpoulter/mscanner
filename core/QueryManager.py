@@ -110,6 +110,7 @@ class QueryManager:
         if len(self.pmids) > 0:
             return True
         else:
+            log.error("No valid PubMed IDs in %s", input.basename())
             iofuncs.no_valid_pmids_page(
                 self.outdir/rc.report_index, self.notfound_pmids)
             return False

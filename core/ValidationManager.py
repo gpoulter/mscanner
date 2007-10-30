@@ -95,6 +95,10 @@ class SplitValidation:
             s._calc_test_scores()
             s._calc_performance()
             s._write_report()
+        else:
+            log.error("At least one of the input files contained no valid PubMed IDs")
+            return
+        log.info("FINISHING SPLIT VALIDATION %s", rc.dataset)
 
 
     def _init_featinfo(self):
@@ -230,7 +234,7 @@ class ValidationManager(SplitValidation):
         self._calc_performance()
         self._general_feature_scores()
         self._write_report()
-        log.info("FINISHING VALIDATION %s", rc.dataset)
+        log.info("FINISHING CROSS VALIDATION %s", rc.dataset)
 
 
     def _load_input(self, pospath, negpath):
@@ -245,8 +249,8 @@ class ValidationManager(SplitValidation):
                 iofuncs.read_pmids_careful(pospath, self.env.featdb)
         else:
             self.positives = nx.array(pospath)
-        log.info("Loading negative PubMed IDs")
         if negpath is None:
+            log.info("Selecting %d random negative PubMed IDs" % rc.numnegs)
             # Clamp number of negatives to the number available
             maxnegs = len(self.env.article_list) - len(self.positives)
             if rc.numnegs > maxnegs: rc.numnegs = maxnegs
@@ -254,6 +258,7 @@ class ValidationManager(SplitValidation):
             self.negatives = self.make_random_subset(
                 rc.numnegs, self.env.article_list, set(self.positives))
         elif isinstance(negpath, basestring):
+            log.info("Loading negative PubMed IDs from %s", negpath.basename())
             # Read list of negative PMIDs from disk
             self.negatives, notfound, exclude = iofuncs.read_pmids_careful(
                     negpath, self.env.featdb, set(self.positives))
@@ -268,7 +273,7 @@ class ValidationManager(SplitValidation):
         if len(self.positives)>0 and len(self.negatives)>0:
             return True
         else:
-            log.warning("No valid PubMed IDs in input... writing error page")
+            log.error("No valid PubMed IDs in at least one input (error page)")
             iofuncs.no_valid_pmids_page(
                 self.outdir/rc.report_index, self.notfound_pmids)
             return False

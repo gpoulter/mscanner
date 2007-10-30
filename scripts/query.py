@@ -33,12 +33,11 @@ from mscanner.core.QueryManager import QueryManager
 
 
 dataset_map = {
-    "aids"        : "aids-bioethics-Oct06.txt",
-    "pg04"        : "pharmgkb-2004.txt",
-    "pg07"        : "pharmgkb-070205.txt",
-    "radiology"   : "daniel-radiology.txt",
-    "gdsmall"     : "genedrug-small.txt",
-    "invalid"     : "testing-invalid.txt",
+    "aidsbio"     : "Paper/aidsbio_2006.10.txt",
+    "pg07"        : "Paper/pharmgkb_2007.02.05.txt",
+    "radiology"   : "Paper/radiology_2007.02.txt",
+    "gdsmall"     : "Test/gdsmall.txt",
+    "invalid"     : "Test/invalid.txt",
 }
 """Mapping from dataset code to input file"""
 

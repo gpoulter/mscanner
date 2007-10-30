@@ -30,14 +30,13 @@ from mscanner.core.ValidationManager import SplitValidation, ValidationManager
 
 
 dataset_map = {
-    "aids-vs-100k": ("aids-bioethics-Oct06.txt", "medline07-100k.txt"),
-    "pg07-vs-100k": ("pharmgkb-070205.txt", "medline07-100k.txt"),
-    "radiology-vs-100k": ("daniel-radiology.txt", "medline07-100k.txt"),
-    "random10k-vs-100k": ("random10k-06.txt", "medline07-100k.txt"), 
-    "gdsmall-vs-sample": ("genedrug-small.txt", rc.articlelist) ,
-    "test-vs-sample": ("testing-random.txt", rc.articlelist),
-    "trec2005G" : ("trec_positives.txt", "trec_all.txt"),
-    "trec2005G-vs-100k" : ("trec_positives.txt", "medline07-100k.txt"),    
+"aidsbio":       ("Paper/aidsbio_2006.10.txt",    "Paper/medline100k_2007.02.txt"),
+"pg07":          ("Paper/pharmgkb_2007.02.05.txt","Paper/medline100k_2007.02.txt"),
+"radiology":     ("Paper/radiology_2007.02.txt",  "Paper/medline100k_2007.02.txt"),
+"random10k":     ("Paper/random10k_2006.txt",     "Paper/medline100k_2007.02.txt"),
+"gdsmall":       ("Test/gdsmall.txt",             None),
+"trec_go_bg" :   ("TREC/trec_go_pos_both.txt",    "TREC/trec_go_bg_both.txt"),
+"trec_go_100k" : ("TREC/trec_go_pos_both.txt",    "Paper/medline100k_2007.02.txt"),
 }
 """Map data set to pair of (positive,negative) paths for PubMed IDs."""
 
@@ -67,8 +66,7 @@ def issn_validation():
     cross-validation performance."""
     rc.exclude_types = ["issn"]
     rc.dataset = "aids-noissn"
-    pos = "aids-bioethics-Oct06.txt"
-    neg = "medline07-100k.txt"
+    pos, neg = dataset_map["aidsbio"]
     op = ValidationManager(rc.working / "valid" / rc.dataset)
     op.validation(rc.corpora / pos, rc.corpora / neg, rc.nfolds)
     op.env.close()
@@ -84,28 +82,43 @@ def random_bimodality():
     Random occurrences of 0,1,2 or 3 of those -9 features in test citations
     causes the score of that citation to be shifted by -9, -18, -27 from
     zero."""
-    rc.dataset = "random10k-vs-100k-mod"
+    rc.dataset = "random_modality"
     rc.nfolds = 10
     rc.get_postmask = "mask_nonpositives"
-    pos = rc.corpora / "random10k-06.txt"
-    neg = rc.corpora / "medline07-100k.txt"
+    pos, neg = dataset_map["random10k"]
     op = ValidationManager(rc.working / "valid" / rc.dataset)
-    op.validation(pos, neg, rc.nfolds)
+    op.validation(rc.corpora / pos, rc.corpora / neg, rc.nfolds)
     op.env.close()
     
     
-def trec_split_validation():
-    """Performs split-sample validation"""
-    rc.dataset = "trec2005G-split"
+def trec2005_compare():
+    """Performs split-sample validation on the trec GO subtask"""
+    env = Databases()
     rc.nfolds = 1
-    ptrain = rc.corpora / "trec_pos_train.txt"
-    ptest = rc.corpora / "trec_pos_test.txt"
-    ntrain = rc.corpora / "trec_bg_train.txt"
-    ntest = rc.corpora / "trec_bg_test.txt"
-    rc.utility_r = 11.0
-    op = SplitValidation(rc.working / "valid" / rc.dataset)
-    op.validation(ptrain, ntrain, ptest, ntest)
-    op.env.close()
+    ntest = rc.corpora / "TREC" / "NEG_test.txt"
+    ntrain = rc.corpora / "TREC" / "NEG_train.txt"
+    for ds, Ur in [("A",17.0), ("E",64.0), ("G",11.0), ("T",231.0)]:
+        rc.dataset = "TREC_%s" % ds
+        rc.utility_r = Ur
+        ptrain = rc.corpora / "TREC" / (ds + "train.txt")
+        ptest = rc.corpora / "TREC" / (ds + "test.txt")
+        op = SplitValidation(rc.working / "valid" / rc.dataset, env)
+        op.validation(ptrain, ntrain, ptest, ntest)
+    env.close()
+
+
+def wang2007_compare():
+    env = Databases()
+    for fbase in "ac", "allergen", "er", "other":
+        pos = rc.corpora / "Wang2007" / ("wang_%s_pos.txt" % fbase)
+        neg = rc.corpora / "Wang2007" / ("wang_%s_neg.txt" % fbase)
+        rc.dataset = "wang_%s" % fbase
+        rc.nfolds = 10
+        rc.utility_r = None
+        op = ValidationManager(rc.working / "valid" / rc.dataset, env)
+        op.validation(pos, neg, rc.nfolds)
+    env.close()
+    
 
 
 if __name__ == "__main__":

@@ -35,8 +35,6 @@ dataset_map = {
 "radiology":     ("Paper/radiology_2007.02.txt",  "Paper/medline100k_2007.02.txt"),
 "random10k":     ("Paper/random10k_2006.txt",     "Paper/medline100k_2007.02.txt"),
 "gdsmall":       ("Test/gdsmall.txt",             None),
-"trec_go_bg" :   ("TREC/trec_go_pos_both.txt",    "TREC/trec_go_bg_both.txt"),
-"trec_go_100k" : ("TREC/trec_go_pos_both.txt",    "Paper/medline100k_2007.02.txt"),
 }
 """Map data set to pair of (positive,negative) paths for PubMed IDs."""
 
@@ -109,9 +107,10 @@ def trec2005_compare():
 
 def wang2007_compare():
     env = Databases()
-    for fbase in "ac", "allergen", "er", "other":
-        pos = rc.corpora / "Wang2007" / ("wang_%s_pos.txt" % fbase)
-        neg = rc.corpora / "Wang2007" / ("wang_%s_neg.txt" % fbase)
+    #for fbase in "ac", "allergen", "er", "other":
+    for fbase in "combined",:
+        pos = rc.corpora / "Wang2007" / ("%s_pos.txt" % fbase)
+        neg = rc.corpora / "Wang2007" / ("%s_neg.txt" % fbase)
         rc.dataset = "wang_%s" % fbase
         rc.nfolds = 10
         rc.utility_r = None

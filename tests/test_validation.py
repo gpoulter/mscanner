@@ -16,7 +16,7 @@ import unittest
 
 from mscanner.core.FeatureScores import FeatureScores
 from mscanner.core.Validator import LeaveOutValidator, CrossValidator
-from mscanner.core.PerformanceVectors import PerformanceVectors
+from mscanner.core.metrics import PerformanceVectors
 
 import logging
 logging.basicConfig(level=0)

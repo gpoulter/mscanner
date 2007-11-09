@@ -6,6 +6,13 @@ Choose the action by using a Python expression::
     python validate.py 'validate("aids-vs-500k")'
 """
 
+from path import path
+import sys
+
+from mscanner.configuration import rc, start_logger
+from mscanner.medline.Databases import Databases
+from mscanner.core.ValidationManager import SplitValidation, CrossValidation
+
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
@@ -19,14 +26,6 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
-
-
-from path import path
-import sys
-
-from mscanner.configuration import rc, start_logger
-from mscanner.medline.Databases import Databases
-from mscanner.core.ValidationManager import SplitValidation, CrossValidation
 
 
 dataset_map = {
@@ -57,7 +56,8 @@ def validate(*datasets):
     env.close()
 
 
-def issn_validation():
+
+def issn_features():
     """Perform cross validation on for AIDSBio vs 100k, excluding ISSN features.
     
     The results show that keeping the ISSN features produces better
@@ -69,6 +69,7 @@ def issn_validation():
     op.validation(rc.corpora / pos, rc.corpora / neg)
     op.report_validation()
     op.env.close()
+
 
 
 def random_bimodality():
@@ -88,7 +89,8 @@ def random_bimodality():
     op.validation(rc.corpora / pos, rc.corpora / neg)
     op.report_validation()
     op.env.close()
-    
+
+
     
 def trec2005_compare():
     """Performs split-sample validation on the trec GO subtask"""
@@ -102,11 +104,12 @@ def trec2005_compare():
         ptest = rc.corpora / "TREC" / (ds + "test.txt")
         op = SplitValidation(rc.working / "valid" / rc.dataset, env)
         op.validation(ptrain, ntrain, ptest, ntest)
-        op.report_validation()
     env.close()
 
 
+
 def wang2007_compare():
+    """Performs cross validation using the data set from Wang2007"""
     env = Databases()
     #for fbase in "ac", "allergen", "er", "other":
     for fbase in "combined",:
@@ -119,7 +122,29 @@ def wang2007_compare():
         op.report_validation()
     env.close()
     
+    
 
+def compare_score_methods():
+    """Compare cross validation performance using different feature
+    score calculation methods on the PharmGKB data set."""
+    score_methods = [
+        "scores_offsetonly",
+        "scores_withabsence",
+        "scores_newpseudo",
+        "scores_oldpseudo",
+        "scores_rubin" ]
+    env = Databases()
+    #train_rel = rc.corpora / "pharmgkb-070205.txt"
+    #train_irrel = rc.corpora / "medline07-100k.txt"
+    train_rel = rc.corpora / "genedrug-small.txt"
+    train_irrel = rc.articlelist
+    for method in score_methods:
+        rc.dataset = "pg07-" + method
+        op = CrossValidation(rc.working / "cmpscores" / rc.dataset, env)
+        op.validation(train_rel, train_irrel)
+        op.report_validation()
+    env.close()
+    
 
 if __name__ == "__main__":
     start_logger()

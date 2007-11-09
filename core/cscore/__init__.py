@@ -1,9 +1,12 @@
 """Calculates citation scores"""
 
 from __future__ import division
-from mscanner.configuration import rc
 import logging as log
 import numpy as nx
+
+from mscanner import update
+from mscanner.configuration import rc
+from mscanner.medline.FeatureDatabase import FeatureStream
 
 
                                      
@@ -21,163 +24,177 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
-def pyscore(docs, featscores, offset, limit, threshold=None, exclude=[]):
-    """Get scores for given documents
+class cscore:
+    """Different methods for calculating the scores of all documents in the
+    database.  The idea is to pick between them based on speed, since
+    the faster ones may not be available on certain platforms.
     
-    We iterates over docs to yield scores. Skips members of exclude, and
-    returns up to to limit results.
-    
-    @param docs: Iterator over (integer doc ID, array of feature ID) pairs
-
-    @param featscores: Array of feature scores (mapping feature ID to score)
-    
-    @param offset: Arbitrary amount to add to citation score
-    
-    @param limit: Max number of results to return
-    
-    @param exclude: PMIDs to exclude from scoring
-    
-    @return: Iteration of (score, PMID) pairs
-    """
-    results = [(-100000, 0)] * limit
-    import heapq
-    ndocs = 0
-    log.debug("Calculating article scores")
-    marker = 0
-    for idx, (docid, features) in enumerate(docs):
-        if idx == marker:
-            log.debug("Scored %d citations so far", idx)
-            marker += 100000
-        score = offset + nx.sum(featscores[features])
-        if (threshold is None or score >= threshold) and docid not in exclude:
-            ndocs += 1
-            if score >= results[0][0]:
-                heapq.heapreplace(results, (score,docid))
-    if ndocs < limit:
-        limit = ndocs
-    return heapq.nlargest(limit, results)
-
-
-def pyscore_adaptor(docstream, numdocs, featscores, offset,
-                    limit, safety, threshold=None, exclude=[]):
-    """Calls pyscore, given arguments suitable for cscore_pipe/dll"""
-    from mscanner.medline.FeatureDatabase import FeatureStream
-    docs = FeatureStream(open(docstream, "rb"))
-    try:
-        return pyscore(docs, featscores, offset, limit, threshold, exclude)
-    finally:
-        docs.close()
-
-
-def cscore_pipe(docstream, numdocs, featscores, offset,
-                limit, safety, threshold=None, exclude=[]):
-    """Calculate article scores by piping to the cscore program
-    
-    The cscore program processes a feature stream to return a (score, pmid)
-    pairs as a binary stream.
-    
-    @param docstream: Path to file containing feature vectors for documents to
+    @ivar docstream: Path to file containing feature vectors for documents to
     score, in L{mscanner.medline.FeatureDatabase.FeatureStream} format.
     
-    @param numdocs: Number of documents in the stream of feature vectors.
+    @ivar numdocs: Number of documents in the stream of feature vectors.
     
-    @param featscores: Vector of feature score doubles
+    @ivar featscores: Numpy array of double-precision feature scores.
     
-    @param offset: Arbitrary amount to add to citation score
+    @ivar offset: Score of a citation having zero features.
 
-    @param limit: Maximum number of results to return.
+    @ivar limit: Maximum number of results to return.
     
-    @param safety: Number of spare results in processing (because
-    some might be members of exclude)
+    @ivar threshold: Cutoff score for including an article in the results
     
-    @param exclude: PMIDs to remove from cscore results
+    @ivar mindate: YYYYMMDD integer: documents must have this date or later
+    (default 11110101)
+    
+    @ivar maxdate: YYYYMMDD integer: documents must have this date or earlier
+    (default 33330303)
 
-    @param threshold: Cutoff score for including an article in the results
-
-    @return: List of (score, PMID) pairs in decreasing order of score
+    @ivar exclude: PMIDs that are not allowed to appear in the results
     """
-    import struct
-    import subprocess as sp
-    p = sp.Popen(
-        [rc.cscore_path, docstream, str(numdocs), 
-         str(len(featscores)), str(limit+safety), str(offset)],
-        stdout=sp.PIPE, stdin=sp.PIPE)
-    p.stdin.write(featscores.tostring())
-    s = p.stdout.read(8)
-    count = 0
-    # Go through results in decreasing order to filter them
-    while s != "":
-        score, pmid = struct.unpack("fI", s)
-        if (threshold is None or score > threshold) and pmid not in exclude:
-            yield score, pmid
-            count += 1
-            if count >= limit:
-                break
-        s = p.stdout.read(8)
-    p.stdout.close()
+    
+    def __init__(self,
+                 docstream,
+                 numdocs,
+                 featscores,
+                 offset,
+                 limit,
+                 threshold=-10000.0,
+                 mindate=11110101,
+                 maxdate=33330303,
+                 exclude=set(),
+                 ):
+        update(self, locals())
 
 
-def cscore_dll(docstream, numdocs, featscores, offset,
-               limit, safety, threshold=None, exclude=[]):
-    """Calculate article scores, using ctypes to call cscores
-    
-    @param docstream: Path to file containing feature vectors for documents to
-    score (formatted as in mscanner.medline.FeatureDatabase.FeatureStream)
-    
-    @param numdocs: Number of documents in the stream of feature vectors.
-    
-    @param featscores: Vector of feature score doubles
-    
-    @param offset: Arbitrary amount to add to citation score
-    
-    @param limit: Maximum number of results to return.
-    
-    @param safety: Number of spare results in processing (because
-    some might be members of exclude)
-    
-    @param exclude: PMIDs to remove from cscore results
-
-    @param threshold: Cutoff score for including an article in the results
-
-    @return: List of (score, PMID) pairs in decreasing order of score
-    """
-    from ctypes import cdll, c_int, c_char_p, c_float, c_double
-    from itertools import izip
-    import numpy as nx
-    # Set up arguments and call cscore2 function using ctypes
-    carray = lambda x: nx.ctypeslib.ndpointer(dtype=x, ndim=1, flags='CONTIGUOUS')
-    cscore = cdll.LoadLibrary(rc.cscore_dll)
-    cscore.cscore.argtypes = [ 
-        c_char_p, c_int, c_int, c_int, c_float,
-        carray(nx.float64), carray(nx.float32), carray(nx.int32) ]
-    o_scores = nx.zeros(limit+safety, dtype=nx.float32)
-    o_pmids = nx.zeros(limit+safety, dtype=nx.int32)
-    cscore.cscore(
-        docstream, numdocs, len(featscores), limit+safety, offset,
-        featscores, o_scores, o_pmids)
-    # Go through results in decreasing order to filter them
-    count = 0
-    for score, pmid in izip(o_scores, o_pmids):
-        if (threshold is None or score > threshold) and pmid not in exclude:
-            yield score, pmid
-            count += 1
-            if count >= limit:
-                break
-
-
-score = pyscore_adaptor
-"""Default score calculation function (parameters as for L{cscore_pipe})"""
-
-def choose_score():
-    """Select the fastest available score calculator and assign it
-    to the module variable L{score}"""
-    global score
-    try:
-        import ctypes
+    def score(s):
+        """Meta-method to get (score, PMID) pairs in decreasing order of score.
+        
+        The implementation is to iterates over the document stream and
+        return those articles that are between mindate and maxdate,
+        are not members of exclude, and have scores above the threshold.
+        
+        This method picks between L{cscore_dll}, L{cscore_pipe} and L{pyscore}
+        in decreasing order of preference (due to speed).
+        """
+        score = s.cscore_dll
         if rc.cscore_dll.isfile():
-            score = cscore_dll
-    except ImportError:
-        pass
-    if score == pyscore_adaptor and rc.cscore_path.isfile():
-        score = cscore_pipe
+            try: 
+                import ctypes
+            except ImportError: 
+                score = s.cscore_pipe
+        else:
+            score = s.cscore_pipe
+        if score == s.cscore_pipe and not rc.cscore_path.isfile():
+            score = s.pyscore
+        return score()
 
+
+    def pyscore(s):
+        """Pure python implementation of L{score}"""
+        results = [(-100000, 0)] * s.limit
+        import heapq
+        ndocs = 0
+        log.debug("Calculating article scores")
+        marker = 0
+        docs = FeatureStream(open(s.docstream, "rb"))
+        try:
+            for idx, (docid, date, features) in enumerate(docs):
+                if idx == marker:
+                    log.debug("Scored %d citations so far", idx)
+                    marker += 100000
+                if (docid in s.exclude or date < s.mindate or date > s.maxdate):
+                    continue
+                score = s.offset + nx.sum(s.featscores[features])
+                if score >= s.threshold:
+                    ndocs += 1
+                    if score >= results[0][0]:
+                        heapq.heapreplace(results, (score,docid))
+        finally:
+            docs.close()
+        if ndocs > s.limit:
+            ndocs = limit
+        return heapq.nlargest(ndocs, results)
+
+
+    def cscore_pipe(s):
+        """Calculate article scores by piping to the cscore program"""
+        import struct
+        import subprocess as sp
+        p = sp.Popen([
+            rc.cscore_path, 
+            s.docstream,
+            str(s.numdocs),
+            str(len(s.featscores)),
+            str(s.offset),
+            str(s.limit+len(s.exclude)),
+            str(s.threshold),
+            str(s.mindate),
+            str(s.maxdate),
+            ], stdout=sp.PIPE, stdin=sp.PIPE)
+        p.stdin.write(s.featscores.tostring())
+        output = p.stdout.read(8)
+        count = 0
+        # Go through results in decreasing order to filter them
+        while output != "":
+            score, pmid = struct.unpack("fI", output)
+            if pmid not in s.exclude:
+                yield score, pmid
+                count += 1
+                if count >= s.limit:
+                    break
+            output = p.stdout.read(8)
+        p.stdout.close()
+
+
+    def cscore_dll(s):
+        """Calculate article scores, using ctypes to call cscores"""
+        from ctypes import cdll, byref, c_int, c_void_p, c_char_p, c_float, c_double
+        from itertools import izip
+        import numpy as nx
+        # Set up arguments and call cscore2 function using ctypes
+        carray = lambda dtype: nx.ctypeslib.ndpointer(
+            dtype=dtype, ndim=1, flags='CONTIGUOUS')
+        o_numresults = c_int()
+        cscore = cdll.LoadLibrary(rc.cscore_dll)
+        cscore.cscore.argtypes = [ 
+            c_char_p,           # docstream
+            c_int,              # numdocs
+            c_int,              # len(featscores)
+            c_float,            # offset
+            c_int,              # limit
+            c_float,            # threshold
+            c_int,              # mindate
+            c_int,              # maxdate
+            carray(nx.float64), # featscores
+            c_void_p,           # o_numresults
+            carray(nx.float32), # o_scores
+            carray(nx.int32),   # o_pmids
+        ]
+        output_size = s.limit+len(s.exclude) # extra space for exclusions
+        o_scores = nx.zeros(output_size, dtype=nx.float32)
+        o_pmids = nx.zeros(output_size, dtype=nx.int32)
+        # Now call this monstrously paramaterised function
+        cscore.cscore(
+            s.docstream, 
+            s.numdocs, 
+            len(s.featscores), 
+            s.offset,
+            output_size, 
+            s.threshold,
+            s.mindate,
+            s.maxdate,
+            s.featscores,
+            byref(o_numresults),
+            o_scores, 
+            o_pmids)
+        # Go through results in decreasing order to filter them
+        count_filtered = 0
+        count_total = 0
+        for score, pmid in izip(o_scores, o_pmids):
+            if pmid not in s.exclude:
+                yield score, pmid
+                count_filtered += 1
+                if count_filtered >= s.limit:
+                    break
+            count_total += 1
+            if count_total >=  o_numresults.value:
+                break

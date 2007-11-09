@@ -72,7 +72,7 @@ rc.web_report_dir = lambda: rc.htdocs / "static" / "output"
 ## Path to the cscore program (more portable)
 rc.cscore_path = lambda: rc.sources / "core" / "cscore" / "cscore"
 ## Path to the cscore shared library (faster)
-rc.cscore_dll = lambda: rc.sources  / "core" / "cscore" / "cscore2.dll"
+rc.cscore_dll = lambda: rc.cscore_path + ".dll"
 ## Path to the descriptor queue
 rc.queue_path = lambda: rc.working / "queue"
 
@@ -160,12 +160,17 @@ rc.dataset = "default"
 rc.threshold = 0
 ## Integer for maximum number of results (may be fewer due to threshold)
 rc.limit = 1000
+## In queries, only consider articles later than this
+rc.mindate = 11110101
+## In queries, only consider articles earlier than this
+rc.maxdate = 33330303
 ## 0<Alpha<1.  Alpha=0.5 maximises standard F-Measure.
 rc.alpha = 0.5
 ## The utility of retrieving a positive article (defaults to N/P)
 rc.utility_r = None
 ## Number of citations per output file
 rc.citations_per_file = 250
+
 
 ## Logging configuration
 def start_logger(console=True, logfile=True):

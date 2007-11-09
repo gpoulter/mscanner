@@ -86,22 +86,37 @@ class MedlineCache:
         return dbenv
 
 
+    def _article_features(self, article):
+        """Given an article object, return its feature vector,
+        using L{featmap} to create new features as necessary"""
+        # Get MeSH headings, qualifiers and ISSN from article
+        headings = list()
+        quals = list()
+        for term in article.meshterms:
+            headings.append(term[0])
+            if(len(term)>1):
+                for q in term[1:]:
+                    if q not in quals:
+                        quals.append(q)
+        issns = [article.issn] if article.issn is not None else []
+        # Get the feature vector while possibly them to the feature mapping
+        return self.featmap.add_article(mesh=headings, qual=quals, issn=issns)
+
+
     def add_articles(self, articles, dbenv):
         """Store Articles and feature lists in the databases
         
-        @note: Databases are opened and closed inside each call, so that the
-        user can Ctrl-C during the timed delay between files without corrupting
-        the database.  Using transactions has too much overhead in time,
-        and space used by the log files.
+        Databases are opened and closed inside each call, so that the user can
+        Ctrl-C during the timed delay between files without corrupting the
+        database. Using transactions has too much overhead in time, and space
+        used by the log files.
         
         @param articles: Iterator over Article objects
         
         @param dbenv: Database environment to use
         """
         log.info("Starting transaction to add articles")
-        txn = None
-        if self.use_transactions:
-            txn = dbenv.txn_begin()
+        txn = dbenv.txn_begin() if self.use_transactions else None
         try:
             artdb = Shelf.open(self.article_db, dbenv=dbenv, txn=txn)
             meshfeatdb = FeatureDatabase(self.feature_db, dbenv=dbenv, txn=txn)
@@ -118,22 +133,9 @@ class MedlineCache:
                 # Store article, adding it to list of documents
                 artdb[str(art.pmid)] = art
                 pmidlist.append(str(art.pmid))
-                # Get MeSH headings, qualifiers and ISSN from article
-                headings = list()
-                quals = list()
-                issns = list()
-                for term in art.meshterms:
-                    headings.append(term[0])
-                    if(len(term)>1):
-                        for q in term[1:]:
-                            if q not in quals:
-                                quals.append(q)
-                if art.issn:
-                    issns = [art.issn]
-                # Add features to feature mapping
-                featids = self.featmap.add_article(mesh=headings, qual=quals, issn=issns)
+                featids = self._article_features(art)
                 meshfeatdb.setitem(art.pmid, featids, txn)
-                featstream.write(art.pmid, featids)
+                featstream.write(art.pmid, art.date_completed, featids)
             artdb.close()
             meshfeatdb.close()
             featstream.close()
@@ -167,7 +169,8 @@ class MedlineCache:
         toprocess = tracker.toprocess(filenames)
         dbenv = self.create_dbenv()
         for idx, filename in enumerate(toprocess):
-            log.info("Adding to cache: file %d out of %d (%s)", idx+1, len(toprocess), filename.name)
+            log.info("Adding to cache: file %d out of %d (%s)", 
+                     idx+1, len(toprocess), filename.name)
             for t in xrange(save_delay):
                 log.debug("Saving in %d seconds...", save_delay-t)
                 time.sleep(1)
@@ -183,7 +186,8 @@ class MedlineCache:
             log.debug("Added %d articles", numadded)
             tracker.add(filename)
             tracker.dump()
-            log.info("Completed file %d out of %d (%s)", idx+1, len(toprocess), filename.name)
+            log.info("Completed file %d out of %d (%s)", 
+                     idx+1, len(toprocess), filename.name)
         dbenv.close()
 
 

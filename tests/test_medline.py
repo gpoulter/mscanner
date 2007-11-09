@@ -57,16 +57,18 @@ class FeatureStreamTests(unittest.TestCase):
             self.fn.remove()
         
     def test_FeatureStream(self):
-        with closing(FeatureStream(open(self.fn, "ab"))) as fs:
+        with closing(FeatureStream(open(self.fn, "wb"))) as fs:
             pmids = (12,34,56)
+            dates = (20070101, 19980308, 20001207)
             feats = [nx.array([1,2,3,4], nx.uint16), 
                      nx.array([5,6,7,8], nx.uint16), 
                      nx.array([], nx.uint16)]
-            for pmid, feat in zip(pmids,feats):
-                fs.write(pmid, feat)
+            for pmid, date, feat in zip(pmids, dates, feats):
+                fs.write(pmid, date, feat)
         with closing(FeatureStream(open(self.fn, "rb"))) as fs:
-            rpmids, rfeats = zip(*[x for x in fs])
+            rpmids, rdates, rfeats = zip(*[x for x in fs])
             self.assertEqual(pmids, rpmids)
+            self.assertEqual(dates, rdates)
             for a, ra in zip(feats, rfeats):
                 self.assert_(all(a == ra))
 

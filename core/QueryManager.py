@@ -15,7 +15,8 @@ from mscanner.configuration import rc
 from mscanner.medline import Shelf
 from mscanner.medline.Databases import Databases
 from mscanner.core.FeatureScores import FeatureScores, FeatureCounts
-from mscanner.core import CitationTable, cscore, iofuncs
+from mscanner.core import CitationTable, iofuncs
+from mscanner.core.cscore import cscore
 
 
                                      
@@ -71,8 +72,6 @@ class QueryManager:
         self.featinfo = None
         self.inputs = None
         self.results = None
-        # Use C score implementation if possible
-        cscore.choose_score()
 
 
     def query(self, input):
@@ -159,14 +158,16 @@ class QueryManager:
             self.featinfo.scores_of(self.env.featdb, self.pmids), self.pmids)
         self.inputs.sort(reverse=True)
         # Calculate score for each result PMID
-        self.results = list(cscore.score(
+        self.results = sorted(cscore(
             rc.featurestream,
             self.env.featmap.numdocs,
             self.featinfo.scores,
             self.featinfo.offset,
-            rc.limit, len(self.pmids),
-            rc.threshold, self.pmids))
-        self.results.sort(reverse=True)
+            rc.limit, 
+            rc.threshold,
+            rc.mindate,
+            rc.maxdate,
+            set(self.pmids)).score(), reverse=True)
 
 
     def _write_report(self):

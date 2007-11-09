@@ -87,7 +87,7 @@ class FeatureScores(object):
         
         @param featdb: Mapping from PMID to feature vector
         @param pmids: Iterable of keys into L{featdb}
-        @return: Vector of document scores corresponding to pmids.
+        @return: Vector containing document scores corresponding to the pmids.
         """
         off = self.offset
         sc = self.scores
@@ -95,7 +95,7 @@ class FeatureScores(object):
     
 
     def __len__(self):
-        """Length is the number of features"""
+        """Number of features"""
         return len(self.featmap)
 
 

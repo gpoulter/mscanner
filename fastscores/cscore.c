@@ -1,4 +1,5 @@
-/* Program for fast scoring of citations.
+/* Calculates document scores by iterating over a binary feature stream.
+This is about 50x faster than the Python version.
 
 Usage:
 

@@ -18,15 +18,25 @@ from mscanner.configuration import rc
 from mscanner.medline.FeatureDatabase import FeatureDatabase, FeatureStream
 from mscanner.medline.FeatureMapping import FeatureMapping
 from mscanner.core.FeatureScores import FeatureScores, FeatureCounts
-from mscanner.core.cscore import cscore
+from mscanner.fastscores.ScoreCalculator import ScoreCalculator
+from mscanner.fastscores.FeatureCounter import FeatureCounter
 from mscanner import tests
 
 class CScoreModuleTests(unittest.TestCase):
     """Tests of the L{cscore} package"""
     
+    def setUp(self):
+        self.citations = [
+            (1,20010101,[4]), 
+            (2,20020101,[0,1,2]), 
+            (3,20030101,[0,2,3]), 
+            (4,20040101,[0,1]), 
+            (5,20050101,[1,2,3])]
+
+    
     def test_ctypes(self):
         from ctypes import cdll, c_int, byref
-        lib = cdll.LoadLibrary(rc.cscore_dll)
+        lib = cdll.LoadLibrary(rc.fastscores/"cscore.dll")
         output = c_int()
         lib.double_int(2, byref(output))
         self.assertEqual(output.value, 4)
@@ -38,25 +48,42 @@ class CScoreModuleTests(unittest.TestCase):
         self.assert_(nx.allclose(a, b))
 
 
+    def test_featurecount(self):
+        """Test the fast feature counting function"""
+        docstream = "C:/test"
+        fs = FeatureStream(open(docstream, "w"))
+        for pmid, date, feats in self.citations:
+            fs.write(pmid, date, nx.array(feats, nx.uint16))
+        fs.close()
+        fc = FeatureCounter(
+            docstream = docstream,
+            numdocs = len(self.citations),
+            numfeats = 5,
+            mindate = 20020101,
+            maxdate = 20050101,
+            exclude = set([5,8,9]),
+            )
+        py_counts = fc.py_counts()
+        c_counts = fc.c_counts()
+        print "py_counts", pp.pformat(py_counts)
+        print "c_counts", pp.pformat(c_counts)
+
+
     @tests.usetempfile
     def test_cscore(self, docstream):
         """Tests that the cscore program produces the same output as
         iterScores"""
         featscores = nx.array([0.1, 5.0, 10.0, -5.0, -6.0])
-        citations = [(1,20010101,[4]), 
-                     (2,20020101,[0,1,2]), 
-                     (3,20030101,[0,2,3]), 
-                     (4,20040101,[0,1]), 
-                     (5,20050101,[1,2,3])]
         # Write citations to disk
         docstream = "C:/test"
         fs = FeatureStream(open(docstream, "w"))
-        for pmid, date, feats in citations:
+        for pmid, date, feats in self.citations:
             fs.write(pmid, date, nx.array(feats, nx.uint16))
         fs.close()
-        scorer = cscore(
+        # Construct the document score calculator
+        scorer = ScoreCalculator(
             docstream = docstream,
-            numdocs = len(citations),
+            numdocs = len(self.citations),
             featscores = featscores,
             offset = 5.0,
             limit = 5,

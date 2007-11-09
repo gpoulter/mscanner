@@ -33,7 +33,7 @@ Installation
     If done correctly, you should be able to ``import mscanner`` in a
     Python shell.
 
-  * Go to ``INSTALL/source/mscanner/cscore`` and run GNU ``make`` to
+  * Go to ``INSTALL/source/mscanner/fastscores`` and run GNU ``make`` to
     compile the ``cscore.c`` program (Windows .exe and dll are
     provided)
 

@@ -53,6 +53,7 @@ def validate(*datasets):
         op = CrossValidation(rc.working / "valid" / rc.dataset, env)
         op.validation(pos, neg)
         op.report_validation()
+        #op.report_predicted(1000, 10000, 16000000)
     env.close()
 
 

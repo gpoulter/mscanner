@@ -24,7 +24,7 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
-class cscore:
+class ScoreCalculator:
     """Different methods for calculating the scores of all documents in the
     database.  The idea is to pick between them based on speed, since
     the faster ones may not be available on certain platforms.
@@ -76,14 +76,14 @@ class cscore:
         in decreasing order of preference (due to speed).
         """
         score = s.cscore_dll
-        if rc.cscore_dll.isfile():
+        if (rc.fastscores/"cscore.dll").isfile():
             try: 
                 import ctypes
             except ImportError: 
                 score = s.cscore_pipe
         else:
             score = s.cscore_pipe
-        if score == s.cscore_pipe and not rc.cscore_path.isfile():
+        if score == s.cscore_pipe and not (rc.fastscores/"cscore").isfile():
             score = s.pyscore
         return score()
 
@@ -120,7 +120,7 @@ class cscore:
         import struct
         import subprocess as sp
         p = sp.Popen([
-            rc.cscore_path, 
+            rc.fastscores/"cscore", 
             s.docstream,
             str(s.numdocs),
             str(len(s.featscores)),
@@ -154,7 +154,7 @@ class cscore:
         carray = lambda dtype: nx.ctypeslib.ndpointer(
             dtype=dtype, ndim=1, flags='CONTIGUOUS')
         o_numresults = c_int()
-        cscore = cdll.LoadLibrary(rc.cscore_dll)
+        cscore = cdll.LoadLibrary(rc.fastscores/"cscore.dll")
         cscore.cscore.argtypes = [ 
             c_char_p,           # docstream
             c_int,              # numdocs

@@ -1,6 +1,6 @@
 .PHONY: all clean
 
-all: cscore cscore.so cscore.dll
+all: cscore cscore.so cscore.dll featcounts
 
 clean:
 	rm -f cscore cscore.exe cscore2.so cscore2.dll
@@ -13,3 +13,5 @@ cscore.so: cscore.c
 
 cscore.dll: cscore.c
 	gcc -o cscore.dll -mno-cygwin -shared cscore.c
+	
+featcounts: featcounts.c

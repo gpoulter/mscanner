@@ -16,7 +16,7 @@ from mscanner.medline import Shelf
 from mscanner.medline.Databases import Databases
 from mscanner.core.FeatureScores import FeatureScores, FeatureCounts
 from mscanner.core import CitationTable, iofuncs
-from mscanner.core.cscore import cscore
+from mscanner.fastscores.ScoreCalculator import ScoreCalculator
 
 
                                      
@@ -158,7 +158,7 @@ class QueryManager:
             self.featinfo.scores_of(self.env.featdb, self.pmids), self.pmids)
         self.inputs.sort(reverse=True)
         # Calculate score for each result PMID
-        self.results = sorted(cscore(
+        self.results = list(ScoreCalculator(
             rc.featurestream,
             self.env.featmap.numdocs,
             self.featinfo.scores,
@@ -167,7 +167,7 @@ class QueryManager:
             rc.threshold,
             rc.mindate,
             rc.maxdate,
-            set(self.pmids)).score(), reverse=True)
+            set(self.pmids)).score())
 
 
     def _write_report(self):

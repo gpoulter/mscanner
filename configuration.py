@@ -69,10 +69,8 @@ rc.stylesheet = lambda: rc.templates / "style.css"
 rc.corpora = lambda: rc.working / "corpora"
 ## Path to outputs directory
 rc.web_report_dir = lambda: rc.htdocs / "static" / "output"
-## Path to the cscore program (more portable)
-rc.cscore_path = lambda: rc.sources / "core" / "cscore" / "cscore"
-## Path to the cscore shared library (faster)
-rc.cscore_dll = lambda: rc.cscore_path + ".dll"
+## Path to the fastscore utilities
+rc.fastscores = lambda: rc.sources / "fastscores"
 ## Path to the descriptor queue
 rc.queue_path = lambda: rc.working / "queue"
 

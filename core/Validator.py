@@ -48,7 +48,7 @@ class CrossValidator:
     @ivar nscores: Scores of negative articles after validation
     """
 
-    def __init__(self, featdb, featinfo, positives,  negatives, nfolds = 10):
+    def __init__(self, featdb, featinfo, positives,  negatives, nfolds):
         """Constructor parameters set corresponding instance attributes."""
         pscores = None
         nscores = None
@@ -115,12 +115,22 @@ class CrossValidator:
 
 
 class LeaveOutValidator(CrossValidator):
+    """Instead of N-fold cross validation, this class performs leave
+    out one validation in which all but one of the citations is used
+    to train the feature scores, which are then used to calculate
+    the score of the left out document.
+    
+    This is a lot slower than cross validation, although performance metrics
+    are a bit higher. We have optimised the calculation of scores by
+    calculating counts for all articles and just subtracting 1 for each feature
+    present in the left out article.
+    
+    Also, this version only has one scoring method: background Medline for
+    pseudocounts, with prior probability of observation being 50%. """
     
     def validate(self):
         """Performs leave-out-one validation, returning the resulting scores.
         
-        @note: Feature scores use background pseudocount - no other methods
-        implemented.  Leave-out-one is also rather slow.
         
         @return: L{pscores}, L{nscores}
         """

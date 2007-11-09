@@ -15,7 +15,7 @@ from mscanner.configuration import rc
 from mscanner.medline import Shelf
 from mscanner.medline.Databases import Databases
 from mscanner.core.FeatureScores import FeatureScores, FeatureCounts
-from mscanner.core import citationtable, cscore, iofuncs
+from mscanner.core import CitationTable, cscore, iofuncs
 
 
                                      
@@ -94,10 +94,11 @@ class QueryManager:
         
         
     def _load_input(self, input):
-        """Construct L{pmids} and L{notfound_pmids}
+        """Construct L{pmids} and L{notfound_pmids}.
         
-        @note: Handles ValueErrors from L{iofuncs.read_pmids}
-        @param input: List of PubMed IDs, or path to file containing the list.
+        @param input: Path to file listing PubMed IDs, or something convertible
+        to a set PubMed IDs.
+
         @return: True on success, False on failure."""
         if isinstance(input, basestring):
             log.info("Loading PubMed IDs from %s", input.basename())
@@ -182,7 +183,7 @@ class QueryManager:
         log.debug("Writing input citations")
         self.inputs.sort(reverse=True)
         inputs = [ (s,self.env.artdb[str(p)]) for s,p in self.inputs]
-        citationtable.writecitations(
+        CitationTable.write_citations(
             "input", inputs,
             self.outdir/rc.report_input_citations, 
             rc.citations_per_file)
@@ -190,7 +191,7 @@ class QueryManager:
         log.debug("Writing output citations")
         self.results.sort(reverse=True)
         outputs = [ (s,self.env.artdb[str(p)]) for s,p in self.results]
-        citationtable.writecitations(
+        CitationTable.write_citations(
             "output", outputs, 
             self.outdir/rc.report_result_citations, 
             rc.citations_per_file)
@@ -199,14 +200,14 @@ class QueryManager:
         if len(outputs) > 0:
             outfname = self.outdir/rc.report_result_all
             zipfname = str(outfname + ".zip")
-            citationtable.writecitations("output", outputs, outfname, len(outputs))
+            CitationTable.write_citations("output", outputs, outfname, len(outputs))
             from zipfile import ZipFile, ZIP_DEFLATED
             with closing(ZipFile(zipfname, "w", ZIP_DEFLATED)) as zf:
                 zf.write(str(outfname), str(outfname.basename()))
         
         # Index.html
         log.debug("Writing index file")
-        values = dict(
+        template = dict(
             stats = self.featinfo.stats,
             linkpath = rc.templates.relpath().replace('\\','/') if rc.link_headers else None,
             lowest_score = self.results[-1][0] if len(self.results) else 0,
@@ -218,4 +219,4 @@ class QueryManager:
         from Cheetah.Template import Template
         with iofuncs.FileTransaction(self.outdir/rc.report_index, "w") as ft:
             Template(file=str(rc.templates/"results.tmpl"), 
-                     filter="Filter", searchList=values).respond(ft)
+                     filter="Filter", searchList=template).respond(ft)

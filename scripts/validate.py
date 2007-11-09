@@ -26,7 +26,7 @@ import sys
 
 from mscanner.configuration import rc, start_logger
 from mscanner.medline.Databases import Databases
-from mscanner.core.ValidationManager import SplitValidation, ValidationManager
+from mscanner.core.ValidationManager import SplitValidation, CrossValidation
 
 
 dataset_map = {
@@ -34,7 +34,7 @@ dataset_map = {
 "pg07":          ("Paper/pharmgkb_2007.02.05.txt","Paper/medline100k_2007.02.txt"),
 "radiology":     ("Paper/radiology_2007.02.txt",  "Paper/medline100k_2007.02.txt"),
 "random10k":     ("Paper/random10k_2006.txt",     "Paper/medline100k_2007.02.txt"),
-"gdsmall":       ("Test/gdsmall.txt",             None),
+"gdsmall":       ("Test/gdsmall.txt",             100000),
 }
 """Map data set to pair of (positive,negative) paths for PubMed IDs."""
 
@@ -42,7 +42,6 @@ dataset_map = {
 def validate(*datasets):
     """Perform cross-validation analysis for the Mscanner publication"""
     env = Databases()
-    rc.numnegs = 100000
     for dataset in datasets:
         if dataset not in dataset_map:
             raise ValueError("Invalid Data Set %s" % dataset)
@@ -50,10 +49,11 @@ def validate(*datasets):
         pos, neg = dataset_map[dataset]
         if not isinstance(pos, path):
             pos = rc.corpora / pos
-        if neg is not None and not isinstance(neg, path):
+        if isinstance(neg, str):
             neg = rc.corpora / neg
-        op = ValidationManager(rc.working / "valid" / rc.dataset, env)
-        op.validation(pos, neg, rc.nfolds)
+        op = CrossValidation(rc.working / "valid" / rc.dataset, env)
+        op.validation(pos, neg)
+        op.report_validation()
     env.close()
 
 
@@ -65,8 +65,9 @@ def issn_validation():
     rc.exclude_types = ["issn"]
     rc.dataset = "aids-noissn"
     pos, neg = dataset_map["aidsbio"]
-    op = ValidationManager(rc.working / "valid" / rc.dataset)
-    op.validation(rc.corpora / pos, rc.corpora / neg, rc.nfolds)
+    op = CrossValidation(rc.working / "valid" / rc.dataset)
+    op.validation(rc.corpora / pos, rc.corpora / neg)
+    op.report_validation()
     op.env.close()
 
 
@@ -81,18 +82,17 @@ def random_bimodality():
     causes the score of that citation to be shifted by -9, -18, -27 from
     zero."""
     rc.dataset = "random_modality"
-    rc.nfolds = 10
     rc.get_postmask = "mask_nonpositives"
     pos, neg = dataset_map["random10k"]
-    op = ValidationManager(rc.working / "valid" / rc.dataset)
-    op.validation(rc.corpora / pos, rc.corpora / neg, rc.nfolds)
+    op = CrossValidation(rc.working / "valid" / rc.dataset)
+    op.validation(rc.corpora / pos, rc.corpora / neg)
+    op.report_validation()
     op.env.close()
     
     
 def trec2005_compare():
     """Performs split-sample validation on the trec GO subtask"""
     env = Databases()
-    rc.nfolds = 1
     ntest = rc.corpora / "TREC" / "NEG_test.txt"
     ntrain = rc.corpora / "TREC" / "NEG_train.txt"
     for ds, Ur in [("A",17.0), ("E",64.0), ("G",11.0), ("T",231.0)]:
@@ -102,6 +102,7 @@ def trec2005_compare():
         ptest = rc.corpora / "TREC" / (ds + "test.txt")
         op = SplitValidation(rc.working / "valid" / rc.dataset, env)
         op.validation(ptrain, ntrain, ptest, ntest)
+        op.report_validation()
     env.close()
 
 
@@ -112,10 +113,10 @@ def wang2007_compare():
         pos = rc.corpora / "Wang2007" / ("%s_pos.txt" % fbase)
         neg = rc.corpora / "Wang2007" / ("%s_neg.txt" % fbase)
         rc.dataset = "wang_%s" % fbase
-        rc.nfolds = 10
         rc.utility_r = None
-        op = ValidationManager(rc.working / "valid" / rc.dataset, env)
-        op.validation(pos, neg, rc.nfolds)
+        op = CrossValidation(rc.working / "valid" / rc.dataset, env)
+        op.validation(pos, neg)
+        op.report_validation()
     env.close()
     
 

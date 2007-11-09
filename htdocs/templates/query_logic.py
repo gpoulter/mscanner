@@ -49,12 +49,6 @@ QueryForm = forms.Form(
             lambda x: x == "orange", "Should be the word 'orange'"),
         label="Enter the word 'orange'"),
     
-    forms.Hidden(
-        "nfolds", 
-        forms.Validator(
-            lambda x: int(x) in [5,10], "Should be 5 or 10."),
-        label="Number of validation folds"),
-    
     forms.Textarea(
         "positives", 
         forms.Validator(lambda x: len(parse_pmids(x)) > 0,
@@ -116,7 +110,6 @@ form_defaults = dict(
     limit = 500,
     hidden = False,
     numnegs = 50000,
-    nfolds = 10,
     operation = "query",
     positives = "",
     threshold = 20.0,

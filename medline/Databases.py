@@ -27,17 +27,18 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
 class Databases:
-    """Connections to the MScanner databases
+    """The main interface to Medline used by the rest of the program.
 
     The environment needs to be reloaded when databases are updated,
     because L{featmap} and L{article_list} will have changed on disk.
 
+    @ivar artdb: Mmapping from PubMed ID to Article object
+
     @ivar featdb: Mapping from PubMed ID to list of features
 
-    @ivar featmap: L{FeatureMapping} between feature names and IDs
-    (by default, featmap[id] == feature string)
+    @ivar featmap: L{FeatureMapping} between feature names and feature IDs 
+    (in particular, featmap[id] == feature string)
     
-    @ivar artdb: Mmapping from PubMed ID to Article object
     """
     
     def __init__(self):
@@ -71,17 +72,18 @@ class Databases:
 
 
 def load_articles(db_path, pmids_path):
-    """Retrieve Articles listed in a file of PubMed IDs
+    """Return Article objects given a file listing PubMed IDs, caching
+    the results in a pickle.
 
-    @param db_path: Path to a berkeley DB mapping PubMed IDs
-    to Article objects.
+    @note: The articles are cached in a pickle with ".pickle" added onto
+    the name of the PMID list file, so they are quick to load the second time.
+    
+    @param db_path: Path to the database that maps PubMed IDs to Article objects.
 
     @param pmids_path: Path to a text file listing one PubMed ID per line.
 
     @return: List of Article objects in the order given in the text file.
-
-    @note: The first called with a given PMID list caches the results in a
-    .pickle, and later calls load the pickle."""
+    """
     import cPickle
     from mscanner.medline import Shelf
     from contextlib import closing

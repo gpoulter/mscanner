@@ -11,7 +11,7 @@ import sys
 
 from mscanner.configuration import rc, start_logger
 from mscanner.medline.Databases import Databases
-from mscanner.core.ValidationManager import ValidationManager
+from mscanner.core.Validator import CrossValidator
 
 
 score_methods = [
@@ -30,7 +30,7 @@ def do_comparisons():
     train_irrel = rc.articlelist
     for method in score_methods:
         rc.dataset = "pg07-" + method
-        v = ValidationManager(rc.working / "cmpscores" / rc.dataset, env)
+        v = CrossValidation(rc.working / "cmpscores" / rc.dataset, env)
         v.validation(train_rel, train_irrel)
     env.close()
     

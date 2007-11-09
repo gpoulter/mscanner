@@ -26,7 +26,7 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
-def writecitations(mode, citations, fname, perfile):
+def write_citations(mode, citations, fname, perfile):
     """Writes a set of HTML files containing citation records
     
     @param mode: 'input' or 'output'
@@ -50,15 +50,16 @@ def writecitations(mode, citations, fname, perfile):
         path(fname.namebase + ("_%02d" % x) + fname.ext)
         for x in range(2, 1+len(starts)) ]
     values = dict()
-    page = Template(file=str(rc.templates/"citations.tmpl"), 
-                    filter="Filter", searchList=[values])
+    page = Template(
+        file=str(rc.templates/"citations.tmpl"), 
+        filter="Filter", searchList=[values])
     for count, start in enumerate(starts):
         if count+1 < len(starts):
             towrite = citations[start:start+perfile]
         else:
             towrite = citations[start:]
         values.update(dict(
-            cite_table = maketable(start+1, towrite),
+            cite_table = CitationTable(start+1, towrite),
             dataset = rc.dataset,
             linkpath = rc.templates.relpath().replace('\\','/') if rc.link_headers else None,
             mode = mode, 
@@ -71,18 +72,18 @@ def writecitations(mode, citations, fname, perfile):
         
 
 
-def maketable(startrank, citations):
-    """Generate HTML table for citations using ElementTree
+def CitationTable(startrank, citations):
+    """Create an HTML table of citations (uses ElementTree)
     
     We use Cheetah when there is more HTML than logic, and ElementTree when
     there is more logic than HTML. The old Cheetah template was getting
     cluttered from all the logic. This way also outputs less whitespace.
     
-    @param startrank: Rank of the first article in scores
+    @param startrank: Rank of the first article in the table
 
     @param citations: Iterable of (score, Article) in decreasing order of score
     
-    @return: HTML for the <table> element containing citations
+    @return: HTML string for the <table> element containing citations
     """
     from xml.etree.cElementTree import ElementTree, Element, SubElement
     table = Element("table", id="citations")

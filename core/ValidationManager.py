@@ -15,8 +15,8 @@ from mscanner.configuration import rc
 from mscanner.medline.Databases import Databases
 from mscanner.core import iofuncs
 from mscanner.core.FeatureScores import FeatureScores, FeatureCounts
-from mscanner.core.PerformanceStats import PerformanceStats
-from mscanner.core.PerformanceRange import PerformanceRange
+from mscanner.core.metrics import (
+    PerformanceVectors, PerformanceRange, PredictedMetrics)
 from mscanner.core.Plotter import Plotter
 from mscanner.core.Validator import CrossValidator
 
@@ -37,43 +37,209 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
 
-class SplitValidation:
-    """Carries out split-sample validation.
+class ValidationBase(object):
+    """Base class for all validation operations.
     
-    @ivar performance: L{PerformanceStats} instance
+    Derived classes need to calculate all attributes other than those set in
+    the constructor. The attributes are required by L{_write_report}.
+    
+    @group Set by the constructor: env, outdir, timestamp
 
-    @ivar perfrange: L{PerformanceRange} instance
-
-    @ivar featinfo: L{FeatureScores} for calculating feature score
+    @ivar env: L{Databases} instance for accessing Medline
+    
+    @ivar outdir: Directory to which output files are written
 
     @ivar timestamp: Time at the start of the operation
-
-    @ivar notfound_pmids: List of input PMIDs not found in the database
+    
 
     @ivar pscores: Result scores for positive articles
 
     @ivar nscores: Result scores for negative articles
+
+    @ivar featinfo: L{FeatureScores} instance for calculating feature scores
+
+    @ivar nfolds: Number of cross validation folds (may not be relevant)
+
+    @ivar notfound_pmids: List of input PMIDs not found in the database
+
+    @ivar metric_vectors: L{PerformanceVectors} instance
+
+    @ivar metric_range: L{PerformanceRange} instance
     """
+
+    
     def __init__(self, outdir, env=None):
         """Constructor"""
         self.outdir = outdir
         if not outdir.exists():
             outdir.makedirs()
             outdir.chmod(0777)
-        self.timestamp = time.time() 
         self.env = env if env else Databases()
+        self.timestamp = time.time() 
+        self.nfolds = None
         self.pscores, self.nscores = None, None
         self.featinfo = None
-        self.performance = None
-        self.perfrange = None
+        self.metric_vectors = None
+        self.metric_range = None
         self.notfound_pmids = []
 
+
+    def _crossvalid_scores(self, positives, negatives):
+        """Calculate article scores under cross validation
+        
+        @param positives: Vector of relevant PubMed IDs
+        
+        @param negatives: Vector of irrelevant PubMed IDs
+        
+        @note: Feature database lookups are slow so we cache them all
+        beforehand in a dictionary.
+        
+        @note: When we returrn, L{featinfo} represents feature scores using all
+        of the data (as opposed to the feature scores in the last fold).
+        
+        @note: L{positives} and L{negatives} are scrambled so that they
+        can be split into validation folds.  The returned scores correspond,
+        so you can zip(positives, pscores) and zip(negatives, nscores) to
+        pair up the scores with the articles.
+        
+        @return: Two vectors, containing scores for the positive and negative
+        articles respectively."""
+        log.info("Performing cross-validation for for %s", rc.dataset)
+        self.validator = CrossValidator(
+            featdb = dict((k,self.env.featdb[k]) for k in 
+                          chain(positives,negatives)),
+            featinfo = self.featinfo,
+            positives = positives,
+            negatives = negatives,
+            nfolds = self.nfolds)
+        pscores, nscores = self.validator.validate()
+        self._update_featscores(positives, negatives)
+        return pscores, nscores
+
+
+    def _get_performance(self, threshold=None):
+        """Calculate performance statistics.
+        
+        @param threshold: Specify a particular threshold, or None to estimate
+        using F measure."""
+        v = PerformanceVectors(self.pscores, self.nscores, rc.alpha, rc.utility_r)
+        self.metric_vectors = v
+        if threshold is None:
+            threshold, idx = v.threshold_for(v.FMa)
+        else:
+            threshold, idx = v.index_for(threshold)
+        average = v.metrics_for(idx)
+        self.metric_range = PerformanceRange(
+            self.pscores, self.nscores, self.nfolds, threshold, average)
+
+
+    def _init_featinfo(self):
+        """Initialise L{featinfo} for use in validation"""
+        self.featinfo = FeatureScores(
+            featmap = self.env.featmap, 
+            pseudocount = rc.pseudocount, 
+            mask = self.env.featmap.get_type_mask(rc.exclude_types),
+            make_scores = rc.make_scores,
+            get_postmask = rc.get_postmask)
+
+
+    def _update_featscores(self, pos, neg):
+        """Update the feature scores in L{featinfo} using the given 
+        vectors of positive and negative citations."""
+        self.featinfo.update(
+            pos_counts = FeatureCounts(
+                len(self.env.featmap), self.env.featdb, pos),
+            neg_counts = FeatureCounts(
+                len(self.env.featmap), self.env.featdb, neg),
+            pdocs = len(pos),
+            ndocs = len(neg))
+
+
+    def _write_report(self):
+        """Write an HTML validation report. 
+        
+        Only redraws figures for which output files do not already exist
+        (likewise for term scores, but the index is always re-written)."""
+        # Values that get passed to the template
+        template = dict(
+            linkpath = rc.templates.relpath().replace('\\','/') if rc.link_headers else None,
+            notfound_pmids = self.notfound_pmids,
+            timestamp = self.timestamp,
+            stats = self.featinfo.stats,
+            vectors = self.metric_vectors,
+            range = self.metric_range,
+        )
+        # Write term scores to file
+        if not (self.outdir/rc.report_term_scores).exists():
+            log.debug("Writing term scores")
+            import codecs
+            with codecs.open(self.outdir/rc.report_term_scores, "wb", "utf-8") as f:
+                self.featinfo.write_csv(f)
+        # Initialise the plotting stuff
+        p = self.metric_vectors
+        t = self.metric_range.average
+        plotter = Plotter()
+        log.debug("Drawing graphs")
+        # Predicted precision/recall performance
+        if hasattr(self, "pred_low") and hasattr(self, "pred_high"):
+            template.update(
+                pred_low = self.pred_low,
+                pred_high = self.pred_high)
+            if not (self.outdir/rc.report_prediction_img).exists():
+                plotter.plot_predictions(
+                    self.outdir/rc.report_prediction_img, 
+                    self.pred_low, self.pred_high)
+        # Report cross validation results instead of prediction results
+        else:
+            # ROC curve
+            if not (self.outdir/rc.report_roc_img).exists():
+                plotter.plot_roc(
+                self.outdir/rc.report_roc_img, p.FPR, p.TPR, t.FPR)
+            # Precision-recall curve
+            if not (self.outdir/rc.report_prcurve_img).exists():
+                plotter.plot_precision(
+                self.outdir/rc.report_prcurve_img, p.TPR, p.PPV, t.TPR)
+            # F-Measure curve
+            if not (self.outdir/rc.report_fmeasure_img).exists():
+                plotter.plot_fmeasure(
+                self.outdir/rc.report_fmeasure_img, p.uscores, p.TPR, p.PPV, 
+                p.FM, p.FMa, self.metric_range.threshold)
+        # Article score histogram
+        if not (self.outdir/rc.report_artscores_img).exists():
+            plotter.plot_score_histogram(
+            self.outdir/rc.report_artscores_img, p.pscores, p.nscores, 
+            self.metric_range.threshold)
+        # Feature score histogram
+        if not (self.outdir/rc.report_featscores_img).exists():
+            plotter.plot_feature_histogram(
+            self.outdir/rc.report_featscores_img, self.featinfo.scores)
+        # Write index file
+        log.debug("Writing index.html")
+        # Output the template
+        from Cheetah.Template import Template
+        with iofuncs.FileTransaction(self.outdir/rc.report_index, "w") as ft:
+            Template(file=str(rc.templates/"validation.tmpl"), 
+                     filter="Filter", searchList=template).respond(ft)
+        log.info("Done writing validation report for %s", rc.dataset)
+
+
+
+def SplitValidation(ValidationBase):
+    """Carries out split-sample validation, as is used in the TREC
+    Genomics 2005 categorisation task.
+    """
+
     def validation(self, fptrain, fntrain, fptest, fntest):
-        """Carry out split-sample validation
+        """Carry out split-sample validation.  
+        
+        @note: All corpora are represented as lists of PubMed IDs.
         
         @param fptrain: File with positive training examples
+        
         @param fntrain: File with negative training examples
+
         @param fptest: File with positive testing examples
+
         @param fntest: File with negative testing examples
         """
         s = self
@@ -92,184 +258,148 @@ class SplitValidation:
         if len(s.ptrain)>0 and len(s.ptest)>0 \
            and len(s.ntrain)>0 and len(s.ntest)>0:
             s._init_featinfo()
-            s._calc_test_scores()
-            s._calc_performance()
+            s._test_scores()
+            s._get_performance()
             s._write_report()
         else:
-            log.error("At least one of the input files contained no valid PubMed IDs")
+            log.error("At least one input file contained no valid PubMed IDs")
             return
         log.info("FINISHING SPLIT VALIDATION %s", rc.dataset)
 
 
-    def _init_featinfo(self):
-        """Initialise L{featinfo} for use in validation"""
-        self.featinfo = FeatureScores(
-            featmap = self.env.featmap, 
-            pseudocount = rc.pseudocount, 
-            mask = self.env.featmap.get_type_mask(rc.exclude_types),
-            make_scores = rc.make_scores,
-            get_postmask = rc.get_postmask)
-
-
-    def _calc_test_scores(self):
-        """Use training sample for feature scores, then calc scores for testing sample."""
+    def _test_scores(self):
+        """Use split validation. Training sample goes into calculating feature
+        scores, which are then used to get the scores of the testing sample.
+        The test sample scores are then used to obtain performance metrics."""
         s = self
-        s.featinfo.update(
-            FeatureCounts(len(s.featinfo), s.env.featdb, s.ptrain),
-            FeatureCounts(len(s.featinfo), s.env.featdb, s.ntrain),
-            len(s.ptrain), len(s.ntrain))
-        s.pscores = nx.array(s.featinfo.scores_of(s.env.featdb, s.ptest))
-        s.nscores = nx.array(s.featinfo.scores_of(s.env.featdb, s.ntest))
-
-
-    def _calc_performance(self):
-        """Calculate performance statistics"""
-        self.performance = PerformanceStats(
-            self.pscores, self.nscores, rc.alpha, rc.utility_r)
-        self.perfrange = PerformanceRange(
-            self.pscores, self.nscores, self.nfolds, self.performance.threshold)
-
-
-    def _write_report(self):
-        """Write an HTML validation report. 
-        
-        Only redraws figures for which output files do not already exist
-        (likewise for term scores, but the index is always re-written)."""
-        # Write term scores
-        if not (self.outdir/rc.report_term_scores).exists():
-            log.debug("Writing term scores")
-            import codecs
-            with codecs.open(self.outdir/rc.report_term_scores, "wb", "utf-8") as f:
-                self.featinfo.write_csv(f)
-        # Draw graphs
-        p = self.performance
-        plotter = Plotter()
-        log.debug("Drawing graphs")
-        ##overlap, iX, iY = plotter.plot_score_density(
-        ##  self.outdir/rc.report_artscores_img, p.pscores, p.nscores, p.threshold)
-        # Article score histogram
-        if not (self.outdir/rc.report_artscores_img).exists():
-            plotter.plot_score_histogram(
-            self.outdir/rc.report_artscores_img, p.pscores, p.nscores, p.threshold)
-        # Feature score histogram
-        if not (self.outdir/rc.report_featscores_img).exists():
-            plotter.plot_feature_histogram(
-            self.outdir/rc.report_featscores_img, self.featinfo.scores)
-        # ROC curve
-        if not (self.outdir/rc.report_roc_img).exists():
-            plotter.plot_roc(
-            self.outdir/rc.report_roc_img, p.FPR, p.TPR, p.tuned.FPR)
-        # Precision-recall curve
-        if not (self.outdir/rc.report_prcurve_img).exists():
-            plotter.plot_precision(
-            self.outdir/rc.report_prcurve_img, p.TPR, p.PPV, p.tuned.TPR)
-        # F-Measure curve
-        if not (self.outdir/rc.report_fmeasure_img).exists():
-            plotter.plot_fmeasure(
-            self.outdir/rc.report_fmeasure_img, p.uscores, p.TPR, p.PPV, 
-            p.FM, p.FMa, p.threshold)
-        # Write index file
-        log.debug("Writing index.html")
-        values = dict(
-            stats = self.featinfo.stats,
-            linkpath = rc.templates.relpath().replace('\\','/') if rc.link_headers else None,
-            timestamp = self.timestamp,
-            p = self.performance,
-            perfrange = self.perfrange,
-            notfound_pmids = self.notfound_pmids,
-        )
-        from Cheetah.Template import Template
-        with iofuncs.FileTransaction(self.outdir/rc.report_index, "w") as ft:
-            Template(file=str(rc.templates/"validation.tmpl"), 
-                     filter="Filter", searchList=values).respond(ft)
+        # Calculate cross-validated scores on training data
+        train_pscores, train_nscores = s._crossvalid_scores(s.ptrain, s.ntrain)
+        # Calculate split-sample scores on the testing data
+        s.pscores = s.featinfo.scores_of(s.env.featdb, s.ptest)
+        s.nscores = s.featinfo.scores_of(s.env.featdb, s.ntest)
+        # Cross validation on training data get a threshold maximising utility
+        trainperf = PerformanceVectors(
+            train_pscores, train_nscores, rc.alpha, rc.utility_r)
+        threshold = trainperf.threshold_for(trainperf.U)[0]
+        # Apply that threshold to calculating performance on the test split
+        self._get_performance(threshold)
 
 
 
-class ValidationManager(SplitValidation):
+class CrossValidation(ValidationBase):
     """Carries out N-fold cross validation.
 
-    @ivar nfolds: Number of validation folds
+    @group Additional attributes: positives, negatives
 
     @ivar positives: IDs of positive articles
 
     @ivar negatives: IDs of negative articles
     """
     
-    def __init__(self, outdir, env=None):
-        """Constructor, as for SplitValidation"""
-        SplitValidation.__init__(self, outdir, env)
-        self.nfolds = None
 
-
-    def validation(self, pospath, negpath, nfolds):
-        """Loads data, performs validation, and writes report
+    def validation(self, pos, neg, nfolds=10):
+        """Loads data and perform cross validation to calculate scores
+        on that data.
         
-        @param pospath: File with positive PubMed IDs
+        @note: This saves articles scores to the report directory, and 
+        if possible it will load load those scores instead of calculating
+        from scratch.
         
-        @param negpath: File with negative PubMed IDs (or None
-        to select randomly from Medline)
+        @param pos, neg: Parameters for L{_load_input}
         
-        @param nfolds: Number of validation folds.
+        @param nfolds: Number of validation folds to use.
         """
-        # Keep our own number of folds variables
+        # Keep our own number of folds attribute
         self.nfolds = nfolds
         self.notfound_pmids = []
         self._init_featinfo()
-        # Load saved results
+        # Try to load saved results
         try:
             self.positives, self.pscores = iofuncs.read_scores_array(
                 self.outdir/rc.report_positives)
             self.negatives, self.nscores = iofuncs.read_scores_array(
                 self.outdir/rc.report_negatives)
-        # Perform the cross validation
+            self._update_featscores(self.positives, self.negatives)
+        # Failed to load, so perform cross validation
         except IOError:
-            if not self._load_input(pospath, negpath):
+            if not self._load_input(pos, neg):
                 return
-            self._make_results()
+            self.pscores, self.nscores = \
+                self._crossvalid_scores(self.positives, self.negatives)
             iofuncs.write_scores(self.outdir/rc.report_positives,
                                  izip(self.pscores, self.positives))
             iofuncs.write_scores(self.outdir/rc.report_negatives, 
                                  izip(self.nscores, self.negatives))
-        # Report on the results
-        self._calc_performance()
-        self._general_feature_scores()
+
+
+    def report_validation(self):
+        """Report cross validation results"""
+        self._get_performance()
         self._write_report()
-        log.info("FINISHING CROSS VALIDATION %s", rc.dataset)
 
-
-    def _load_input(self, pospath, negpath):
-        """Load positive and negative PubMed IDs for validation
+    
+    def report_predicted(self, relevant_low, relevant_high, medline):
+        """Report the predicted query performance
         
-        @param pospath: Location of input positive PMIDs
-        @param negpath: Location of input negative PMIDs
+        @param relevant_low: Minimum expected relevant articles in Medline
+        
+        @param relevant_high: Maximum expected relevant articles in Medline
+
+        @param medline: Number of articles in rest of Medline, or None
+        to use L{Databases.article_list} minus relevant articles.
         """
-        if isinstance(pospath, basestring):
-            log.info("Loading positive PubMed IDs from %s", pospath.basename())
+        # Calculate the performance
+        self._get_performance()
+        if medline is None:
+            medline = len(self.env.article_list) - len(self.positives)
+        v = self.metric_vectors
+        self.pred_low = PredictedMetrics(
+            v.TPR, v.FPR, v.uscores, relevant_low, medline)
+        self.pred_high = PredictedMetrics(
+            v.TPR, v.FPR, v.uscores, relevant_high, medline)
+        self._write_report()
+
+
+    def _load_input(self, pos, neg):
+        """Sets L{positives} and L{negatives} by various means
+        
+        @param pos: Path to file of input PubMed IDs, or something convertible
+        to an integer array.
+
+        @param neg: Path to file of input negative PMIDs, or something
+        convertible to integer array, or an integer representing the
+        number of PubMed IDs to select at random from the database.
+        
+        @return: True if the load was successful, False otherwise.
+        """
+        if isinstance(pos, basestring):
+            log.info("Loading positive PubMed IDs from %s", pos.basename())
             self.positives, self.notfound_pmids, exclude = \
-                iofuncs.read_pmids_careful(pospath, self.env.featdb)
+                iofuncs.read_pmids_careful(pos, self.env.featdb)
         else:
-            self.positives = nx.array(pospath)
-        if negpath is None:
-            log.info("Selecting %d random negative PubMed IDs" % rc.numnegs)
+            self.positives = nx.array(pos, nx.int32)
+        if isinstance(neg, int):
+            log.info("Selecting %d random negative PubMed IDs" % neg)
             # Clamp number of negatives to the number available
             maxnegs = len(self.env.article_list) - len(self.positives)
-            if rc.numnegs > maxnegs: rc.numnegs = maxnegs
+            if neg > maxnegs:
+                neg = maxnegs
             # Take a sample of random citations
-            self.negatives = self.make_random_subset(
-                rc.numnegs, self.env.article_list, set(self.positives))
-        elif isinstance(negpath, basestring):
-            log.info("Loading negative PubMed IDs from %s", negpath.basename())
+            self.negatives = self._random_subset(
+                neg, self.env.article_list, set(self.positives))
+        elif isinstance(neg, basestring):
+            log.info("Loading negative PubMed IDs from %s", neg.basename())
             # Read list of negative PMIDs from disk
             self.negatives, notfound, exclude = iofuncs.read_pmids_careful(
-                    negpath, self.env.featdb, set(self.positives))
+                    neg, self.env.featdb, set(self.positives))
             self.notfound_pmids = list(self.notfound_pmids) + list(notfound)
-            iofuncs.write_pmids(
-                self.outdir/rc.report_negatives_exclude, exclude)
+            iofuncs.write_pmids(self.outdir/rc.report_negatives_exclude, exclude)
         else:
-            self.negatives = nx.array(negpath)
-        # Performing sanity checks
+            self.negatives = nx.array(neg, nx.int32)
+        # Writing out broken PubMed IDs
         iofuncs.write_pmids(
             self.outdir/rc.report_input_broken, self.notfound_pmids)
+        # Checking that we have the input
         if len(self.positives)>0 and len(self.negatives)>0:
             return True
         else:
@@ -281,12 +411,12 @@ class ValidationManager(SplitValidation):
 
 
     @staticmethod
-    def make_random_subset(k, pool, exclude):
+    def _random_subset(k, pool, exclude):
         """Choose a random subset of k articles from pool
         
-        This is better than the usual algorithm when the pool is large (say, 16
-        million items), we don't mind if the order of pool gets scrambled, and
-        we have to exclude certain items from being selected.
+        This is a good algorithm when the pool is large (say, 16 million
+        items), we don't mind if the order of pool gets scrambled, and we have
+        to exclude certain items from being selected.
         
         @param k: Number of items to choose from pool
         @param pool: Array of items to choose from (will be scrambled!)
@@ -313,31 +443,9 @@ class ValidationManager(SplitValidation):
         return nx.array(pool[n-k:])
 
 
-    def _make_results(self):
-        """Calculate L{pscores} and L{nscores} using cross validation
-        
-        All the feature database lookups are cached beforehand, as lookups
-        while busy with validation are slow."""
-        log.info("Performing cross-validation for for %s", rc.dataset)
-        self.validator = CrossValidator(
-            featdb = dict((k,self.env.featdb[k]) for k in 
-                          chain(self.positives,self.negatives)),
-            featinfo = self.featinfo,
-            positives = self.positives,
-            negatives = self.negatives,
-            nfolds = self.nfolds)
-        self.pscores, self.nscores = self.validator.validate()
 
 
-    def _general_feature_scores(self):
-        """Calculate feature scores using all citations"""
-        self.featinfo.update(
-            pos_counts = FeatureCounts(
-                len(self.env.featmap), self.env.featdb, self.positives),
-            neg_counts = FeatureCounts(
-                len(self.env.featmap), self.env.featdb, self.negatives),
-            pdocs = len(self.positives),
-            ndocs = len(self.negatives))
+
 
 
 

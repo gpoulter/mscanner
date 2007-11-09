@@ -119,6 +119,8 @@ rc.report_roc_img = path("roc.png")
 rc.report_prcurve_img = path("prcurve.png")
 ## Name of PRF vs threshold file
 rc.report_fmeasure_img = path("fmeasure.png")
+## Name of predicted precision graph
+rc.report_prediction_img = path("prediction.png")
 
 #### Non-Path parameters
 
@@ -158,14 +160,10 @@ rc.dataset = "default"
 rc.threshold = 0
 ## Integer for maximum number of results (may be fewer due to threshold)
 rc.limit = 1000
-## Number of validation folds to use
-rc.nfolds = 10
 ## 0<Alpha<1.  Alpha=0.5 maximises standard F-Measure.
 rc.alpha = 0.5
 ## The utility of retrieving a positive article (defaults to N/P)
 rc.utility_r = None
-## Number of negatives to use
-rc.numnegs = 100000
 ## Number of citations per output file
 rc.citations_per_file = 250
 

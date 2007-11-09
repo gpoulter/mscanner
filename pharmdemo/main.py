@@ -18,7 +18,7 @@ import sys
 
 from mscanner.configuration import rc, start_logger
 from mscanner.core.QueryManager import QueryManager
-from mscanner.core.ValidationManager import ValidationManager
+from mscanner.core.ValidationManager import CrossValidation
 from mscanner.medline import Databases
 from mscanner.pharmdemo import genedrug
 from mscanner.pharmdemo.Exporter import Exporter
@@ -93,7 +93,7 @@ class PharmdemoQuery(QueryManager):
 
 
 
-class PharmdemoValidation(ValidationManager):
+class PharmdemoValidation(CrossValidation):
     
     def genedrug_filter(self):
         """Membership test for gene-drug association.

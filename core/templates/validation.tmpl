@@ -2,16 +2,17 @@
 
 #* Validation output page
 
-$stats -- FeatureScores statistics
 $linkpath -- None, or where to link for JS/CSS instead of #include
-$timestamp -- time.time() for start of the operation
-$p -- PerformanceStats instance (with p.tuned)
 $notfound_pmids -- List of invalid PubMed IDs
+$timestamp -- time.time() for start of the operation
+$stats -- FeatureScores instance
+$vectors -- PerformanceVectors instance
+$range -- PerformanceRanges instance
 *#
 
 #from mscanner.configuration import rc
-## Store tuned performance stats in t
-#set $t = $p.tuned
+
+#set $t = $range.average
 
 <html lang="en">
 
@@ -76,16 +77,6 @@ $notfound_pmids -- List of invalid PubMed IDs
     <col class="help">
   </colgroup>
 
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Value</th>
-      <th>Help</th>
-    </tr>
-  </thead>
-
-  <tbody>
-
   <tr>
     <td>Timestamp</td>
     #import time
@@ -124,7 +115,7 @@ $notfound_pmids -- List of invalid PubMed IDs
 
   <tr class="newsection">
     <td>Number of folds</td>
-    <td>$rc.nfolds</td>
+    <td>$range.nfolds</td>
     $help("h_nfolds")
   </tr>
   $hr("h_nfolds", """Number of partitions to split the positive
@@ -143,238 +134,200 @@ $notfound_pmids -- List of invalid PubMed IDs
   the score, so does not affect performance. It's only use is to make the score
   represent the natural logarithm of the ratio of posterior probabilities for
   the article being relevant versus non-relevant, given its features.""")
-  #end if
-  
-  <tr>
-    <td>F-Measure Alpha</td>
-    <td>$rc.alpha</td>
-    $help("h_alpha")
-  </tr>
-  $hr("h_alpha", """The weight of precision in the &alpha;-weighted
-  F-Measure (which is maximised to choose the threshold).
-  &alpha;=0.5 weights precision and recall equally, &alpha; closer
-  to 1.0 trades recall for increased precision.""")
+  #end if offset is nonzero
 
   <tr class="newsection">
     <td>Averaged Precision</td>
-    <td>#echo "%.5f" % $p.AvPrec #</td>
+    <td>#echo "%.5f" % $vectors.AvPrec #</td>
     $help("h_avprec")
   </tr>
-  $hr("h_avprec", """Average precision, where the precision is evaluated at
-  each point where a relevant citation is retrieved.  This is the most
-  important summary metric.""")
+  $hr("h_avprec", """Using the article scores across all cross validation
+  folds, we calculate the precision going down the ranks whenever a
+  relevant article is retrieved, and take the average.  This is an
+  important cross validation summary measure, but is much higher than
+  we expect in a query because the prevalence of relevant citations in
+  Medline is probably much lower than it is in the cross validation sample""")
   
+  #if False
   <tr>
     <td>Area under PR curve</td>
-    <td>#echo "%.5f" % $p.PR_area #</td>
+    <td>#echo "%.5f" % $vectors.PR_area #</td>
     $help("h_prcurve")
   </tr>
   $hr("h_prcurve", """Area under the Precision-Recall (PR) curve, using
   trapezoidal rule over each distinct threshold. This is almost the same
   numerical value as the average precision.""")
+  #end if excluded precision-recall curve area
   
   <tr class="newsection">
-    <td>Area under ROC curve A(z)</td>
-    <td>#echo "%.5f" % $p.W #</td>
+    <td>Area under ROC curve (AUC)</td>
+    <td>#echo "%.5f" % $vectors.W #</td>
     $help("h_roc")
   </tr>
-  $hr("h_roc", """Area under ROC is a global data-size-independent
-  measure of performance.  Worst case is 0.5 (diagonal line: true positives 
-  increase at same rate as false positives), and best case is 1.0.""")
+  $hr("h_roc", """The ROC curve plots true positives as a function of false
+  positives, and unlike average precision it is independent of the class skew.
+  The worst-case value is 0.5, and it can be interpreted as the probability
+  that a randomly selected relevant citations will be ranked higher than a
+  randomly selectd irrelevant citation. However, in a query, you would rather
+  know recall and precision than ROC area, so see further down for the
+  predicted precision and recall.""")
 
   <tr>
-    <td>Standard Error of A(z)</td>
-    <td>#echo "%.5f" % $p.W_stderr #</td>
+    <td>Standard Error of AUC</td>
+    <td>#echo "%.5f" % $vectors.W_stderr #</td>
     $help("h_roc_stderr")
   </tr>
-  $hr("h_roc_stderr", """Area is equivalent to the Wilcoxon statistic W, for which 
-  we use the method of Hanley1982 to calculate the standard error.""")
+  $hr("h_roc_stderr", """This is the standard error of the area
+  under the ROC curve, calculated using the method of Hanley (1982).""")
 
-  <tr class="newsection">
-    <td>Break-Even <span class="footnote">(where precision=recall)</span></td>
-    <td>#echo "%.5f" % $p.breakeven #</td>
-    $help("h_break_even")
-  </tr>
-  $hr("h_break_even", """Shared value at the point where Recall = Precision =
-  F1-measure. Typically the F1-Measure at break-even is slightly lower than
-  the maximum F1-Measure.""")
+</table>
 
-  <tr>
-    <td>Score threshold</td>
-    <td>#echo "%.2f" % $p.threshold #</td>
-    $help("h_threshold")
-  </tr>
-  $hr("h_threshold", """The score threshold which maximises
-  &alpha;-weighted F-Measure.""")
-  
-  </tbody>
+#if $getVar("pred_low", None) is None
 
-  </table>
-
-  #include str($rc.templates/"features.tmpl")
-
-  <h2>Classifier Confusion Matrix
+<div>
+  <h2>Confusion Matrix at threshold
   <button class="toggle" id="toggle_h_cmatrix">?</button>
   </h2>
 
   <div class="help" id="h_cmatrix">
-  <p>
-  The columns of the confusion matrix are actual categories, and
-  the rows are predicted categories.  Hover the mouse over each of the squares
-  for a full description of the quantity, and the formula for calculating 
-  it.
-  </p>
+  <p>The columns of the confusion matrix are actual categories of the
+  documents, and the rows are the predicted categories. Hover the mouse over
+  each of the squares for a full description of the quantity, and the formula
+  for calculating it.</p> 
   </div>
 
   <table id="matrix">
-    <thead>
-      <tr>
+    <tr>
       <th rowspan="2" colspan="2"></th>
       <th colspan="2">Actual</th>
       <th rowspan="2">Totals</th>
       <th rowspan="2">Rates</th>
-      </tr>
-      <tr>
-        <th>Relevant</th>
-        <th>Irrelevant</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <th rowspan="2">Predicted</th>
-        <th>Relevant'</th>
-        <td class="tp" title="True Positives (hits)">TP=$t.TP</td>  
-        <td class="fp" title="False Positives (false alarms / Type I errors)">FP=$t.FP</td>
-        <td title="Positive predictions = TP+FP">P'=#echo $t.TP+$t.FP#</td>
-        <td title="Positive Predictive Value = TP/(TP+FP)">PPV=#echo "%.2f"%$t.PPV#</td>
-      </tr>
-      <tr>
-        <th>Irrelevant'</th>
-        <td class="fn" title="False Negatives (misses / Type II errors)">FN=$t.FN</td>
-        <td class="tn" title="True Negatives (correct rejections)">TN=$t.TN</td>
-        <td title="Negative predictions = TN+FN">N'=#echo $t.TN+$t.FN#</td>
-        <td title="Negative Predictive Value = TN/(TN+FN)">NPV=#echo "%.5f"%t.NPV#</td>
-      </tr>
-      <tr>
-        <th colspan="2">Totals</th>
-        <td title="Positives = TP+FN">P=$t.P</td>
-        <td title="Negatives = TN+FP">N=$t.N</td>
-        <td title="Size of data = TP+TN+FP+FN">$t.A</td>
-        <td title="Prevalence = (TP+FN)/(TP+TN+FP+FN)">Prev=#echo "%.5f"%(float($t.P)/$t.A)#</td>
-      </tr>
-      <tr>
-        <th colspan="2">Rates</th>
-        <td title="True Positive Rate (OR hit rate OR recall OR sensitivity) = TP/(TP+FN)">TPR=#echo "%.2f"%$t.TPR#</td>  
-        <td title="False Positive Rate = FP/(TN+FP)">FPR=#echo "%.5f"%$t.FPR#</td>
-        <td title="This square is intentionally left blank"></td>
-        <td title="Accuracy = (TP+TN)/(TP+TN+FP+FN)">Acc=#echo "%.5f"%t.accuracy#</td>
-      </tr>
-    </tbody>
+    </tr>
+    <tr>
+      <th>Relevant</th>
+      <th>Irrelevant</th>
+    </tr>
+    <tr>
+      <th rowspan="2">Predicted</th>
+      <th>Relevant'</th>
+      <td class="tp" title="True Positives (hits)">TP=$t.TP</td>  
+      <td class="fp" title="False Positives (false alarms / Type I errors)">FP=$t.FP</td>
+      <td title="Positive predictions = TP+FP">P'=#echo $t.TP+$t.FP#</td>
+      <td title="Positive Predictive Value = TP/(TP+FP)">PPV=#echo "%.2f"%$t.PPV#</td>
+    </tr>
+    <tr>
+      <th>Irrelevant'</th>
+      <td class="fn" title="False Negatives (misses / Type II errors)">FN=$t.FN</td>
+      <td class="tn" title="True Negatives (correct rejections)">TN=$t.TN</td>
+      <td title="Negative predictions = TN+FN">N'=#echo $t.TN+$t.FN#</td>
+      <td title="Negative Predictive Value = TN/(TN+FN)">NPV=#echo "%.5f"%t.NPV#</td>
+    </tr>
+    <tr>
+      <th colspan="2">Totals</th>
+      <td title="Positives = TP+FN">P=$t.P</td>
+      <td title="Negatives = TN+FP">N=$t.N</td>
+      <td title="Size of data = TP+TN+FP+FN">$t.A</td>
+      <td title="Prevalence = (TP+FN)/(TP+TN+FP+FN)">Prev=#echo "%.5f"%$t.prevalence#</td>
+    </tr>
+    <tr>
+      <th colspan="2">Rates</th>
+      <td title="True Positive Rate (hit rate OR recall OR sensitivity) = TP/(TP+FN)">TPR=#echo "%.2f"%$t.TPR#</td>  
+      <td title="False Positive Rate = FP/(TN+FP)">FPR=#echo "%.5f"%$t.FPR#</td>
+      <td title="This square is intentionally left blank"></td>
+      <td title="Accuracy = (TP+TN)/(TP+TN+FP+FN)">Acc=#echo "%.5f"%t.accuracy#</td> 
+    </tr>
   </table>
+</div>
+
+<div>
+  <h2>Precision, Recall and F measure</h2>
+
+  <table class="results">
+    <colgroup>
+      <col class="longlabel">
+      <col class="value">
+      <col class="help">
+    </colgroup>
+
+    <tr>
+      <td>Optimal score threshold</td>
+      <td>#echo "%.2f" % $range.threshold #</td>
+      $help("h_threshold")
+    </tr>
+    $hr("h_threshold", """Score threshold chosen to create the confusion
+    matrix.  Optimises either F measure or Utility.""")
   
-   
-  <h2>Common Performance Measures
-  <button class="toggle" id="toggle_h_performance">?</button>
+    <tr>
+      <td><b>Precision (PPV)</b> 
+      <span class="footnote">&pi;=TP/(TP+FP)</span></td>
+      <td>$range.fmt_stats("precision")</td>
+      $help("h_prec")
+    </tr>
+    $hr("h_prec", """Proportion of predicted positives which are true
+    positives.""")
+    
+    <tr>
+    <td><b>Recall (True Positive Rate / Sensitivity)</b></td>
+    <td>$range.fmt_stats("recall")</td>
+    $help("h_recall")
+    </tr>
+    $hr("h_recall", """Proportion of positives which were correctly predicted
+    to be positive.""")
+    
+    <tr>
+      <td><b>F<sub>1</sub>-Measure (&alpha;=0.5)</b> 
+      <span class="footnote">(2*&rho;*&pi;/(&rho;+&pi;))</span></td>
+      <td>$range.fmt_stats("fmeasure")</td>
+      $help("h_f1")
+    </tr>
+    $hr("h_f1", """Harmonic mean of recall and precision at the threshold
+    corresponding to the maximum &alpha;-weighted F-Measure.""")
+      
+    <tr>
+      <td><b>F-Measure (&alpha;=$vectors.alpha)</b> 
+      <span class="footnote">(1/(&alpha;/&pi;+(1-&alpha;)/&rho;))</span></td>
+      <td>$range.fmt_stats("fmeasure_alpha")</td>
+      $help("h_fma")
+    </tr>
+    $hr("h_fma", """The F measure evaluated using
+    the given alpha. 0 &lt;= &alpha; &lt;= 1 controls the weight of
+    precision. When &alpha;=0.5, <em>F=F<sub>1</sub></em>.""")
+    
+    <tr>
+      <td><b>Maximum possible F<sub>1</sub>-Measure</b></td>
+      <td>#echo "%.3f" % $vectors.FM.max() #</td>
+      $help("h_max_f1")
+    </tr>
+    $hr("h_max_f1", """This is the F_1 measure that would be achieved if we
+    had set &alpha;=0.5""")
+    
+    <tr class="newsection">
+      <td><b>Break-Even</b> <span class="footnote">(where precision=recall)</span></td>
+      <td>#echo "%.3f" % $vectors.breakeven #</td>
+      $help("h_break_even")
+    </tr>
+    $hr("h_break_even", """Shared value at the point where Recall = Precision =
+    F1-measure. Typically the F1-Measure at break-even is slightly lower than the
+    maximum F1-Measure.""")
+
+  </table>
+</div>
+
+<div>
+  <h2>Utility
+  <button class="toggle" id="toggle_h_utility">?</button>
   </h2>
 
-  <div class="help" id="h_performance">
-    <p>These are performance measures which are commonly quoted.  All of
-    these measures are derived from the confusion matrix.</p>
-    
-    <p>For precision, recall and F<sub>1</sub> measure, we have additionally
-    calculated their value within each of the cross validation folds
-    (the main value comes from aggregating the scores across the folds).</p>
+  <div class="help" id="h_utility">
+  <p>Utility is a weighted sum of True and False positives. A false
+  positive has utility -1, and a true positive has utility u<sub>r</sub>,
+  by default equal to N/P (the assumption being that returning all the
+  articles should result in utility of zero).</p>
   
-    <dl>
-      <dt>Recall (True Positive Rate / Sensitivity)</dt>
-      <dd>
-        Proportion of positives which were correctly predicted to be positive.
-      </dd>
-
-      <dt>Precision (Positive Predictive Value)</dt>
-      <dd>
-        Proportion of predicted positives which are true positives.
-      </dd>
-
-      <dt>F<sub>1</sub>-Measure (&alpha;=0.5)</dt>
-      <dd>
-        Harmonic mean of recall and precision at the threshold
-        corresponding to the maximum &alpha;-weighted F-Measure.
-      </dd>
-
-      <dt>F-Measure (&alpha;=$p.alpha)</dt>
-      <dd>
-        Decision threshold is chosen to maximise F-Measure. 0 &lt;=
-        &alpha; &lt;= 1 controls the weight of precision.  When
-        &alpha;=0.5, <em>F=F<sub>1</sub></em>.
-      </dd>
-
-      <dt>Maximum F1-Measure</dt>
-      <dd>
-        Maximum possible value of the F<sub>1</sub>-Measure (which
-        is achieved if &alpha;=0.5).
-      </dd>
-      
-      <dt>Utility</td>
-      <dd>
-        A linear function of TP and FP: 
-        <tt>U = (u<sub>r</sub> * TP - FP)/U<sub>max</sub></tt>
-        where <tt>U<sub>max</sub> = u<sub>r</sub> * P</tt>,
-        and u<sub>r</sub> defaults to N/P.   In that case,
-        it reduces to <tt>U=(TP/P)-(FP/N)</tt>.
-      </dd>
-
-      <!-- *************** -->
-      <dt>Prevalence</dt>
-      <dd>
-        Proportion of training data which was positive
-      </dd>
-      
-      <dt>Accuracy</dt>
-      <dd>
-        Proportion of correct predictions
-      </dd>
-
-      <dt>Error Rate (1-Accuracy)</dt>
-      <dd>
-        Proportion of incorrect predictions
-      </dd>
-
-      <!-- *************** -->
-      <dt>Negative Predictive Value</dt>
-      <dd>
-        Proportion of predicted negatives which are true negatives.
-      </dd>
-
-      <dt>Specificity (True Negative Rate)</dt>
-      <dd>
-        Proportion of negatives which were correctly predicted to be negative.
-      </dd>
-
-      <dt>False Positive Rate (1-Specificity)</dt>
-      <dd>
-        Proportion of negatives which were incorrectly predicted to be positive.
-      </dd>
-      
-      <dt>False Discovery Rate (1-Precision)</dt>
-      <dd>
-        Proportion of predicted positives which are false positives.
-      </dd>
-
-      <dt>FP/TP Ratio</dt>
-      <dd>
-        Ratio of false positives to true positives.  Related to precision: 
-        if TP/FP is <i>x</i>, then precision is <i>1/(x+1)</i>.
-      </dd>
-
-      <dt>Enrichment</dt>
-      <dd>
-        Precision over prevalence.  This is is how much better this
-        classifier's precision is over a classifier which calls
-        everything positive.
-      </dd>
-      
-  </dl>
+  <p>Hence, <tt>U = (u<sub>r</sub> * TP - FP)/U<sub>max</sub></tt> where
+  <tt>U<sub>max</sub> = u<sub>r</sub> * P</tt> is the maximium achievable
+  utility. If u<sub>r</sub> defaults to N/P this reduces to
+  <tt>U=(TP/P)-(FP/N)</tt>.</p>
   </div>
 
   <table class="results">
@@ -383,142 +336,146 @@ $notfound_pmids -- List of invalid PubMed IDs
       <col class="value">
     </colgroup>
     <tr>
-      <td><b>Recall (Sensitivity/TPR)</b> 
-      <span class="footnote">&rho;=TP/(TP+FN)</span></td>
-      <td>#echo "%.5f" % $t.recall #
-      #echo " (%.5f to %.5f)" % $perfrange.recall #
-      </td>
-    </tr>
-    <tr>
-      <td><b>Precision (PPV)</b> 
-      <span class="footnote">&pi;=TP/(TP+FP)</span></td>
-      <td>#echo "%.5f" % $t.PPV #
-      #echo " (%.5f to %.5f)" % $perfrange.precision #
-      </td>
-    </tr>
-    <tr>
-      <td><b>F<sub>1</sub>-Measure (&alpha;=0.5)</b> 
-      <span class="footnote">(2*&rho;*&pi;/(&rho;+&pi;))</span></td>
-      <td>#echo "%.5f" % $t.fmeasure #
-      #echo " (%.5f to %.5f)" % $perfrange.fmeasure #
-      </td>
-    </tr>
-    <tr>
-      <td><b>F-Measure (&alpha;=$p.alpha)</b> 
-      <span class="footnote">(1/(&alpha;/&pi;+(1-&alpha;)/&rho;))</span></td>
-      <td>#echo "%.5f" % $t.fmeasure_alpha #</td>
-    </tr>
-    <tr>
-      <td><b>Maximum possible F<sub>1</sub>-Measure</b></td>
-      <td>#echo "%.5f" % $t.fmeasure_max #</td>
-    </tr>
-    <tr class="newsection">
-      <td><b>Utility (u<sub>r</sub>=#echo "%.2f" % $p.utility_r #</b>) 
-      <span class="footnote">U=(u<sub>r</sub>*TP-FP)/U<sub>max</sub></span></td>
-      <td>#echo "%.5f" % $t.U #</td>
+      <td><b>Utility (u<sub>r</sub>=#echo "%.2f" % $vectors.utility_r #</b>)</td>
+      <td>$range.fmt_stats("utility")</td>
     </tr>
     <tr>
       <td><b>Maximum possible utility</td>
-      <td>#echo "%.5f" % $t.U_max #</td>
+      <td>#echo "%.3f" % $vectors.U.max() #</td>
     </tr>
-    <tr class="newsection">
-      <td><b>Prevalence</b> 
+  </table>
+</div>
+
+<div>
+  <h2>Miscellaneous Performance Measures</h2>
+
+  <table class="results">
+    <colgroup>
+      <col class="longlabel">
+      <col class="value">
+      <col class="help">
+    </colgroup>
+
+    <tr>
+      <td><b>Prevalence in cross validation</b> 
       <span class="footnote">P/(P+N)</span></td>
       <td>#echo "%.5f" % $t.prevalence #</td>
+      $help("h_prevalence")
     </tr>
-    <tr>
-      <td><b>Accuracy</b> 
-      <span class="footnote">(TP+TN)/(P+N)</span></td>
-      <td>#echo "%.5f" % $t.accuracy #</td>
-    </tr>
-    <tr>
-      <td><b>Error Rate</b> 
-      <span class="footnote">(FP+FN)/(P+N)=1-Accuracy</span></td>
-      <td>#echo "%.5f" % (1-$t.accuracy) #</td>
-    </tr>
-    <tr>
-      <td><b>False Discovery Rate (1-precision)</b></td>
-      <td>#echo "%.5f" % $t.FDR #</td>
-    </tr>
-    <tr class="newsection">
-      <td><b>Specificity (TNR)</b> 
-      <span class="footnote">TNR=TN/(TN+FP)=1-FPR</span></td>
-      <td>#echo "%.5f" % $t.TNR #</td>
-    </tr>
+    $hr("h_prevalence", """Proportion of training data which was positive.""")
+    
     <tr>
       <td><b>False Positive Rate (FPR)</b> 
       <span class="footnote">FPR=FP/(TN+FP)=1-TNR</span></td>
-      <td>#echo "%.5f" % $t.FPR #</td>
+      <td>$range.fmt_stats("FPR", places=5)</td>
+      $help("h_fpr")
     </tr>
+    $hr("h_fpr", """Proportion of negatives which were incorrectly predicted
+    to be positive.""")
+    
     <tr>
-      <td><b>Negative Preditive Value</b> 
-      <span class="footnote">NPV=TN/(TN+FN)</span></td>
-      <td>#echo "%.5f" % $t.NPV #</td>
+      <td><b>Specificity (TNR)</b> 
+      <span class="footnote">TNR=TN/(TN+FP)=1-FPR</span></td>
+      <td>$range.fmt_stats("specificity", places=5)</td>
+      $help("h_specificity")
     </tr>
-    <tr class="newsection">
-      <td><b>FP/TP Ratio</b></td>
-      <td>#echo "%.5f" % t.fp_tp_ratio #</td>
+    $hr("h_specificity", """Proportion of negatives which were correctly
+    predicted to be negative.""")
+
+    <tr>
+      <td><b>Error Rate</b> 
+      <span class="footnote">(FP+FN)/(P+N)=1-Accuracy</span></td>
+      <td>$range.fmt_stats("error", places=5)</td>
+      <td></td>
     </tr>
+
     <tr>
       <td><b>Enrichment</b> 
       <span class="footnote">(= precision/prevalence)</span></td>
-      <td>#echo "%.5f" % $t.enrichment #</td>
+      <td>$range.fmt_stats("enrichment")</td>
+      $help("h_enrich")
     </tr>
-  </table>
+    $hr("h_enrich", """Precision over prevalence. This is is how much better this
+    classifiers precision is over a classifier which calls everything positive.""")
 
-  <h2>Performance graphs
-  <button class="toggle" id="toggle_h_graphs">?</button>
-  </h2>
+  </table> 
+</div>
 
-  <div class="help" id="h_graphs">
-    <dl>
-      <dt>Article Score Densities</dt>
-      <dd>
-        Histograms of article scores for negative and positive
-        articles.  Classifier performs better when the distributions
-        are well-separated. Tuned threshold is marked with a vertical
-        line.
-      </dd>
-      <dt>Feature Score Density</dt>
-      <dd>
-        Histogram of feature scores.
-      </dd>
-      <dt>ROC Curve</dt>
-      <dd>
-        True Positive Rate (recall) against False Positive Rate
-        (1-specificity).  The greater the area under the ROC curve,
-        the better the global performance of the classifier.  In the
-        worst case, true positives increase at the same rate as false
-        positives, yielding a 45-degree line.
-      </dd>
-      <dt>Precision-Recall Curve</dt>
-      <dd>
-        Precision against Recall.  In good cases, the precision only
-        drops off at high recall.  Tuned threshold is marked with a
-        vertical line.  Worst case is a horizontal line with precision
-        equal to prevalence.
-      </dd>
-      <dt>Variation against Threshold</dt>
-      <dd>
-        Precision, recall and F-measure against threshold shows how
-        the threshold was optimised for &alpha;-weighted F-Measure and
-        how changing the threshold would affect the recall/precision
-        balance.
-      </dd>
-    </dl>
+#end if cross validation results
+
+
+<div>
+#include str($rc.templates/"features.tmpl")
+</div>
+
+
+<div>
+  <h2>Performance graphs</h2>
+
+  #if $getVar("pred_low", None) is not None
+  <div><h3>Predicted performance</h3>
+    
+    <p>We used the true and false positive rate as a function of score
+    threshold to predict the recall and precision in a query.  This
+    prediction is possible because the user specified that
+    there are between $pred_low.relevant and $pred_high.relevant 
+    relevant records yet to be found in Medline (containing $pred_low.total records), allowing us
+    to estimate the number of true positives and false positives that
+    will occur at each threshold.</p>
+    
+    <img src="$rc.report_prediction_img" alt="Predicted precision"/>
+  </div>
+  #end if query prediction graph
+
+
+  <div><h3>Document score distributions</h3>
+    <p>Normalised histograms (sum of bar areas normalised to 1).
+    One histogram for irrelevant documents, and one histogram for relevant documents.
+    Classifier performs better when the distributions
+    are well-separated. Tuned threshold is marked with a vertical
+    line.</p>
+    <img src="$rc.report_artscores_img" alt="Article Score Densities"/>
   </div>
 
-  <img src="$rc.report_artscores_img" alt="Article Score Densities"/>
-  
-  <img src="$rc.report_featscores_img" alt="Feature Score Density"/>
-  
-  <img src="$rc.report_roc_img" alt="ROC Curve"/>
-  
-  <img src="$rc.report_prcurve_img" alt="Precision-Recall Curve"/>
-  
-  <img src="$rc.report_fmeasure_img" alt="Precision and Recall vs Threshold"/>
 
-  #include str($rc.templates/"invalid.tmpl")
+  <div><h3>Feature score distribution</h3>
+    <p>Normalised histogram showing the distribution of feature scores
+    when the classifier is trained using all of the available data.</p>
+    <img src="$rc.report_featscores_img" alt="Feature Score Density"/>
+  </div>
+
+#if $getVar("pred_low", None) is None
+  <div><h3>ROC Curve</h3>
+    <p>True Positive Rate (recall) against False Positive Rate
+    (1-specificity).  The greater the area under the ROC curve,
+    the better the global performance of the classifier.  In the
+    worst case, true positives increase at the same rate as false
+    positives, yielding a diagonal line.</p>
+    <img src="$rc.report_roc_img" alt="ROC Curve"/>
+  </div>
+  
+  
+  <div><h3>Precision-Recall Curve</h3>
+    <p>Precision against Recall.  In good cases, the precision only
+    drops off at high recall.  Tuned threshold is marked with a
+    vertical line.  Worst case is a horizontal line with precision
+    equal to prevalence.</p>
+    <img src="$rc.report_prcurve_img" alt="Precision-Recall Curve"/>
+  </div>
+
+  <div><h3>F measure versus threshold</h3>
+    <p>Precision, recall and F-measure against threshold shows how the threshold
+    was optimised for &alpha;-weighted F-Measure and how changing the threshold
+    would affect the recall/precision balance.</p>
+    <img src="$rc.report_fmeasure_img" alt="Precision and Recall vs Threshold"/>
+  </div>
+#end if cross validation results
+
+</div>
+
+<div>
+#include str($rc.templates/"invalid.tmpl")
+</div>
 
 </div><!--narrow-->
 

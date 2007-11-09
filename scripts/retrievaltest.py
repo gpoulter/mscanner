@@ -22,7 +22,7 @@ from path import path
 
 from mscanner.configuration import rc, start_logger
 from mscanner.core.QueryManager import QueryManager
-from mscanner.core.Plotter import Plotter
+from mscanner.core.Plotter import RetrievalPlot
 
 
 ### RETRIEVAL TEST
@@ -86,7 +86,7 @@ class RetrievalTest(QueryManager):
         (self.outdir/rc.report_retrieval_stats).write_lines(
             [str(x) for x in cumulative])
         # Graph TP vs FP (FP = rank-TP)
-        plotter = Plotter()
+        plotter = RetrievalPlot()
         plotter.plot_retrieved_positives(
             self.outdir/rc.report_retrieval_graph, 
             cumulative, len(test_pmids))

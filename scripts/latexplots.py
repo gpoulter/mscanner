@@ -21,7 +21,7 @@ from pylab import *
 from mscanner.configuration import rc as mrc, start_logger
 from mscanner.core import iofuncs
 from mscanner.core.Plotter import Plotter
-from mscanner.core.PerformanceStats import PerformanceStats
+from mscanner.core.PerformanceVectors import PerformanceVectors
 from mscanner.scripts import retrievaltest
 
 
@@ -91,8 +91,9 @@ def load_stats(indir, dataset, title, alpha=0.5):
         indir/dataset/mrc.report_positives, withscores=True)])
     nscores = array([s[0] for s in iofuncs.read_pmids(
         indir/dataset/mrc.report_negatives, withscores=True)])
-    stats = PerformanceStats(pscores, nscores, alpha)
+    stats = PerformanceVectors(pscores, nscores, alpha)
     stats.title = title
+    stats.threshold = stats.threshold_for(stats.FMa)
     return stats
 
 
@@ -163,7 +164,7 @@ def calculate_overlap(px, py, nx, ny):
 def plot_score_density(fname, statlist):
     """Plots four score density plots in a grid
 
-    @param statlist: A tuple of a four PerformanceStats objects
+    @param statlist: A tuple of a four PerformanceVectors objects
     """
     logging.info("Plotting score densities to %s", fname)
     for idx, s in enumerate(statlist):
@@ -338,7 +339,8 @@ def do_publication():
     all = (aids,rad,pg07,ran10)
     plot_roc("fig2_roc", all)
     plot_precision("fig3_pr", all)
-    fmplot = PerformanceStats(pg07.pscores, pg07.nscores, alpha=0.95)
+    fmplot = PerformanceVectors(pg07.pscores, pg07.nscores, alpha=0.95)
+    fmplot.threshold = fmplot.threshold_for(fmplot.FMa)
     fmplot.title = pg07.title
     plot_fmeasure("fig6_prf", fmplot)
     plot_score_density("fig1_density", all)
@@ -356,7 +358,8 @@ def do_testplots():
     plot_score_density("test_density", (pg04,pg07,pg07,pg04))
     plot_roc("test_roc", (pg04,pg07))
     plot_precision("test_pr", (pg04,pg07))
-    pg04alpha = PerformanceStats(pg04.pscores, pg04.nscores, alpha=0.9)
+    pg04alpha = PerformanceVectors(pg04.pscores, pg04.nscores, alpha=0.9)
+    pg04alpha.threshold = pg04alpha.threshold_for(pg04alpha.FMa)
     pg04alpha.title = pg04.title
     plot_fmeasure("test_prf", pg04alpha)
 

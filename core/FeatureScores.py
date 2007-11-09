@@ -83,15 +83,15 @@ class FeatureScores(object):
 
 
     def scores_of(self, featdb, pmids):
-        """Calculate the scores of a list of PubMed IDs.
+        """Calculate vector of scores given an iterable of PubMed IDs.
         
         @param featdb: Mapping from PMID to feature vector
         @param pmids: Iterable of keys into L{featdb}
-        @return: List of document scores corresponding to pmids.
+        @return: Vector of document scores corresponding to pmids.
         """
-        offset = self.offset
-        scores = self.scores
-        return [ offset+nx.sum(scores[featdb[d]]) for d in pmids ]
+        off = self.offset
+        sc = self.scores
+        return nx.array([off+nx.sum(sc[featdb[d]]) for d in pmids], nx.float32)
     
 
     def __len__(self):

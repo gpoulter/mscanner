@@ -19,7 +19,6 @@ Example descriptor file for query::
 Example descriptor file for validation::
     #operation = validate
     #dataset = Whatever
-    #nfolds = 10
     #numnegs = 100000
     #alpha = 0.5
     #submitted = 23424123.3
@@ -54,7 +53,7 @@ import time
 from mscanner.configuration import rc, start_logger
 from mscanner.medline.Databases import Databases
 from mscanner.core.QueryManager import QueryManager
-from mscanner.core.ValidationManager import ValidationManager
+from mscanner.core.ValidationManager import CrossValidation
 from mscanner.core import iofuncs
 from mscanner.scripts import update
 
@@ -80,8 +79,8 @@ descriptor_keys = dict(
     delcode=str,
     hidden=parsebool,
     limit=int,
-    nfolds=int,
     numnegs=int,
+    nfolds=int,
     operation=str,
     threshold=float,
     submitted=float,
@@ -258,8 +257,9 @@ def mainloop():
                         op = QueryManager(outdir, env)
                         op.query(task._filename)
                     elif task.operation == "validate":
-                        op = ValidationManager(outdir, env)
-                        op.validation(task._filename, None, rc.nfolds)
+                        op = CrossValidation(outdir, env)
+                        op.validation(task._filename, task.numnegs)
+                        op.report_validation()
                     task._filename.move(outdir / "descriptor.txt")
                 except ValueError, e:
                     log.error(e)
@@ -277,7 +277,7 @@ def populate_test_queue():
     task = Storage(
         operation = "validate", 
         dataset = "gdqtest_valid",
-        nfolds = 5, numnegs = 1000, alpha = 0.6,
+        numnegs = 1000, alpha = 0.6,
         limit = 500, threshold = 0, submitted = time.time())
     write_descriptor(rc.queue_path/task.dataset, pmids, task)
     task.operation = "query"

@@ -16,22 +16,25 @@ import unittest
 
 from mscanner.core.FeatureScores import FeatureScores
 from mscanner.core.Validator import LeaveOutValidator, CrossValidator
-from mscanner.core.PerformanceStats import PerformanceStats
+from mscanner.core.PerformanceVectors import PerformanceVectors
 
 import logging
 logging.basicConfig(level=0)
 
 
 
-class PerformanceStatsTests(unittest.TestCase):
+class PerformanceVectorsTests(unittest.TestCase):
 
-    def test_PerformanceStats(self):
-        p = PerformanceStats(
+    def test_PerformanceVectors(self):
+        p = PerformanceVectors(
             pscores = nx.array([1,2,3,4,4,5,5], dtype=nx.float32),
             nscores = nx.array([0,0,1,1,2,4,5], dtype=nx.float32),
             alpha = 0.5)
         import pprint as pp
         print pp.pformat(p.__dict__)
+        
+    def test_PerformanceRange(self):
+        pass
 
 
 

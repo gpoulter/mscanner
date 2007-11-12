@@ -69,8 +69,6 @@ rc.stylesheet = lambda: rc.templates / "style.css"
 rc.corpora = lambda: rc.working / "corpora"
 ## Path to outputs directory
 rc.web_report_dir = lambda: rc.htdocs / "static" / "output"
-## Path to the fastscore utilities
-rc.fastscores = lambda: rc.sources / "fastscores"
 ## Path to the descriptor queue
 rc.queue_path = lambda: rc.working / "queue"
 

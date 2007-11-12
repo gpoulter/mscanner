@@ -3,6 +3,7 @@
 from __future__ import division
 import logging as log
 import numpy as nx
+from path import path
 
 from mscanner import update
 from mscanner.configuration import rc
@@ -49,8 +50,16 @@ class ScoreCalculator:
     (default 33330303)
 
     @ivar exclude: PMIDs that are not allowed to appear in the results
+    
+    @cvar executable_path: Path to executable for article score calculation
+    
+    @cvar dll_path: Path to shared library for article score calculation
     """
     
+    executable_path = path(__file__).dirname() / "_ScoreCalculator"
+    
+    dll_path = path(__file__).dirname() / "_ScoreCalculator.dll"
+
     def __init__(self,
                  docstream,
                  numdocs,
@@ -76,14 +85,14 @@ class ScoreCalculator:
         in decreasing order of preference (due to speed).
         """
         score = s.cscore_dll
-        if (rc.fastscores/"cscore.dll").isfile():
+        if s.dll_path.isfile():
             try: 
                 import ctypes
             except ImportError: 
                 score = s.cscore_pipe
         else:
             score = s.cscore_pipe
-        if score == s.cscore_pipe and not (rc.fastscores/"cscore").isfile():
+        if score == s.cscore_pipe and not s.executable_path.isfile():
             score = s.pyscore
         return score()
 
@@ -120,7 +129,7 @@ class ScoreCalculator:
         import struct
         import subprocess as sp
         p = sp.Popen([
-            rc.fastscores/"cscore", 
+            s.executable_path, 
             s.docstream,
             str(s.numdocs),
             str(len(s.featscores)),
@@ -154,7 +163,7 @@ class ScoreCalculator:
         carray = lambda dtype: nx.ctypeslib.ndpointer(
             dtype=dtype, ndim=1, flags='CONTIGUOUS')
         o_numresults = c_int()
-        cscore = cdll.LoadLibrary(rc.fastscores/"cscore.dll")
+        cscore = cdll.LoadLibrary(s.dll_path)
         cscore.cscore.argtypes = [ 
             c_char_p,           # docstream
             c_int,              # numdocs
@@ -174,8 +183,8 @@ class ScoreCalculator:
         o_pmids = nx.zeros(output_size, dtype=nx.int32)
         # Now call this monstrously paramaterised function
         cscore.cscore(
-            s.docstream, 
-            s.numdocs, 
+            s.docstream,
+            s.numdocs,
             len(s.featscores), 
             s.offset,
             output_size, 

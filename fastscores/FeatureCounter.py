@@ -4,6 +4,7 @@ all articles in Medline between two dates."""
 from __future__ import division
 import logging as log
 import numpy as nx
+from path import path
 
 from mscanner import update
 from mscanner.configuration import rc
@@ -12,6 +13,8 @@ from mscanner.medline.FeatureDatabase import FeatureStream
 
 class FeatureCounter:
     """Class for calculating feature counts in a subset of Medline"""
+    
+    counter_path = path(__file__).dirname() / "_FeatureCounter"
     
     def __init__(self,
                  docstream,
@@ -40,11 +43,13 @@ class FeatureCounter:
 
 
     def c_counts(s):
-        """Calls the 'featcounts' program to parse the feature
-        stream and count feature occurrences"""
+        """Pipes parameters to a C program that parses the stream
+        of documents with features, which counts the number
+        of occurrences of each feature, only considering documents
+        added to Medline in the specified date range."""
         import subprocess as sp
         p = sp.Popen([
-            rc.fastscores / "featcounts", 
+            s.counter_path, 
             s.docstream,
             str(s.numdocs),
             str(s.numfeats),

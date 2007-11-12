@@ -1,17 +1,25 @@
 .PHONY: all clean
 
-all: cscore cscore.so cscore.dll featcounts
+F = _FeatureCounter
+C = _ScoreCalculator
+
+BINARIES = $(C) $(C).so $(C).dll $(F)
+
+all: $(BINARIES)
 
 clean:
-	rm -f cscore cscore.exe cscore2.so cscore2.dll
+	rm -f $(BINARIES) $(C).exe $(F).exe
 
-cscore: cscore.c
-	gcc -o cscore -DCSCORE cscore.c
 
-cscore.so: cscore.c
-	gcc -o cscore.so -shared cscore.c
+$(F): $(F).c
+	gcc -o $@ $<	
 
-cscore.dll: cscore.c
-	gcc -o cscore.dll -mno-cygwin -shared cscore.c
-	
-featcounts: featcounts.c
+$(C): $(C).c
+	gcc -DCSCORE -o $@ $<
+
+$(C).so: $(C).c
+	gcc -shared -o $@ $<
+
+$(C).dll: $(C).c
+	gcc -mno-cygwin -shared -o $@ $<
+

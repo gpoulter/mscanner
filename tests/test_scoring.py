@@ -36,7 +36,7 @@ class CScoreModuleTests(unittest.TestCase):
     
     def test_ctypes(self):
         from ctypes import cdll, c_int, byref
-        lib = cdll.LoadLibrary(rc.fastscores/"cscore.dll")
+        lib = cdll.LoadLibrary(ScoreCalculator.dll_path)
         output = c_int()
         lib.double_int(2, byref(output))
         self.assertEqual(output.value, 4)

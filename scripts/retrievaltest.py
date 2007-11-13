@@ -79,10 +79,12 @@ def plot_rank_performance(fname, tp_vs_rank, total_relevant, compare_irrelevant)
     #print "Recall: ", recall
     #print "Precision: ", precision
     total_query = total_relevant + compare_irrelevant
+    q_prec = total_relevant/total_query
+    q_recall = (q_prec * ranks) / total_relevant
     g.plot(Data(ranks, recall, title="Recall", with="lines"),
            Data(ranks, precision, title="Precision", with="lines"),
-           Data([total_query], [1.0], title="QRecall", with="points pt 3 ps 1"),
-           Data([total_query], [total_relevant/total_query], title="QPrecision", with="points pt 5 ps 1"))
+           Data(ranks, q_recall, title="QRecall", with="lines"),
+           Data([0,total_query], [q_prec,q_prec], title="QPrecision", with="lines"))
 
 
 
@@ -114,13 +116,14 @@ def compare_pg07_and_pgxquery():
 
 
 
-def split_by_date(artdb, pmids, splitdate, before_file, after_file):
+def split_by_date(artdb, pmids, mindate, maxdate, before_file, after_file, notfound_file):
     """Split a list of PubMed IDs by record date and save them to file. It
     reloads the results instead if the files already exist.
     
     @param artdb: Mapping from PubMed ID to Article object.
     @param pmids: Sequence of PubMed IDs.
-    @param splitdate: Partitions are "before" and "on-or-after" splitdate
+    @param mindate: Partitions are "before" and "on-or-after" splitdate
+    @param maxdate: Ignore PubMed IDs added after maxdate
     @return: before, after lists of PubMed IDs
     """
     if before_file.exists() and after_file.exists():
@@ -128,52 +131,65 @@ def split_by_date(artdb, pmids, splitdate, before_file, after_file):
                  before_file.basename(), after_file.basename())
         before = list(iofuncs.read_pmids(before_file))
         after = list(iofuncs.read_pmids(after_file))
+        notfound = list(iofuncs.read_pmids(notfound_file))
     else:
         before, beforedates = [], []
         after, afterdates = [], []
+        notfound, ignore = [], []
         for pmid in pmids:
             if str(pmid) in artdb:
                 date = Date2Integer(artdb[str(pmid)].date_completed)
-                if date < splitdate:
+                if date < mindate:
                     before.append(pmid)
                     beforedates.append(date)
-                else:
+                elif date <= maxdate:
                     after.append(pmid)
                     afterdates.append(date)
+                else:
+                    ignore.append(pmid)
             else:
-                log.error("Failed to find %d.", pmid)
+                notfound.append(pmid)
+        log.info("Found %d before, %d inrange, %d unknown, %d ignored PubMed IDs.", 
+                  len(before), len(after), len(notfound), len(ignore))
         iofuncs.write_lines(
             before_file, sorted(zip(before, beforedates), key=lambda x:x[1]))
         iofuncs.write_lines(
             after_file, sorted(zip(after, afterdates), key=lambda x:x[1]))
-    return before, after
+        iofuncs.write_lines(notfound_file, notfound)
+    return before, after, notfound
 
 
 def compare_wang2007_query(test=False):
     """We compare MScanner retrieval to the complex PubMed query
     used in the Wang2007 paper."""
-    dataset = "wang2007query"
+    dataset = "wang_2004"
     outdir = rc.working / "query" / dataset
     if not outdir.exists(): outdir.makedirs()
     if test:
-        splitdate = 19920101
-        limit = 10000
+        mindate = 19920101
+        maxdate = 20020101
+        t_mindate = 19920101
+        t_maxdate = 20020101
         pos_file = rc.corpora / "Test" / "gdsmall.txt"
         neg_file = rc.articlelist
     else:
-        splitdate = 20050101
-        limit = 10000
+        mindate = 20040101
+        maxdate = 20041231
+        t_mindate = 20030101
+        t_maxdate = 20031231
         pos_file = rc.corpora / "Wang2007" / "combined_pos.txt"
         neg_file = rc.corpora / "Wang2007" / "combined_neg.txt"
-    pos_pmids = list(iofuncs.read_pmids(pos_file))
-    neg_pmids = list(iofuncs.read_pmids(neg_file))
+    all_pos = list(iofuncs.read_pmids(pos_file))
+    all_neg = list(iofuncs.read_pmids(neg_file))
     env = Databases()
-    old_pos, new_pos = split_by_date(env.artdb, pos_pmids, splitdate,
-                                     outdir/"old_pos.txt", outdir/"new_pos.txt")
-    old_neg, new_neg = split_by_date(env.artdb, neg_pmids, splitdate,
-                                     outdir/"old_neg.txt", outdir/"new_neg.txt")
-    QM = QueryManager(outdir, dataset, limit, mindate=splitdate, env=env)
-    QM.query(old_pos)
+    old_pos, new_pos, nf_pos = split_by_date(env.artdb, all_pos, mindate, maxdate,
+        outdir/"pos_before.txt", outdir/"pos_after.txt", outdir/"pos_notfound.txt")
+    old_neg, new_neg, nf_neg = split_by_date(env.artdb, all_neg, mindate, maxdate,
+        outdir/"neg_before.txt", outdir/"neg_after.txt", outdir/"neg_notfound.txt")
+    limit = len(new_pos) + len(new_neg)
+    QM = QueryManager(outdir, dataset, limit, None, env,
+                      mindate, maxdate, t_mindate, t_maxdate)
+    QM.query(old_pos, train_exclude=all_pos)
     new_results = [p for s,p in QM.results]
     truepos = result_relevance(new_results, set(new_pos))
     iofuncs.write_lines(outdir/"tp_vs_rank.txt", enumerate(truepos))

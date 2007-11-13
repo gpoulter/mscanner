@@ -50,9 +50,12 @@ class QueryManager:
     
     @ivar threshold: Minimum score to allow in the results
     
-    @ivar mindate, maxdate: Minimum and maximum YYYYMMDD date integer to use in
-    Medline (for both background training corpus, and for getting query
-    results).
+    @ivar mindate, maxdate: Minimum and maximum YYYYMMDD integer for
+    query results (ignore articles outside this range).
+    
+    @ivar t_mindate, t_maxdate: Minimum and maximum YYYYMMDD integer for
+    counting feature occurrences in Medline background corpus (defaults to
+    mindate, maxdate).
     
     @param env: L{Databases} to use (if None, we open them just for us).
     
@@ -69,8 +72,9 @@ class QueryManager:
     @ivar notfound_pmids: List of input PMIDs not found in the database
     """
 
-    def __init__(self, outdir, dataset, limit, threshold=None, 
-                 mindate=None, maxdate=None, env=None):
+    def __init__(self, outdir, dataset, limit, threshold=None, env=None,
+                 mindate=None, maxdate=None, 
+                 t_mindate=None, t_maxdate=None):
         # Set attributes from parameters
         self.outdir = outdir
         self.dataset = dataset
@@ -78,6 +82,8 @@ class QueryManager:
         self.threshold = threshold
         self.mindate = mindate
         self.maxdate = maxdate
+        self.t_mindate = mindate if t_mindate is None else t_mindate
+        self.t_maxdate = mindate if t_maxdate is None else t_maxdate
         # Create output dir
         if not outdir.exists():
             outdir.makedirs()
@@ -89,17 +95,19 @@ class QueryManager:
         self.featinfo = None
         self.inputs = None
         self.results = None
+        self.notfound_pmids = None
 
 
-    def query(self, input):
+    def query(self, input, train_exclude=None):
         """Performs a query given PubMed IDs as input
         
         @param input: Path to a list of PubMed IDs, or the list itself.
+        
+        @param train_exclude: PMIDs to exclude from background when training
         """
-        self.notfound_pmids = []
         if not self._load_input(input):
             return
-        self._make_feature_info()
+        self._make_feature_info(train_exclude)
         try:
             self._load_results()
         except IOError: 
@@ -132,9 +140,12 @@ class QueryManager:
             return False
 
 
-    def _make_feature_info(self):
+    def _make_feature_info(self, train_exclude=None):
         """Generate the L{featinfo} attribute using the L{pmids}
-        as examples of relevant citations."""
+        as examples of relevant citations.
+
+        @param train_exclude: PMIDs to exclude from background when training
+        """
         log.info("Calculating feature scores")
         # Parameters for the FeatureScores instance
         self.featinfo = FeatureScores(
@@ -150,23 +161,24 @@ class QueryManager:
             len(self.env.featmap), self.env.featdb, self.pmids)
         
         # Background feautures using all of Medline less query
-        if self.mindate is None and self.maxdate is None:
+        if self.t_mindate is None and self.t_maxdate is None:
             ndocs = self.env.featmap.numdocs - len(self.pmids)
             neg_counts = nx.array(self.env.featmap.counts, nx.int32) - pos_counts
-            
+        
         # Using only features from a specific date range
         else:
             log.info("Counting features between %s and %s", 
-                     str(self.mindate), str(self.maxdate))
+                     str(self.t_mindate), str(self.t_maxdate))
+            # Have the option to exclude more than just training PMIDs
+            if train_exclude is None: 
+                train_exclude = self.pmids
             ndocs, neg_counts = FeatureCounter(
                 docstream = rc.featurestream,
                 numdocs = self.env.featmap.numdocs,
                 numfeats = len(self.env.featmap),
-                mindate = self.mindate,
-                maxdate = self.maxdate,
-                exclude = self.pmids).c_counts()
-            ## WARNING: JUST TRYING OUT THIS LINE
-            #ndocs = self.env.featmap.numdocs - len(self.pmids)
+                mindate = self.t_mindate,
+                maxdate = self.t_maxdate,
+                exclude = train_exclude).c_counts()
         
         # Evaluating feature scores from the counts
         self.featinfo.update(pos_counts, neg_counts, pdocs, ndocs)
@@ -174,9 +186,9 @@ class QueryManager:
 
     def _load_results(self):
         """Read L{inputs} and L{results} from the report directory"""
-        log.info("Loading saved results for %s", self.dataset)
         self.inputs = list(iofuncs.read_scores(self.outdir/rc.report_input_scores))
         self.results = list(iofuncs.read_scores(self.outdir/rc.report_result_scores))
+        log.info("Loaded saved results for %s", self.dataset)
 
 
     def _save_results(self):

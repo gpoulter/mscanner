@@ -64,8 +64,8 @@ class CScoreModuleTests(unittest.TestCase):
             numdocs = len(self.citations),
             numfeats = 5,
             mindate = 20020101,
-            maxdate = 20050101,
-            exclude = set([5,8,9]))
+            maxdate = 20070101,
+            exclude = set([4,8,9]))
         p_ndocs, py_counts = fc.py_counts()
         c_ndocs, c_counts = fc.c_counts()
         print "py_counts", p_ndocs, pp.pformat(py_counts)

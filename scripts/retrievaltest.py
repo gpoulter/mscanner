@@ -114,24 +114,38 @@ def compare_pg07_and_pgxquery():
 
 
 
-def split_by_date(artdb, pmids, splitdate):
-    """Split a list of PubMed IDs by record date
+def split_by_date(artdb, pmids, splitdate, before_file, after_file):
+    """Split a list of PubMed IDs by record date and save them to file. It
+    reloads the results instead if the files already exist.
+    
     @param artdb: Mapping from PubMed ID to Article object.
     @param pmids: Sequence of PubMed IDs.
     @param splitdate: Partitions are "before" and "on-or-after" splitdate
     @return: before, after lists of PubMed IDs
     """
-    before = []
-    after = []
-    for pmid in pmids:
-        if str(pmid) in artdb:
-            date = Date2Integer(artdb[str(pmid)].date_completed)
-            if date < splitdate:
-                before.append(pmid)
+    if before_file.exists() and after_file.exists():
+        log.info("Loading PMIDs from %s and %s", 
+                 before_file.basename(), after_file.basename())
+        before = list(iofuncs.read_pmids(before_file))
+        after = list(iofuncs.read_pmids(after_file))
+    else:
+        before, beforedates = [], []
+        after, afterdates = [], []
+        for pmid in pmids:
+            if str(pmid) in artdb:
+                date = Date2Integer(artdb[str(pmid)].date_completed)
+                if date < splitdate:
+                    before.append(pmid)
+                    beforedates.append(date)
+                else:
+                    after.append(pmid)
+                    afterdates.append(date)
             else:
-                after.append(pmid)
-        else:
-            log.error("Failed to find %d.", pmid)
+                log.error("Failed to find %d.", pmid)
+        iofuncs.write_lines(
+            before_file, sorted(zip(before, beforedates), key=lambda x:x[1]))
+        iofuncs.write_lines(
+            after_file, sorted(zip(after, afterdates), key=lambda x:x[1]))
     return before, after
 
 
@@ -140,6 +154,7 @@ def compare_wang2007_query(test=False):
     used in the Wang2007 paper."""
     dataset = "wang2007query"
     outdir = rc.working / "query" / dataset
+    if not outdir.exists(): outdir.makedirs()
     if test:
         splitdate = 19920101
         limit = 10000
@@ -153,12 +168,10 @@ def compare_wang2007_query(test=False):
     pos_pmids = list(iofuncs.read_pmids(pos_file))
     neg_pmids = list(iofuncs.read_pmids(neg_file))
     env = Databases()
-    old_pos, new_pos = split_by_date(env.artdb, pos_pmids, splitdate)
-    iofuncs.write_lines(outdir/"old_pos.txt", old_pos)
-    iofuncs.write_lines(outdir/"new_pos.txt", new_pos)
-    old_neg, new_neg = split_by_date(env.artdb, neg_pmids, splitdate)
-    iofuncs.write_lines(outdir/"old_neg.txt", old_neg)
-    iofuncs.write_lines(outdir/"new_neg.txt", new_neg)
+    old_pos, new_pos = split_by_date(env.artdb, pos_pmids, splitdate,
+                                     outdir/"old_pos.txt", outdir/"new_pos.txt")
+    old_neg, new_neg = split_by_date(env.artdb, neg_pmids, splitdate,
+                                     outdir/"old_neg.txt", outdir/"new_neg.txt")
     QM = QueryManager(outdir, dataset, limit, mindate=splitdate, env=env)
     QM.query(old_pos)
     new_results = [p for s,p in QM.results]

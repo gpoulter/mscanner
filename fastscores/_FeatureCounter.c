@@ -84,12 +84,16 @@ int main (int argc, char **argv)
     unsigned short featvec_size = 0; // Size of current feature vector
     unsigned short featvec[1000]; // Maximum of 1000 features per citation
 
-    // Allocate space for excluded PMIDs and read from input
+    // Allocate space for excluded PMIDs 
     int *excluded = (int*) malloc (numexcluded * sizeof(int));
+    
+    // Allocate space for feature counts 
+    int *featcounts = (int*) malloc (numfeats * sizeof(int));
+
+    // Read excluded PMIDs from input
     fread(excluded, sizeof(int), numexcluded, stdin);
 
-    // Allocate space for feature counts and set them to zero
-    int *featcounts = (int*) malloc (numfeats * sizeof(int));
+    // Initialise feature counts to zero
     for(fi = 0; fi < numfeats; fi++) featcounts[fi] = 0;
 
     // Calculate citation scores

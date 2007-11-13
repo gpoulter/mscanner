@@ -20,7 +20,7 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
 import sys
-sys.path.insert(0,"/export/home/medscan/source")
+sys.path.insert(0,"/export/home/medscan")
 import web
 
 from mscanner.htdocs import templates

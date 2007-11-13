@@ -36,7 +36,10 @@ class CScoreModuleTests(unittest.TestCase):
 
     
     def test_ctypes(self):
-        from ctypes import cdll, c_int, byref
+        try:
+            from ctypes import cdll, c_int, byref
+        except ImportError:
+            return
         lib = cdll.LoadLibrary(ScoreCalculator.dll_path)
         output = c_int()
         lib.double_int(2, byref(output))
@@ -100,6 +103,8 @@ class CScoreModuleTests(unittest.TestCase):
         scores_py = nx.array([score for score,pmid in out_pyscore])
         self.assert_(nx.allclose(scores_pipe, scores_py))
         # Compare pyscore and cscore_dll 
+        try: import  ctypes
+        except ImportError: return
         out_dll = scorer.cscore_dll()
         print "out_dll", pp.pformat(out_dll)
         scores_dll = nx.array([score for score,pmid in out_dll])

@@ -7,7 +7,7 @@ from path import path
 
 from mscanner import update
 from mscanner.configuration import rc
-from mscanner.medline.FeatureDatabase import FeatureStream
+from mscanner.medline.FeatureStream import FeatureStream
 
 
                                      
@@ -31,7 +31,7 @@ class ScoreCalculator:
     the faster ones may not be available on certain platforms.
     
     @ivar docstream: Path to file containing feature vectors for documents to
-    score, in L{mscanner.medline.FeatureDatabase.FeatureStream} format.
+    score, in L{mscanner.medline.FeatureStream.FeatureStream} format.
     
     @ivar numdocs: Number of documents in the stream of feature vectors.
     
@@ -49,16 +49,14 @@ class ScoreCalculator:
     @ivar maxdate: YYYYMMDD integer: documents must have this date or earlier
     (default 33330303)
 
-    @ivar exclude: PMIDs that are not allowed to appear in the results
-    
-    @cvar executable_path: Path to executable for article score calculation
-    
-    @cvar dll_path: Path to shared library for article score calculation
+    @ivar exclude: Set of PMIDs that are not allowed to appear in the results
     """
     
     executable_path = path(__file__).dirname() / "_ScoreCalculator"
+    """Path to executable for article score calculation"""
     
     dll_path = path(__file__).dirname() / "_ScoreCalculator.dll"
+    """Path to shared library for article score calculation"""
 
     def __init__(self,
                  docstream,
@@ -66,23 +64,29 @@ class ScoreCalculator:
                  featscores,
                  offset,
                  limit,
-                 threshold=-10000.0,
-                 mindate=11110101,
-                 maxdate=33330303,
+                 threshold=None,
+                 mindate=None,
+                 maxdate=None,
                  exclude=set(),
                  ):
+        # Callers may want to pass None, but the C code needs numbers.
+        if threshold is None: threshold = -10000.0
+        if mindate is None: mindate = 10110101
+        if maxdate is None: maxdate = 30330303
         update(self, locals())
 
 
     def score(s):
-        """Meta-method to get (score, PMID) pairs in decreasing order of score.
+        """Meta-method to top-scoring PubMed IDs in Medline
         
-        The implementation is to iterates over the document stream and
-        return those articles that are between mindate and maxdate,
-        are not members of exclude, and have scores above the threshold.
+        @note: All implementations iterate over the document stream and to find
+        articles that are between mindate and maxdate, are not members of
+        exclude, and have scores above the threshold.
         
-        This method picks between L{cscore_dll}, L{cscore_pipe} and L{pyscore}
-        in decreasing order of preference (due to speed).
+        @note: This method picks between L{cscore_dll}, L{cscore_pipe} and
+        L{pyscore} in decreasing order of preference (due to speed).
+        
+        @return: List of (score, PMID) in decreasing order of score
         """
         score = s.cscore_dll
         if s.dll_path.isfile():
@@ -143,15 +147,17 @@ class ScoreCalculator:
         output = p.stdout.read(8)
         count = 0
         # Go through results in decreasing order to filter them
+        result = []
         while output != "":
             score, pmid = struct.unpack("fI", output)
             if pmid not in s.exclude:
-                yield score, pmid
+                result.append((score, pmid))
                 count += 1
                 if count >= s.limit:
                     break
             output = p.stdout.read(8)
         p.stdout.close()
+        return result
 
 
     def cscore_dll(s):
@@ -187,7 +193,7 @@ class ScoreCalculator:
             s.numdocs,
             len(s.featscores), 
             s.offset,
-            output_size, 
+            output_size,
             s.threshold,
             s.mindate,
             s.maxdate,
@@ -198,12 +204,14 @@ class ScoreCalculator:
         # Go through results in decreasing order to filter them
         count_filtered = 0
         count_total = 0
+        result = []
         for score, pmid in izip(o_scores, o_pmids):
             if pmid not in s.exclude:
-                yield score, pmid
+                result.append((score, pmid))
                 count_filtered += 1
                 if count_filtered >= s.limit:
                     break
             count_total += 1
-            if count_total >=  o_numresults.value:
+            if count_total >= o_numresults.value:
                 break
+        return result

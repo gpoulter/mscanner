@@ -8,7 +8,8 @@ from path import path
 
 from mscanner.medline import Shelf
 from mscanner.medline.Article import Article
-from mscanner.medline.FeatureDatabase import FeatureDatabase, FeatureStream
+from mscanner.medline.FeatureDatabase import FeatureDatabase
+from mscanner.medline.FeatureStream import FeatureStream
 from mscanner.medline.FileTracker import FileTracker
 from mscanner.medline.FeatureMapping import FeatureMapping
 
@@ -130,16 +131,22 @@ class MedlineCache:
                 # Refuse to add duplicates
                 if art.pmid in meshfeatdb: 
                     continue
-                # Store article, adding it to list of documents
+                # Store record in article database
                 artdb[str(art.pmid)] = art
+                # Add PubMed ID to the list of Medline
                 pmidlist.append(str(art.pmid))
+                # Calculate the feature vector
                 featids = self._article_features(art)
+                # Associate PubMed ID with the feature vector
                 meshfeatdb.setitem(art.pmid, featids, txn)
+                # Also add (PMID, date, features) to a fast-iteration stream
                 featstream.write(art.pmid, art.date_completed, featids)
             artdb.close()
             meshfeatdb.close()
             featstream.close()
+            # Update the list of PubMed IDs in Medline
             self.article_list.write_lines(pmidlist, append=True)
+            # Update the number of PubMed IDs in Medline
             self.narticles_path.write_text(str(narticles+len(pmidlist))+"\n")
             self.featmap.dump()
             if txn is not None:

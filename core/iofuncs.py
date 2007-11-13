@@ -28,9 +28,8 @@ def write_pmids(filename, pmids):
 
 
 def read_pmids(filename):
-    """Yield PubMed IDs listed one per line in a file
-    @note: Empty lines and lines starting with # are ignored.
-    """
+    """Yield PubMed IDs listed one per line in a file. Empty lines and lines
+    starting with # are ignored."""
     with open(filename) as f:
         for line in f:
             sline = line.strip()
@@ -67,9 +66,31 @@ def read_pmids_careful(filename, include=None, exclude=[]):
     return tuple(nx.array(a, nx.int32) for a in [results,broken,excluded])
 
 
+def write_lines(filename, items):
+    """Basic function for writing sequence of items to text files
+    
+    @param filename: Name of file to write to
+
+    @param items: Iterable of items convertible with str().  If the
+    items are tuples, they are written tab-separated.
+    """
+    with open(filename, "w") as f:
+        for item in items:
+            if isinstance(item, tuple):
+                f.write(str(item[0]))
+                for k in item[1:]:
+                    f.write("\t"+str(k))
+            else:
+                f.write(str(item))
+            f.write("\n")
+
+
 def write_scores(filename, pairs, sort=False):
     """Write scores and PubMed IDs to file
-    @param pairs: Iterable over (score, PMID)     
+    
+    @param pairs: Iterable over (score, PMID)
+
+    @param sort: If True, write them in decreasing order of score
     """
     sorted_pairs = sorted(pairs, reverse=True) if sort else pairs
     filename.write_lines("%-10d %f" % (p,s) for s,p in sorted_pairs)
@@ -77,7 +98,7 @@ def write_scores(filename, pairs, sort=False):
 
 def read_scores(filename):
     """Yield (score, pmid) pairs from file written by L{write_scores}"""
-    with open(filename) as f:
+    with open(filename, "r") as f:
         for line in f:
             sline = line.strip()
             if sline == "" or sline.startswith("#"):
@@ -88,21 +109,26 @@ def read_scores(filename):
 
 def read_scores_array(filename):
     """Reads a file written by L{write_scores}
+    
     @param filename: Path to file from which to read the pmid,score
+
     @return: An array of PubMed IDs, and an array of scores"""
     scores, pmids = izip(*read_scores(filename))
     return nx.array(pmids,nx.int32), nx.array(scores,nx.float32)
 
 
-def no_valid_pmids_page(filename, pmids):
+def no_valid_pmids_page(filename, dataset, pmids):
     """Print an error page when no valid PMIDs were found
+    
     @param filename: Path to output file
+
     @param pmids: List of any provided PMIDs (all invalid)
     """
     from Cheetah.Template import Template
     from mscanner.configuration import rc
     with FileTransaction(filename, "w") as ft:
         page = Template(file=str(rc.templates/"notfound.tmpl"))
+        page.dataset = dataset
         page.notfound_pmids = pmids
         page.respond(ft)
 

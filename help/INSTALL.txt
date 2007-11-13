@@ -183,12 +183,11 @@ Default configuration is in
 the MScanner rc-parameters.  The ``rc`` object holds all the global
 constants used by the MScanner library.
 
-Defaults can be overridden dynamically as follows::
+Performing a query::
          
-   from mscanner.configuration import rc
-   from mscanner.queryenv import Query
-   rc.dataset = "something"
-   rc.limit = 500 # At most 500 articles to be returned
-   query = Query(rc.working / "query" / rc.dataset)
-   query.query(rc.corpora / "something-pmids.txt")
+   from mscanner.core.QueryManager import QueryManager
+   QM = QueryManager(rc.working / "query" / "somedata", 
+                    dataset="somedata", limit=500)
+   QM.query(rc.corpora / "somedata.txt")
+   QM.write_report()
 

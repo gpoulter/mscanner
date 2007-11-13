@@ -3,7 +3,6 @@
 from bsddb import db
 import numpy as nx
 import logging as log
-from path import path
 import struct
 
 
@@ -132,50 +131,3 @@ class FeatureDatabase:
 
 
 
-class FeatureStream:
-    """Binary file of records consisting of PubMed ID, record date and feature vector.    
-    
-    @ivar stream: File or other object supporting read/write/close in binary
-    mode."""
-
-    def __init__(self, stream):
-        self.stream = stream
-
-
-    def close(self):
-        """Close the underlying file"""
-        self.stream.close()
-
-
-    def write(self, pmid, date, features):
-        """Add a record to the stream
-        @param pmid: PubMed ID (string or integer)
-        @param date: Either (year,month,day), or YYYMMDD integer date for the record
-        @param features: Numpy array of uint16 feature IDs"""
-        if features.dtype != nx.uint16:
-            raise ValueError("Array dtype must be uint16, not %s" % str(features.dtype))
-        if isinstance(date, tuple):
-            date = Date2Integer(date)
-        self.stream.write(struct.pack("IIH", int(pmid), date, len(features)))
-        features.tofile(self.stream)
-
-
-    def __iter__(self):
-        """Iterate over tuples of (PubMed ID, YYYYMMDD, features). The first
-        two are integers, and the last is a numpy arrays of uint16."""
-        header_len = 4+4+2 # IIH header
-        head = self.stream.read(header_len)
-        while len(head) == header_len:
-            pmid, date, alen = struct.unpack("IIH", head)
-            yield (pmid, date, nx.fromfile(self.stream, nx.uint16, alen))
-            head = self.stream.read(header_len)
-
-
-def Date2Integer(date):
-    """Given (year,month,day), return the integer representation"""
-    return date[0]*10000 + date[1]*100 + date[2]
-
-
-def Integer2Date(intdate):
-    """Given a YYYYMMDD integer, return (year,month,day)"""
-    return intdate//10000, (intdate%10000)//100, intdate%100

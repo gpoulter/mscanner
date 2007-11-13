@@ -26,7 +26,8 @@ from __future__ import with_statement
 from contextlib import closing
 import sys
 from bsddb import db
-from mscanner.medline.FeatureDatabase import FeatureDatabase, FeatureStream
+from mscanner.medline.FeatureDatabase import FeatureDatabase
+from mscanner.medline.FeatureStream import FeatureStream
 from mscanner.medline import Shelf
 
     
@@ -50,7 +51,9 @@ def regenerate_stream(artdb, featdb, featstream):
     adb = Shelf.open(artdb, "r")
     fd = FeatureDatabase(featdb, "r")
     fs = FeatureStream(open(featstream, "wb"))
-    for pmid, art in adb.iteritems():
+    for idx, (pmid, art) in enumerate(adb.iteritems()):
+        if idx % 10000 == 0:
+            print "Completed %d" % idx
         fs.write(pmid, art.date_completed, fd[pmid])
     fs.close()
     fd.close()

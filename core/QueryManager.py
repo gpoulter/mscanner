@@ -17,6 +17,7 @@ from mscanner.medline.Databases import Databases
 from mscanner.core.FeatureScores import FeatureScores, FeatureCounts
 from mscanner.core import CitationTable, iofuncs
 from mscanner.fastscores.ScoreCalculator import ScoreCalculator
+from mscanner.fastscores.FeatureCounter import FeatureCounter
 
 
                                      
@@ -37,15 +38,29 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 class QueryManager:
     """Class for performing a single query
 
-    @ivar env: L{Databases} to use.
+    @group Passed via constructor: outdir, dataset, limit, threshold, 
+    env, mindate, maxdate
     
-    @ivar timestamp: Time at the start of the operation
+    @ivar outdir: Path to directory for output files, which is created if it
+    does not exist.
     
-    @ivar pmids: Set object with input PubMed IDs, from L{_load_input}
+    @ivar dataset: Title of the dataset to use when printing reports
+    
+    @ivar limit: Maximum number of results (may be fewer due to threshold)
+    
+    @ivar threshold: Minimum score to allow in the results
+    
+    @ivar mindate, maxdate: Minimum and maximum YYYYMMDD date integer to use in
+    Medline (for both background training corpus, and for getting query
+    results).
+    
+    @param env: L{Databases} to use (if None, we open them just for us).
+    
+    @ivar timestamp: Time at the start of the operation.
+    
+    @ivar pmids: Sequence of input PubMed IDs (list/vector) from L{_load_input}
     
     @ivar featinfo: FeatureScores with feature scores, from L{query}
-    
-    @group From make_results or load_results: inputs, results
     
     @ivar inputs: List of (pmid, score) for input PMIDs
     
@@ -54,18 +69,20 @@ class QueryManager:
     @ivar notfound_pmids: List of input PMIDs not found in the database
     """
 
-    def __init__(self, outdir, env=None):
-        """Initialise the query
-        
-        @param outdir: Path to directory for output files, which is created if
-        it does not exist.
-        
-        @param env: L{Databases} to use.  If None we load them ourselves.
-        """
+    def __init__(self, outdir, dataset, limit, threshold=None, 
+                 mindate=None, maxdate=None, env=None):
+        # Set attributes from parameters
         self.outdir = outdir
+        self.dataset = dataset
+        self.limit = limit
+        self.threshold = threshold
+        self.mindate = mindate
+        self.maxdate = maxdate
+        # Create output dir
         if not outdir.exists():
             outdir.makedirs()
             outdir.chmod(0777)
+        # Set more attributes
         self.timestamp = time.time()
         self.env = env if env else Databases()
         self.pmids = None
@@ -88,8 +105,7 @@ class QueryManager:
         except IOError: 
             self._make_results()
             self._save_results()
-        self._write_report()
-        log.info("FINISHING QUERY %s", rc.dataset)
+        log.info("FINISHING QUERY %s", self.dataset)
         
         
     def _load_input(self, input):
@@ -106,13 +122,13 @@ class QueryManager:
             iofuncs.write_pmids(
                 self.outdir/rc.report_input_broken, self.notfound_pmids)
         else:
-            self.pmids = set(input)
+            self.pmids = input # Hope its a list/vector
         if len(self.pmids) > 0:
             return True
         else:
             log.error("No valid PubMed IDs in %s", input.basename())
             iofuncs.no_valid_pmids_page(
-                self.outdir/rc.report_index, self.notfound_pmids)
+                self.outdir/rc.report_index, self.dataset, self.notfound_pmids)
             return False
 
 
@@ -120,24 +136,45 @@ class QueryManager:
         """Generate the L{featinfo} attribute using the L{pmids}
         as examples of relevant citations."""
         log.info("Calculating feature scores")
+        # Parameters for the FeatureScores instance
         self.featinfo = FeatureScores(
             featmap = self.env.featmap,
             pseudocount = rc.pseudocount,
             mask = self.env.featmap.get_type_mask(rc.exclude_types),
             make_scores = rc.make_scores,
             get_postmask = rc.get_postmask)
+        
+        # Count features from the positive articles
+        pdocs = len(self.pmids)
         pos_counts = FeatureCounts(
             len(self.env.featmap), self.env.featdb, self.pmids)
-        self.featinfo.update(
-            pos_counts = pos_counts,
-            neg_counts = nx.array(self.env.featmap.counts, nx.int32) - pos_counts,
-            pdocs = len(self.pmids),
-            ndocs = self.env.featmap.numdocs - len(self.pmids))
+        
+        # Background feautures using all of Medline less query
+        if self.mindate is None and self.maxdate is None:
+            ndocs = self.env.featmap.numdocs - len(self.pmids)
+            neg_counts = nx.array(self.env.featmap.counts, nx.int32) - pos_counts
+            
+        # Using only features from a specific date range
+        else:
+            log.info("Counting features between %s and %s", 
+                     str(self.mindate), str(self.maxdate))
+            ndocs, neg_counts = FeatureCounter(
+                docstream = rc.featurestream,
+                numdocs = self.env.featmap.numdocs,
+                numfeats = len(self.env.featmap),
+                mindate = self.mindate,
+                maxdate = self.maxdate,
+                exclude = self.pmids).c_counts()
+            ## WARNING: JUST TRYING OUT THIS LINE
+            #ndocs = self.env.featmap.numdocs - len(self.pmids)
+        
+        # Evaluating feature scores from the counts
+        self.featinfo.update(pos_counts, neg_counts, pdocs, ndocs)
 
 
     def _load_results(self):
         """Read L{inputs} and L{results} from the report directory"""
-        log.info("Loading saved results for %s", rc.dataset)
+        log.info("Loading saved results for %s", self.dataset)
         self.inputs = list(iofuncs.read_scores(self.outdir/rc.report_input_scores))
         self.results = list(iofuncs.read_scores(self.outdir/rc.report_result_scores))
 
@@ -152,72 +189,76 @@ class QueryManager:
 
     def _make_results(self):
         """Perform the query to generate L{inputs} and L{results}"""
-        log.info("Peforming query for dataset %s", rc.dataset)
-        # Calculate score for each input PMID
+        log.info("Peforming query for dataset %s", self.dataset)
+        # Calculate decreasing (score, PMID) for input PMIDs
         self.inputs = zip(
-            self.featinfo.scores_of(self.env.featdb, self.pmids), self.pmids)
+            self.featinfo.scores_of(self.env.featdb, self.pmids), 
+            self.pmids)
         self.inputs.sort(reverse=True)
-        # Calculate score for each result PMID
-        self.results = list(ScoreCalculator(
+        # Calculate results as decreasing (score, PMID)
+        self.results = ScoreCalculator(
             rc.featurestream,
             self.env.featmap.numdocs,
             self.featinfo.scores,
             self.featinfo.offset,
-            rc.limit, 
-            rc.threshold,
-            rc.mindate,
-            rc.maxdate,
-            set(self.pmids)).score())
+            self.limit,
+            self.threshold,
+            self.mindate,
+            self.maxdate,
+            set(self.pmids)).score()
 
 
-    def _write_report(self):
+    def write_report(self, maxreport=None):
         """Write the HTML report for the query results
         
-        @note: Article database lookups are carried out beforehand because lookups
-        while doing template output is extremely slow."""
-        log.debug("Creating report for data set %s", rc.dataset)
+        @note: Article database lookups are carried out beforehand because
+        lookups while doing template output is extremely slow.
+        
+        @param maxreport: Largest number of records to write to the HTML reports
+        (overriding the result limit if smaller)
+        """
+        log.debug("Creating report for data set %s", self.dataset)
+        
+        # By default report all results
+        if maxreport is None or maxreport > len(self.results):
+            maxreport = len(self.results)
         
         log.debug("Writing feature scores")
         with codecs.open(self.outdir/rc.report_term_scores, "wb", "utf-8") as f:
             self.featinfo.write_csv(f)
-
+        
         log.debug("Writing input citations")
         self.inputs.sort(reverse=True)
         inputs = [ (s,self.env.artdb[str(p)]) for s,p in self.inputs]
         CitationTable.write_citations(
-            "input", inputs,
+            "input", self.dataset, inputs, 
             self.outdir/rc.report_input_citations, 
             rc.citations_per_file)
         
         log.debug("Writing output citations")
         self.results.sort(reverse=True)
-        outputs = [ (s,self.env.artdb[str(p)]) for s,p in self.results]
+        outputs = [ (s,self.env.artdb[str(p)]) for s,p in self.results[:maxreport] ]
         CitationTable.write_citations(
-            "output", outputs, 
+            "output", self.dataset, outputs,
             self.outdir/rc.report_result_citations, 
             rc.citations_per_file)
+        
+        # Identify the lowest-scoring article
+        self.lowest_score = self.results[-1][0] if len(self.results) else 0,
         
         # Write ALL output citations to a single HTML, and a zip file
         if len(outputs) > 0:
             outfname = self.outdir/rc.report_result_all
             zipfname = str(outfname + ".zip")
-            CitationTable.write_citations("output", outputs, outfname, len(outputs))
+            CitationTable.write_citations(
+                "output", self.dataset, outputs, outfname, len(outputs))
             from zipfile import ZipFile, ZIP_DEFLATED
             with closing(ZipFile(zipfname, "w", ZIP_DEFLATED)) as zf:
                 zf.write(str(outfname), str(outfname.basename()))
         
         # Index.html
         log.debug("Writing index file")
-        template = dict(
-            stats = self.featinfo.stats,
-            linkpath = rc.templates.relpath().replace('\\','/') if rc.link_headers else None,
-            lowest_score = self.results[-1][0] if len(self.results) else 0,
-            num_results = len(self.results),
-            best_tfidfs = self.featinfo.get_best_tfidfs(20),
-            timestamp = self.timestamp,
-            notfound_pmids = self.notfound_pmids,
-        )
         from Cheetah.Template import Template
         with iofuncs.FileTransaction(self.outdir/rc.report_index, "w") as ft:
             Template(file=str(rc.templates/"results.tmpl"), 
-                     filter="Filter", searchList=template).respond(ft)
+                     filter="Filter", searchList=dict(QM=self)).respond(ft)

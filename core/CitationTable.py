@@ -26,10 +26,12 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
-def write_citations(mode, citations, fname, perfile):
+def write_citations(mode, dataset, citations, fname, perfile):
     """Writes a set of HTML files containing citation records
     
     @param mode: 'input' or 'output'
+    
+    @param dataset: Dataset title to print at the top of the page
 
     @param citations: List of (score, Article) in descending order of score
 
@@ -46,9 +48,9 @@ def write_citations(mode, citations, fname, perfile):
         del starts[-1]
     # List of HTML files containing the citations
     from path import path
-    fnames = [fname] + [ 
-        path(fname.namebase + ("_%02d" % x) + fname.ext)
-        for x in range(2, 1+len(starts)) ]
+    fnames = [path(fname.basename())] # First file is the basic name
+    fnames += [path(fname.namebase + ("_%02d" % x) + fname.ext)
+                for x in range(2, 1+len(starts))]
     values = dict()
     page = Template(
         file=str(rc.templates/"citations.tmpl"), 
@@ -60,13 +62,11 @@ def write_citations(mode, citations, fname, perfile):
             towrite = citations[start:]
         values.update(dict(
             cite_table = CitationTable(start+1, towrite),
-            dataset = rc.dataset,
-            linkpath = rc.templates.relpath().replace('\\','/') if rc.link_headers else None,
+            dataset = dataset,
             mode = mode, 
             report_length = len(towrite),
             filelist = fnames,
-            filename = fnames[count],
-            ))
+            cur_idx = count))
         with iofuncs.FileTransaction(fname.dirname()/fnames[count], "w") as ft:
             page.respond(ft)
         

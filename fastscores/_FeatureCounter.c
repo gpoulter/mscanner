@@ -80,6 +80,7 @@ int main (int argc, char **argv)
     int fi = 0; // Loop variable: index into feature vector
     int date = 0; // Date of the current citation
     int pmid = 0; // PubMed ID of the current citation
+    int ndocs = 0; // Number of documents counted
     unsigned short featvec_size = 0; // Size of current feature vector
     unsigned short featvec[1000]; // Maximum of 1000 features per citation
 
@@ -110,10 +111,13 @@ int main (int argc, char **argv)
         // Add up the feature scores
         for(fi = 0; fi < featvec_size; fi++)
             featcounts[featvec[fi]]++;
+        // Counted features for one more document
+        ndocs++;
     }
     fclose(citefile);
 
-    // Print feature counts and return from main
+    // Print number of docs, feature counts before returning from main
+    fwrite(&ndocs, sizeof(int), 1, stdout);
     fwrite(featcounts, sizeof(int), numfeats, stdout);
     return 0;
 }

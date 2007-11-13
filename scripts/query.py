@@ -47,9 +47,10 @@ def do_query(*datasets):
     for dataset in datasets:
         if dataset not in dataset_map:
             raise ValueError("Invalid Data Set %s" % dataset)
-        rc.dataset = dataset
-        query = QueryManager(rc.working / "query" / rc.dataset, env)
-        query.query(rc.corpora / dataset_map[dataset])
+        QM = QueryManager(rc.working / "query" / dataset, 
+                             dataset, threshold=0, limit=500, env=env)
+        QM.query(rc.corpora / dataset_map[dataset])
+        QM.write_report()
     env.close()
     
 

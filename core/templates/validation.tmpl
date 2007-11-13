@@ -2,26 +2,25 @@
 
 #* Validation output page
 
-$linkpath -- None, or where to link for JS/CSS instead of #include
-$notfound_pmids -- List of invalid PubMed IDs
-$timestamp -- time.time() for start of the operation
-$stats -- FeatureScores instance
-$vectors -- PerformanceVectors instance
-$range -- PerformanceRanges instance
+$VM -- Instance of ValidationBase 
 *#
 
 #from mscanner.configuration import rc
 
-#set $t = $range.average
+#set $vectors = $VM.metric_vectors  ## PerformanceVectors instance
+#set $range = $VM.metric_range      ## PerformanceRanges instance
+#set $t = $VM.metric_range.average  ## PerformanceMetrics instance
 
 <html lang="en">
 
 <head>
 
-  <title>MScanner validation results: $rc.dataset</title>
+  <title>MScanner validation results: $VM.dataset</title>
   <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 
-  #if $getVar("linkpath", None)
+  #if $rc.link_headers
+  ## Link to original JS and CSS instead of including them
+  #set $linkpath = $rc.templates.relpath().replace('\\','/')
   <script type="text/javascript" src="$linkpath/hider.js"></script>
   <link rel="stylesheet" type="text/css" href="$linkpath/style.css">
   #else
@@ -60,7 +59,7 @@ $range -- PerformanceRanges instance
 <body>
 
 <div id="header">
- <h1>MScanner validation results: $rc.dataset</h1>
+ <h1>MScanner validation results: $VM.dataset</h1>
 </div>
 
 <div id="body">
@@ -80,7 +79,7 @@ $range -- PerformanceRanges instance
   <tr>
     <td>Timestamp</td>
     #import time
-    <td>$time.strftime("%Y/%m/%d %H:%M:%S GMT", $time.gmtime($timestamp))</td>
+    <td>$time.strftime("%Y/%m/%d %H:%M:%S GMT", $time.gmtime($VM.timestamp))</td>
     $help("h_timestamp")
   </tr>
   $hr("h_timestamp", """Date and time at which the query was submitted.""")
@@ -123,10 +122,10 @@ $range -- PerformanceRanges instance
   has its scores calculated, using the feature scores trained from the
   remaining partitions.""")
 
-  #if $stats.offset != 0
+  #if $VM.featinfo.stats.offset != 0
   <tr>
     <td>Offset</td>
-    <td>$stats.offset</td>
+    <td>$VM.featinfo.stats.offset</td>
     $help("h_offset")
   </tr>
   $hr("h_offset", """This value includes an offset to account for absent
@@ -182,7 +181,7 @@ $range -- PerformanceRanges instance
 
 </table>
 
-#if $getVar("pred_low", None) is None
+#if not $hasattr($VM, "pred_low")
 
 <div>
   <h2>Confusion Matrix at threshold
@@ -405,6 +404,7 @@ $range -- PerformanceRanges instance
 
 
 <div>
+#set global $stats = $VM.featinfo.stats
 #include str($rc.templates/"features.tmpl")
 </div>
 
@@ -412,16 +412,16 @@ $range -- PerformanceRanges instance
 <div>
   <h2>Performance graphs</h2>
 
-  #if $getVar("pred_low", None) is not None
+  #if $hasattr($VM, "pred_low")
   <div><h3>Predicted performance</h3>
     
     <p>We used the true and false positive rate as a function of score
-    threshold to predict the recall and precision in a query.  This
-    prediction is possible because the user specified that
-    there are between $pred_low.relevant and $pred_high.relevant 
-    relevant records yet to be found in Medline (containing $pred_low.total records), allowing us
-    to estimate the number of true positives and false positives that
-    will occur at each threshold.</p>
+    threshold to predict the recall and precision in a query. This prediction
+    is possible because the user specified that there are between
+    ${VM.pred_low.relevant} and ${VM.pred_high.relevant} relevant records yet to be
+    found in Medline (containing ${VM.pred_low.total} records), allowing us to
+    estimate the number of true positives and false positives that will occur
+    at each threshold.</p>
     
     <img src="$rc.report_prediction_img" alt="Predicted precision"/>
   </div>
@@ -444,7 +444,7 @@ $range -- PerformanceRanges instance
     <img src="$rc.report_featscores_img" alt="Feature Score Density"/>
   </div>
 
-#if $getVar("pred_low", None) is None
+#if not hasattr($VM, "pred_low")
   <div><h3>ROC Curve</h3>
     <p>True Positive Rate (recall) against False Positive Rate
     (1-specificity).  The greater the area under the ROC curve,
@@ -474,6 +474,7 @@ $range -- PerformanceRanges instance
 </div>
 
 <div>
+#set $notfound_pmids = $VM.notfound_pmids
 #include str($rc.templates/"invalid.tmpl")
 </div>
 

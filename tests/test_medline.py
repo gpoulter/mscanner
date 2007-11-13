@@ -18,8 +18,9 @@ import tempfile
 import unittest
 
 from mscanner.medline.Article import Article
-from mscanner.medline import Databases
-from mscanner.medline.FeatureDatabase import FeatureDatabase, FeatureStream
+from mscanner.medline.Databases import load_articles
+from mscanner.medline.FeatureDatabase import FeatureDatabase
+from mscanner.medline.FeatureStream import FeatureStream
 from mscanner.medline.FeatureMapping import FeatureMapping
 from mscanner.medline.FileTracker import FileTracker
 from mscanner.medline.MedlineCache import MedlineCache
@@ -158,7 +159,7 @@ class MedlineCacheTests(unittest.TestCase):
         xml.write_text(xmltext)
         m.add_directory(h, save_delay=1)
         pmids.write_lines(["1", "2"])
-        a = Databases.load_articles(artdb, pmids)
+        a = load_articles(artdb, pmids)
         print repr(a)
         self.assertEqual(a[0].pmid, 1)
         self.assertEqual(a[1].pmid, 2)

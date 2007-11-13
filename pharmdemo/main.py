@@ -119,10 +119,9 @@ def pharmdemo():
     """Perform a query with exporting of Pharmdemo associations"""
     #filename = rc.corpora / "pharmgkb-070205.txt"
     filename = rc.corpora / "genedrug-small.txt"
-    rc.dataset = "pharmdemo"
-    rc.threshold = 20.0 # Higher than usual threshold
-    rc.limit = 10000 # Want lots of results
-    op = PharmdemoQuery(rc.working / "query" / rc.dataset)
+    dataset = "pharmdemo"
+    op = PharmdemoQuery(rc.working / "query" / "pharmdemo", "pharmdemo",
+                        limit=10000, threshold=20.0)
     op.genedrug_query(filename, export_db=True)
 
 

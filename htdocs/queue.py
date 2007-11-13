@@ -236,6 +236,7 @@ def mainloop():
                     except OSError:
                         pass # Failed to delete output
                 last_clean = time.time()
+            
             # Cron: update the databases
             if time.time() - last_update > 12*3600:
                 if env is not None: env.close()
@@ -244,22 +245,33 @@ def mainloop():
                 env = Databases()
                 env.article_list # long first load time
                 last_update = time.time()
+            
             # Now perform any queued tasks
             queue = QueueStatus()
             task = queue.running
             if task is not None:
-                rc.update(task)
+                # The output directory for the task
                 outdir = rc.web_report_dir / task.dataset
                 log.info("Starting %s for %s", task.operation, task.dataset)
                 task._filename.utime(None) # Update mod time for status display
                 try:
                     if task.operation == "query":
-                        op = QueryManager(outdir, env)
-                        op.query(task._filename)
+                        QM = QueryManager(
+                            outdir, 
+                            dataset=task.dataset,
+                            limit=task.limit,
+                            threshold=task.threshold, 
+                            env=env)
+                        QM.query(task._filename)
+                        QM.write_report()
                     elif task.operation == "validate":
-                        op = CrossValidation(outdir, env)
-                        op.validation(task._filename, task.numnegs)
-                        op.report_validation()
+                        rc.alpha = task.alpha
+                        VM = CrossValidation(
+                            outdir, 
+                            dataset=task.dataset,
+                            env=env)
+                        VM.validation(task._filename, task.numnegs)
+                        VM.report_validation()
                     task._filename.move(outdir / "descriptor.txt")
                 except ValueError, e:
                     log.error(e)
@@ -273,12 +285,15 @@ def mainloop():
 def populate_test_queue():
     """Place some dummy queue files to test the queue operation"""
     from mscanner.core.Storage import Storage
-    pmids = list(iofuncs.read_pmids(rc.corpora / "genedrug-small.txt"))
+    pmids = list(iofuncs.read_pmids(rc.corpora / "Test" / "gdsmall.txt"))
     task = Storage(
         operation = "validate", 
         dataset = "gdqtest_valid",
-        numnegs = 1000, alpha = 0.6,
-        limit = 500, threshold = 0, submitted = time.time())
+        numnegs = 1000, 
+        alpha = 0.6,
+        limit = 500, 
+        threshold = 0, 
+        submitted = time.time())
     write_descriptor(rc.queue_path/task.dataset, pmids, task)
     task.operation = "query"
     task.dataset = "gdqtest_query"

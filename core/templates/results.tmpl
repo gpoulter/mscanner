@@ -2,13 +2,7 @@
 
 #* Index to the query outputs
 
-$linkpath -- Include JS and CSS remotely at this location
-$lowest_score -- Score of lowest-scoring article
-$timestamp -- time.time() for start of the operation
-$num_results -- Number of results
-$best_tfidfs -- List of (termid, tfidf, (term, termtype), score, pos, neg) for
-    the highest TF.IDF scores.
-$notfound_pmids -- List of invalid PubMed IDs
+$QM -- QueryManager instance used for the query
 *#
 
 #from mscanner.configuration import rc
@@ -17,10 +11,12 @@ $notfound_pmids -- List of invalid PubMed IDs
 
 <head>
 
-  <title>MScanner query results: $rc.dataset</title>
+  <title>MScanner query results: $QM.dataset</title>
   <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 
-  #if $getVar("linkpath", None) 
+  #if $rc.link_headers
+  ## Link to original JS and CSS instead of including them
+  #set $linkpath = $rc.templates.relpath().replace('\\','/')
   <script type="text/javascript" src="$linkpath/hider.js"></script>
   <link rel="stylesheet" type="text/css" href="$linkpath/style.css">
   #else
@@ -57,7 +53,7 @@ $notfound_pmids -- List of invalid PubMed IDs
 <body>
 
 <div id="header">
- <h1>MScanner query results: $rc.dataset</h1>
+ <h1>MScanner query results: $QM.dataset</h1>
 </div>
 
 <div id="body">
@@ -125,16 +121,16 @@ $notfound_pmids -- List of invalid PubMed IDs
     <td><a href="$rc.report_result_scores">$rc.report_result_scores</a></td>
     $help("h_result_scores")
   </tr>
-  $hr("h_result_scores", """Text file with the result PubMed IDs
-  ranked by decreasing score (score is also listed).""")
+  $hr("h_result_scores", """Text file with the result PubMed IDs ranked by
+  decreasing score (score is also listed).""")
 
   <tr>
     <th>Started at</th>
     #import time
-    <td>$time.strftime("%Y/%m/%d %H:%M:%S GMT", $time.gmtime($timestamp))</td>
+    <td>$time.strftime("%Y/%m/%d %H:%M:%S GMT", $time.gmtime($QM.timestamp))</td>
     $help("h_timestamp")
   </tr>
-  $hr("h_timestamp", "When the data set was created")
+  $hr("h_timestamp", "When the query process for this data was started.")
 
   <tr>
     <th>Finished at</th>
@@ -142,22 +138,22 @@ $notfound_pmids -- List of invalid PubMed IDs
     <td>$time.strftime("%Y/%m/%d %H:%M:%S GMT", $time.gmtime())</td>
     $help("h_written")
   </tr>
-  $hr("h_written", "When this index file was written (at the end of the query)")
+  $hr("h_written", "When this file was written (happens at the end of the query)")
 
-  #if $rc.pseudocount is not None
+  #if isinstance($QM.featinfo.pseudocount, float)
   <tr>
     <th>Pseudocount</th>
-    <td>$rc.pseudocount</td>
+    <td>$QM.featinfo.pseudocount</td>
     $help("h_pseudocount")
   </tr>
-  $hr("h_pseudocount", """Regularise the estimated probabilities for
-  feature occurrence.""")
+  $hr("h_pseudocount", """Constant background count (number of feature
+  occurrences) used to regularise feature occurrence probabilities.""") 
   #end if
 
-  #if $stats.offset != 0
+  #if $QM.featinfo.stats.offset != 0
   <tr>
     <th>Offset</th>
-    <td>$stats.offset</td> $help("h_offset")
+    <td>$QM.featinfo.stats.offset</td> $help("h_offset")
   </tr>
 
   $hr("h_offset", """This value includes an offset to account for absent
@@ -169,36 +165,59 @@ $notfound_pmids -- List of invalid PubMed IDs
 
   <tr>
     <th>Limit</th>
-    <td>$rc.limit</td>
+    <td>$QM.limit</td>
     $help("h_limit")
   </tr>
   $hr("h_limit", """The maximum number of results to include.""")
 
+  #if $QM.threshold is not None
   <tr>
     <th>Threshold</th>
-    <td>$rc.threshold</td>
+    <td>$QM.threshold</td>
     $help("h_threshold")
   </tr>
   $hr("h_threshold", """Only include citations with at least this score""")
+  #end if
+  
+  #if $QM.mindate is not None
+  <tr>
+    <th>Minimum date</th>
+    <td>$QM.mindate</td>
+    $help("h_mindate")
+  </tr>
+  $hr("h_mindate", """The minimum date considered when parsing Medline
+  (both when making feature counts, and when querying)""")
+  #end if
+
+  #if $QM.maxdate is not None
+  <tr>
+    <th>Maximum date</th>
+    <td>$QM.maxdate</td>
+    $help("h_maxdate")
+  </tr>
+  $hr("h_maxdate", """The maximum date considered when parsing Medline
+  (both when making feature counts, and when querying)""")
+  #end if
 
   <tr>
     <th>Number of results</th>
-    <td>$num_results</td>
+    <td>#echo len($QM.results) #</td>
     $help(None)
   </tr>
 
   <tr>
     <th>Lowest score</th>
-    <td>#echo "%.5f" % $lowest_score #</td>
+    <td>#echo "%.5f" % $QM.lowest_score #</td>
     $help(None)
   </tr>
 
  </tbody>
  </table>
 
+  ## Print statistics about data set size and feature occurrences
+  #set global $stats = $QM.featinfo.stats
   #include str($rc.templates/"features.tmpl")
 
-  #if $getVar("best_tfidfs", None)
   <h2>Features with high TF.IDF</h2>
   
   <p>Features with TF.IDF above 0.2 or 0.3 could make good keywords. <a
@@ -218,7 +237,8 @@ $notfound_pmids -- List of invalid PubMed IDs
   <th>Neg</th>
   </tr>
   </thead>
-  #for termid, tfidf, (term, termtype), score, pos, neg in $best_tfidfs:
+  #set best_tfidfs = $QM.featinfo.get_best_tfidfs(20)
+  #for termid, tfidf, (term, termtype), score, pos, neg in best_tfidfs:
   <tr>
   <td>#echo "%.2f"%$tfidf#</td>
   <td>$termtype</td>
@@ -230,8 +250,8 @@ $notfound_pmids -- List of invalid PubMed IDs
   </tr>
   #end for termid
   </table>
-  #end if tfidf
   
+  #set notfound_pmids = $QM.notfound_pmids
   #include str($rc.templates/"invalid.tmpl")
   
 </div><!--narrow-->  

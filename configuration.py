@@ -61,10 +61,6 @@ rc.processed = lambda: rc.cache / "processed.txt"
 rc.medline = lambda: rc.working / "medline"
 ## Path for log file
 rc.logfile = lambda: rc.cache / "lastlog.txt"
-## Path for e-mail alert file
-rc.emails_path = lambda: rc.cache / "emails.txt"
-## Path for stylesheet for reports
-rc.stylesheet = lambda: rc.templates / "style.css"
 ## Path to corpora directory
 rc.corpora = lambda: rc.working / "corpora"
 ## Path to outputs directory
@@ -126,14 +122,18 @@ rc.use_transactions = False
 rc.save_delay = 3
 ## Server for sending e-mails
 rc.smtpserver = "smtp.uct.ac.za" # "smtp.stanford.edu"
-## Proportion of data to use in retrieval test
-rc.retrieval_test_prop = 0.2
 ## Email to send website queries to
 rc.webmaster_email = "xxxxxxxxxxxxxxxxxxxxxxxx"
 ## Base directory for the website
 rc.siteurl = "http://mscanner.stanford.edu"
 ## Whether to link to .js and .css files instead of including them
 rc.link_headers = False
+## 0<Alpha<1.  Alpha=0.5 maximises standard F-Measure.
+rc.alpha = 0.5
+## The utility of retrieving a positive article (defaults to N/P)
+rc.utility_r = None
+## Number of citations per output file
+rc.citations_per_file = 250
 
 ## Parameters affecting FeatureScores 
 
@@ -147,25 +147,6 @@ rc.make_scores = "scores_newpseudo"
 #rc.make_scores = "scores_noadjust"
 ## Method name for calculating mask after scores (may be None)
 rc.get_postmask = None
-
-#### Defaults for descriptor parameters
-
-## Name of dataset
-rc.dataset = "default"
-## Float for minimum score threshold
-rc.threshold = 0
-## Integer for maximum number of results (may be fewer due to threshold)
-rc.limit = 1000
-## In queries, only consider articles later than this
-rc.mindate = 11110101
-## In queries, only consider articles earlier than this
-rc.maxdate = 33330303
-## 0<Alpha<1.  Alpha=0.5 maximises standard F-Measure.
-rc.alpha = 0.5
-## The utility of retrieving a positive article (defaults to N/P)
-rc.utility_r = None
-## Number of citations per output file
-rc.citations_per_file = 250
 
 
 ## Logging configuration

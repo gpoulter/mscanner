@@ -20,7 +20,7 @@ from pylab import *
 
 from mscanner.configuration import rc as mrc, start_logger
 from mscanner.core import iofuncs
-from mscanner.core.Plotter import Plotter
+from mscanner.core.Plotter import Plotter, DensityPlotter
 from mscanner.core.PerformanceVectors import PerformanceVectors
 from mscanner.scripts import retrievaltest
 
@@ -97,7 +97,7 @@ def load_stats(indir, dataset, title, alpha=0.5):
     return stats
 
 
-def gplot(x,y,ls,label,pos=0.6,usemarker=False):
+def gplot(x, y, ls, label, pos=0.6, usemarker=False):
     """Wraps plot to add a single marker marker instead of lots"""
     if usemarker:
         i = int(pos*len(x))
@@ -169,8 +169,8 @@ def plot_score_density(fname, statlist):
     logging.info("Plotting score densities to %s", fname)
     for idx, s in enumerate(statlist):
         t = s.threshold
-        px, py = Plotter.gaussian_kernel_pdf(s.pscores)
-        nx, ny = Plotter.gaussian_kernel_pdf(s.nscores)
+        px, py = DensityPlotter.gaussian_kernel_pdf(s.pscores)
+        nx, ny = DensityPlotter.gaussian_kernel_pdf(s.nscores)
         subplot(2,2,idx+1)
         title(s.title)
         line_pos, = plot(px, py, color='red', label=r"$\rm{Positive}$")

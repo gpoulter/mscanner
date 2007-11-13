@@ -12,39 +12,37 @@ For example::
     python retrievaltest.py pg07 'pharmgkb-070205.txt'
 """
 
+from __future__ import division
+
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = "GPL"
 
+import logging as log
+import numpy as nx
+from path import path
+import pprint as pp
 import random
 import sys
-from path import path
 
 from mscanner.configuration import rc, start_logger
+from mscanner.core import iofuncs
 from mscanner.core.QueryManager import QueryManager
-from mscanner.core.Plotter import RetrievalPlot
+from mscanner.medline.Databases import Databases
+from mscanner.medline.FeatureStream import Date2Integer
 
 
-### RETRIEVAL TEST
-## Name of file with list of testing PMIDs
-rc.report_retrieval_test_pmids = path("retrieval_test.txt")
-## Name of file with cumulative count of retrieved test PMIDs
-rc.report_retrieval_stats = path("retrieval_stats.txt")
-## Name of retrieval vs rank graph
-rc.report_retrieval_graph = path("retrieval.png")
-
-
-def compare_results_to_standard(results, test):
+def result_relevance(results, test):
     """Test of query results against a gold standard.
 
-    @param results: List of result PubMed IDs
+    @param results: List of result PubMed IDs in decreasing order of score
     
-    @param test: Set of gold-standard articles to look for in results
+    @param test: Set of known relevant articles that are to be counted
+    as true positive in L{results}
 
-    @return: True positives as function of rank (measured with respect to the
-    test set). False positives are equal to rank minus true positives."""
+    @return: Vector storing number of true positives at each rank. False
+    positives can be calculated as rank minus true positives."""
     assert isinstance(test, set)
-    import numpy as nx
     TP_total = nx.zeros(len(results), nx.int32)
     for idx, pmid in enumerate(results):
         TP_total[idx] = TP_total[idx-1] if idx > 0 else 0
@@ -53,62 +51,130 @@ def compare_results_to_standard(results, test):
     return TP_total
 
 
-class RetrievalTest(QueryManager):
-    """Performs retrieval-testing analysis, in which a subset of the data is
-    used to query, and the results are tested against the rest of the data."""
+def plot_rank_performance(fname, tp_vs_rank, total_relevant, compare_irrelevant):
+    """Plot recall and precision versus rank.
+    @param fname: File to write graph to
+
+    @param tp_vs_rank: Vector where the values are the number of true positives
+    at rank equal to current index plus one. 
     
-    def retrieval_query(self, input):
-        """Splits the input into training and testing, plots how many testing
-        PMIDs the query returns when trained on the training PMIDs.
-        
-        @return: Array with cumulative test PMIDs as function of rank
-        """
-        rc.threshold = None # No threshold for this stuff
-        # Split the input into train and test sections
-        if not self._load_input(input):
-            return
-        pmids_list = list(self.pmids)
-        random.shuffle(pmids_list)
-        subset_size = int(rc.retrieval_test_prop * len(pmids_list))
-        self.pmids = set(pmids_list[:subset_size])
-        test_pmids = set(pmids_list[subset_size:])
-        # Write test PMIDs
-        (self.outdir/rc.report_retrieval_test_pmids).write_lines(
-            [str(x) for x in test_pmids])
-        # Get feature info and result scores
-        self._make_feature_info()
-        self._make_results()
-        self._save_results()
-        # Test the results against the test PMIDs
-        cumulative = compare_results_to_standard(
-            [p for s,p in self.results], test_pmids)
-        # Write the number of TP at each rank
-        (self.outdir/rc.report_retrieval_stats).write_lines(
-            [str(x) for x in cumulative])
-        # Graph TP vs FP (FP = rank-TP)
-        plotter = RetrievalPlot()
-        plotter.plot_retrieved_positives(
-            self.outdir/rc.report_retrieval_graph, 
-            cumulative, len(test_pmids))
+    @param total_relevant: Total number of relevant articles to be found.
+    
+    @param compare_irrelevant: The number of irrelevant articles retrieved by
+    the query that was manually filtered to yield the L{total_relevant}. We use
+    this to calculate the precision of the PubMed query against which we are
+    comparing. """
+    log.debug("Plotting Retrieval curve to %s", fname)
+    from Gnuplot import Gnuplot, Data
+    g = Gnuplot()
+    g.title("Query performance against positive data")
+    g.ylabel("Recall & Precision")
+    g.xlabel("Rank")
+    g("set terminal png")
+    g("set output '%s'" % fname)
+    ranks = nx.arange(1,len(tp_vs_rank)+1)
+    recall = tp_vs_rank / total_relevant
+    precision = tp_vs_rank / ranks
+    #print "Ranks: ", ranks
+    #print "Recall: ", recall
+    #print "Precision: ", precision
+    total_query = total_relevant + compare_irrelevant
+    g.plot(Data(ranks, recall, title="Recall", with="lines"),
+           Data(ranks, precision, title="Precision", with="lines"),
+           Data([total_query], [1.0], title="QRecall", with="points pt 3 ps 1"),
+           Data([total_query], [total_relevant/total_query], title="QPrecision", with="points pt 5 ps 1"))
 
 
-def retrieval(dataset, filename):
-    """Carry out retrieval test
+
+def compare_pg07_and_pgxquery():
+    """Carry out retrieval comparison for a query to MScanner
+    with PG07 versus a query to PubMed with 'pharmacogenetics'
     
-    @param dataset: Name of the task
-    @param filename: Name of corpus to load
+    The relevant examples are split randomly into train/test.  A query is done
+    with train, and we evaluate the number of members of test that show
+    up in the query results as a function of rank"""
+    dataset = "pg07_retrieve"
+    pos_file = rc.corpora / "Paper" / "pharmgkb_2007.02.05.txt"
+    outdir = rc.working / "query" / dataset
+    test_proportion = 0.2
+    # Load and split PubMed IDs into train/test
+    QM = QueryManager(outdir, dataset, limit=1000)
+    pmids_list = list(iofuncs.read_pmids(pos_file))
+    random.shuffle(pmids_list)
+    subset_size = int(test_proportion * len(pmids_list))
+    train_pmids = pmids_list[:subset_size]
+    test_pmids = pmids_list[subset_size:]
+    iofuncs.write_lines(outdir/"test_pmids.txt", test_pmids)
+    QM.query(train_pmids)
+    QM.env.close()
+    # Evaluate true positives as a function of rank
+    tp_vs_rank = result_relevance(
+        [p for s,p in QM.results], test_pmids)
+    iofuncs.write_lines(outdir/"tp_vs_rank.txt", enumerate(tp_vs_rank))
+
+
+
+def split_by_date(artdb, pmids, splitdate):
+    """Split a list of PubMed IDs by record date
+    @param artdb: Mapping from PubMed ID to Article object.
+    @param pmids: Sequence of PubMed IDs.
+    @param splitdate: Partitions are "before" and "on-or-after" splitdate
+    @return: before, after lists of PubMed IDs
     """
-    rc.limit = 1000 # Force 1000 results
-    rc.retrieval_test_prop = 0.2
-    rc.dataset = dataset
-    op = RetrievalTest(rc.web_report_dir / dataset)
-    op.retrieval_query(rc.corpora / filename)
-    op.env.close()
+    before = []
+    after = []
+    for pmid in pmids:
+        if str(pmid) in artdb:
+            date = Date2Integer(artdb[str(pmid)].date_completed)
+            if date < splitdate:
+                before.append(pmid)
+            else:
+                after.append(pmid)
+        else:
+            log.error("Failed to find %d.", pmid)
+    return before, after
+
+
+def compare_wang2007_query(test=False):
+    """We compare MScanner retrieval to the complex PubMed query
+    used in the Wang2007 paper."""
+    dataset = "wang2007query"
+    outdir = rc.working / "query" / dataset
+    if test:
+        splitdate = 19920101
+        limit = 10000
+        pos_file = rc.corpora / "Test" / "gdsmall.txt"
+        neg_file = rc.articlelist
+    else:
+        splitdate = 20050101
+        limit = 10000
+        pos_file = rc.corpora / "Wang2007" / "combined_pos.txt"
+        neg_file = rc.corpora / "Wang2007" / "combined_neg.txt"
+    pos_pmids = list(iofuncs.read_pmids(pos_file))
+    neg_pmids = list(iofuncs.read_pmids(neg_file))
+    env = Databases()
+    old_pos, new_pos = split_by_date(env.artdb, pos_pmids, splitdate)
+    iofuncs.write_lines(outdir/"old_pos.txt", old_pos)
+    iofuncs.write_lines(outdir/"new_pos.txt", new_pos)
+    old_neg, new_neg = split_by_date(env.artdb, neg_pmids, splitdate)
+    iofuncs.write_lines(outdir/"old_neg.txt", old_neg)
+    iofuncs.write_lines(outdir/"new_neg.txt", new_neg)
+    QM = QueryManager(outdir, dataset, limit, mindate=splitdate, env=env)
+    QM.query(old_pos)
+    new_results = [p for s,p in QM.results]
+    truepos = result_relevance(new_results, set(new_pos))
+    iofuncs.write_lines(outdir/"tp_vs_rank.txt", enumerate(truepos))
+    plot_rank_performance(outdir/"perf_vs_rank.png", 
+                          truepos, len(new_pos),
+                          compare_irrelevant=len(new_neg))
+    QM.write_report(maxreport=1000)
+    env.close()
+    
 
 
 if __name__ == "__main__":
     start_logger()
-    if len(sys.argv) != 3:
-        print "Please provide dataset and input file name"
+    if len(sys.argv) != 2:
+        print "Please provide a Python expression to execute"
     else:
-        retrieval(sys.argv[1], sys.argv[2])
+        eval(sys.argv[1])

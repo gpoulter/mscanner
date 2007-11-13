@@ -2,19 +2,17 @@
 
 #* Table of citations
 
-cite_table -- HTML for citation table
+$cite_table -- HTML for citation table
 
-dataset -- Name of data set
+$dataset -- Name of data set
 
-linkpath -- Include JS and CSS remotely at this location
+$mode -- 'input' or 'output'
 
-mode -- 'input' or 'output'
+$report_length  -- Number of citations in this page of the report
 
-report_length  -- Number of citations in the report
+$cur_idx -- Index into $filelist of the current file name
 
-filename -- Name of the current file (e.g. 'results_03.html')
-
-filelist -- List of names of all HTML files in the set
+$filelist -- List of names of all HTML files in the set
 *#
 
 #from mscanner.configuration import rc
@@ -32,7 +30,9 @@ filelist -- List of names of all HTML files in the set
   </title>
   <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 
-  #if $getVar("linkpath", None)
+  #if $rc.link_headers
+  ## Link to original JS and CSS instead of including them
+  #set $linkpath = $rc.templates.relpath().replace('\\','/')
   <script type="text/javascript" src="$linkpath/hider.js"></script>
   <script type="text/javascript" src="$linkpath/fileutils.js"></script>
   <script type="text/javascript" src="$linkpath/citations.js"></script>
@@ -68,25 +68,28 @@ filelist -- List of names of all HTML files in the set
 
 <p id="navigation">
 Navigation: 
-#set cur_idx = $filelist.index($filename)
 
+## Link to the previous file in the list
 #if $cur_idx > 0
 <a href="$filelist[$cur_idx-1]">Previous</a>&nbsp;
 #end if
 
+## Link to all preceding files
 #for idx in range($cur_idx)
 <a href="$filelist[$idx]">#echo $idx+1#</a>&nbsp;
 #end for
 
-<b><a href="$filename">#echo $cur_idx+1#</a></b>&nbsp;
+## Link to this file
+<b><a href="$filelist[$cur_idx]">#echo $cur_idx+1#</a></b>&nbsp;
 
-## These are files which can be used by the result-appender
+## Link to all following files (NOTE: also used by the result-appender)
 <span id="appendable_files">
 #for idx in range($cur_idx+1, len($filelist))
 <a href="$filelist[$idx]">#echo $idx+1#</a>&nbsp;
 #end for
 </span>
 
+## Link to the next file in the list
 #if len($filelist) > $cur_idx+1
 <a href="$filelist[$cur_idx+1]">Next</a>
 #end if
@@ -240,7 +243,7 @@ Navigation:
   </p>
   
   <div class="help" id="h_save_load">
-    #set save_target = $filename.namebase+".csv"
+    #set save_target = $filelist[$cur_idx].namebase+".csv"
     <p>
       These buttons will save or load classifications (the marks in the "C"
       column as to whether a citation is relevant or irrelevant) to a file

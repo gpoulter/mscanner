@@ -39,21 +39,20 @@ dataset_map = {
 
 
 def validate(*datasets):
-    """Perform cross-validation analysis for the Mscanner publication"""
+    """Perform cross-validation analysis on the main data sets"""
     env = Databases()
     for dataset in datasets:
         if dataset not in dataset_map:
             raise ValueError("Invalid Data Set %s" % dataset)
-        rc.dataset = dataset
         pos, neg = dataset_map[dataset]
         if not isinstance(pos, path):
             pos = rc.corpora / pos
         if isinstance(neg, str):
             neg = rc.corpora / neg
-        op = CrossValidation(rc.working / "valid" / rc.dataset, env)
+        op = CrossValidation(rc.working / "valid" / dataset, dataset, env)
         op.validation(pos, neg)
-        op.report_validation()
-        #op.report_predicted(1000, 10000, 16000000)
+        #op.report_validation()
+        op.report_predicted(1000, 10000, 16000000)
     env.close()
 
 
@@ -61,12 +60,12 @@ def validate(*datasets):
 def issn_features():
     """Perform cross validation on for AIDSBio vs 100k, excluding ISSN features.
     
-    The results show that keeping the ISSN features produces better
-    cross-validation performance."""
+    The results show that adding ISSN features produces better
+    averaged precision in cross-validation."""
     rc.exclude_types = ["issn"]
-    rc.dataset = "aids-noissn"
     pos, neg = dataset_map["aidsbio"]
-    op = CrossValidation(rc.working / "valid" / rc.dataset)
+    op = CrossValidation(rc.working / "valid" / "aids-noissn", 
+                         "AIDSBIO without ISSN features")
     op.validation(rc.corpora / pos, rc.corpora / neg)
     op.report_validation()
     op.env.close()
@@ -83,10 +82,10 @@ def random_bimodality():
     Random occurrences of 0,1,2 or 3 of those -9 features in test citations
     causes the score of that citation to be shifted by -9, -18, -27 from
     zero."""
-    rc.dataset = "random_modality"
     rc.get_postmask = "mask_nonpositives"
     pos, neg = dataset_map["random10k"]
-    op = CrossValidation(rc.working / "valid" / rc.dataset)
+    op = CrossValidation(rc.working / "valid" / "random_modality",
+                         "Removing bimodality in Random")
     op.validation(rc.corpora / pos, rc.corpora / neg)
     op.report_validation()
     op.env.close()
@@ -94,16 +93,19 @@ def random_bimodality():
 
     
 def trec2005_compare():
-    """Performs split-sample validation on the trec GO subtask"""
+    """Performs split-sample validation on the trec GO subtask.
+    
+    The thing here is that TREC 2005 is an enriched background
+    """
     env = Databases()
     ntest = rc.corpora / "TREC" / "NEG_test.txt"
     ntrain = rc.corpora / "TREC" / "NEG_train.txt"
     for ds, Ur in [("A",17.0), ("E",64.0), ("G",11.0), ("T",231.0)]:
-        rc.dataset = "TREC_%s" % ds
         rc.utility_r = Ur
+        dataset = "TREC_%s" % ds
         ptrain = rc.corpora / "TREC" / (ds + "train.txt")
         ptest = rc.corpora / "TREC" / (ds + "test.txt")
-        op = SplitValidation(rc.working / "valid" / rc.dataset, env)
+        op = SplitValidation(rc.working / "valid" / dataset, dataset, env)
         op.validation(ptrain, ntrain, ptest, ntest)
     env.close()
 
@@ -112,13 +114,13 @@ def trec2005_compare():
 def wang2007_compare():
     """Performs cross validation using the data set from Wang2007"""
     env = Databases()
+    rc.utility_r = None
     #for fbase in "ac", "allergen", "er", "other":
     for fbase in "combined",:
         pos = rc.corpora / "Wang2007" / ("%s_pos.txt" % fbase)
         neg = rc.corpora / "Wang2007" / ("%s_neg.txt" % fbase)
-        rc.dataset = "wang_%s" % fbase
-        rc.utility_r = None
-        op = CrossValidation(rc.working / "valid" / rc.dataset, env)
+        dataset = "wang_%s" % fbase
+        op = CrossValidation(rc.working / "valid" / dataset, dataset, env)
         op.validation(pos, neg)
         op.report_validation()
     env.close()
@@ -140,8 +142,8 @@ def compare_score_methods():
     train_rel = rc.corpora / "genedrug-small.txt"
     train_irrel = rc.articlelist
     for method in score_methods:
-        rc.dataset = "pg07-" + method
-        op = CrossValidation(rc.working / "cmpscores" / rc.dataset, env)
+        dataset = "pg07-" + method
+        op = CrossValidation(rc.working / "cmpscores" / dataset, dataset, env)
         op.validation(train_rel, train_irrel)
         op.report_validation()
     env.close()
@@ -150,6 +152,6 @@ def compare_score_methods():
 if __name__ == "__main__":
     start_logger()
     if len(sys.argv) != 2:
-        print "Please provide a Python expression"
+        print "Please provide a Python expression to execute"
     else:
         eval(sys.argv[1])

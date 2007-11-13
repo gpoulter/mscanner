@@ -21,24 +21,35 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
-class Plotter(Gnuplot):
+class Plotter:
     """Implements the plots used in MScanner
     
     When adding a new analysis, the plotting function for its output
     graphs should be added here.
     
-    All functions take the fname parameter, which is the path to 
-    the PNG file to which the graph will be written.
+    @note: All methods take an fname parameter, which is the path to the PNG
+    file to which the graph will be written.
+    
+    @ivar overwrite: If False, we no-op rather than overwrite an already
+    existing graph.
+    
+    @ivar gnuplot: The captive Gnuplot instance.
     """
 
+    def __init__(self, overwrite=True):
+        self.overwrite = overwrite
+        self.gnuplot = Gnuplot()
 
-    def plot_predictions(g, fname, predicted_low, predicted_high):
+
+    def plot_predictions(self, fname, predicted_low, predicted_high):
         """Given L{PredictedMetrics} instance, plot the predicted query
         performance (TPR and PPV vs number of results).
         
         @note: Two predictions are given, corresponding to upper and lower
         bound guesses at the number of 
         """
+        if fname.exists() and not self.overwrite: return
+        g = self.gnuplot
         log.debug("Plotting prediction curve to %s", fname)
         g.reset()
         g.title("Prediction curve (TPR, PPV vs # results)")
@@ -57,8 +68,10 @@ class Plotter(Gnuplot):
             Data(pH.results[seg], pH.PPV[seg], title="PPV high", with="lines"))
 
     
-    def plot_roc(g, fname, FPR, TPR, marker_FPR):
+    def plot_roc(self, fname, FPR, TPR, marker_FPR):
         """ROC curve (TPR vs FPR)"""
+        if fname.exists() and not self.overwrite: return
+        g = self.gnuplot
         log.debug("Plotting ROC curve to %s", fname)
         g.reset()
         g.title("ROC curve (TPR vs FPR)")
@@ -70,8 +83,10 @@ class Plotter(Gnuplot):
                Data([marker_FPR, marker_FPR], [0,0.99], title="threshold", with="lines"))
 
 
-    def plot_precision(g, fname, TPR, PPV, marker_TPR):
+    def plot_precision(self, fname, TPR, PPV, marker_TPR):
         """Precision vs recall"""
+        if fname.exists() and not self.overwrite: return
+        g = self.gnuplot
         log.debug("Plotting Precision-Recall curve to %s", fname)
         g.reset()
         g.title("Precision vs Recall")
@@ -83,8 +98,10 @@ class Plotter(Gnuplot):
                Data([marker_TPR, marker_TPR], [0,0.99], title="threshold", with="lines"))
 
 
-    def plot_fmeasure(g, fname, pscores, TPR, PPV, FM, FMa, threshold):
+    def plot_fmeasure(self, fname, pscores, TPR, PPV, FM, FMa, threshold):
         """Precision, Recall, F-Measure vs threshold"""
+        if fname.exists() and not self.overwrite: return
+        g = self.gnuplot
         log.debug("Plotting F-Measure curve to %s", fname)
         g.reset()
         g.title("Precision and Recall vs Threshold")
@@ -92,10 +109,10 @@ class Plotter(Gnuplot):
         g.xlabel("Threshold Score")
         g("set terminal png")
         g("set output '%s'" % fname)
-        g.plot(Data(pscores, TPR, title="Recall", with="lines"),
-               Data(pscores, PPV, title="Precision", with="lines"),
-               Data(pscores, FM, title="F1 Measure", with="lines"),
-               Data(pscores, FMa, title="F Measure", with="lines"),
+        g.plot(Data(pscores, TPR, title="Recall",     with="lines"),
+               Data(pscores, PPV, title="Precision",  with="lines"),
+               Data(pscores, FM,  title="F1 Measure", with="lines"),
+               Data(pscores, FMa, title="F Measure",  with="lines"),
                Data([threshold, threshold], [0,0.99], title="threshold", with="lines"))
 
 
@@ -115,12 +132,14 @@ class Plotter(Gnuplot):
         return min(150, max(10, bins))
 
 
-    def plot_score_histogram(g, fname, pdata, ndata, threshold):
+    def plot_score_histogram(self, fname, pdata, ndata, threshold):
         """Histograms for pos and neg scores, with line to mark threshold""" 
+        if fname.exists() and not self.overwrite: return
+        g = self.gnuplot
         log.debug("Plotting article score histogram to %s", fname)
         from itertools import chain
-        py, px = nx.histogram(pdata, bins=g.bincount(pdata), normed=True)
-        zy, zx = nx.histogram(ndata, bins=g.bincount(ndata), normed=True)
+        py, px = nx.histogram(pdata, bins=self.bincount(pdata), normed=True)
+        zy, zx = nx.histogram(ndata, bins=self.bincount(ndata), normed=True)
         g.reset()
         g("set terminal png")
         g("set output '%s'" % fname)
@@ -138,14 +157,16 @@ class Plotter(Gnuplot):
                     title="threshold", with="lines lw 3"))
 
 
-    def plot_feature_histogram(g, fname, scores):
+    def plot_feature_histogram(self, fname, scores):
         """Histogram for feature scores
         
         @param scores: List with scores of each feature"""
+        if fname.exists() and not self.overwrite: return
+        g = self.gnuplot
         log.debug("Plotting feature score histogram to %s", fname)
         sscores = scores.copy()
         sscores.sort()
-        y, x = nx.histogram(scores, bins=g.bincount(sscores))
+        y, x = nx.histogram(scores, bins=self.bincount(sscores))
         g.reset()
         g.title("Feature Score Histogram")
         g.xlabel("Feature Score")
@@ -155,22 +176,6 @@ class Plotter(Gnuplot):
         g("set output '%s'" % fname)
         g("set style fill solid 1.0")
         g.plot(Data(x, y, with="boxes"))
-
-
-
-class RetrievalPlot(Gnuplot):
-    """Plotting function for comparative retrieval test"""
-    
-    def plot_retrieved_positives(g, fname, nretrieved, total):
-        """Proportion of testing set retrieved, versus result rank"""
-        log.debug("Plotting Retrieval curve to %s", fname)
-        g.reset()
-        g.title("Retrieval Test")
-        g.ylabel("Proportion Retrieved (recall)")
-        g.xlabel("Rank")
-        g("set terminal png")
-        g("set output '%s'" % fname)
-        g.plot(Data(range(0,len(nretrieved)), nretrieved / total, with="lines"))
 
 
 
@@ -199,17 +204,19 @@ def DensityPlotter(Plotter):
         return points, density
 
 
-    def plot_score_density(g, fname, pdata, ndata, threshold):
+    def plot_score_density(self, fname, pdata, ndata, threshold):
         """Probability density of pos and neg scores, with line to mark threshold
     
         @param pdata: Scores of positive documents
         @param ndata: Scores of negative documents
         @param threshold: Threshold score for counting a document positive
         """ 
+        if fname.exists() and not self.overwrite: return
+        g = self.gnuplot
         from itertools import chain
         log.debug("Plotting article score density to %s", fname)
-        px, py = g.gaussian_kernel_pdf(pdata)
-        zx, zy = g.gaussian_kernel_pdf(ndata)
+        px, py = self.gaussian_kernel_pdf(pdata)
+        zx, zy = self.gaussian_kernel_pdf(ndata)
         overlap = calculateOverlap(px, py, zx, zy)
         g.reset()
         g.title("Article Score Densities")
@@ -225,10 +232,12 @@ def DensityPlotter(Plotter):
         return overlap
 
 
-    def plot_feature_density(g, fname, scores):
+    def plot_feature_density(self, fname, scores):
         """Probability density function for feature scores"""
+        if fname.exists() and not self.overwrite: return
+        g = self.gnuplot
         log.debug("Plotting feature score density to %s", fname)
-        x, y = g.gaussian_kernel_pdf(scores, npoints=1024)
+        x, y = self.gaussian_kernel_pdf(scores, npoints=1024)
         g.reset()
         g.title("Feature Score Density")
         g.xlabel("Feature Score")

@@ -3,6 +3,7 @@
 from __future__ import with_statement
 from __future__ import division
 
+import codecs
 from itertools import chain, izip
 import logging as log
 import numpy as nx
@@ -15,8 +16,8 @@ from mscanner.configuration import rc
 from mscanner.medline.Databases import Databases
 from mscanner.core import iofuncs
 from mscanner.core.FeatureScores import FeatureScores, FeatureCounts
-from mscanner.core.metrics import (
-    PerformanceVectors, PerformanceRange, PredictedMetrics)
+from mscanner.core.metrics import (PerformanceVectors, PerformanceRange, 
+                                   PredictedMetrics)
 from mscanner.core.Plotter import Plotter
 from mscanner.core.Validator import CrossValidator
 
@@ -43,14 +44,16 @@ class ValidationBase(object):
     Derived classes need to calculate all attributes other than those set in
     the constructor. The attributes are required by L{_write_report}.
     
-    @group Set by the constructor: env, outdir, timestamp
+    @group Set in the constructor: env, outdir, dataset, timestamp
 
     @ivar env: L{Databases} instance for accessing Medline
+
+    @ivar outdir: Path to directory for output files, which is created if it
+    does not exist.
     
-    @ivar outdir: Directory to which output files are written
+    @ivar dataset: Title of the dataset to use when printing reports
 
     @ivar timestamp: Time at the start of the operation
-    
 
     @ivar pscores: Result scores for positive articles
 
@@ -68,8 +71,9 @@ class ValidationBase(object):
     """
 
     
-    def __init__(self, outdir, env=None):
+    def __init__(self, outdir, dataset, env=None):
         """Constructor"""
+        self.dataset = dataset
         self.outdir = outdir
         if not outdir.exists():
             outdir.makedirs()
@@ -104,7 +108,7 @@ class ValidationBase(object):
         
         @return: Two vectors, containing scores for the positive and negative
         articles respectively."""
-        log.info("Performing cross-validation for for %s", rc.dataset)
+        log.info("Performing cross-validation for for %s", self.dataset)
         self.validator = CrossValidator(
             featdb = dict((k,self.env.featdb[k]) for k in 
                           chain(positives,negatives)),
@@ -160,58 +164,39 @@ class ValidationBase(object):
         
         Only redraws figures for which output files do not already exist
         (likewise for term scores, but the index is always re-written)."""
-        # Values that get passed to the template
-        template = dict(
-            linkpath = rc.templates.relpath().replace('\\','/') if rc.link_headers else None,
-            notfound_pmids = self.notfound_pmids,
-            timestamp = self.timestamp,
-            stats = self.featinfo.stats,
-            vectors = self.metric_vectors,
-            range = self.metric_range,
-        )
         # Write term scores to file
         if not (self.outdir/rc.report_term_scores).exists():
             log.debug("Writing term scores")
-            import codecs
             with codecs.open(self.outdir/rc.report_term_scores, "wb", "utf-8") as f:
                 self.featinfo.write_csv(f)
-        # Initialise the plotting stuff
+        # Some shortcuts to the performance stats
         p = self.metric_vectors
         t = self.metric_range.average
-        plotter = Plotter()
+        # Do not overwriting existing plots
+        plotter = Plotter(overwrite=False) 
         log.debug("Drawing graphs")
         # Predicted precision/recall performance
         if hasattr(self, "pred_low") and hasattr(self, "pred_high"):
-            template.update(
-                pred_low = self.pred_low,
-                pred_high = self.pred_high)
-            if not (self.outdir/rc.report_prediction_img).exists():
-                plotter.plot_predictions(
-                    self.outdir/rc.report_prediction_img, 
-                    self.pred_low, self.pred_high)
+            plotter.plot_predictions(self.outdir/rc.report_prediction_img, 
+                                     self.pred_low, self.pred_high)
         # Report cross validation results instead of prediction results
         else:
             # ROC curve
-            if not (self.outdir/rc.report_roc_img).exists():
-                plotter.plot_roc(
+            plotter.plot_roc(
                 self.outdir/rc.report_roc_img, p.FPR, p.TPR, t.FPR)
             # Precision-recall curve
-            if not (self.outdir/rc.report_prcurve_img).exists():
-                plotter.plot_precision(
+            plotter.plot_precision(
                 self.outdir/rc.report_prcurve_img, p.TPR, p.PPV, t.TPR)
             # F-Measure curve
-            if not (self.outdir/rc.report_fmeasure_img).exists():
-                plotter.plot_fmeasure(
+            plotter.plot_fmeasure(
                 self.outdir/rc.report_fmeasure_img, p.uscores, p.TPR, p.PPV, 
                 p.FM, p.FMa, self.metric_range.threshold)
         # Article score histogram
-        if not (self.outdir/rc.report_artscores_img).exists():
-            plotter.plot_score_histogram(
+        plotter.plot_score_histogram(
             self.outdir/rc.report_artscores_img, p.pscores, p.nscores, 
             self.metric_range.threshold)
         # Feature score histogram
-        if not (self.outdir/rc.report_featscores_img).exists():
-            plotter.plot_feature_histogram(
+        plotter.plot_feature_histogram(
             self.outdir/rc.report_featscores_img, self.featinfo.scores)
         # Write index file
         log.debug("Writing index.html")
@@ -219,8 +204,8 @@ class ValidationBase(object):
         from Cheetah.Template import Template
         with iofuncs.FileTransaction(self.outdir/rc.report_index, "w") as ft:
             Template(file=str(rc.templates/"validation.tmpl"), 
-                     filter="Filter", searchList=template).respond(ft)
-        log.info("Done writing validation report for %s", rc.dataset)
+                     filter="Filter", searchList=dict(VM=self)).respond(ft)
+        log.info("Done writing validation report for %s", self.dataset)
 
 
 
@@ -264,13 +249,17 @@ def SplitValidation(ValidationBase):
         else:
             log.error("At least one input file contained no valid PubMed IDs")
             return
-        log.info("FINISHING SPLIT VALIDATION %s", rc.dataset)
+        log.info("FINISHING SPLIT VALIDATION %s", self.dataset)
 
 
     def _test_scores(self):
-        """Use split validation. Training sample goes into calculating feature
-        scores, which are then used to get the scores of the testing sample.
-        The test sample scores are then used to obtain performance metrics."""
+        """Get performance statistics using split validation. 
+        
+        The training sample is used to calculate feature scores, which are then
+        used to get the scores of the testing sample. Cross validation is used
+        on the training sample to calculate a threshold optimising utility. The
+        threshold is then applied to the testing sample to obtain performance
+        metrics."""
         s = self
         # Calculate cross-validated scores on training data
         train_pscores, train_nscores = s._crossvalid_scores(s.ptrain, s.ntrain)
@@ -405,7 +394,7 @@ class CrossValidation(ValidationBase):
         else:
             log.error("No valid PubMed IDs in at least one input (error page)")
             iofuncs.no_valid_pmids_page(
-                self.outdir/rc.report_index, self.notfound_pmids)
+                self.outdir/rc.report_index, self.dataset, self.notfound_pmids)
             return False
         return True
 
@@ -441,11 +430,3 @@ class CrossValidation(ValidationBase):
             pool[dest], pool[choice] = pool[choice], pool[dest]
         # Phantom iteration: selected are n-k ... n
         return nx.array(pool[n-k:])
-
-
-
-
-
-
-
-

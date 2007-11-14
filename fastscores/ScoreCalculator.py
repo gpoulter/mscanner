@@ -1,7 +1,7 @@
 """Calculates citation scores"""
 
 from __future__ import division
-import logging as log
+import logging
 import numpy as nx
 from path import path
 
@@ -106,13 +106,13 @@ class ScoreCalculator:
         results = [(-100000, 0)] * s.limit
         import heapq
         ndocs = 0
-        log.debug("Calculating article scores")
+        logging.debug("Calculating article scores")
         marker = 0
         docs = FeatureStream(open(s.docstream, "rb"))
         try:
             for idx, (docid, date, features) in enumerate(docs):
                 if idx == marker:
-                    log.debug("Scored %d citations so far", idx)
+                    logging.debug("Scored %d citations so far", idx)
                     marker += 100000
                 if (docid in s.exclude or date < s.mindate or date > s.maxdate):
                     continue
@@ -163,7 +163,7 @@ class ScoreCalculator:
     def cscore_dll(s):
         """Calculate article scores, using ctypes to call cscores"""
         from ctypes import cdll, byref, c_int, c_void_p, c_char_p, c_float, c_double
-        from itertools import izip
+        import itertools
         import numpy as nx
         # Set up arguments and call cscore2 function using ctypes
         carray = lambda dtype: nx.ctypeslib.ndpointer(
@@ -205,7 +205,7 @@ class ScoreCalculator:
         count_filtered = 0
         count_total = 0
         result = []
-        for score, pmid in izip(o_scores, o_pmids):
+        for score, pmid in itertools.izip(o_scores, o_pmids):
             if pmid not in s.exclude:
                 result.append((score, pmid))
                 count_filtered += 1

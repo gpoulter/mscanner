@@ -2,13 +2,11 @@
 all articles in Medline between two dates."""
 
 from __future__ import division
-import logging as log
 import numpy as nx
 from path import path
 import struct
 
 from mscanner import update
-from mscanner.configuration import rc
 from mscanner.medline.FeatureStream import FeatureStream
 
 

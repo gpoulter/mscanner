@@ -5,7 +5,7 @@ from __future__ import division
 
 import codecs
 from itertools import chain, izip
-import logging as log
+import logging
 import numpy as nx
 import time
 
@@ -68,6 +68,8 @@ class ValidationBase(object):
     @ivar metric_vectors: L{PerformanceVectors} instance
 
     @ivar metric_range: L{PerformanceRange} instance
+    
+    @ivar logfile: logging.FileHandler for logging to output directory
     """
 
     
@@ -86,6 +88,11 @@ class ValidationBase(object):
         self.metric_vectors = None
         self.metric_range = None
         self.notfound_pmids = []
+        self.logfile = iofuncs.open_logfile(self.outdir/rc.report_logfile)
+
+
+    def __del__(self):
+        iofuncs.close_logfile(self.logfile)
 
 
     def _crossvalid_scores(self, positives, negatives):
@@ -108,7 +115,6 @@ class ValidationBase(object):
         
         @return: Two vectors, containing scores for the positive and negative
         articles respectively."""
-        log.info("Performing cross-validation for for %s", self.dataset)
         self.validator = CrossValidator(
             featdb = dict((k,self.env.featdb[k]) for k in 
                           chain(positives,negatives)),
@@ -126,6 +132,8 @@ class ValidationBase(object):
         
         @param threshold: Specify a particular threshold, or None to estimate
         using F measure."""
+        logging.info("Get performance with alpha=%s, utility_r=%s", 
+                     str(rc.alpha), str(rc.utility_r))
         v = PerformanceVectors(self.pscores, self.nscores, rc.alpha, rc.utility_r)
         self.metric_vectors = v
         if threshold is None:
@@ -166,15 +174,14 @@ class ValidationBase(object):
         (likewise for term scores, but the index is always re-written)."""
         # Write term scores to file
         if not (self.outdir/rc.report_term_scores).exists():
-            log.debug("Writing term scores")
+            logging.debug("Writing features scores to %s", rc.report_term_scores)
             with codecs.open(self.outdir/rc.report_term_scores, "wb", "utf-8") as f:
                 self.featinfo.write_csv(f)
-        # Some shortcuts to the performance stats
+        # Aliases for the performance data
         p = self.metric_vectors
         t = self.metric_range.average
         # Do not overwriting existing plots
         plotter = Plotter(overwrite=False) 
-        log.debug("Drawing graphs")
         # Predicted precision/recall performance
         if hasattr(self, "pred_low") and hasattr(self, "pred_high"):
             plotter.plot_predictions(self.outdir/rc.report_prediction_img, 
@@ -199,13 +206,11 @@ class ValidationBase(object):
         plotter.plot_feature_histogram(
             self.outdir/rc.report_featscores_img, self.featinfo.scores)
         # Write index file
-        log.debug("Writing index.html")
-        # Output the template
+        logging.debug("FINISH: Writing %s for %s", rc.report_index, self.dataset)
         from Cheetah.Template import Template
         with iofuncs.FileTransaction(self.outdir/rc.report_index, "w") as ft:
             Template(file=str(rc.templates/"validation.tmpl"), 
                      filter="Filter", searchList=dict(VM=self)).respond(ft)
-        log.info("Done writing validation report for %s", self.dataset)
 
 
 
@@ -227,15 +232,14 @@ def SplitValidation(ValidationBase):
 
         @param fntest: File with negative testing examples
         """
+        logging.info("START: Split validation for %s", self.dataset)
         s = self
         s.nfolds = 1 # Effectively a single fold
         s.ptrain, s.ntrain = None, None
         s.ptest, s.ntest = None, None
         s.notfound_pmids = []
-        s.ptrain, broke, excl = iofuncs.read_pmids_careful(
-            fptrain, s.env.featdb)
-        s.ptest, broke, excl = iofuncs.read_pmids_careful(
-            fptest, s.env.featdb)
+        s.ptrain, broke, excl = iofuncs.read_pmids_careful(fptrain, s.env.featdb)
+        s.ptest, broke, excl = iofuncs.read_pmids_careful(fptest, s.env.featdb)
         s.ntrain, broke, excl = iofuncs.read_pmids_careful(
             fntrain, s.env.featdb, set(s.ptrain))
         s.ntest, broke, excl = iofuncs.read_pmids_careful(
@@ -247,9 +251,8 @@ def SplitValidation(ValidationBase):
             s._get_performance()
             s._write_report()
         else:
-            log.error("At least one input file contained no valid PubMed IDs")
+            logging.error("At least one input file contained no valid PubMed IDs")
             return
-        log.info("FINISHING SPLIT VALIDATION %s", self.dataset)
 
 
     def _test_scores(self):
@@ -298,6 +301,7 @@ class CrossValidation(ValidationBase):
         
         @param nfolds: Number of validation folds to use.
         """
+        logging.info("START: Cross validation for %s", self.dataset)
         # Keep our own number of folds attribute
         self.nfolds = nfolds
         self.notfound_pmids = []
@@ -362,13 +366,13 @@ class CrossValidation(ValidationBase):
         @return: True if the load was successful, False otherwise.
         """
         if isinstance(pos, basestring):
-            log.info("Loading positive PubMed IDs from %s", pos.basename())
+            logging.info("Loading positive PubMed IDs from %s", pos.basename())
             self.positives, self.notfound_pmids, exclude = \
                 iofuncs.read_pmids_careful(pos, self.env.featdb)
         else:
             self.positives = nx.array(pos, nx.int32)
         if isinstance(neg, int):
-            log.info("Selecting %d random negative PubMed IDs" % neg)
+            logging.info("Selecting %d random negative PubMed IDs" % neg)
             # Clamp number of negatives to the number available
             maxnegs = len(self.env.article_list) - len(self.positives)
             if neg > maxnegs:
@@ -377,7 +381,7 @@ class CrossValidation(ValidationBase):
             self.negatives = self._random_subset(
                 neg, self.env.article_list, set(self.positives))
         elif isinstance(neg, basestring):
-            log.info("Loading negative PubMed IDs from %s", neg.basename())
+            logging.info("Loading negative PubMed IDs from %s", neg.basename())
             # Read list of negative PMIDs from disk
             self.negatives, notfound, exclude = iofuncs.read_pmids_careful(
                     neg, self.env.featdb, set(self.positives))
@@ -392,7 +396,7 @@ class CrossValidation(ValidationBase):
         if len(self.positives)>0 and len(self.negatives)>0:
             return True
         else:
-            log.error("No valid PubMed IDs in at least one input (error page)")
+            logging.error("No valid PubMed IDs in at least one input (error page)")
             iofuncs.no_valid_pmids_page(
                 self.outdir/rc.report_index, self.dataset, self.notfound_pmids)
             return False

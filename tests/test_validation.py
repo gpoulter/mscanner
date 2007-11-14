@@ -8,6 +8,7 @@ it under the Do Whatever You Want Public License. Terms and conditions:
    0. Do Whatever You Want
 """
 
+import logging
 import numpy as nx
 from path import path
 import pprint as pp
@@ -17,10 +18,7 @@ import unittest
 from mscanner.core.FeatureScores import FeatureScores
 from mscanner.core.Validator import LeaveOutValidator, CrossValidator
 from mscanner.core.metrics import PerformanceVectors
-
-import logging
-logging.basicConfig(level=0)
-
+from mscanner import tests
 
 
 class PerformanceVectorsTests(unittest.TestCase):
@@ -30,8 +28,7 @@ class PerformanceVectorsTests(unittest.TestCase):
             pscores = nx.array([1,2,3,4,4,5,5], dtype=nx.float32),
             nscores = nx.array([0,0,1,1,2,4,5], dtype=nx.float32),
             alpha = 0.5)
-        import pprint as pp
-        print pp.pformat(p.__dict__)
+        logging.debug("PerformanceVectors: %s", pp.pformat(p.__dict__))
         
     def test_PerformanceRange(self):
         pass
@@ -42,7 +39,7 @@ class ValidatorTests(unittest.TestCase):
 
     def setUp(self):
         self.prefix = path(tempfile.mkdtemp(prefix="valid-"))
-        print self.prefix
+        logging.debug("Prefix is: %s", self.prefix)
 
 
     def tearDown(self):
@@ -73,16 +70,16 @@ class ValidatorTests(unittest.TestCase):
     def _check_scores(self, featinfo, cpscores, cnscores):
         val = self._make_validator(featinfo)
         pscores, nscores = val.validate(randomise=False)
-        pp.pprint(pscores)
-        pp.pprint(cpscores)
-        pp.pprint(nscores)
-        pp.pprint(cnscores)
+        logging.debug("pscores: %s", pp.pformat(pscores))
+        logging.debug("pscores should be: %s", pp.pformat(cpscores))
+        logging.debug("nscores: %s", pp.pformat(nscores))
+        logging.debug("nscores  should be: %s", pp.pformat(cnscores))
         self.assert_(nx.allclose(pscores,cpscores,rtol=1e-3))
         self.assert_(nx.allclose(nscores,cnscores,rtol=1e-3))
 
 
     def test1_offsetonly(self):
-        print "scores_offsetonly"
+        logging.debug("scores_offsetonly")
         self._check_scores(
             FeatureScores([2,5,7], pseudocount = 0.1, make_scores="scores_offsetonly"),
             nx.array([-2.1016295 ,  1.03609192,  1.03609192,  3.1377213 ]),
@@ -90,7 +87,7 @@ class ValidatorTests(unittest.TestCase):
 
 
     def test2_withabsence(self):
-        print "scores_withabsence"
+        logging.debug("scores_withabsence")
         self._check_scores(
             FeatureScores([2,5,7], pseudocount = 0.1, make_scores="scores_withabsence"),
             nx.array([-2.39789534,  2.20616317,  2.20616317,  4.60405827]),
@@ -98,7 +95,7 @@ class ValidatorTests(unittest.TestCase):
 
 
     def test3_newpseudo(self):
-        print "scores_newpseudo"
+        logging.debug("scores_newpseudo")
         self._check_scores(
             FeatureScores([2,5,7], pseudocount = 0.1, make_scores="scores_newpseudo"),
             nx.array([-2.39789534,  1.03609192,  1.03609192,  3.43398714]),
@@ -106,7 +103,7 @@ class ValidatorTests(unittest.TestCase):
 
 
     def test4_oldpseudo(self):
-        print "scores_oldpseudo"
+        logging.debug("scores_oldpseudo")
         self._check_scores(
             FeatureScores([2,5,7], pseudocount = 0.1, make_scores="scores_oldpseudo"),
             nx.array([-2.39789534,  1.03609192,  1.03609192,  3.43398714]),
@@ -114,7 +111,7 @@ class ValidatorTests(unittest.TestCase):
 
 
     def test5_rubin(self):
-        print "scores_rubin"
+        logging.debug("scores_rubin")
         self._check_scores(
             FeatureScores([2,5,7], make_scores="scores_rubin"),
             nx.array([-17.32206917,   1.09861231,   1.09861231,  18.420681  ]),
@@ -135,14 +132,11 @@ class ValidatorTests(unittest.TestCase):
         pscores, nscores = val.validate()
         cpscores = nx.array([-2.14126396, 1.30037451, 1.30037451, 1.30037451])
         cnscores = nx.array([-1.30037451, -1.30037451, -1.30037451,  2.14126396])
-        #pp.pprint(pscores)
-        #pp.pprint(cpscores)
-        #pp.pprint(nscores)
-        #pp.pprint(cnscores)
         self.assert_(nx.allclose(pscores,cpscores,rtol=1e-3))
         self.assert_(nx.allclose(nscores,cnscores,rtol=1e-3))
 
 
 
 if __name__ == "__main__":
+    tests.start_logging()
     unittest.main()

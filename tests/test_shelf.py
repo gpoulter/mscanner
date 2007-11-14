@@ -9,6 +9,7 @@ it under the Do Whatever You Want Public License. Terms and conditions:
 """
 
 from bsddb import db
+import logging
 from path import path
 import tempfile
 import unittest

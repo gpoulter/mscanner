@@ -8,6 +8,7 @@ it under the Do Whatever You Want Public License. Terms and conditions:
    0. Do Whatever You Want
 """
 
+import logging
 import numpy as nx
 from path import path
 import pprint as pp
@@ -22,6 +23,7 @@ from mscanner.core.FeatureScores import FeatureScores, FeatureCounts
 from mscanner.fastscores.ScoreCalculator import ScoreCalculator
 from mscanner.fastscores.FeatureCounter import FeatureCounter
 from mscanner import tests
+
 
 class CScoreModuleTests(unittest.TestCase):
     """Tests of the L{cscore} package"""
@@ -68,8 +70,8 @@ class CScoreModuleTests(unittest.TestCase):
             exclude = set([4,8,9]))
         p_ndocs, py_counts = fc.py_counts()
         c_ndocs, c_counts = fc.c_counts()
-        print "py_counts", p_ndocs, pp.pformat(py_counts)
-        print "c_counts", c_ndocs, pp.pformat(c_counts)
+        logging.debug("py_counts: %d, %s", p_ndocs, pp.pformat(py_counts))
+        logging.debug("c_counts: %d, %s", c_ndocs, pp.pformat(c_counts))
         self.assertEqual(p_ndocs, c_ndocs)
         self.assert_(nx.allclose(py_counts, c_counts))
 
@@ -97,16 +99,18 @@ class CScoreModuleTests(unittest.TestCase):
         # Compare pyscore and cscore_pipe
         out_pyscore = scorer.pyscore()
         out_pipe = scorer.cscore_pipe()
-        print "out_py", pp.pformat(out_pyscore)
-        print "out_pipe", pp.pformat(out_pipe)
+        logging.debug("out_py: %s", pp.pformat(out_pyscore))
+        logging.debug("out_pipe: %s", pp.pformat(out_pipe))
         scores_pipe = nx.array([score for score,pmid in out_pipe])
         scores_py = nx.array([score for score,pmid in out_pyscore])
         self.assert_(nx.allclose(scores_pipe, scores_py))
         # Compare pyscore and cscore_dll 
-        try: import  ctypes
-        except ImportError: return
+        try: 
+            import  ctypes
+        except ImportError: 
+            return
         out_dll = scorer.cscore_dll()
-        print "out_dll", pp.pformat(out_dll)
+        logging.debug("out_dll: %s", pp.pformat(out_dll))
         scores_dll = nx.array([score for score,pmid in out_dll])
         self.assert_(nx.allclose(scores_dll, scores_py))
 
@@ -138,7 +142,7 @@ class FeatureScoresTests(unittest.TestCase):
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
         tfidfs = nx.array([])
         #s.assert_(nx.allclose(f.tfidf, tfidfs))
-        print "TFIDF: %s" % (pp.pformat(f.tfidf),)
+        logging.debug("TFIDF: %s", pp.pformat(f.tfidf))
 
 
     def test_background(s):
@@ -148,7 +152,7 @@ class FeatureScoresTests(unittest.TestCase):
         f = FeatureScores(s.featmap, pseudocount=None,
                           make_scores="scores_newpseudo")
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
-        print "Scores (old): %s" % (pp.pformat(f.scores),)
+        logging.debug("Scores (old): %s", pp.pformat(f.scores))
         s.assert_(nx.allclose(
             f.scores, nx.array([-0.28286278,  0.89381787,  0.28768207])))
 
@@ -159,8 +163,8 @@ class FeatureScoresTests(unittest.TestCase):
         s.featmap.counts = [3,2,1]
         f = FeatureScores(s.featmap, pseudocount=None)
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
-        print "Scores (new): %s" % (pp.pformat(f.scores),)
-        print "Offset (new): %s" % str(f.offset)
+        logging.debug("Scores (new): %s", pp.pformat(f.scores))
+        logging.debug("Offset (new): %f", f.offset)
 
 
     def test_cutoff(s):
@@ -169,7 +173,7 @@ class FeatureScoresTests(unittest.TestCase):
                           make_scores="scores_oldpseudo",
                           get_postmask="make_rare_positives")
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
-        #print "Scores (old): %s" % (pp.pformat(f.scores_old),)
+        #logging.debug("Scores (old): %s", pp.pformat(f.scores_old))
         s.assert_(nx.allclose(
             f.scores, nx.array([-0.27193372,  1.02132061,  0.0 ])))
 
@@ -182,4 +186,5 @@ class FeatureScoresTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    tests.start_logger()
     unittest.main()

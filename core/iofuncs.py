@@ -66,20 +66,22 @@ def read_pmids_careful(filename, include=None, exclude=[]):
     return tuple(nx.array(a, nx.int32) for a in [results,broken,excluded])
 
 
-def write_lines(filename, items):
+def write_lines(filename, items, desc=None):
     """Basic function for writing sequence of items to text files
     
     @param filename: Name of file to write to
 
-    @param items: Iterable of items convertible with str().  If the
-    items are tuples, they are written tab-separated.
+    @param items: Sequence of items convertible using str().  Iterable
+    items are written as tab-separated values.
+    
+    @param desc: Optional string to write at the top of the file
     """
     with open(filename, "w") as f:
+        if desc is not None:
+            f.write(desc)
         for item in items:
-            if isinstance(item, tuple):
-                f.write(str(item[0]))
-                for k in item[1:]:
-                    f.write("\t"+str(k))
+            if hasattr(item, "__iter__"):
+                f.write("\t".join([str(x) for x in item]))
             else:
                 f.write(str(item))
             f.write("\n")
@@ -161,3 +163,56 @@ class FileTransaction(file):
 
     def __call__(self):
         return self
+
+
+
+def start_logger(console=True, logfile=True):
+    """Set up logging to file or console
+    @param console: If True, log to the console.
+    @param logfile: If True, log to rc.logfile."""
+    # Configure the root logger to print everything
+    from mscanner.configuration import rc
+    import logging
+    rootlog = logging.getLogger()
+    rootlog.setLevel(logging.DEBUG)
+    format = logging.Formatter("%(asctime)-9s %(levelname)-8s %(message)s", "%H:%M:%S")
+    # Configure primary file logger
+    if logfile:
+        filelog = logging.FileHandler(rc.logfile, "a")
+        filelog.setFormatter(format)
+        rootlog.addHandler(filelog)
+    # Configure logging to console
+    if console:
+        console = logging.StreamHandler()
+        console.setFormatter(format)
+        rootlog.addHandler(console)
+
+
+def open_logfile(filename, logname="", mode="a"):
+    """Add a file handler to a logger using my default format.
+    @param filename: File to write to
+    @param logname: Name of log to write to (default '')
+    @param mode: File open mode (default 'a')
+    @return: The logging.FileHandler instance
+    """
+    import logging
+    logger = logging.getLogger(logname)
+    handler = logging.FileHandler(filename, mode)
+    handler.setFormatter(logging.Formatter(
+        "%(asctime)-9s %(levelname)-8s %(message)s", "%H:%M:%S"))
+    logger.addHandler(handler)
+    return handler
+
+
+def close_logfile(handler, logname=""):
+    """Remove and close a log file previously added with L{open_logfile}.  Does
+    nothing if called a second time.
+    @param handler: FileHandler instance to remove
+    @param logname: Name of the logger (defaults to '')
+    """
+    import logging
+    logger = logging.getLogger(logname)
+    if handler in logger.handlers:
+        logger.removeHandler(handler)
+    if not handler.stream.closed:
+        handler.close()

@@ -27,9 +27,10 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 import sys
 
-from mscanner.configuration import rc, start_logger
-from mscanner.medline.Databases import Databases
+from mscanner.configuration import rc
+from mscanner.core import iofuncs
 from mscanner.core.QueryManager import QueryManager
+from mscanner.medline.Databases import Databases
 
 
 dataset_map = {
@@ -55,5 +56,7 @@ def do_query(*datasets):
     
 
 if __name__ == "__main__":
-    start_logger()
+    iofuncs.start_logger()
     do_query(*sys.argv[1:])
+    
+

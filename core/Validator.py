@@ -1,9 +1,7 @@
 """Cross-validation and performance statistic calculation"""
 
 from __future__ import division
-
-from itertools import chain, izip
-import logging as log
+import logging
 import numpy as nx
 
 from mscanner import update
@@ -81,7 +79,7 @@ class CrossValidator:
         s = self
         pdocs = len(s.positives)
         ndocs = len(s.negatives)
-        log.info("%d pos and %d neg articles", pdocs, ndocs)
+        logging.debug("Cross-validating %d pos and %d neg items", pdocs, ndocs)
         if randomise:
             nx.random.shuffle(s.positives)
             nx.random.shuffle(s.negatives)
@@ -93,7 +91,7 @@ class CrossValidator:
         ncounts = FeatureCounts(len(s.featinfo), s.featdb, s.negatives)
         for fold, (pstart,psize,nstart,nsize) in \
             enumerate(zip(s.pstarts,s.psizes,s.nstarts,s.nsizes)):
-            log.debug("Fold %d: pstart = %d, psize = %s; nstart = %d, nsize = %d", 
+            logging.debug("Fold %d: pstart = %d, psize = %s; nstart = %d, nsize = %d", 
                       fold, pstart, psize, nstart, nsize)
             # Get new feature scores
             s.featinfo.update(

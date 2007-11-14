@@ -44,13 +44,13 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
-import logging as log
+import logging
 import os
 from path import path
 import sys
 import time
 
-from mscanner.configuration import rc, start_logger
+from mscanner.configuration import rc
 from mscanner.medline.Databases import Databases
 from mscanner.core.QueryManager import QueryManager
 from mscanner.core.ValidationManager import CrossValidation
@@ -211,7 +211,7 @@ class QueueStatus:
 
 def delete_output(dataset):
     """Delete the output directory for the given task"""
-    log.debug("Attempting to delete output for %s" % dataset)
+    logging.debug("Attempting to delete output for %s" % dataset)
     dirpath = rc.web_report_dir / dataset
     for fname in dirpath.files():
         fname.remove()
@@ -227,7 +227,7 @@ def mainloop():
         while True:
             # Cron: delete the oldest outputs
             if time.time() - last_clean > 6*3600:  
-                log.debug("Looking for old datasets")
+                logging.info("Looking for old datasets")
                 queue = QueueStatus()
                 queue.donelist.reverse() # Newest first
                 for task in queue.donelist[100:]:
@@ -252,7 +252,7 @@ def mainloop():
             if task is not None:
                 # The output directory for the task
                 outdir = rc.web_report_dir / task.dataset
-                log.info("Starting %s for %s", task.operation, task.dataset)
+                logging.info("Starting %s for %s", task.operation, task.dataset)
                 task._filename.utime(None) # Update mod time for status display
                 try:
                     if task.operation == "query":
@@ -264,6 +264,7 @@ def mainloop():
                             env=env)
                         QM.query(task._filename)
                         QM.write_report()
+                        QM.__del__()
                     elif task.operation == "validate":
                         rc.alpha = task.alpha
                         VM = CrossValidation(
@@ -272,9 +273,10 @@ def mainloop():
                             env=env)
                         VM.validation(task._filename, task.numnegs)
                         VM.report_validation()
+                        VM.__del__()
                     task._filename.move(outdir / "descriptor.txt")
                 except ValueError, e:
-                    log.error(e)
+                    logging.exception(e)
             else:
                 # Wait before the next iteration
                 time.sleep(1)
@@ -302,10 +304,11 @@ def populate_test_queue():
 
 
 if __name__ == "__main__":
-    start_logger()
+    iofuncs.start_logger()
     if len(sys.argv) == 2 and sys.argv[1] == "test":
         populate_test_queue()
     try:
         mainloop()
     except KeyboardInterrupt:
         pass
+    logging.shutdown()

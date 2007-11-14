@@ -2,7 +2,7 @@
 
 from bsddb import db
 import numpy as nx
-import logging as log
+import logging
 import struct
 
 
@@ -76,7 +76,7 @@ class FeatureDatabase:
         try:
             self.db.put(str(key), features.tostring(), txn=txn)
         except ValueError, e:
-            log.error("Failed to add to db " + str(key) + " : " +  str(features))
+            logging.error("Failed to add to db " + str(key) + " : " +  str(features))
             raise
 
 

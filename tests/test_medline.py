@@ -12,6 +12,7 @@ from __future__ import with_statement
 from contextlib import closing
 
 from cStringIO import StringIO
+import logging
 import numpy as nx
 from path import path
 import tempfile
@@ -160,7 +161,7 @@ class MedlineCacheTests(unittest.TestCase):
         m.add_directory(h, save_delay=1)
         pmids.write_lines(["1", "2"])
         a = load_articles(artdb, pmids)
-        print repr(a)
+        logging.debug("Articles: %s", repr(a))
         self.assertEqual(a[0].pmid, 1)
         self.assertEqual(a[1].pmid, 2)
         self.assertEqual(fmap.counts, [2, 2, 2, 2, 2, 2, 2, 1])
@@ -297,4 +298,5 @@ xmltext = u'''<?xml version="1.0"?>
 '''
 
 if __name__ == "__main__":
+    tests.start_logger()
     unittest.main()

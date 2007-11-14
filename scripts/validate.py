@@ -9,9 +9,10 @@ Choose the action by using a Python expression::
 from path import path
 import sys
 
-from mscanner.configuration import rc, start_logger
-from mscanner.medline.Databases import Databases
+from mscanner.configuration import rc
 from mscanner.core.ValidationManager import SplitValidation, CrossValidation
+from mscanner.core import iofuncs
+from mscanner.medline.Databases import Databases
 
                                      
 __author__ = "Graham Poulter"                                        
@@ -150,7 +151,7 @@ def compare_score_methods():
     
 
 if __name__ == "__main__":
-    start_logger()
+    iofuncs.start_logger()
     if len(sys.argv) != 2:
         print "Please provide a Python expression to execute"
     else:

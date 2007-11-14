@@ -29,12 +29,13 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
 import cPickle
-import logging as log
+import logging
 import sys
 
 from mscanner.medline.MedlineCache import MedlineCache
 from mscanner.medline.FeatureMapping import FeatureMapping
-from mscanner.configuration import rc, start_logger
+from mscanner.configuration import rc
+from mscanner.core import iofuncs
 
 
 def update_mscanner(pickle=None):
@@ -55,7 +56,7 @@ def update_mscanner(pickle=None):
             )
     # Load articles from a pickle
     if pickle is not None:
-        log.info("Updating MScanner from " + pickle )
+        logging.info("Updating MScanner from " + pickle )
         with open(pickle , "rb") as f:
             articles = cPickle.load(f)
         dbenv = medcache.create_dbenv()
@@ -63,15 +64,16 @@ def update_mscanner(pickle=None):
         dbenv.close()
     # Parse articles from XML directory
     else:
-        log.info("Updating MScanner from " + rc.medline.relpath())
+        logging.info("Updating MScanner from " + rc.medline.relpath())
         medcache.add_directory(rc.medline, rc.save_delay)
 
 
 if __name__ == "__main__":
-    start_logger(logfile=False)
+    iofuncs.start_logger(logfile=False)
     if len(sys.argv) == 1:
         update_mscanner()
     elif len(sys.argv) == 2:
         update_mscanner(sys.argv[1])
     else:
         print __doc__
+    logging.shutdown()

@@ -18,7 +18,7 @@ import logging
 from path import path
 from pylab import *
 
-from mscanner.configuration import rc as mrc, start_logger
+from mscanner.configuration import rc as mrc
 from mscanner.core import iofuncs
 from mscanner.core.Plotter import Plotter, DensityPlotter
 from mscanner.core.PerformanceVectors import PerformanceVectors
@@ -380,8 +380,9 @@ def do_subdirplots(subdirs):
 
 
 if __name__ == "__main__":
-    start_logger(logfile=False)
+    iofuncs.start_logger(logfile=False)
     if len(sys.argv) != 2:
         print "Please give python expression"
     else:
         eval(sys.argv[1])
+    logging.shutdown()

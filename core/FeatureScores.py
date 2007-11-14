@@ -1,7 +1,6 @@
 """Calculates feature scores from occurrence counts"""
 
 from __future__ import division
-import logging as log
 import numpy as nx
 
 from mscanner import update, delattrs

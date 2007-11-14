@@ -13,10 +13,11 @@ used on http://pharmdemo.stanford.edu
 
 
 from itertools import chain
-import logging as log
+import logging
 import sys
 
-from mscanner.configuration import rc, start_logger
+from mscanner.configuration import rc
+from mscanner.core import iofuncs
 from mscanner.core.QueryManager import QueryManager
 from mscanner.core.ValidationManager import CrossValidation
 from mscanner.medline import Databases
@@ -68,7 +69,7 @@ class PharmdemoQuery(QueryManager):
         self._make_feature_info()
         self._make_results()
         # Carry out associations
-        log.debug("Gene-drug associations on results")
+        logging.debug("Gene-drug associations on results")
         gdfinder = genedrug.open_genedrug_finder(
             rc.genedrug_db, rc.drugtable, rc.gapscore_db)
         gd_articles = []
@@ -83,7 +84,7 @@ class PharmdemoQuery(QueryManager):
         self.inputs  = [ (s,p) for s,p in self.inputs  if p in gd_pmids ]
         self.results = [ (s,p) for s,p in self.results if p in gd_pmids ]
         if export_db == True:
-            log.debug("Exporting database")
+            logging.debug("Exporting database")
             gdexport = Exporter(gd_articles)
             gdexport.write_genedrug_csv(rc.genedrug_csv)
             gdexport.export_sqlfile(rc.genedrug_sql)
@@ -100,7 +101,7 @@ class PharmdemoValidation(CrossValidation):
         
         @return: Set of PubMed IDs which have gene-drug co-occurrences.
         """
-        log.info("Getting gene-drug associations") 
+        logging.info("Getting gene-drug associations") 
         pos_arts = Databases.load_articles(rc.articledb, self.positives)
         neg_arts = Databases.load_articles(rc.articledb, self.negatives)
         gdfinder = genedrug.open_genedrug_finder(
@@ -126,5 +127,6 @@ def pharmdemo():
 
 
 if __name__ == "__main__":
-    start_logger()
+    iofuncs.start_logger()
     pharmdemo()
+    logging.shutdown()

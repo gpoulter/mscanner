@@ -75,6 +75,8 @@ rc.report_index = path("index.html")
 rc.report_descriptor = path("descriptor.txt")
 ## Name of term score file
 rc.report_term_scores = path("terms.csv")
+## Name of file to echo the log to
+rc.report_logfile = path("logging.txt")
 
 ### QUERY
 ## Name of list of scores of input PMIDs
@@ -147,25 +149,3 @@ rc.make_scores = "scores_newpseudo"
 #rc.make_scores = "scores_noadjust"
 ## Method name for calculating mask after scores (may be None)
 rc.get_postmask = None
-
-
-## Logging configuration
-def start_logger(console=True, logfile=True):
-    """Set up logging to file or console
-    @param console: If True, log to the console.
-    @param logfile: If True, log to rc.logfile."""
-    import logging
-    # Root logger
-    rootlog = logging.getLogger()
-    rootlog.setLevel(0)
-    format = logging.Formatter("%(asctime)-9s %(levelname)-8s %(message)s", "%H:%M:%S")
-    # File logger
-    if logfile:
-        filelog = logging.FileHandler(rc.logfile, "w")
-        filelog.setFormatter(format)
-        rootlog.addHandler(filelog)
-    # Console logger
-    if console:
-        console = logging.StreamHandler()
-        console.setFormatter(format)
-        rootlog.addHandler(console)

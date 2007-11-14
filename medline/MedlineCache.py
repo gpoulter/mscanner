@@ -3,7 +3,7 @@
 from __future__ import with_statement
 from bsddb import db
 import gzip
-import logging as log
+import logging
 from path import path
 
 from mscanner.medline import Shelf
@@ -116,7 +116,7 @@ class MedlineCache:
         
         @param dbenv: Database environment to use
         """
-        log.info("Starting transaction to add articles")
+        logging.info("Starting transaction to add articles")
         txn = dbenv.txn_begin() if self.use_transactions else None
         try:
             artdb = Shelf.open(self.article_db, dbenv=dbenv, txn=txn)
@@ -153,12 +153,12 @@ class MedlineCache:
                 txn.commit()
         except Exception, e:
             if txn is not None:
-                log.error("Aborting Transaction: Error %s", e)
+                logging.exception("Aborting Transaction: Error %s", e)
                 txn.abort()
             raise
         else:
             if txn is not None:
-                log.info("Committed transaction")
+                logging.info("Committed transaction")
             return len(pmidlist)
 
 
@@ -176,12 +176,12 @@ class MedlineCache:
         toprocess = tracker.toprocess(filenames)
         dbenv = self.create_dbenv()
         for idx, filename in enumerate(toprocess):
-            log.info("Adding to cache: file %d out of %d (%s)", 
+            logging.info("Adding to cache: file %d out of %d (%s)", 
                      idx+1, len(toprocess), filename.name)
             for t in xrange(save_delay):
-                log.debug("Saving in %d seconds...", save_delay-t)
+                logging.debug("Saving in %d seconds...", save_delay-t)
                 time.sleep(1)
-            log.debug("Parsing XML file %s", filename.basename())
+            logging.debug("Parsing XML file %s", filename.basename())
             try:
                 if filename.endswith(".gz"):
                     infile = gzip.open(filename, 'r')
@@ -190,10 +190,10 @@ class MedlineCache:
                 numadded = self.add_articles(Article.parse_medline_xml(infile), dbenv)
             finally:
                 infile.close()
-            log.debug("Added %d articles", numadded)
+            logging.debug("Added %d articles", numadded)
             tracker.add(filename)
             tracker.dump()
-            log.info("Completed file %d out of %d (%s)", 
+            logging.info("Completed file %d out of %d (%s)", 
                      idx+1, len(toprocess), filename.name)
         dbenv.close()
 

@@ -4,7 +4,7 @@ from __future__ import with_statement
 from __future__ import division
 
 import codecs
-import logging as log
+import logging
 import numpy as nx
 import time
 from contextlib import closing
@@ -70,6 +70,8 @@ class QueryManager:
     @ivar results: List of (pmid, score) for result PMIDs
     
     @ivar notfound_pmids: List of input PMIDs not found in the database
+    
+    @ivar logfile: logging.FileHandler for logging to output directory
     """
 
     def __init__(self, outdir, dataset, limit, threshold=None, env=None,
@@ -96,6 +98,11 @@ class QueryManager:
         self.inputs = None
         self.results = None
         self.notfound_pmids = None
+        self.logfile = iofuncs.open_logfile(self.outdir/rc.report_logfile)
+
+
+    def __del__(self):
+        iofuncs.close_logfile(self.logfile)
 
 
     def query(self, input, train_exclude=None):
@@ -105,6 +112,7 @@ class QueryManager:
         
         @param train_exclude: PMIDs to exclude from background when training
         """
+        logging.info("START: Query for %s", self.dataset)
         if not self._load_input(input):
             return
         self._make_feature_info(train_exclude)
@@ -113,7 +121,6 @@ class QueryManager:
         except IOError: 
             self._make_results()
             self._save_results()
-        log.info("FINISHING QUERY %s", self.dataset)
         
         
     def _load_input(self, input):
@@ -124,7 +131,7 @@ class QueryManager:
 
         @return: True on success, False on failure."""
         if isinstance(input, basestring):
-            log.info("Loading PubMed IDs from %s", input.basename())
+            logging.info("Loading PubMed IDs from %s", input.basename())
             self.pmids, self.notfound_pmids, exclude = \
                 iofuncs.read_pmids_careful(input, self.env.featdb)
             iofuncs.write_pmids(
@@ -134,7 +141,7 @@ class QueryManager:
         if len(self.pmids) > 0:
             return True
         else:
-            log.error("No valid PubMed IDs in %s", input.basename())
+            logging.error("No valid PubMed IDs in %s", input.basename())
             iofuncs.no_valid_pmids_page(
                 self.outdir/rc.report_index, self.dataset, self.notfound_pmids)
             return False
@@ -146,7 +153,7 @@ class QueryManager:
 
         @param train_exclude: PMIDs to exclude from background when training
         """
-        log.info("Calculating feature scores")
+        logging.info("Making scores for %d features", len(self.env.featmap))
         # Parameters for the FeatureScores instance
         self.featinfo = FeatureScores(
             featmap = self.env.featmap,
@@ -162,13 +169,14 @@ class QueryManager:
         
         # Background feautures using all of Medline less query
         if self.t_mindate is None and self.t_maxdate is None:
+            logging.info("Background PMIDs = Medline - input PMIDs")
             ndocs = self.env.featmap.numdocs - len(self.pmids)
             neg_counts = nx.array(self.env.featmap.counts, nx.int32) - pos_counts
         
         # Using only features from a specific date range
         else:
-            log.info("Counting features between %s and %s", 
-                     str(self.t_mindate), str(self.t_maxdate))
+            logging.info("Background PMIDs = Medline between %s and %s", 
+                         str(self.t_mindate), str(self.t_maxdate))
             # Have the option to exclude more than just training PMIDs
             if train_exclude is None: 
                 train_exclude = self.pmids
@@ -188,7 +196,7 @@ class QueryManager:
         """Read L{inputs} and L{results} from the report directory"""
         self.inputs = list(iofuncs.read_scores(self.outdir/rc.report_input_scores))
         self.results = list(iofuncs.read_scores(self.outdir/rc.report_result_scores))
-        log.info("Loaded saved results for %s", self.dataset)
+        logging.info("Loaded saved results for %s", self.dataset)
 
 
     def _save_results(self):
@@ -201,13 +209,15 @@ class QueryManager:
 
     def _make_results(self):
         """Perform the query to generate L{inputs} and L{results}"""
-        log.info("Peforming query for dataset %s", self.dataset)
         # Calculate decreasing (score, PMID) for input PMIDs
+        logging.info("Finding scores for %d input documents", len(self.pmids))
         self.inputs = zip(
             self.featinfo.scores_of(self.env.featdb, self.pmids), 
             self.pmids)
         self.inputs.sort(reverse=True)
         # Calculate results as decreasing (score, PMID)
+        logging.info("Find scores of Medline between dates %s to %s", 
+                     str(self.mindate), str(self.maxdate))
         self.results = ScoreCalculator(
             rc.featurestream,
             self.env.featmap.numdocs,
@@ -217,7 +227,10 @@ class QueryManager:
             self.threshold,
             self.mindate,
             self.maxdate,
-            set(self.pmids)).score()
+            set(self.pmids),
+            ).score()
+        logging.info("Got %d results (limit %d)", 
+                     len(self.results), self.limit)
 
 
     def write_report(self, maxreport=None):
@@ -229,17 +242,17 @@ class QueryManager:
         @param maxreport: Largest number of records to write to the HTML reports
         (overriding the result limit if smaller)
         """
-        log.debug("Creating report for data set %s", self.dataset)
+        logging.debug("Creating report for data set %s", self.dataset)
         
         # By default report all results
         if maxreport is None or maxreport > len(self.results):
             maxreport = len(self.results)
         
-        log.debug("Writing feature scores")
+        logging.debug("Writing features to %s", rc.report_term_scores)
         with codecs.open(self.outdir/rc.report_term_scores, "wb", "utf-8") as f:
             self.featinfo.write_csv(f)
         
-        log.debug("Writing input citations")
+        logging.debug("Writing citations to %s", rc.report_input_citations)
         self.inputs.sort(reverse=True)
         inputs = [ (s,self.env.artdb[str(p)]) for s,p in self.inputs]
         CitationTable.write_citations(
@@ -247,7 +260,7 @@ class QueryManager:
             self.outdir/rc.report_input_citations, 
             rc.citations_per_file)
         
-        log.debug("Writing output citations")
+        logging.debug("Writing citations to %s", rc.report_result_citations)
         self.results.sort(reverse=True)
         outputs = [ (s,self.env.artdb[str(p)]) for s,p in self.results[:maxreport] ]
         CitationTable.write_citations(
@@ -260,6 +273,7 @@ class QueryManager:
         
         # Write ALL output citations to a single HTML, and a zip file
         if len(outputs) > 0:
+            logging.debug("Writing citations to %s", rc.report_result_all)
             outfname = self.outdir/rc.report_result_all
             zipfname = str(outfname + ".zip")
             CitationTable.write_citations(
@@ -269,7 +283,7 @@ class QueryManager:
                 zf.write(str(outfname), str(outfname.basename()))
         
         # Index.html
-        log.debug("Writing index file")
+        logging.debug("FINISH: Writing %s for %s", rc.report_index, self.dataset)
         from Cheetah.Template import Template
         with iofuncs.FileTransaction(self.outdir/rc.report_index, "w") as ft:
             Template(file=str(rc.templates/"results.tmpl"), 

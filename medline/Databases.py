@@ -2,7 +2,7 @@
 L{FeatureMapping} and the article list"""
 
 from __future__ import with_statement
-import logging as log
+import logging
 import numpy as nx
 from contextlib import closing
 from mscanner.configuration import rc
@@ -44,7 +44,7 @@ class Databases:
     def __init__(self):
         """Constructor for setting attributes to be used by the remaining
         methods."""
-        log.info("Loading article databases")
+        logging.info("Loading article databases")
         self.featdb = FeatureDatabase(rc.featuredb, 'r')
         self.featmap = FeatureMapping(rc.featuremap)
         self.artdb = Shelf.open(rc.articledb, 'r')
@@ -59,7 +59,7 @@ class Databases:
         try:
             return self._article_list
         except AttributeError: 
-            log.info("Loading article list")
+            logging.info("Loading article list")
             self._article_list = nx.array([int(x) for x in rc.articlelist.lines()])
             return self._article_list
 

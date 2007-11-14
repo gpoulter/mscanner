@@ -3,7 +3,7 @@
 from __future__ import with_statement
 from __future__ import division
 
-import logging as log
+import logging
 import os
 import re
 import xmlrpclib
@@ -291,7 +291,7 @@ class GeneDrugFinder:
             result = self.gdcache[key]
         except KeyError:
             result = self.find_genedrugs_article(article)
-        log.debug("%s: %s", str(article.pmid), str(result))
+        logging.debug("%s: %s", str(article.pmid), str(result))
         self.gdcache[key] = result
         return result
 

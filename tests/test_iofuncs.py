@@ -8,6 +8,7 @@ it under the Do Whatever You Want Public License. Terms and conditions:
    0. Do Whatever You Want
 """
 
+import logging
 import unittest
 from mscanner import tests
 from mscanner.core import iofuncs

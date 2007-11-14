@@ -2,7 +2,7 @@
 
 from __future__ import division
 from Gnuplot import Data, Gnuplot
-import logging as log
+import logging
 import numpy as nx
 
 
@@ -50,7 +50,7 @@ class Plotter:
         """
         if fname.exists() and not self.overwrite: return
         g = self.gnuplot
-        log.debug("Plotting prediction curve to %s", fname)
+        logging.debug("Plotting prediction curve to %s", fname.basename())
         g.reset()
         g.title("Prediction curve (TPR, PPV vs # results)")
         g.ylabel("TPR, PPV")
@@ -72,7 +72,7 @@ class Plotter:
         """ROC curve (TPR vs FPR)"""
         if fname.exists() and not self.overwrite: return
         g = self.gnuplot
-        log.debug("Plotting ROC curve to %s", fname)
+        logging.debug("Plotting ROC curve to %s", fname.basename())
         g.reset()
         g.title("ROC curve (TPR vs FPR)")
         g.ylabel("True Positive Rate (TPR)")
@@ -87,7 +87,7 @@ class Plotter:
         """Precision vs recall"""
         if fname.exists() and not self.overwrite: return
         g = self.gnuplot
-        log.debug("Plotting Precision-Recall curve to %s", fname)
+        logging.debug("Plotting Precision-Recall curve to %s", fname.basename())
         g.reset()
         g.title("Precision vs Recall")
         g.ylabel("Precision")
@@ -102,7 +102,7 @@ class Plotter:
         """Precision, Recall, F-Measure vs threshold"""
         if fname.exists() and not self.overwrite: return
         g = self.gnuplot
-        log.debug("Plotting F-Measure curve to %s", fname)
+        logging.debug("Plotting F-Measure curve to %s", fname.basename())
         g.reset()
         g.title("Precision and Recall vs Threshold")
         g.ylabel("Precision, Recall, F-Measure, F-Measure Alpha")
@@ -136,7 +136,7 @@ class Plotter:
         """Histograms for pos and neg scores, with line to mark threshold""" 
         if fname.exists() and not self.overwrite: return
         g = self.gnuplot
-        log.debug("Plotting article score histogram to %s", fname)
+        logging.debug("Plotting article score histogram to %s", fname.basename())
         from itertools import chain
         py, px = nx.histogram(pdata, bins=self.bincount(pdata), normed=True)
         zy, zx = nx.histogram(ndata, bins=self.bincount(ndata), normed=True)
@@ -163,7 +163,7 @@ class Plotter:
         @param scores: List with scores of each feature"""
         if fname.exists() and not self.overwrite: return
         g = self.gnuplot
-        log.debug("Plotting feature score histogram to %s", fname)
+        logging.debug("Plotting feature score histogram to %s", fname.basename())
         sscores = scores.copy()
         sscores.sort()
         y, x = nx.histogram(scores, bins=self.bincount(sscores))
@@ -214,7 +214,7 @@ def DensityPlotter(Plotter):
         if fname.exists() and not self.overwrite: return
         g = self.gnuplot
         from itertools import chain
-        log.debug("Plotting article score density to %s", fname)
+        logging.debug("Plotting article score density to %s", fname.basename())
         px, py = self.gaussian_kernel_pdf(pdata)
         zx, zy = self.gaussian_kernel_pdf(ndata)
         overlap = calculateOverlap(px, py, zx, zy)
@@ -236,7 +236,7 @@ def DensityPlotter(Plotter):
         """Probability density function for feature scores"""
         if fname.exists() and not self.overwrite: return
         g = self.gnuplot
-        log.debug("Plotting feature score density to %s", fname)
+        logging.debug("Plotting feature score density to %s", fname.basename())
         x, y = self.gaussian_kernel_pdf(scores, npoints=1024)
         g.reset()
         g.title("Feature Score Density")

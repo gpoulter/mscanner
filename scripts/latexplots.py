@@ -21,7 +21,7 @@ from pylab import *
 from mscanner.configuration import rc as mrc
 from mscanner.core import iofuncs
 from mscanner.core.Plotter import Plotter, DensityPlotter
-from mscanner.core.PerformanceVectors import PerformanceVectors
+from mscanner.core.metrics import PerformanceVectors
 from mscanner.scripts import retrievaltest
 
 
@@ -41,7 +41,7 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 interactive = False
 npoints = 400
-mscanner_dir = path(r"C:\Documents and Settings\Graham\My Documents\data\mscanner")
+mscanner_dir = path(r"C:\Documents and Settings\Graham\My Documents\data\MScanner")
 source_dir = mscanner_dir / "output"
 outdir = path(r"C:\Documents and Settings\Graham\My Documents\temporary")
 
@@ -87,13 +87,14 @@ def load_stats(indir, dataset, title, alpha=0.5):
     logging.info("Reading dataset %s", dataset)
     if not (indir/dataset).isdir():
         raise ValueError("Could not directory %s" % (indir/dataset)) 
-    pscores = array([s[0] for s in iofuncs.read_pmids(
-        indir/dataset/mrc.report_positives, withscores=True)])
-    nscores = array([s[0] for s in iofuncs.read_pmids(
-        indir/dataset/mrc.report_negatives, withscores=True)])
+    pscores = array([s[0] for s in iofuncs.read_scores(
+        indir/dataset/mrc.report_positives)])
+    nscores = array([s[0] for s in iofuncs.read_scores(
+        indir/dataset/mrc.report_negatives)])
     stats = PerformanceVectors(pscores, nscores, alpha)
     stats.title = title
-    stats.threshold = stats.threshold_for(stats.FMa)
+    stats.threshold, idx = stats.threshold_for(stats.FMa)
+    stats.tuned = stats.metrics_for(idx)
     return stats
 
 
@@ -173,17 +174,17 @@ def plot_score_density(fname, statlist):
         nx, ny = DensityPlotter.gaussian_kernel_pdf(s.nscores)
         subplot(2,2,idx+1)
         title(s.title)
-        line_pos, = plot(px, py, color='red', label=r"$\rm{Positive}$")
-        line_neg, = plot(nx, ny, color='blue', label=r"$\rm{Negative}$")
+        line_pos, = plot(px, py, color='red', label=r"Relevant")
+        line_neg, = plot(nx, ny, color='blue', label=r"Irrelevant")
         line_threshold = axvline(
-            s.threshold, color='green', linewidth=1, label=r"$\rm{Threshold}$")
+            s.threshold, color='green', linewidth=1, label=r"Threshold")
         # We don't plot overlapping area any more
         #area, iX, iY = plotting.calculate_overlap(px, py, nx, ny)
         #patch_overlap, = fill(iX, iY, facecolor='magenta', alpha=0.7, label=r"$\rm{Overlap}$")
         if idx == 0 or idx == 2:
-            ylabel("Density")
+            ylabel("Probability density")
         if idx == 2 or idx == 3:
-            xlabel("Score")
+            xlabel("Article score")
         if idx == 0:
             legend(loc="upper left")
     custom_show(fname)
@@ -248,8 +249,8 @@ def plot_precision(fname, statlist):
     """Plots PR curves overlayed"""
     logging.info("Plotting PR curve to %s", fname)
     ##title(r"Precision versus Recall")
-    ylabel(r"$\rm{Precision}\ (\pi)$")
-    xlabel(r"$\rm{Recall}\ (\rho)$")
+    ylabel(r"Precision")
+    xlabel(r"Recall")
     # Dotted line for break-even point
     plot([0.0, 1.0], [0.0, 1.0], "k:")
     # Pairs of TPR and PPV vectors for plotting
@@ -331,20 +332,20 @@ def do_retrievaltest():
 def do_publication():
     """Draws figures for the BMC paper: including densities, ROC curve, PR
     curve, and PRF curve. """
-    indir = source_dir / "070622 CV10 100k a_i"
+    indir = source_dir / "06.22 CV10 100k newpseudo"
     aids = load_stats(indir, "aids-vs-100k", "AIDSBio")
     rad = load_stats(indir, "radiology-vs-100k", "Radiology")
     pg07 = load_stats(indir, "pg07-vs-100k", "PG07")
-    ran10 = load_stats(indir, "random10k-vs-100k", "Random")
+    ran10 = load_stats(indir, "random10k-vs-100k", "Control")
     all = (aids,rad,pg07,ran10)
-    plot_roc("fig2_roc", all)
-    plot_precision("fig3_pr", all)
-    fmplot = PerformanceVectors(pg07.pscores, pg07.nscores, alpha=0.95)
-    fmplot.threshold = fmplot.threshold_for(fmplot.FMa)
-    fmplot.title = pg07.title
-    plot_fmeasure("fig6_prf", fmplot)
-    plot_score_density("fig1_density", all)
-    do_retrievaltest()
+    plot_roc("fig3_roc", all)
+    plot_precision("fig4_pr", all)
+    #fmplot = PerformanceVectors(pg07.pscores, pg07.nscores, alpha=0.95)
+    #fmplot.threshold = fmplot.threshold_for(fmplot.FMa)
+    #fmplot.title = pg07.title
+    #plot_fmeasure("fig5_prf", fmplot)
+    plot_score_density("fig2_density", all)
+    #do_retrievaltest()
 
 
 def do_testplots():
@@ -358,10 +359,10 @@ def do_testplots():
     plot_score_density("test_density", (pg04,pg07,pg07,pg04))
     plot_roc("test_roc", (pg04,pg07))
     plot_precision("test_pr", (pg04,pg07))
-    pg04alpha = PerformanceVectors(pg04.pscores, pg04.nscores, alpha=0.9)
-    pg04alpha.threshold = pg04alpha.threshold_for(pg04alpha.FMa)
-    pg04alpha.title = pg04.title
-    plot_fmeasure("test_prf", pg04alpha)
+    #pg04alpha = PerformanceVectors(pg04.pscores, pg04.nscores, alpha=0.9)
+    #pg04alpha.threshold = pg04alpha.threshold_for(pg04alpha.FMa)
+    #pg04alpha.title = pg04.title
+    #plot_fmeasure("test_prf", pg04alpha)
 
 
 def do_subdirplots(subdirs):

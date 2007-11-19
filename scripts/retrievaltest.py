@@ -86,7 +86,7 @@ def plot_rank_performance(fname, textfname, tp_vs_rank, total_relevant, compare_
                  total_relevant, compare_irrelevant)
     logging.info("At end, Query recall is 1.0 and precision is %f", q_prec)
     logging.info("At end, MScanner recall is %f and precision is %f",
-                 recall[0], precision[-1])
+                 recall[-1], precision[-1])
     g.plot(Data(ranks, recall, title="Recall", with="lines"),
            Data(ranks, precision, title="Precision", with="lines"),
            Data(ranks, q_recall, title="Query Recall", with="lines"),

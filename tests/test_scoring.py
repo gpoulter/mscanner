@@ -130,7 +130,7 @@ class FeatureScoresTests(unittest.TestCase):
     def test_pseudocount(s):
         """Constant pseudocount"""
         f = FeatureScores(s.featmap, pseudocount=0.1,
-                          make_scores="scores_newpseudo")
+                          make_scores="scores_noabsence")
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
         s.assert_(nx.allclose(
             f.scores, nx.array([-0.35894509,  0.93430924,  0.28768207])))
@@ -150,7 +150,7 @@ class FeatureScoresTests(unittest.TestCase):
         s.featmap.numdocs = 10
         s.featmap.counts = [3,2,1]
         f = FeatureScores(s.featmap, pseudocount=None,
-                          make_scores="scores_newpseudo")
+                          make_scores="scores_noabsence")
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
         logging.debug("Scores (old): %s", pp.pformat(f.scores))
         s.assert_(nx.allclose(
@@ -170,10 +170,10 @@ class FeatureScoresTests(unittest.TestCase):
     def test_cutoff(s):
         """Constant pseudocount and cutoff"""
         f = FeatureScores(s.featmap, pseudocount=0.1,
-                          make_scores="scores_oldpseudo",
+                          make_scores="scores_noabsence",
                           get_postmask="make_rare_positives")
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
-        #logging.debug("Scores (old): %s", pp.pformat(f.scores_old))
+        logging.debug("Scores (old): %s", pp.pformat(f.scores_old))
         s.assert_(nx.allclose(
             f.scores, nx.array([-0.27193372,  1.02132061,  0.0 ])))
 

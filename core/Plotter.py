@@ -179,7 +179,7 @@ class Plotter:
 
 
 
-def DensityPlotter(Plotter):
+class DensityPlotter(Plotter):
     """Adds plotting of estimated Probability Density Functions for
     article and feature scores.
     

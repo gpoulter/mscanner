@@ -68,7 +68,7 @@ typedef struct {
 
 // For qsort, to sort the scores in decreasing order
 int compare_scores(const void *a, const void *b) {
-    return rint(((const score_t *)b)->score - ((const score_t *)a)->score);
+    return (int)rint(((const score_t *)b)->score - ((const score_t *)a)->score);
 }
 
 

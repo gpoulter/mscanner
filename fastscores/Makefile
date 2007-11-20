@@ -12,14 +12,14 @@ clean:
 
 
 $(F): $(F).c
-	gcc -o $@ $<	
+	gcc -lm -o $@ $<	
 
 $(C): $(C).c
-	gcc -DCSCORE -o $@ $<
+	gcc -lm -DCSCORE -o $@ $<
 
 $(C).so: $(C).c
-	gcc -shared -o $@ $<
+	gcc -lm -shared -o $@ $<
 
 $(C).dll: $(C).c
-	gcc -mno-cygwin -shared -o $@ $<
+	gcc -lm -mno-cygwin -shared -o $@ $<
 

@@ -37,7 +37,8 @@ class ScoreCalculator:
     
     @ivar featscores: Numpy array of double-precision feature scores.
     
-    @ivar offset: Score of a citation having zero features.
+    @ivar offset: Sum of the Bayesian prior score and the base log likelihood 
+    of an article with no features.
 
     @ivar limit: Maximum number of results to return.
     
@@ -103,6 +104,7 @@ class ScoreCalculator:
 
     def pyscore(s):
         """Pure python implementation of L{score}"""
+        logging.info("Performing query using ScoreCalculator.pyscore")
         results = [(-100000, 0)] * s.limit
         import heapq
         ndocs = 0
@@ -130,6 +132,7 @@ class ScoreCalculator:
 
     def cscore_pipe(s):
         """Calculate article scores by piping to the cscore program"""
+        logging.info("Performing query using ScoreCalculator.cscore_pipe")
         import struct
         import subprocess as sp
         p = sp.Popen([
@@ -162,6 +165,7 @@ class ScoreCalculator:
 
     def cscore_dll(s):
         """Calculate article scores, using ctypes to call cscores"""
+        logging.info("Performing query using ScoreCalculator.cscore_dll")
         from ctypes import cdll, byref, c_int, c_void_p, c_char_p, c_float, c_double
         import itertools
         import numpy as nx
@@ -184,7 +188,7 @@ class ScoreCalculator:
             carray(nx.float32), # o_scores
             carray(nx.int32),   # o_pmids
         ]
-        output_size = s.limit+len(s.exclude) # extra space for exclusions
+        output_size = s.limit + len(s.exclude) # extra space for exclusions
         o_scores = nx.zeros(output_size, dtype=nx.float32)
         o_pmids = nx.zeros(output_size, dtype=nx.int32)
         # Now call this monstrously paramaterised function

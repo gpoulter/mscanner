@@ -47,6 +47,7 @@ this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 // Simple tests for ctypes
 void double_int(int a, int *b) { 
@@ -67,7 +68,7 @@ typedef struct {
 
 // For qsort, to sort the scores in decreasing order
 int compare_scores(const void *a, const void *b) {
-    return -( ((const score_t *)a)->score - ((const score_t *)b)->score );
+    return rint(((const score_t *)b)->score - ((const score_t *)a)->score);
 }
 
 
@@ -111,6 +112,7 @@ void cscore(
     int fi = 0; // Loop variable: index into feature vector
     int date = 0; // Date of the current citation
     int numresults = 0; // Number of available results to return
+    float tmp_score = 0.0; // Accumulator for calculating record score
     unsigned short featvec_size = 0; // Size of current feature vector
     unsigned short featvec[1000]; // Maximum of 1000 features per citation
 
@@ -133,22 +135,26 @@ void cscore(
         fread(featvec, sizeof(unsigned short), featvec_size, citefile);
         // Don't bother if the date is outside the range
         if ((date < mindate) || (date > maxdate)) {
-            scores[pi].score = -10000.0; // Don't let it sneak in
+            // Don't let it sneak in when sorting
+            scores[pi].score = -10000.0;
             continue;
         }
         // Start with the offset score
-        scores[pi].score = offset; 
-        // Add up the feature scores
-        for(fi = 0; fi < featvec_size; fi++)
-            scores[pi].score += (float)featscores[featvec[fi]];
+        tmp_score = offset;
+        // Add up the adjusted feature scores
+        for(fi = 0; fi < featvec_size; fi++) {
+            tmp_score += (float)featscores[featvec[fi]];
+        }
+        scores[pi].score = tmp_score;
         // Count the result if it scores high enough
-        if (scores[pi].score >= threshold)
+        if (tmp_score >= threshold) {
             numresults++;
+        }
     }
     fclose(citefile);
 
     // Sort the citations
-    qsort((void *)scores, numcites, sizeof(score_t), compare_scores);
+    qsort(scores, numcites, sizeof(score_t), compare_scores);
     
     // Output the top citations, to a maximum of limit
     if (numresults > limit)

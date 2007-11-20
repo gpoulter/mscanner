@@ -80,39 +80,44 @@ Submit Query or Validation #slurp
 </tr>
 #end def
 
-#def help_positives# A list of PubMed IDs, one per line. To obtain a list of
-PubMed IDs (if they are not already available from a database or reference
-manager), tick some search results on <a
-href="http://www.ncbi.nlm.nih.gov/sites/entrez">PubMed</a>, then use the
-drop-down boxes to select Display: "UI List" and Send To: "Text". 
+#def help_positives# A list of PubMed IDs, one per line, to serve
+as relevant training examples (the rest of Medline is used to approximate
+term frequencies in irrelevant articles).
 #end def
 
 #def help_dataset# The name of the task, to make it easier to locate on the
 results page (restriced to letters, numbers and .,;:- punctuation)#end def
 
-#def help_delcode# (optional) You can specify a short code that will need to be
-entered if you wish to delete the output. Selecting "hide output" will prevent
-the results from being listed on the <a href="output">output</a> page, meaning
-that you will have to bookmark the location of the results to find them later.
+#def help_delcode# A short code that will be
+required if in order to delete the output (defaults to an empty code). 
+You may select "hide output" to prevent the results from being listed 
+on the <a href="output">output</a> page, in which case you need to 
+bookmark the location of the results to find them later.
 #end def
 
-#def help_threshold# The query result page will only contain citations scoring
-above this threshold (threshold may be between -100 and +100). #end def
+#def help_prevalence# Fraction of Medline consisting
+of relevant articles.  Increasing this value yields more results
+by raising the prior probability of relevance.
+#end def
+
+#def help_relprob# The classifier only returns articles whose 
+predicted probability of relevance is above this level.
+The default for Naive Bayes classification is 50%.
+#end def
+
+#def help_mindate# Retrict Medline to records added after this date. 
+Setting this option will slow down retrieval by 30 seconds.  Records
+are typically added 1-3 months after publication date.
+#end def
 
 #def help_limit# At most this many citations will be returned (limit may be
-between 100 and 10000). #end def
-
-#def help_numnegs# 10-fold cross validation estimates MScanner's performance by
-splitting the input citations into training and testing sections. The number of
-random citations to use as examples of irrelevant citations may be between 100
-and 100,000 (try about 100 times as many as there are input citations). 
+between 100 and 10000). 
 #end def
 
-#def help_alpha# The weight of precision used to calculate the F measure (the
-threshold for calling a citation positive is chosen to maximise F). &alpha;=0.5
-gives precision and recall equal weight, values between 0.5 and 1.0 give more
-weight to precision, and values between 0.0 and 0.5 give more weight to recall
+#def help_numnegs# In cross validation we select this many random Medline 
+records to serve as irrelevant training examples.
 #end def
+
 
 #def contents
 <div class="narrow">
@@ -132,11 +137,14 @@ weight to precision, and values between 0.0 and 0.5 give more weight to recall
 
   <fieldset>
     <legend>
-      $inputs["operation"].render("query")
+      $inputs["operation"].render("retrieval")
     </legend>
     <table>
-      $form_row("threshold")
-      $form_row("limit")
+      $form_row("prevalence")
+      $form_row("relprob")
+      $form_row("mindate")
+      ##$form_row("limit")
+      $inputs["limit"].render()
     </table>
   </fieldset>
 
@@ -146,7 +154,6 @@ weight to precision, and values between 0.0 and 0.5 give more weight to recall
     </legend>
     <table>
       $form_row("numnegs")
-      $form_row("alpha")
     </table>
   </fieldset> 
 

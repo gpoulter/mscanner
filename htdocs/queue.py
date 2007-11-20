@@ -30,6 +30,21 @@ Example descriptor file for validation::
 from __future__ import with_statement
 from __future__ import division
 
+import logging
+import math
+import os
+from path import path
+import sys
+import time
+
+from mscanner.configuration import rc
+from mscanner.medline.Databases import Databases
+from mscanner.core.QueryManager import QueryManager
+from mscanner.core.ValidationManager import CrossValidation
+from mscanner.core import iofuncs
+from mscanner.scripts import update
+
+
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
@@ -43,19 +58,6 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
-
-import logging
-import os
-from path import path
-import sys
-import time
-
-from mscanner.configuration import rc
-from mscanner.medline.Databases import Databases
-from mscanner.core.QueryManager import QueryManager
-from mscanner.core.ValidationManager import CrossValidation
-from mscanner.core import iofuncs
-from mscanner.scripts import update
 
 
 def parsebool(s):
@@ -73,18 +75,18 @@ def parsebool(s):
 
 
 descriptor_keys = dict(
-    alpha=float,
-    code=str,
-    dataset=str,
-    delcode=str,
-    hidden=parsebool,
-    limit=int,
-    numnegs=int,
-    nfolds=int,
-    operation=str,
-    threshold=float,
-    submitted=float,
-    timestamp=float,)
+    captcha=str,      # Captcha value in the form
+    dataset=str,      # Name of the input corpus
+    delcode=str,      # MD5 of deletion code
+    hidden=parsebool, # Whether to hide the output
+    limit=int,        # Upper limit on number of results
+    mindate=int,      # Minimum date to consider
+    numnegs=int,      # Number of irrelevant articles for CV
+    operation=str,    # "retrieval" or "validation"
+    prevalence=float, # Estimated fraction of relevant articles in Medline
+    relprob=float,    # Minimum probability of relevance
+    submitted=float,  # Timestamp when the task was submitted
+    )
 
 
 def read_descriptor(fpath):
@@ -101,7 +103,11 @@ def read_descriptor(fpath):
         line = f.readline()
         while line.startswith("#"):
             key, value = line[1:].split(" = ",1)
-            value = descriptor_keys[key](value.strip())
+            value = value.strip()
+            if value == "None": 
+                value = None
+            else:
+                value = descriptor_keys[key](value.strip())
             result[key] = value
             line = f.readline()
         result["_filename"] = fpath
@@ -216,17 +222,24 @@ def delete_output(dataset):
     for fname in dirpath.files():
         fname.remove()
     dirpath.rmdir()
-    
+
+
+
+def logit(probability):
+    return math.log(probability/(1-probability))
+
 
 def mainloop():
     """Look for descriptor files every second"""
     env = None
     try:
-        last_clean = 0 # time.time() of last output-cleaning
-        last_update = 0 # time.time() of last database update
+        # time.time() of last output-cleaning
+        last_clean = 0 
+        # time.time() of last database update
+        last_update = 0 
         while True:
-            # Cron: delete the oldest outputs
-            if time.time() - last_clean > 6*3600:  
+            # Delete oldest outputs twice daily
+            if time.time() - last_clean > 12*3600:  
                 logging.info("Looking for old datasets")
                 queue = QueueStatus()
                 queue.donelist.reverse() # Newest first
@@ -237,7 +250,7 @@ def mainloop():
                         pass # Failed to delete output
                 last_clean = time.time()
             
-            # Cron: update the databases
+            # Update the databases twice daily
             if time.time() - last_update > 12*3600:
                 if env is not None: env.close()
                 env = None
@@ -246,29 +259,33 @@ def mainloop():
                 env.article_list # long first load time
                 last_update = time.time()
             
-            # Now perform any queued tasks
+            # Perform any queued tasks
             queue = QueueStatus()
             task = queue.running
             if task is not None:
                 # The output directory for the task
                 outdir = rc.web_report_dir / task.dataset
                 logging.info("Starting %s for %s", task.operation, task.dataset)
-                task._filename.utime(None) # Update mod time for status display
+                # Update task file mod time for the status display
+                task._filename.utime(None) 
                 try:
-                    if task.operation == "query":
+                    if task.operation == "retrieval":
                         QM = QueryManager(
-                            outdir, 
+                            outdir=outdir, 
                             dataset=task.dataset,
                             limit=task.limit,
-                            threshold=task.threshold, 
-                            env=env)
+                            env=env,
+                            threshold=logit(task.relprob),
+                            prior=logit(task.prevalence),
+                            mindate=task.mindate,
+                            maxdate=None,
+                            )
                         QM.query(task._filename)
                         QM.write_report()
                         QM.__del__()
                     elif task.operation == "validate":
-                        rc.alpha = task.alpha
                         VM = CrossValidation(
-                            outdir, 
+                            outdir=outdir, 
                             dataset=task.dataset,
                             env=env)
                         VM.validation(task._filename, task.numnegs)
@@ -278,7 +295,7 @@ def mainloop():
                 except ValueError, e:
                     logging.exception(e)
             else:
-                # Wait before the next iteration
+                # Nothing to do so sleep before the next iteration
                 time.sleep(1)
     finally:
         if env is not None: env.close()
@@ -289,15 +306,18 @@ def populate_test_queue():
     from mscanner.core.Storage import Storage
     pmids = list(iofuncs.read_pmids(rc.corpora / "Test" / "gdsmall.txt"))
     task = Storage(
-        operation = "validate", 
+        captcha = "orange",
         dataset = "gdqtest_valid",
+        hidden = False,
+        limit = 500,
+        mindate = 19700101,
         numnegs = 1000, 
-        alpha = 0.6,
-        limit = 500, 
-        threshold = 0, 
+        operation = "validate", 
+        prevalence = 0.01,
+        relprob = 0.5, 
         submitted = time.time())
     write_descriptor(rc.queue_path/task.dataset, pmids, task)
-    task.operation = "query"
+    task.operation = "retrieval"
     task.dataset = "gdqtest_query"
     task.submitted += 5
     write_descriptor(rc.queue_path/task.dataset, pmids, task)

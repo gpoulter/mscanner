@@ -92,7 +92,7 @@ class QueryManager:
         self.mindate = mindate
         self.maxdate = maxdate
         self.t_mindate = mindate if t_mindate is None else t_mindate
-        self.t_maxdate = mindate if t_maxdate is None else t_maxdate
+        self.t_maxdate = maxdate if t_maxdate is None else t_maxdate
         # Create output dir
         if not outdir.exists():
             outdir.makedirs()
@@ -236,8 +236,7 @@ class QueryManager:
             self.maxdate,
             set(self.pmids),
             ).score()
-        logging.info("Got %d results (limit %d)", 
-                     len(self.results), self.limit)
+        logging.info("Got %d results (limit %d)", len(self.results), self.limit)
 
 
     def write_report(self, maxreport=None):
@@ -249,6 +248,9 @@ class QueryManager:
         @param maxreport: Largest number of records to write to the HTML reports
         (overriding the result limit if smaller)
         """
+        # Cancel report if there are no results
+        if self.results is None: return
+        
         logging.debug("Creating report for data set %s", self.dataset)
         
         # By default report all results

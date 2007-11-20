@@ -7,6 +7,7 @@ __license__ = "GPL"
 import web
 import time
 import md5
+import sys
 
 import query
 from mscanner.htdocs import forms, queue
@@ -32,9 +33,29 @@ dataset_validator = forms.RegexValidator(
 """Checks task name for valid format"""
 
 
+
+def parse_date(date_code):
+    """Convert YYYY/MM/DD date string to YYYYMMDD integer"""
+    year, month, day = date_code.split("/")
+    return int("%04d%02d%02d" % (int(year),int(month),int(day)))
+
+
+def date_is_valid(date_code):
+    """Must be a YYYY/MM/DD date string, before today"""
+    try:
+        date = parse_date(date_code)
+    except:
+        return False
+    yesterday = int(time.strftime("%Y%m%d"))-1
+    if date >= yesterday:
+        return False
+    return True
+
+
 def task_does_not_exist(dataset):
     """True if task does not exist in queue or output directory"""
     return not task_exists(dataset)
+
 
 def task_exists(dataset):
     """True if task exists in queue or output directory"""
@@ -48,6 +69,12 @@ QueryForm = forms.Form(
         forms.Validator(
             lambda x: x == "orange", "Should be the word 'orange'"),
         label="Enter the word 'orange'"),
+    
+    forms.Hidden(
+        "limit", 
+        forms.Validator(lambda x: 100 <= int(x) <= 10000,
+            "Should be between 100 and 10000."),
+        label="Max No. Results"),
     
     forms.Textarea(
         "positives", 
@@ -68,51 +95,52 @@ QueryForm = forms.Form(
         "hidden", forms.checkbox_validator, label="Hide output"),
     
     forms.Textbox(
-        "threshold", 
-        forms.Validator(lambda x: -100 <= float(x) <= 100,
-            "Should be between -1000 and +1000"),
-        label="Score Threshold", size=8),
+        "prevalence", 
+        forms.Validator(lambda x: 1e-6 <= float(x) <= 0.1,
+            "Should be between 0.000001 (10^-6) and 0.1"),
+        label="Estimated prevalence", size=8),
     
     forms.Textbox(
-        "limit", 
-        forms.Validator(lambda x: 100 <= int(x) <= 10000,
-            "Should be between 100 and 10000."),
-        label="Result Limit", size=8),
+        "relprob", 
+        forms.Validator(lambda x: 0.0001 <= float(x) <= 0.9999,
+            "Should be between 0.0001 and 0.9999."),
+        label="Minimum probability", size=8),
     
+    forms.Textbox(
+        "mindate", 
+        forms.Validator(date_is_valid, 
+        "Date should be YYYY/MM/DD, and the day before yesterday at latest."),
+        label="Minimum date", size=12),
+
     forms.Textbox(
         "numnegs", 
         forms.Validator(lambda x: 100 <= int(x) <= 100000,
             "Should be between 100 and 100000."),
         label="Number of Negatives", size=8),
     
-    forms.Textbox(
-        "alpha", 
-        forms.Validator(lambda x: 0.0 <= float(x) <= 1.0,
-            "Should be between 0.0 and 1.0"),
-        label="F-Measure Alpha", size=8),
-    
     forms.Radio(
         "operation",
-        [ ("query", "Query Operation"), 
-          ("validate", "Validation Operation") ],
-        forms.Validator(lambda x: x in ["query", "validate"], 
+        [ ("retrieval", "Medline retrieval operation"), 
+          ("validate", "Cross validation operation") ],
+        forms.Validator(lambda x: x in ["retrieval", "validate"], 
                         "Invalid operation")),
 )
 """Structure of the query form"""
 
 
-# Initial values to fill into the form
+# Initial values to fill into the form (see queue.py for meanings)
 form_defaults = dict(
-    alpha = 0.5,
     captcha = "orange",
     delcode = "",
     dataset = "",
-    limit = 500,
     hidden = False,
+    limit = 10000,
+    mindate = "0000/00/00",
     numnegs = 50000,
-    operation = "query",
+    operation = "retrieval",
     positives = "",
-    threshold = 20.0,
+    prevalence = 0.0001,
+    relprob = 0.5,
 )
 """Default values for the query form"""
 
@@ -139,8 +167,13 @@ class QueryPage:
             inputs = qform.d
             inputs.submitted = time.time()
             inputs.hidden = forms.ischecked(inputs.hidden)
+            # MD5 hash the deletion code
             delcode_plain = inputs.delcode
             inputs.delcode = md5.new(delcode_plain).hexdigest()
+            # Parse the date string to integer
+            inputs.mindate = parse_date(inputs.mindate)
+            if inputs.mindate < 19650101:
+                inputs.mindate = None
             queue.write_descriptor(rc.queue_path / inputs.dataset, 
                                    parse_pmids(inputs.positives), inputs)
             # Show status page for the task
@@ -148,6 +181,10 @@ class QueryPage:
                          (inputs.dataset, web.urlquote(delcode_plain)))
         else:
             # Errors in the form, print it again
+            for x in qform.inputs:
+                if x.note is not None:
+                    print x.name, x.note
+            return
             page = query.query()
             page.queue = queue.QueueStatus(with_done=True)
             page.inputs = qform

@@ -331,8 +331,9 @@ class CrossValidation(ValidationBase):
 
     def report_validation(self):
         """Report cross validation results, using default threshold of 0"""
-        self._get_performance(0.0)
-        self._write_report()
+        if len(self.positives)>0 and len(self.negatives)>0:
+            self._get_performance(0.0)
+            self._write_report()
 
     
     def report_predicted(self, relevant_low, relevant_high, medline_size):
@@ -345,16 +346,17 @@ class CrossValidation(ValidationBase):
         @param medline: Number of articles in rest of Medline, or None
         to use L{Databases.article_list} minus relevant articles.
         """
-        # Calculate the performance
-        self._get_performance()
-        if medline_size is None:
-            medline_size = len(self.env.article_list) - len(self.positives)
-        v = self.metric_vectors
-        self.pred_low = PredictedMetrics(
-            v.TPR, v.FPR, v.uscores, relevant_low, medline_size)
-        self.pred_high = PredictedMetrics(
-            v.TPR, v.FPR, v.uscores, relevant_high, medline_size)
-        self._write_report()
+        if len(self.positives)>0 and len(self.negatives)>0:
+            # Calculate the performance
+            self._get_performance()
+            if medline_size is None:
+                medline_size = len(self.env.article_list) - len(self.positives)
+            v = self.metric_vectors
+            self.pred_low = PredictedMetrics(
+                v.TPR, v.FPR, v.uscores, relevant_low, medline_size)
+            self.pred_high = PredictedMetrics(
+                v.TPR, v.FPR, v.uscores, relevant_high, medline_size)
+            self._write_report()
 
 
     def _load_input(self, pos, neg):

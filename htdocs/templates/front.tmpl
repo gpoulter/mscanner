@@ -11,73 +11,78 @@ MScanner
 #def contents
 <div class="narrow">
 
-<h2>Queries</h2>
+<h2>Medline retrieval operation</h2>
 
-<p>On the <a href="query">query</a> page, give MScanner examples of the
-citations you are looking for, then click "Submit Query".   MScanner
-looks at the MeSH terms and journals represented in your examples to
-identify the best matching citations in the rest of Medline.  It takes
-about 90 seconds to complete after reaching the front of the queue.</p>
+<p>On the <a href="query">query</a> page, specify training examples 
+of relevant articles as a list of PubMed IDs, and click "Submit". 
+Help is available for the parameters, although the defaults should
+be fine for high-precision retrieval. Whole-medline classification 
+takes about 90 seconds to complete.</p>
 
-<p>You can view <a href="static/sample/pg07">results</a> of a query
-which used 1,595 examples of pharmacogenetics articles retrieved from the
-Pharmacogenetics KnowledgeBase (<a
+<p>See the <a href="static/sample/query/pg07">sample results</a> of a 
+retrieval operation where the relevant examples were 1,595 
+articles extracted from the Pharmacogenetics KnowledgeBase (<a
 href="http://www.pharmgkb.org">PharmGKB</a>).</p>
 
-<h2>Cross validation</h2> 
 
-<p>When random articles are used for input, they are indistinguishable from the
-rest of <a
-href="http://www.nlm.nih.gov/pubs/factsheets/medline.html">Medline</a>. To
-measure how well MScanner can perform on your input, use the 10-fold cross
-validation option on the query page (this feature requires 30 or more training
-citations). You can view <a href="static/sample/pg07-vs-100k">results</a>
-validation on the PharmGKB citations.</p>
+<h2>Cross validation operation</h2> 
 
-<h2>Source Code</h2>
+<p>Classification performance depends on terms being enriched or depleted
+in the relevant articles relative to <a
+href="http://www.nlm.nih.gov/pubs/factsheets/medline.html">Medline</a>.  
+Use cross validation to evaluate the Receiver Operating Characteristic
+and averaged precision against a set of random articles (small
+enough set to have very few relevant articles in it).</p>
+
+<p>See the <a href="static/sample/valid/pg07">sample results</a> of
+10-fold cross validation of the pharmacogenetics articles against 100,000
+random articles in Medline.</p>
+
+
+<h2>Downloading the source code</h2>
 
 <p>MScanner is released under the <a href="http://www.gnu.org/licenses"> GNU
-General Public License</a>. The latest revision is 2007.10.08. It is a major
-refactoring of 2007.09.07. Download the <a
-href="static/source-20071008.zip">source archive</a>.</p>
+General Public License</a>. The latest revision is 2007.11.20. Download the <a
+href="static/source-20071120.zip">source archive</a>.</p>
 
-<h2>Publication Results</h2>
 
-<p> The MScanner publication has condensed results for cross validation on data
-sets named PG07, AIDSBio, Radiology and Random10k. Below are links to the
-complete query and cross-validation output.   Descriptions of the
-data sets are in the paper.</p>
+<h2>Sample training data</h2>
+
+<p>Below are the results using the sample training corpora
+described in the MScanner paper.</p>
 
 <table>
 <tr>
-<th>Data set</th>
-<th>Query output</th>
-<th>Validation output</th>
+<th>Training data</th>
+<th>Results</th>
+<th>Results</th>
 </tr>
 <tr>
 <td>PG07 (Pharmacogenetics, 1595 citations)</td>
-<td><a href="static/sample/pg07">pg07</a>
-<td><a href="static/sample/pg07-vs-100k">pg07-vs-100k</a></td>
+<td><a href="static/sample/query/pg07">retrieval</a>
+<td><a href="static/sample/valid/pg07">validation</a></td>
 </tr>
 <tr>
 <td>AIDSBio (AIDS and Bioethics, 10732 citations)</td>
-<td><a href="static/sample/aids">aids</a></td>
-<td><a href="static/sample/aids-vs-100k">aids-vs-100k</a></td>
+<td><a href="static/sample/query/aidsbio">retrieval</a></td>
+<td><a href="static/sample/valid/aidsbio">validation</a></td>
 </tr>
 <tr>
 <td>Radiology (splenic imaging, 67 citations)</td>
-<td><a href="static/sample/radiology">radiology</a></td>
-<td><a href="static/sample/radiology-vs-100k">radiology-vs-100k</a></td>
+<td><a href="static/sample/query/radiology">retrieval</a></td>
+<td><a href="static/sample/valid/radiology">validation</a></td>
 </tr>
 <tr>
-<td>Random (randomly selected, 10000 citations)</td>
+<td>Control (randomly selected, 10000 citations)</td>
 <td></td>
-<td><a href="static/sample/random10k-vs-100k">random10k-vs-100k</a></td>
+<td><a href="static/sample/valid/control">validation</a></td>
 </tr>
 </table>
 
+<h3>Browser compatibility</h3>
+
 <p>
-The MScanner web interface has been tested with
+This web interface has been tested with
 <a href="http://www.mozilla.com/firefox/">Mozilla Firefox 2</a>, 
 <a href="http://www.microsoft.com/windows/downloads/ie/getitnow.mspx">Internet Explorer 7</a>, 
 <a href="http://www.apple.com/safari/download/">Safari 3</a> and 

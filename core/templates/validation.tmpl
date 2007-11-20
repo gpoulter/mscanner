@@ -85,99 +85,84 @@ $VM -- Instance of ValidationBase
   $hr("h_timestamp", """Date and time at which the query was submitted.""")
 
   <tr>
-    <td>Feature scores</td>
-    <td><a href="$rc.report_term_scores">$rc.report_term_scores</a></td>
+    <td>Feature score table</td>
+    <td>
+    ##<a href="$rc.report_term_scores_zip">ZIP file</a> or 
+    <a href="$rc.report_term_scores">$rc.report_term_scores</a>
+    </td>
     $help("h_csv")
   </tr>
-  $hr("h_csv", """CSV spreadsheet with the support scores for the
-  features (MeSH terms and ISSNs).  The number of positive and
-  negative occurrences and pseudocount are also included, as these
-  go into calculating the support score.""")
+  $hr("h_csv", """CSV spreadsheet detailing the calculation of 
+  the feature support scores.""")
 
   <tr>
-    <td>Positive PMIDs</td>
+    <td>Relevant PubMed IDs</td>
     <td><a href="$rc.report_positives">$rc.report_positives</a></td>
     $help("h_positives")
   </tr>
-  $hr("h_positives", """PubMed IDs for positive training documents,
-  and their validation scores.  The file can be divided into the 
-  original N folds used for validation.""")
+  $hr("h_positives", """List of PubMed IDs of the relevant training
+  examples.  Dividing the file into 10 parts yields the cross
+  validation folds.""")
 
   <tr>
-    <td>Negative PMIDs</td>
+    <td>Irrelevant PubMed IDs</td>
     <td><a href="$rc.report_negatives">$rc.report_negatives</a></td>
     $help("h_negatives")
   </tr>
-  $hr("h_negatives", """PubMed IDs for negative training documents
-  and their validation scores.  The file can be divided into the 
-  original N folds used for validation.""")
+  $hr("h_negatives", """List of PubMed IDs of the irrelevant 
+  examples (randomly sampled from Medline).  Dividing the file into 10 
+  parts yields the cross validation folds.""")
 
   <tr class="newsection">
     <td>Number of folds</td>
     <td>$range.nfolds</td>
     $help("h_nfolds")
   </tr>
-  $hr("h_nfolds", """Number of partitions to split the positive
-  and negative data into.  Repeatedly, one partition from each
-  has its scores calculated, using the feature scores trained from the
-  remaining partitions.""")
+  $hr("h_nfolds", """Number of partitions into which the relevant
+  and irrelevant data sets were split.""")
 
-  #if $VM.featinfo.stats.offset != 0
   <tr>
-    <td>Offset</td>
-    <td>$VM.featinfo.stats.offset</td>
-    $help("h_offset")
+    <td>Prior score</td>
+    <td>$VM.featinfo.prior</td>
+    $help("h_prior")
   </tr>
-  $hr("h_offset", """This value includes an offset to account for absent
-  features, and a prior, and is added to each citation score. It just shifts
-  the score, so does not affect performance. It's only use is to make the score
-  represent the natural logarithm of the ratio of posterior probabilities for
-  the article being relevant versus non-relevant, given its features.""")
-  #end if offset is nonzero
+  $hr("h_prior", """The log of the ratio of relevant to irrelevant articles
+  in the cross validation data. This is prior log ratio is added to the 
+  log likelihood ratios to obtain final article scores.""") 
+
+  <tr>
+    <td>Base score</td>
+    <td>$VM.featinfo.base</td>
+    $help("h_base")
+  </tr>
+  $hr("h_base", """The log likelihood ratio of an empty article (one in 
+  which every feature failed to occur).""") 
 
   <tr class="newsection">
-    <td>Averaged Precision</td>
+    <td>Average Precision</td>
     <td>#echo "%.5f" % $vectors.AvPrec #</td>
     $help("h_avprec")
   </tr>
-  $hr("h_avprec", """Using the article scores across all cross validation
-  folds, we calculate the precision going down the ranks whenever a
-  relevant article is retrieved, and take the average.  This is an
-  important cross validation summary measure, but is much higher than
-  we expect in a query because the prevalence of relevant citations in
-  Medline is probably much lower than it is in the cross validation sample""")
-  
-  #if False
-  <tr>
-    <td>Area under PR curve</td>
-    <td>#echo "%.5f" % $vectors.PR_area #</td>
-    $help("h_prcurve")
-  </tr>
-  $hr("h_prcurve", """Area under the Precision-Recall (PR) curve, using
-  trapezoidal rule over each distinct threshold. This is almost the same
-  numerical value as the average precision.""")
-  #end if excluded precision-recall curve area
+  $hr("h_avprec", """Precision averaged over all ranks where
+  an article is retrieved.""")
   
   <tr class="newsection">
     <td>Area under ROC curve (AUC)</td>
     <td>#echo "%.5f" % $vectors.W #</td>
     $help("h_roc")
   </tr>
-  $hr("h_roc", """The ROC curve plots true positives as a function of false
-  positives, and unlike average precision it is independent of the class skew.
-  The worst-case value is 0.5, and it can be interpreted as the probability
-  that a randomly selected relevant citations will be ranked higher than a
-  randomly selectd irrelevant citation. However, in a query, you would rather
-  know recall and precision than ROC area, so see further down for the
-  predicted precision and recall.""")
+  $hr("h_roc", """Area under the graph of the true
+  positive rate versus false positive rate.  Equals the probability
+  that a randomly selected relevant article will be ranked above
+  a randomly selected irrelevant article.""")
 
   <tr>
     <td>Standard Error of AUC</td>
     <td>#echo "%.5f" % $vectors.W_stderr #</td>
     $help("h_roc_stderr")
   </tr>
-  $hr("h_roc_stderr", """This is the standard error of the area
-  under the ROC curve, calculated using the method of Hanley (1982).""")
+  $hr("h_roc_stderr", """Standard error of the area
+  under the ROC curve.  Calculated using the method of Hanley (1982).""")
 
 </table>
 
@@ -249,12 +234,15 @@ $VM -- Instance of ValidationBase
     </colgroup>
 
     <tr>
-      <td>Optimal score threshold</td>
+      <td>Score threshold</td>
       <td>#echo "%.2f" % $range.threshold #</td>
       $help("h_threshold")
     </tr>
-    $hr("h_threshold", """Score threshold chosen to create the confusion
-    matrix.  Optimises either F measure or Utility.""")
+    $hr("h_threshold", """Articles with log probability ratio 
+    scores higher than this are predicted positive.  Either the closest
+    article score to zero is used, or we chose a threshold to
+    maximise F score or Utility (which is the case if we achieve
+    the F score or Utility maxima mentioned below).""")
   
     <tr>
       <td><b>Precision (PPV)</b> 
@@ -415,13 +403,13 @@ $VM -- Instance of ValidationBase
   #if $hasattr($VM, "pred_low")
   <div><h3>Predicted performance</h3>
     
-    <p>We used the true and false positive rate as a function of score
-    threshold to predict the recall and precision in a query. This prediction
-    is possible because the user specified that there are between
-    ${VM.pred_low.relevant} and ${VM.pred_high.relevant} relevant records yet to be
-    found in Medline (containing ${VM.pred_low.total} records), allowing us to
-    estimate the number of true positives and false positives that will occur
-    at each threshold.</p>
+    <p>We predict recall and precision as a function of rank
+    in a retrieval situation (whole-Medline) for two values of prevalence
+    (fraction of Medline that is relevant)  We assume there are between
+    ${VM.pred_low.relevant} and ${VM.pred_high.relevant} relevant records 
+    remaining in Medline (which has ${VM.pred_low.total} records).  We
+    use true and false positive rates to estimate the number of true
+    and false positives at each rank.</p>
     
     <img src="$rc.report_prediction_img" alt="Predicted precision"/>
   </div>
@@ -429,44 +417,39 @@ $VM -- Instance of ValidationBase
 
 
   <div><h3>Document score distributions</h3>
-    <p>Normalised histograms (sum of bar areas normalised to 1).
-    One histogram for irrelevant documents, and one histogram for relevant documents.
-    Classifier performs better when the distributions
-    are well-separated. Tuned threshold is marked with a vertical
-    line.</p>
-    <img src="$rc.report_artscores_img" alt="Article Score Densities"/>
+    <p>Normalised histograms (sum of bar areas normalised to 1), approximating
+    probability distributions for relevant and irrelevant article scores. Good
+    performance is associated with clean separation of the distributions.</p>
+    <img src="$rc.report_artscores_img" alt="Article score distributions"/>
   </div>
 
 
   <div><h3>Feature score distribution</h3>
-    <p>Normalised histogram showing the distribution of feature scores
-    when the classifier is trained using all of the available data.</p>
-    <img src="$rc.report_featscores_img" alt="Feature Score Density"/>
+    <p>Normalised histogram approximating the probability distribution
+    for feature feature scores (after training on all available data).</p>
+    <img src="$rc.report_featscores_img" alt="Feature score distribution"/>
   </div>
 
 #if not hasattr($VM, "pred_low")
   <div><h3>ROC Curve</h3>
-    <p>True Positive Rate (recall) against False Positive Rate
-    (1-specificity).  The greater the area under the ROC curve,
-    the better the global performance of the classifier.  In the
-    worst case, true positives increase at the same rate as false
-    positives, yielding a diagonal line.</p>
+    <p>True Positive Rate versus False Positive Rate.  The closer
+    to the top left the curve gets, the better. Worst case is a diagonal
+    line (true positives increasing at the same rate as false
+    positives).</p>
     <img src="$rc.report_roc_img" alt="ROC Curve"/>
   </div>
   
   
   <div><h3>Precision-Recall Curve</h3>
-    <p>Precision against Recall.  In good cases, the precision only
-    drops off at high recall.  Tuned threshold is marked with a
-    vertical line.  Worst case is a horizontal line with precision
-    equal to prevalence.</p>
+    <p>Precision as a function of Recall.  The recall corresponding
+    to the chosen threshold is marked with a vertical line. 
+    Worst case is a horizontal line at the level of prevalence.</p>
     <img src="$rc.report_prcurve_img" alt="Precision-Recall Curve"/>
   </div>
 
   <div><h3>F measure versus threshold</h3>
-    <p>Precision, recall and F-measure against threshold shows how the threshold
-    was optimised for &alpha;-weighted F-Measure and how changing the threshold
-    would affect the recall/precision balance.</p>
+    <p>Precision, Recall and F-measure as a function of threshold.
+    The chosen threshold is marked with a vertical line.</p>
     <img src="$rc.report_fmeasure_img" alt="Precision and Recall vs Threshold"/>
   </div>
 #end if cross validation results

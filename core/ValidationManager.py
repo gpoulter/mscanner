@@ -55,6 +55,8 @@ class ValidationBase(object):
 
     @ivar timestamp: Time at the start of the operation
 
+
+    
     @ivar pscores: Result scores for positive articles
 
     @ivar nscores: Result scores for negative articles
@@ -105,8 +107,8 @@ class ValidationBase(object):
         @note: Feature database lookups are slow so we cache them all
         beforehand in a dictionary.
         
-        @note: When we returrn, L{featinfo} represents feature scores using all
-        of the data (as opposed to the feature scores in the last fold).
+        @note: Before returning, we re-caculate feature scores in L{featinfo} 
+        using ALL of the training data.
         
         @note: L{positives} and L{negatives} are scrambled so that they
         can be split into validation folds.  The returned scores correspond,
@@ -114,7 +116,7 @@ class ValidationBase(object):
         pair up the scores with the articles.
         
         @return: Two vectors, containing scores for the positive and negative
-        articles respectively."""
+        articles respectively (unsorted for reconstruction of folds)."""
         self.validator = CrossValidator(
             featdb = dict((k,self.env.featdb[k]) for k in 
                           chain(positives,negatives)),
@@ -123,6 +125,7 @@ class ValidationBase(object):
             negatives = negatives,
             nfolds = self.nfolds)
         pscores, nscores = self.validator.validate()
+        # Finally set feature scores using all available data
         self._update_featscores(positives, negatives)
         return pscores, nscores
 
@@ -132,14 +135,15 @@ class ValidationBase(object):
         
         @param threshold: Specify a particular threshold, or None to estimate
         using F measure."""
-        logging.info("Get performance with alpha=%s, utility_r=%s", 
+        logging.info("Eval performance using alpha=%s, utility_r=%s", 
                      str(rc.alpha), str(rc.utility_r))
         v = PerformanceVectors(self.pscores, self.nscores, rc.alpha, rc.utility_r)
         self.metric_vectors = v
         if threshold is None:
-            threshold, idx = v.threshold_for(v.FMa)
+            threshold, idx = v.threshold_maximising(v.FMa)
         else:
             threshold, idx = v.index_for(threshold)
+        logging.info("Threshold is %f (uscores index=%d)", threshold, idx)
         average = v.metrics_for(idx)
         self.metric_range = PerformanceRange(
             self.pscores, self.nscores, self.nfolds, threshold, average)
@@ -215,8 +219,8 @@ class ValidationBase(object):
 
 
 def SplitValidation(ValidationBase):
-    """Carries out split-sample validation, as is used in the TREC
-    Genomics 2005 categorisation task.
+    """Carries out split-sample validation, as in the 2005 TREC
+    Genomics Track categorisation task.
     """
 
     def validation(self, fptrain, fntrain, fptest, fntest):
@@ -269,10 +273,10 @@ def SplitValidation(ValidationBase):
         # Calculate split-sample scores on the testing data
         s.pscores = s.featinfo.scores_of(s.env.featdb, s.ptest)
         s.nscores = s.featinfo.scores_of(s.env.featdb, s.ntest)
-        # Cross validation on training data get a threshold maximising utility
+        # Cross validation on training data for a threshold maximising utility
         trainperf = PerformanceVectors(
             train_pscores, train_nscores, rc.alpha, rc.utility_r)
-        threshold = trainperf.threshold_for(trainperf.U)[0]
+        threshold = trainperf.threshold_maximising(trainperf.U)[0]
         # Apply that threshold to calculating performance on the test split
         self._get_performance(threshold)
 
@@ -326,13 +330,13 @@ class CrossValidation(ValidationBase):
 
 
     def report_validation(self):
-        """Report cross validation results"""
-        self._get_performance()
+        """Report cross validation results, using default threshold of 0"""
+        self._get_performance(0.0)
         self._write_report()
 
     
-    def report_predicted(self, relevant_low, relevant_high, medline):
-        """Report the predicted query performance
+    def report_predicted(self, relevant_low, relevant_high, medline_size):
+        """Experimental: report predicted query performance
         
         @param relevant_low: Minimum expected relevant articles in Medline
         
@@ -343,13 +347,13 @@ class CrossValidation(ValidationBase):
         """
         # Calculate the performance
         self._get_performance()
-        if medline is None:
-            medline = len(self.env.article_list) - len(self.positives)
+        if medline_size is None:
+            medline_size = len(self.env.article_list) - len(self.positives)
         v = self.metric_vectors
         self.pred_low = PredictedMetrics(
-            v.TPR, v.FPR, v.uscores, relevant_low, medline)
+            v.TPR, v.FPR, v.uscores, relevant_low, medline_size)
         self.pred_high = PredictedMetrics(
-            v.TPR, v.FPR, v.uscores, relevant_high, medline)
+            v.TPR, v.FPR, v.uscores, relevant_high, medline_size)
         self._write_report()
 
 

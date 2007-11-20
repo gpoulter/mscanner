@@ -145,37 +145,43 @@ class FeatureScoresTests(unittest.TestCase):
         logging.debug("TFIDF: %s", pp.pformat(f.tfidf))
 
 
-    def test_background(s):
-        """Background frequency pseudocount"""
+    def test_bayes(s):
+        """Bayes score calculation"""
+        s.featmap.numdocs = 10
+        s.featmap.counts = [3,2,1]
+        f = FeatureScores(s.featmap, pseudocount=None)
+        f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
+        logging.debug("Pfreqs (bayes): %s", pp.pformat(f.pfreqs))
+        logging.debug("Nfreqs (bayes): %s", pp.pformat(f.nfreqs))
+        logging.debug("PresScores (bayes): %s", pp.pformat(f.present_scores))
+        logging.debug("AbsScores (bayes): %s", pp.pformat(f.absent_scores))
+        logging.debug("Scores (bayes): %s", pp.pformat(f.scores))
+        logging.debug("Base score (bayes): %f", f.base)
+        s.assert_(nx.allclose(
+            f.scores, nx.array([-0.57054485,  1.85889877,  0.29626582])))        
+
+
+    def test_noabsence(s):
+        """Old score calculation (lacks feature absence)"""
         s.featmap.numdocs = 10
         s.featmap.counts = [3,2,1]
         f = FeatureScores(s.featmap, pseudocount=None,
                           make_scores="scores_noabsence")
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
-        logging.debug("Scores (old): %s", pp.pformat(f.scores))
+        logging.debug("Scores (noabsence): %s", pp.pformat(f.scores))
         s.assert_(nx.allclose(
             f.scores, nx.array([-0.28286278,  0.89381787,  0.28768207])))
 
 
-    def test_new(s):
-        """New score calculation method"""
-        s.featmap.numdocs = 10
-        s.featmap.counts = [3,2,1]
-        f = FeatureScores(s.featmap, pseudocount=None)
-        f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
-        logging.debug("Scores (new): %s", pp.pformat(f.scores))
-        logging.debug("Offset (new): %f", f.offset)
-
-
-    def test_cutoff(s):
-        """Constant pseudocount and cutoff"""
+    def test_constpseudo(s):
+        """Constant pseudocount in old score calculation, with masking."""
         f = FeatureScores(s.featmap, pseudocount=0.1,
                           make_scores="scores_noabsence",
-                          get_postmask="make_rare_positives")
+                          get_postmask="mask_nonpositives")
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
-        logging.debug("Scores (old): %s", pp.pformat(f.scores_old))
+        logging.debug("Scores (constpseudo): %s", pp.pformat(f.scores))
         s.assert_(nx.allclose(
-            f.scores, nx.array([-0.27193372,  1.02132061,  0.0 ])))
+            f.scores, nx.array([-0.35894509,  0.93430924,  0.        ])))
 
 
     def test_FeatureCounts(self):

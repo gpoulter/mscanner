@@ -26,18 +26,15 @@ class FeatureScores(object):
     """Feature score calculation and saving, with choice of calculation method,
     and methods to exclude certain kinds of features.
     
-    @group featmap, pseudocount, mask, make_scores, get_postmask:
-    Constructor parameters
+    @group Constructor parameters: featmap, pseudocount, mask, make_scores, get_postmask
     
     @ivar featmap: L{FeatureMapping} object
-
-    @ivar pseudocount: Either a float which is the pseudocount for all
-    features, or numpy array of per-feature counts, or None which triggers
-    once-off creation of per-features counts equal to Medline frequency if
-    Bayesian calculation is in use.
     
-    @ivar mask: Boolean array for masking some features scores to zero
-    (this is to exclude features by category, not by score).
+    @ivar pseudocount: Prior psuedocount to use for features, or None
+    to use feature counts equal to Medline frequency.
+    
+    @ivar mask: Either None or a boolean array to mask some features scores
+    to zero (this is to exclude features by category, not by score).
     
     @ivar make_scores: Method used to calculate the feature scores.
     
@@ -45,7 +42,7 @@ class FeatureScores(object):
     array once the feature scores are known.
     
     
-    @group pos_counts, neg_counts, pdocs, ndocs: Set by L{update}
+    @group Set by update: pos_counts, neg_counts, pdocs, ndocs, prior
     
     @ivar pos_counts: Array of feature counts in positive documents
     
@@ -55,8 +52,11 @@ class FeatureScores(object):
     
     @ivar ndocs: Number of negative documents
     
+    @ivar prior: Bayes prior to add to the score.  If None, estimate
+    using the ratio of relevant to irrelevant articles in the data.
+
     
-    @group scores, pfreqs, nfreqs, offset: Set by L{make_scores}
+    @group scores, pfreqs, nfreqs, base: Set by L{make_scores}
     
     @ivar scores: Score of each feature
   
@@ -64,7 +64,7 @@ class FeatureScores(object):
     
     @ivar nfreqs: Denominator of score fraction
     
-    @ivar offset: Value to be added to all article scores
+    @ivar base: Value to be added to all article scores
    
     """
 
@@ -72,12 +72,13 @@ class FeatureScores(object):
                  featmap,
                  pseudocount=None,
                  mask=None,
-                 make_scores="scores_newpseudo",
+                 make_scores="scores_bayes",
                  get_postmask=None):
         """Initialise FeatureScores object (parameters are instance variables)"""
         make_scores = getattr(self, make_scores)
         if isinstance(get_postmask, basestring):
             get_postmask = getattr(self, get_postmask)
+        prior = 0
         update(self, locals())
 
 
@@ -88,7 +89,7 @@ class FeatureScores(object):
         @param pmids: Iterable of keys into L{featdb}
         @return: Vector containing document scores corresponding to the pmids.
         """
-        off = self.offset
+        off = self.base + self.prior
         sc = self.scores
         return nx.array([off+nx.sum(sc[featdb[d]]) for d in pmids], nx.float32)
     
@@ -98,14 +99,66 @@ class FeatureScores(object):
         return len(self.featmap)
 
 
-    def update(self, pos_counts, neg_counts, pdocs, ndocs):
+    def update(self, pos_counts, neg_counts, pdocs, ndocs, prior=None):
         """Change the feature counts and numbers of documents, clear
         old score calculations, and calculate new scores."""
+        if prior is None:
+            prior = nx.log(pdocs/ndocs)
+        base = 0
         update(self, locals())
-        self.offset = 0
         self.make_scores()
         self._mask_scores()
         delattrs(self, "_stats", "_tfidf")
+
+
+    def scores_bayes(s):
+        """Document generated using multivariate Bernoulli distribution.
+        
+        Feature non-occurrence is modeled as a base score for the
+        document with no features, and an adjustment to the 
+        feature occurrence scores."""
+        s._make_pseudovec()
+        # Posterior term frequencies in relevant articles
+        s.pfreqs = (s.pseudocount+s.pos_counts) / (1+s.pdocs)
+        # Posterior term frequencies in irrelevant articles
+        s.nfreqs = (s.pseudocount+s.neg_counts) / (1+s.ndocs)
+        # Support scores for bernoulli successes
+        s.present_scores = nx.log(s.pfreqs/s.nfreqs)
+        # Support scores for bernoulli failures
+        s.absent_scores = nx.log( (1-s.pfreqs)/(1-s.nfreqs) )
+        # Conversion to base score (no terms) and occurrence score
+        s.base = nx.sum(s.absent_scores)
+        s.scores = s.present_scores - s.absent_scores
+
+
+    def scores_noabsence(s):
+        """Calculates document probability as product of log likelihood ratios,
+        with pseudocount weight equal to one article."""
+        s.base = 0
+        s._make_pseudovec()
+        s.pfreqs = (s.pseudocount+s.pos_counts) / (1+s.pdocs)
+        s.nfreqs = (s.pseudocount+s.neg_counts) / (1+s.ndocs)
+        s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
+
+
+    def scores_rubin(s):
+        """Models document as product of log likelihood ratios, using MLE
+        feature probabilities - replacing zeroes with 1e-8"""
+        s.base = 0
+        s.pseudocount = 0
+        s.pfreqs = s.pos_counts / float(s.pdocs)
+        s.nfreqs = s.neg_counts / float(s.ndocs)
+        s.pfreqs[s.pfreqs == 0.0] = 1e-8
+        s.nfreqs[s.nfreqs == 0.0] = 1e-8
+        s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
+
+
+    def _make_pseudovec(s):
+        """Calculates a pseudocount vector based on background frequencies
+        if no constant pseudocount was specified"""
+        if s.pseudocount is None:
+            s.pseudocount = \
+             nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
 
 
     def _mask_scores(self):
@@ -117,81 +170,6 @@ class FeatureScores(object):
             self.scores[self.mask] = 0
         if self.get_postmask:
             self.scores[self.get_postmask()] = 0
-
-
-    def _make_pseudovec(s):
-        """Calculates a pseudocount vector based on background frequencies
-        if no constant pseudocount was specified"""
-        if s.pseudocount is None:
-            s.pseudocount = \
-             nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
-
-
-    def scores_offsetonly(s):
-        """Only keeps the constant-offset part of L{scores_withabsence}"""
-        s.scores_withabsence()
-        s.pfreqs = s._pfreqs
-        s.nfreqs = s._nfreqs
-        s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
-
-
-    def scores_withabsence(s):
-        """Document generated using multivariate Bernoulli distribution.
-        
-        This becomes a constant offset to the score, and changes feature scores
-        from log likelihood ratios to log odds ratios."""
-        s._make_pseudovec()
-        s._pfreqs = (s.pseudocount+s.pos_counts) / (1+s.pdocs)
-        s._nfreqs = (s.pseudocount+s.neg_counts) / (1+s.ndocs)
-        s.pfreqs = s._pfreqs / (1-s._pfreqs)
-        s.nfreqs = s._nfreqs / (1-s._nfreqs)
-        s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
-        s._constant_offset = nx.sum(nx.log(1-s._pfreqs) - nx.log(1-s._nfreqs))
-        s._bayes_prior = nx.log(s.pdocs) - nx.log(s.ndocs)
-        s.offset = s._constant_offset + s._bayes_prior
-
-
-    def scores_newpseudo(s):
-        """Calculates document probability as product of log likelihood ratios,
-        with pseudocount weight equal to one article."""
-        s.offset = 0
-        s._make_pseudovec()
-        s.pfreqs = (s.pseudocount+s.pos_counts) / (1+s.pdocs)
-        s.nfreqs = (s.pseudocount+s.neg_counts) / (1+s.ndocs)
-        s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
-
-
-    def scores_oldpseudo(s):
-        """Like {scores_newpseudo}, but prior is always 0.5, with smaller
-        pseudocounts constituting less evidence.
-        
-        @deprecated: This performs poorly when only a few input articles are
-        provided."""
-        s.offset = 0
-        s._make_pseudovec()
-        s.pfreqs = (s.pseudocount+s.pos_counts) / (2*s.pseudocount+s.pdocs)
-        s.nfreqs = (s.pseudocount+s.neg_counts) / (2*s.pseudocount+s.ndocs)
-        s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
-
-
-    def scores_rubin(s):
-        """Models document as product of log likelihood ratios, using MLE
-        feature probabilities - replacing zeroes with 1e-8"""
-        s.offset = 0
-        s.pseudocount = 0
-        s.pfreqs = s.pos_counts / float(s.pdocs)
-        s.nfreqs = s.neg_counts / float(s.ndocs)
-        s.pfreqs[s.pfreqs == 0.0] = 1e-8
-        s.nfreqs[s.nfreqs == 0.0] = 1e-8
-        s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
-
-
-    def make_rare_positives(s):
-        """Mask for positive-scoring features that do not occur in the positive set
-        
-        @return: Boolean array for masked out features
-        """
-        return (s.scores > 0) & (s.pos_counts == 0)
 
 
     def mask_nonpositives(s):
@@ -207,7 +185,6 @@ class FeatureScores(object):
         """A Storage instance with statistics about the features
         
         The following keys are present:
-            - offset: Constant added to document scores
             - pos_occurrences: Total feature occurrences in positives
             - neg_occurrences: Total feature occurrences in negatives
             - feats_per_pos: Number of features per positive article
@@ -221,7 +198,6 @@ class FeatureScores(object):
         except AttributeError: 
             pass
         s = Storage()
-        s.offset = self.offset
         s.pdocs = self.pdocs
         s.ndocs = self.ndocs
         s.num_feats = len(self)

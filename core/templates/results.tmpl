@@ -62,7 +62,7 @@ $QM -- QueryManager instance used for the query
 
  <h2>Query Results</h2>
 
- <table id="results">
+ <table class="results">
   <colgroup>
     <col class="label">
     <col class="value">
@@ -71,100 +71,120 @@ $QM -- QueryManager instance used for the query
  <tbody>
 
   <tr>
-    <th>Input citations</th>
-    <td><a href="$rc.report_input_citations">$rc.report_input_citations</a></td>
-    $help("h_input_citations")
+    <td>Number of results</td>
+    <td>#echo len($QM.results) #</td>
+    $help(None)
   </tr>
-  $hr("h_input_citations", """These are the citations that were
-  provided as input.""")
 
   <tr>
-    <th>Result citations</th>
+    <td>Lowest scoring result</td>
+    <td>#echo "%.5f" % $QM.lowest_score #</td>
+    $help(None)
+  </tr>
+
+  <tr>
+    <td>Abstracts of results</td>
     <td><a href="$rc.report_result_citations">$rc.report_result_citations</a></td>
     $help("h_result_citations")
   </tr>
-  $hr("h_result_citations", """These are the results of the query,
-  with a limited number of results per page""")
+  $hr("h_result_citations", """Complete abstracts of the
+  articles in Medline predicted to be relevant (limited number per page).""")
 
   <tr>
-    <th>All Results</th>
+    <td>Abstracts of all results</td>
     <td>
     <a href="$rc.report_result_all_zip">ZIP file</a> or
     <a href="$rc.report_result_all">$rc.report_result_all</a> 
     </td>
     $help("h_results_all")
   </tr>
-  $hr("h_results_all", """ALL of the results, in a single page (can take a long
-  time to load - downloading the zip file is recommended)""")
+  $hr("h_results_all", """All result abstracts on a single page.
+  (can take a long time to load - downloading the zip file is recommended)""")
 
   <tr>
-    <th>Term Scores</th>
+    <td>Abstracts of input examples</td>
+    <td><a href="$rc.report_input_citations">$rc.report_input_citations</a></td>
+    $help("h_input_citations")
+  </tr>
+  $hr("h_input_citations", """Complete abstracts of the 
+  Medline records given as relevant training examples.  They have been
+  ranked by classifier scores.""")
+
+  <tr>
+    <td>Feature score table</td>
     <td>
     ##<a href="$rc.report_term_scores_zip">ZIP file</a> or 
     <a href="$rc.report_term_scores">$rc.report_term_scores</a>
     </td>
     $help("h_csv")
   </tr>
-  $hr("h_csv", """CSV spreadsheet with the support scores for the
-  features (MeSH terms and ISSNs) and the values that went
-  into calculating those scores.""")
+  $hr("h_csv", """CSV spreadsheet detailing the calculation of 
+  the feature support scores.""")
 
   <tr>
-    <th>Input PMIDs</th>
-    <td><a href="$rc.report_input_scores">$rc.report_input_scores</a></td>
-    $help("h_positives")
-  </tr>
-  $hr("h_positives", """PubMed IDs for the input examples.""")
-
-  <tr>
-    <th>Result PMIDs</th>
+    <td>PubMed IDs of results</td>
     <td><a href="$rc.report_result_scores">$rc.report_result_scores</a></td>
     $help("h_result_scores")
   </tr>
-  $hr("h_result_scores", """Text file with the result PubMed IDs ranked by
-  decreasing score (score is also listed).""")
+  $hr("h_result_scores", """PubMed IDs and scores of classifier predictions,
+  ranked by decreasing score.""")
 
   <tr>
-    <th>Started at</th>
+    <td>PubMed IDs of inputs</td>
+    <td><a href="$rc.report_input_scores">$rc.report_input_scores</a></td>
+    $help("h_positives")
+  </tr>
+  $hr("h_positives", """PubMed IDs and scores of the relevant training examples.""")
+
+  <tr>
+    <td>Started at</td>
     #import time
     <td>$time.strftime("%Y/%m/%d %H:%M:%S GMT", $time.gmtime($QM.timestamp))</td>
     $help("h_timestamp")
   </tr>
-  $hr("h_timestamp", "When the query process for this data was started.")
+  $hr("h_timestamp", "Time at which query was started")
 
   <tr>
-    <th>Finished at</th>
+    <td>Finished at</td>
     #import time
     <td>$time.strftime("%Y/%m/%d %H:%M:%S GMT", $time.gmtime())</td>
     $help("h_written")
   </tr>
-  $hr("h_written", "When this file was written (happens at the end of the query)")
+  $hr("h_written", """Time at which this file was written.""")
 
   #if isinstance($QM.featinfo.pseudocount, float)
   <tr>
-    <th>Pseudocount</th>
+    <td>Pseudocount</td>
     <td>$QM.featinfo.pseudocount</td>
     $help("h_pseudocount")
   </tr>
-  $hr("h_pseudocount", """Constant background count (number of feature
-  occurrences) used to regularise feature occurrence probabilities.""") 
+  $hr("h_pseudocount", """Prior frequency (estimated background frequency) 
+  of feature occurrences.""") 
   #end if
 
-  #if $QM.featinfo.stats.offset != 0
+  #if $QM.featinfo.base != 0
   <tr>
-    <th>Offset</th>
-    <td>$QM.featinfo.stats.offset</td> $help("h_offset")
+    <td>Base score</td>
+    <td>$QM.featinfo.base</td> $help("h_base")
   </tr>
+  $hr("h_base", """The log likelihood ratio of an empty article (one in 
+  which every feature failed to occur).""") 
+  #end if
 
-  $hr("h_offset", """This value includes an offset to account for absent
-  features, and a prior, and is added to each citation score. It just shifts
-  the score, so does not affect performance. It's only use is to make the score
-  represent the natural logarithm of the ratio of posterior probabilities for
-  the article being relevant versus non-relevant, given its features.""")
+  #if $QM.featinfo.prior != 0
+  <tr>
+    <td>Prior score</td>
+    <td>$QM.featinfo.prior</td> $help("h_prior")
+  </tr>
+  $hr("h_prior", """The log of the prior probability ratio for
+  an article being relevant versus irrelevant (added to log likelihood ratio 
+  to obtain the final score).  Equals the logit of the estimated
+  prevalence of relevant articles in Medline (which may be estimated
+  from the input size or specified separately).""") 
   #end if
 
   <tr>
-    <th>Limit</th>
+    <td>Limit</td>
     <td>$QM.limit</td>
     $help("h_limit")
   </tr>
@@ -172,16 +192,18 @@ $QM -- QueryManager instance used for the query
 
   #if $QM.threshold is not None
   <tr>
-    <th>Threshold</th>
+    <td>Threshold</td>
     <td>$QM.threshold</td>
     $help("h_threshold")
   </tr>
-  $hr("h_threshold", """Only include citations with at least this score""")
+  $hr("h_threshold", """Default Naive Bayes classification threshold is
+  zero. This threshold is the minimum log probability ratio for
+  predicting an article to be relevant.""")
   #end if
   
   #if $QM.mindate is not None
   <tr>
-    <th>Minimum date</th>
+    <td>Minimum date</td>
     <td>$QM.mindate</td>
     $help("h_mindate")
   </tr>
@@ -191,7 +213,7 @@ $QM -- QueryManager instance used for the query
 
   #if $QM.maxdate is not None
   <tr>
-    <th>Maximum date</th>
+    <td>Maximum date</td>
     <td>$QM.maxdate</td>
     $help("h_maxdate")
   </tr>
@@ -199,17 +221,6 @@ $QM -- QueryManager instance used for the query
   (both when making feature counts, and when querying)""")
   #end if
 
-  <tr>
-    <th>Number of results</th>
-    <td>#echo len($QM.results) #</td>
-    $help(None)
-  </tr>
-
-  <tr>
-    <th>Lowest score</th>
-    <td>#echo "%.5f" % $QM.lowest_score #</td>
-    $help(None)
-  </tr>
 
  </tbody>
  </table>

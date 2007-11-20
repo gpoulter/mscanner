@@ -264,7 +264,7 @@ class PerformanceVectors:
         self.breakeven = 0.5*(s.TPR[s.bep_index]+s.PPV[s.bep_index])
 
 
-    def threshold_for(self, vector):
+    def threshold_maximising(self, vector):
         """Find threshold to maximise the given vector
         @return: The threshold score, and its index in L{uscores}"""
         idx = nx.nonzero(vector == nx.max(vector))[0][0]
@@ -275,8 +275,8 @@ class PerformanceVectors:
         """Calculate index into L{uscores} corresponding to given threshold.
         @return: The highest available threshold less than the specified one,
         and its index in L{uscores}."""
-        diffs = self.vectors.uscores - threshold
-        idx = nx.nonzero(diffs == nx.max(diffs[diffs <= 0]))
+        diffs = self.uscores - threshold
+        idx = nx.nonzero(diffs == nx.min(diffs[diffs >= 0]))[0][0]
         return self.uscores[idx], idx
 
 

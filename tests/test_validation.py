@@ -78,44 +78,12 @@ class ValidatorTests(unittest.TestCase):
         self.assert_(nx.allclose(nscores,cnscores,rtol=1e-3))
 
 
-    def test1_offsetonly(self):
-        logging.debug("scores_offsetonly")
+    def test_cross_validate(self):
+        logging.debug("scores_bayes")
         self._check_scores(
-            FeatureScores([2,5,7], pseudocount = 0.1, make_scores="scores_offsetonly"),
-            nx.array([-2.1016295 ,  1.03609192,  1.03609192,  3.1377213 ]),
-            nx.array([-3.1377213 , -1.03609192, -1.03609192,  2.1016295 ]))
-
-
-    def test2_withabsence(self):
-        logging.debug("scores_withabsence")
-        self._check_scores(
-            FeatureScores([2,5,7], pseudocount = 0.1, make_scores="scores_withabsence"),
+            FeatureScores([2,5,7], pseudocount = 0.1, make_scores="scores_bayes"),
             nx.array([-2.39789534,  2.20616317,  2.20616317,  4.60405827]),
             nx.array([-4.60405827, -2.20616317, -2.20616317,  2.39789534]))
-
-
-    def test3_newpseudo(self):
-        logging.debug("scores_newpseudo")
-        self._check_scores(
-            FeatureScores([2,5,7], pseudocount = 0.1, make_scores="scores_newpseudo"),
-            nx.array([-2.39789534,  1.03609192,  1.03609192,  3.43398714]),
-            nx.array([-3.43398714, -1.03609192, -1.03609192,  2.39789534]))
-
-
-    def test4_oldpseudo(self):
-        logging.debug("scores_oldpseudo")
-        self._check_scores(
-            FeatureScores([2,5,7], pseudocount = 0.1, make_scores="scores_oldpseudo"),
-            nx.array([-2.39789534,  1.03609192,  1.03609192,  3.43398714]),
-            nx.array([-3.43398714, -1.03609192, -1.03609192,  2.39789534]))
-
-
-    def test5_rubin(self):
-        logging.debug("scores_rubin")
-        self._check_scores(
-            FeatureScores([2,5,7], make_scores="scores_rubin"),
-            nx.array([-17.32206917,   1.09861231,   1.09861231,  18.420681  ]),
-            nx.array([-18.420681  ,  -1.09861231,  -1.09861231,  17.32206917]))
 
 
     def test_leaveout_validate(self):

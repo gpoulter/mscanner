@@ -102,7 +102,9 @@ class CrossValidator:
                     len(s.featinfo), s.featdb, 
                     s.negatives[nstart:nstart+nsize]),
                 pdocs = pdocs-psize, 
-                ndocs = ndocs-nsize)
+                ndocs = ndocs-nsize,
+                prior = nx.log(pdocs/ndocs),
+            )
             # Calculate the article scores for the test fold
             s.pscores[pstart:pstart+psize] = s.featinfo.scores_of(
                 s.featdb, s.positives[pstart:pstart+psize])

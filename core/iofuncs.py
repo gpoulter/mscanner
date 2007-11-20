@@ -66,22 +66,24 @@ def read_pmids_careful(filename, include=None, exclude=[]):
     return tuple(nx.array(a, nx.int32) for a in [results,broken,excluded])
 
 
-def write_lines(filename, items, desc=None):
+def write_lines(filename, items, desc=None, sep="\t"):
     """Basic function for writing sequence of items to text files
     
     @param filename: Name of file to write to
 
-    @param items: Sequence of items convertible using str().  Iterable
-    items are written as tab-separated values.
+    @param items: Sequence of items convertible using str().  Tuples
+    are written as separated values.
     
     @param desc: Optional string to write at the top of the file
+
+    @param sep: Separator for values
     """
     with open(filename, "w") as f:
         if desc is not None:
-            f.write(desc)
+            f.write(desc.strip()+"\n")
         for item in items:
             if hasattr(item, "__iter__"):
-                f.write("\t".join([str(x) for x in item]))
+                f.write(sep.join([str(x) for x in item]))
             else:
                 f.write(str(item))
             f.write("\n")

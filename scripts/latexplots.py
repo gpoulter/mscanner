@@ -93,7 +93,7 @@ def load_stats(indir, dataset, title, alpha=0.5):
         indir/dataset/mrc.report_negatives)])
     stats = PerformanceVectors(pscores, nscores, alpha)
     stats.title = title
-    stats.threshold, idx = stats.threshold_for(stats.FMa)
+    stats.threshold, idx = stats.threshold_maximising(stats.FMa)
     stats.tuned = stats.metrics_for(idx)
     return stats
 
@@ -341,7 +341,7 @@ def do_publication():
     plot_roc("fig3_roc", all)
     plot_precision("fig4_pr", all)
     #fmplot = PerformanceVectors(pg07.pscores, pg07.nscores, alpha=0.95)
-    #fmplot.threshold = fmplot.threshold_for(fmplot.FMa)
+    #fmplot.threshold = fmplot.threshold_maximising(fmplot.FMa)
     #fmplot.title = pg07.title
     #plot_fmeasure("fig5_prf", fmplot)
     plot_score_density("fig2_density", all)
@@ -360,7 +360,7 @@ def do_testplots():
     plot_roc("test_roc", (pg04,pg07))
     plot_precision("test_pr", (pg04,pg07))
     #pg04alpha = PerformanceVectors(pg04.pscores, pg04.nscores, alpha=0.9)
-    #pg04alpha.threshold = pg04alpha.threshold_for(pg04alpha.FMa)
+    #pg04alpha.threshold = pg04alpha.threshold_maximising(pg04alpha.FMa)
     #pg04alpha.title = pg04.title
     #plot_fmeasure("test_prf", pg04alpha)
 

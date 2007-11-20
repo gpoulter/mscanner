@@ -48,7 +48,11 @@ class QueryManager:
     
     @ivar limit: Maximum number of results (may be fewer due to threshold)
     
-    @ivar threshold: Minimum score to allow in the results
+    @ivar threshold: Decision threshold for the classifier (default should be 0).
+    Use None to retrieve everything up to the result limit.
+    
+    @ivar prior: Prior score to add to all article scores.  Use None
+    to estimate from the relative sizes of the input data.
     
     @ivar mindate, maxdate: Minimum and maximum YYYYMMDD integer for
     query results (ignore articles outside this range).
@@ -74,7 +78,9 @@ class QueryManager:
     @ivar logfile: logging.FileHandler for logging to output directory
     """
 
-    def __init__(self, outdir, dataset, limit, threshold=None, env=None,
+
+    def __init__(self, outdir, dataset, limit, env=None, 
+                 threshold=None, prior=None, 
                  mindate=None, maxdate=None, 
                  t_mindate=None, t_maxdate=None):
         # Set attributes from parameters
@@ -82,6 +88,7 @@ class QueryManager:
         self.dataset = dataset
         self.limit = limit
         self.threshold = threshold
+        self.prior = prior
         self.mindate = mindate
         self.maxdate = maxdate
         self.t_mindate = mindate if t_mindate is None else t_mindate
@@ -167,13 +174,13 @@ class QueryManager:
         pos_counts = FeatureCounts(
             len(self.env.featmap), self.env.featdb, self.pmids)
         
-        # Background feautures using all of Medline less query
+        # Background is all of Medline minus input examples
         if self.t_mindate is None and self.t_maxdate is None:
             logging.info("Background PMIDs = Medline - input PMIDs")
             ndocs = self.env.featmap.numdocs - len(self.pmids)
             neg_counts = nx.array(self.env.featmap.counts, nx.int32) - pos_counts
         
-        # Using only features from a specific date range
+        # Background is Medline within a specific date range
         else:
             logging.info("Background PMIDs = Medline between %s and %s", 
                          str(self.t_mindate), str(self.t_maxdate))
@@ -189,7 +196,7 @@ class QueryManager:
                 exclude = train_exclude).c_counts()
         
         # Evaluating feature scores from the counts
-        self.featinfo.update(pos_counts, neg_counts, pdocs, ndocs)
+        self.featinfo.update(pos_counts, neg_counts, pdocs, ndocs, self.prior)
 
 
     def _load_results(self):
@@ -222,7 +229,7 @@ class QueryManager:
             rc.featurestream,
             self.env.featmap.numdocs,
             self.featinfo.scores,
-            self.featinfo.offset,
+            self.featinfo.base+self.featinfo.prior,
             self.limit,
             self.threshold,
             self.mindate,

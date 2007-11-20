@@ -52,15 +52,19 @@ class Databases:
 
     @property
     def article_list(self):
-        """Array with the PubMed IDs in the database 
+        """Array with the PubMed IDs in the database.
         
-        Array may be over 16 million members long, so the property and will
-        take a while to load the first time it is accessed."""
+        @note: The rc.articlelist file is formatted as "PMID YYYYMMDD" one per line,
+        so we split and take the PubMed ID.
+        
+        @note: At over 16 million members long, the property will
+        take a while to load the first time."""
         try:
             return self._article_list
         except AttributeError: 
             logging.info("Loading article list")
-            self._article_list = nx.array([int(x) for x in rc.articlelist.lines()])
+            self._article_list = nx.array(
+                [int(x.split()[0]) for x in rc.articlelist.lines()])
             return self._article_list
 
 

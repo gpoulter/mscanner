@@ -27,7 +27,7 @@ from contextlib import closing
 import sys
 from bsddb import db
 from mscanner.medline.FeatureDatabase import FeatureDatabase
-from mscanner.medline.FeatureStream import FeatureStream
+from mscanner.medline.FeatureStream import FeatureStream, Date2Integer
 from mscanner.medline import Shelf
 
     
@@ -60,10 +60,24 @@ def regenerate_stream(artdb, featdb, featstream):
     adb.close()
 
 
+def regenerate_article_list(artdb, listfile):
+    """Generate the 'PMID YYYYMMDD' lines of the article list"""
+    adb = Shelf.open(artdb, "r")
+    f = open(listfile, "w")
+    for idx, (pmid, art) in enumerate(adb.iteritems()):
+        if idx % 10000 == 0:
+            print "Completed %d" % idx
+        f.write("%s %08d\n" % (pmid, Date2Integer(art.date_completed)))
+    f.close()
+    adb.close()
+
+
 if __name__ == "__main__":
     action = sys.argv[1]
     if action == "listkeys":
         list_db_keys(sys.argv[2], sys.argv[3])
     elif action == "restream":
         regenerate_stream(sys.argv[2], sys.argv[3], sys.argv[4])
+    elif action == "artlist":
+        regenerate_article_list(sys.argv[2], sys.argv[3])
 

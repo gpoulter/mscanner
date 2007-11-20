@@ -143,7 +143,7 @@ class MedlineCacheTests(unittest.TestCase):
     def test_MedlineCache(self):
         h = self.home
         xml = h/"test.xml"
-        pmids = h/"pmids.txt"
+        test_pmids = h/"pmids.txt"
         artdb = h/"articles.db"
         featdb = h/"features.db"
         featstream = h/"features.stream"
@@ -159,8 +159,9 @@ class MedlineCacheTests(unittest.TestCase):
                          use_transactions=True,)
         xml.write_text(xmltext)
         m.add_directory(h, save_delay=1)
-        pmids.write_lines(["1", "2"])
-        a = load_articles(artdb, pmids)
+        #print "".join((h/"articles.txt").lines())
+        test_pmids.write_lines(["1", "2"])
+        a = load_articles(artdb, test_pmids)
         logging.debug("Articles: %s", repr(a))
         self.assertEqual(a[0].pmid, 1)
         self.assertEqual(a[1].pmid, 2)

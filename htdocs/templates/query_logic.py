@@ -35,21 +35,20 @@ dataset_validator = forms.RegexValidator(
 
 
 def parse_date(date_code):
-    """Convert YYYY/MM/DD date string to YYYYMMDD integer"""
+    """Convert YYYY/MM/DD date string to YYYYMMDD integer."""
     year, month, day = date_code.split("/")
-    return int("%04d%02d%02d" % (int(year),int(month),int(day)))
+    date = int("%04d%02d%02d" % (int(year),int(month),int(day)))
+    return date if date >= 19650101 else None
 
 
 def date_is_valid(date_code):
     """Must be a YYYY/MM/DD date string, before today"""
     try:
         date = parse_date(date_code)
+        yesterday = int(time.strftime("%Y%m%d"))-1
+        return (date is None or date < yesterday)
     except:
         return False
-    yesterday = int(time.strftime("%Y%m%d"))-1
-    if date >= yesterday:
-        return False
-    return True
 
 
 def task_does_not_exist(dataset):
@@ -96,8 +95,8 @@ QueryForm = forms.Form(
     
     forms.Textbox(
         "prevalence", 
-        forms.Validator(lambda x: 1e-6 <= float(x) <= 0.1,
-            "Should be between 0.000001 (10^-6) and 0.1"),
+        forms.Validator(lambda x: x.strip() == "" or 1e-6 <= float(x) <= 0.1,
+            "Should be empty, or a number between 0.000001 (10^-6) and 0.1"),
         label="Estimated prevalence", size=8),
     
     forms.Textbox(
@@ -134,12 +133,12 @@ form_defaults = dict(
     delcode = "",
     dataset = "",
     hidden = False,
-    limit = 10000,
+    limit = 5000,
     mindate = "0000/00/00",
     numnegs = 50000,
     operation = "retrieval",
     positives = "",
-    prevalence = 0.0001,
+    prevalence = "",
     relprob = 0.5,
 )
 """Default values for the query form"""
@@ -172,8 +171,9 @@ class QueryPage:
             inputs.delcode = md5.new(delcode_plain).hexdigest()
             # Parse the date string to integer
             inputs.mindate = parse_date(inputs.mindate)
-            if inputs.mindate < 19650101:
-                inputs.mindate = None
+            # Check for default prevalence
+            if inputs.prevalence.strip() == "":
+                inputs.prevalence = None 
             queue.write_descriptor(rc.queue_path / inputs.dataset, 
                                    parse_pmids(inputs.positives), inputs)
             # Show status page for the task
@@ -181,10 +181,6 @@ class QueryPage:
                          (inputs.dataset, web.urlquote(delcode_plain)))
         else:
             # Errors in the form, print it again
-            for x in qform.inputs:
-                if x.note is not None:
-                    print x.name, x.note
-            return
             page = query.query()
             page.queue = queue.QueueStatus(with_done=True)
             page.inputs = qform

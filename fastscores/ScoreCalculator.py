@@ -209,6 +209,8 @@ class ScoreCalculator:
         count_filtered = 0
         count_total = 0
         result = []
+        if o_numresults.value == 0:
+            return result
         for score, pmid in itertools.izip(o_scores, o_pmids):
             if pmid not in s.exclude:
                 result.append((score, pmid))

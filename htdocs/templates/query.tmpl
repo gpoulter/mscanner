@@ -95,19 +95,19 @@ on the <a href="output">output</a> page, in which case you need to
 bookmark the location of the results to find them later.
 #end def
 
-#def help_prevalence# Fraction of Medline consisting
-of relevant articles.  Increasing this value yields more results
-by raising the prior probability of relevance.
+#def help_prevalence# Advanced option: the fraction of
+Medline that is relevant (if empty, we estimate based on input size).
+Greater values indicate greater prior probability of relevance, 
+yielding more results.
 #end def
 
-#def help_relprob# The classifier only returns articles whose 
-predicted probability of relevance is above this level.
-The default for Naive Bayes classification is 50%.
+#def help_relprob# Advanced option: returns articles whose 
+predicted probability of relevance is above this level (defaults to 50%).
 #end def
 
-#def help_mindate# Retrict Medline to records added after this date. 
-Setting this option will slow down retrieval by 30 seconds.  Records
-are typically added 1-3 months after publication date.
+#def help_mindate# Advanced option: filter Medline to contain
+only records added after this date (slows down retrieval by 30 seconds). 
+Records are added 1-3 months after publication date.
 #end def
 
 #def help_limit# At most this many citations will be returned (limit may be

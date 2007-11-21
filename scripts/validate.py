@@ -30,11 +30,11 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
 dataset_map = {
-"aidsbio":       ("Paper/aidsbio_2006.10.txt",    "Paper/medline100k_2007.02.txt"),
-"pg07":          ("Paper/pharmgkb_2007.02.05.txt","Paper/medline100k_2007.02.txt"),
-"radiology":     ("Paper/radiology_2007.02.txt",  "Paper/medline100k_2007.02.txt"),
-"control":     ("Paper/random10k_2006.txt",     "Paper/medline100k_2007.02.txt"),
-"gdsmall":       ("Test/gdsmall.txt",             100000),
+"aidsbio":       ("Paper/aidsbio.txt", "Paper/medline100k.txt"),
+"pg07":          ("Paper/pg07_full.txt", "Paper/medline100k.txt"),
+"radiology":     ("Paper/radiology.txt", "Paper/medline100k.txt"),
+"control":       ("Paper/control.txt", "Paper/medline100k.txt"),
+"gdsmall":       ("Test/gdsmall.txt", 30000),
 }
 """Map data set to pair of (positive,negative) paths for PubMed IDs."""
 

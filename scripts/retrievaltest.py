@@ -1,16 +1,7 @@
 #!/usr/bin/env python
 
 """Performs retrieval test analysis, where a subset of the input is used to
-query, and the results are compared against the remainder of the input.
-
-Usage::
-
-    python retrievaltest.py <dataset> <filename>
-    
-For example::
-
-    python retrievaltest.py pg07 'pharmgkb-070205.txt'
-"""
+query, and the results are compared against the remainder of the input."""
 
 from __future__ import division
 
@@ -31,6 +22,7 @@ from mscanner.core import iofuncs
 from mscanner.core.QueryManager import QueryManager
 from mscanner.medline.Databases import Databases
 from mscanner.medline.FeatureStream import Date2Integer
+
 
 def truepos_vs_rank(results, test):
     """Evaluate true positives as function.
@@ -80,9 +72,9 @@ def plot_rank_performance(fname, textfname, tp_vs_rank, total_relevant, compare_
     total_query = total_relevant + compare_irrelevant
     q_prec = total_relevant/total_query
     q_recall = (q_prec * ranks) / total_relevant
-    iofuncs.write_lines(textfname, zip(
-        itertools.count(), tp_vs_rank, recall, precision),
-        "Rank, TP, Recall, Precision", sep=", ")
+    iofuncs.write_lines(textfname, ["%d, %d, %.3f, %.3f" % x for x in 
+        itertools.izip(itertools.count(), tp_vs_rank, recall, precision)],
+        "Rank, TP, Recall, Precision")
     logging.info("There are %d relevant and %d irrelevant in query results", 
                  total_relevant, compare_irrelevant)
     logging.info("At end, Query recall is 1.0 and precision is %f", q_prec)
@@ -156,8 +148,8 @@ def compare_iedb_query(test=False):
         maxdate = 20041231
         t_mindate = 20030101
         t_maxdate = 20031231
-        pos_file = rc.corpora / "IEDB" / "combined_pos.txt"
-        neg_file = rc.corpora / "IEDB" / "combined_neg.txt"
+        pos_file = rc.corpora / "IEDB" / "iedb_pos.txt"
+        neg_file = rc.corpora / "IEDB" / "iedb_neg.txt"
     all_pos = list(iofuncs.read_pmids(pos_file))
     all_neg = list(iofuncs.read_pmids(neg_file))
     env = Databases()

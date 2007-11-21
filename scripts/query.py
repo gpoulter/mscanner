@@ -34,9 +34,9 @@ from mscanner.medline.Databases import Databases
 
 
 dataset_map = {
-    "aidsbio"     : "Paper/aidsbio_2006.10.txt",
-    "pg07"        : "Paper/pharmgkb_2007.02.05.txt",
-    "radiology"   : "Paper/radiology_2007.02.txt",
+    "aidsbio"     : "Paper/aidsbio.txt",
+    "pg07"        : "Paper/pg07_full.txt",
+    "radiology"   : "Paper/radiology.txt",
     "gdsmall"     : "Test/gdsmall.txt",
     "invalid"     : "Test/invalid.txt",
 }

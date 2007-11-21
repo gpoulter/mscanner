@@ -226,7 +226,10 @@ def delete_output(dataset):
 
 
 def logit(probability):
-    return math.log(probability/(1-probability))
+    if probability is None:
+        return None
+    else:
+        return math.log(probability/(1-probability))
 
 
 def mainloop():

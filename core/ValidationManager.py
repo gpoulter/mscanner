@@ -343,7 +343,7 @@ class CrossValidation(ValidationBase):
         
         @param relevant_high: Maximum expected relevant articles in Medline
 
-        @param medline: Number of articles in rest of Medline, or None
+        @param medline_size: Number of articles in rest of Medline, or None
         to use L{Databases.article_list} minus relevant articles.
         """
         if len(self.positives)>0 and len(self.negatives)>0:

@@ -26,7 +26,7 @@ class FeatureScores(object):
     """Feature score calculation and saving, with choice of calculation method,
     and methods to exclude certain kinds of features.
     
-    @group Constructor parameters: featmap, pseudocount, mask, make_scores, get_postmask
+    @group Set via constructor: featmap, pseudocount, mask, make_scores, get_postmask
     
     @ivar featmap: L{FeatureMapping} object
     
@@ -56,7 +56,7 @@ class FeatureScores(object):
     using the ratio of relevant to irrelevant articles in the data.
 
     
-    @group scores, pfreqs, nfreqs, base: Set by L{make_scores}
+    @group Set via make_scores: scores, pfreqs, nfreqs, base
     
     @ivar scores: Score of each feature
   
@@ -65,7 +65,6 @@ class FeatureScores(object):
     @ivar nfreqs: Denominator of score fraction
     
     @ivar base: Value to be added to all article scores
-   
     """
 
     def __init__(self, 

@@ -27,15 +27,11 @@ class FeatureCounter:
     @ivar maxdate: YYYYMMDD integer: documents must have this date or earlier
     (default 33330303)
 
-    @ivar exclude: PMIDs that are not allowed to appear in the results
-    
-    @cvar executable_path: Path to executable for article score calculation
-    
-    @cvar dll_path: Path to shared library for article score calculation
-    
+    @ivar exclude: PMIDs that are not allowed to appear in the results    
     """
     
     counter_path = path(__file__).dirname() / "_FeatureCounter"
+    """Executable file for counting features in a file"""
     
     def __init__(self,
                  docstream,

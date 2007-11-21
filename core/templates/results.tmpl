@@ -76,11 +76,13 @@ $QM -- QueryManager instance used for the query
     $help(None)
   </tr>
 
+  #if len($QM.results) > 0
   <tr>
     <td>Lowest scoring result</td>
-    <td>#echo "%.5f" % $QM.lowest_score #</td>
+    <td>#echo "%.5f" % $QM.results[-1][0] #</td>
     $help(None)
   </tr>
+  #end if
 
   <tr>
     <td>Abstracts of results</td>

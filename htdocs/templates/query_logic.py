@@ -69,12 +69,6 @@ QueryForm = forms.Form(
             lambda x: x == "orange", "Should be the word 'orange'"),
         label="Enter the word 'orange'"),
     
-    forms.Hidden(
-        "limit", 
-        forms.Validator(lambda x: 100 <= int(x) <= 10000,
-            "Should be between 100 and 10000."),
-        label="Max No. Results"),
-    
     forms.Textarea(
         "positives", 
         forms.Validator(lambda x: len(parse_pmids(x)) > 0,
@@ -92,6 +86,12 @@ QueryForm = forms.Form(
     
     forms.Checkbox(
         "hidden", forms.checkbox_validator, label="Hide output"),
+    
+    forms.Textbox(
+        "limit", 
+        forms.Validator(lambda x: 100 <= int(x) <= 10000,
+            "Should be between 100 and 10000."),
+        label="Result limit"),
     
     forms.Textbox(
         "prevalence", 
@@ -133,7 +133,7 @@ form_defaults = dict(
     delcode = "",
     dataset = "",
     hidden = False,
-    limit = 5000,
+    limit = 1000,
     mindate = "0000/00/00",
     numnegs = 50000,
     operation = "retrieval",

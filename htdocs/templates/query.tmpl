@@ -110,8 +110,8 @@ only records added after this date (slows down retrieval by 30 seconds).
 Records are added 1-3 months after publication date.
 #end def
 
-#def help_limit# At most this many citations will be returned (limit may be
-between 100 and 10000). 
+#def help_limit# At most this many citations will be returned (may be
+set between 100 and 10000). 
 #end def
 
 #def help_numnegs# In cross validation we select this many random Medline 
@@ -140,11 +140,10 @@ records to serve as irrelevant training examples.
       $inputs["operation"].render("retrieval")
     </legend>
     <table>
+      $form_row("limit")
       $form_row("prevalence")
       $form_row("relprob")
       $form_row("mindate")
-      ##$form_row("limit")
-      $inputs["limit"].render()
     </table>
   </fieldset>
 

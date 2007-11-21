@@ -125,43 +125,6 @@ def custom_show(fname, doshow=interactive, type="eps"):
         close()
 
 
-def calculate_overlap(px, py, nx, ny):
-    """Calculate overlap between two bell curves (curve p must be
-    to the right of curve n).  
-    
-    @deprecated: Overlap is not a meaningful performance statistic.
-    
-    Procedure is first to interpolate both curves onto a common X-axis ranging
-    from min(nx) to max(px), then find highest where pY and nY intersect,
-    then create a curve using pY up to intersection, and nY thereafter. Then
-    calculate the area underneath using trapezoidal rule."""
-    from scipy.interpolate import interp1d
-    from scipy.integrate import trapz
-    X = n.linspace(n.min(nx), n.max(px), 1000)
-    p_interp = interp1d(px, py, bounds_error=False, fill_value=0.0)
-    n_interp = interp1d(nx, ny, bounds_error=False, fill_value=0.0)
-    pY = p_interp(X)
-    nY = n_interp(X)
-    # Attempt to find point of intersection, 
-    # but leave out interpolated sections with zero density
-    diffs = n.absolute(pY-nY)
-    diffs[pY==0] = 1
-    diffs[nY==0] = 1
-    interidx = n.nonzero(diffs == n.min(diffs))[0][0]
-    iY = n.concatenate((pY[:interidx],nY[interidx:]))
-    area = trapz(iY,X)
-    include = iY != 0
-    ingraph = False
-    for idx in xrange(len(iY)):
-        if not ingraph and include[idx]:
-            include[idx-1] = True
-            ingraph = True
-        if ingraph and not include[idx]:
-            include[idx] = True
-            break
-    return area, X[include], iY[include]
-
-
 def plot_score_density(fname, statlist):
     """Plots four score density plots in a grid
 
@@ -178,9 +141,6 @@ def plot_score_density(fname, statlist):
         line_neg, = plot(nx, ny, color='blue', label=r"Irrelevant")
         line_threshold = axvline(
             s.threshold, color='green', linewidth=1, label=r"Threshold")
-        # We don't plot overlapping area any more
-        #area, iX, iY = plotting.calculate_overlap(px, py, nx, ny)
-        #patch_overlap, = fill(iX, iY, facecolor='magenta', alpha=0.7, label=r"$\rm{Overlap}$")
         if idx == 0 or idx == 2:
             ylabel("Probability density")
         if idx == 2 or idx == 3:
@@ -188,6 +148,7 @@ def plot_score_density(fname, statlist):
         if idx == 0:
             legend(loc="upper left")
     custom_show(fname)
+
 
 
 def plot_score_histogram(fname, pscores, nscores):
@@ -332,20 +293,16 @@ def do_retrievaltest():
 def do_publication():
     """Draws figures for the BMC paper: including densities, ROC curve, PR
     curve, and PRF curve. """
-    indir = source_dir / "06.22 CV10 100k newpseudo"
-    aids = load_stats(indir, "aids-vs-100k", "AIDSBio")
-    rad = load_stats(indir, "radiology-vs-100k", "Radiology")
-    pg07 = load_stats(indir, "pg07-vs-100k", "PG07")
-    ran10 = load_stats(indir, "random10k-vs-100k", "Control")
-    all = (aids,rad,pg07,ran10)
+    indir = source_dir / "11.21 Cross Validation"
+    aidsbio = load_stats(indir, "aidsbio", "AIDSBio")
+    radiology = load_stats(indir, "radiology", "Radiology")
+    pg07 = load_stats(indir, "pg07", "PG07")
+    control = load_stats(indir, "control", "Control")
+    all = (aidsbio, radiology, pg07, control)
     plot_roc("fig3_roc", all)
     plot_precision("fig4_pr", all)
-    #fmplot = PerformanceVectors(pg07.pscores, pg07.nscores, alpha=0.95)
-    #fmplot.threshold = fmplot.threshold_maximising(fmplot.FMa)
-    #fmplot.title = pg07.title
-    #plot_fmeasure("fig5_prf", fmplot)
     plot_score_density("fig2_density", all)
-    #do_retrievaltest()
+
 
 
 def do_testplots():
@@ -363,6 +320,7 @@ def do_testplots():
     #pg04alpha.threshold = pg04alpha.threshold_maximising(pg04alpha.FMa)
     #pg04alpha.title = pg04.title
     #plot_fmeasure("test_prf", pg04alpha)
+
 
 
 def do_subdirplots(subdirs):
@@ -383,7 +341,7 @@ def do_subdirplots(subdirs):
 if __name__ == "__main__":
     iofuncs.start_logger(logfile=False)
     if len(sys.argv) != 2:
-        print "Please give python expression"
+        print "Please provide a Python expression"
     else:
         eval(sys.argv[1])
     logging.shutdown()

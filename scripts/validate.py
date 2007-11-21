@@ -78,13 +78,14 @@ def compare_trec_genomics():
 def compare_iedb_valid():
     """Performs cross validation using the IEDB gold standard data set"""
     env = Databases()
+    basedir = rc.working / "valid" / "iedb"
+    if not basedir.exists(): basedir.mkdir()
     rc.utility_r = None
     #for fbase in "ac", "allergen", "er", "other":
-    for fbase in "combined",:
+    for dataset in ("iedb",):
         pos = rc.corpora / "IEDB" / ("%s_pos.txt" % fbase)
         neg = rc.corpora / "IEDB" / ("%s_neg.txt" % fbase)
-        dataset = "iedb_%s" % fbase
-        op = CrossValidation(rc.working / "valid" / dataset, dataset, env)
+        op = CrossValidation(basedir / dataset, dataset, env)
         op.validation(pos, neg)
         op.report_validation()
     env.close()

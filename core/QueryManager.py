@@ -38,8 +38,8 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 class QueryManager:
     """Class for performing a single query
 
-    @group Passed via constructor: outdir, dataset, limit, threshold, 
-    env, mindate, maxdate
+    @group Passed via constructor: outdir, dataset, limit, env, threshold, 
+    prior, mindate, maxdate, t_mindate, t_maxdate
     
     @ivar outdir: Path to directory for output files, which is created if it
     does not exist.
@@ -48,20 +48,21 @@ class QueryManager:
     
     @ivar limit: Maximum number of results (may be fewer due to threshold)
     
+    @param env: L{Databases} to use (if None, we open them just for us).
+
     @ivar threshold: Decision threshold for the classifier (default should be 0).
     Use None to retrieve everything up to the result limit.
     
     @ivar prior: Prior score to add to all article scores.  Use None
     to estimate from the relative sizes of the input data.
     
-    @ivar mindate, maxdate: Minimum and maximum YYYYMMDD integer for
-    query results (ignore articles outside this range).
+    @ivar mindate, maxdate: Min/max YYYYMMDD integer for query results (ignore
+    articles outside this range).
     
-    @ivar t_mindate, t_maxdate: Minimum and maximum YYYYMMDD integer for
-    counting feature occurrences in Medline background corpus (defaults to
-    mindate, maxdate).
+    @ivar t_mindate, t_maxdate: Min/max YYYYMMDD integer for counting feature
+    occurrences in Medline background corpus (defaults to mindate, maxdate).
     
-    @param env: L{Databases} to use (if None, we open them just for us).
+    
     
     @ivar timestamp: Time at the start of the operation.
     
@@ -246,7 +247,7 @@ class QueryManager:
         lookups while doing template output is extremely slow.
         
         @param maxreport: Largest number of records to write to the HTML reports
-        (overriding the result limit if smaller)
+        (L{maxreport} may override the result limit).
         """
         # Cancel report if there are no results
         if self.results is None: return
@@ -276,9 +277,6 @@ class QueryManager:
             "output", self.dataset, outputs,
             self.outdir/rc.report_result_citations, 
             rc.citations_per_file)
-        
-        # Identify the lowest-scoring article
-        self.lowest_score = self.results[-1][0] if len(self.results) else 0,
         
         # Write ALL output citations to a single HTML, and a zip file
         if len(outputs) > 0:

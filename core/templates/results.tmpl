@@ -82,7 +82,6 @@ $QM -- QueryManager instance used for the query
     <td>#echo "%.5f" % $QM.results[-1][0] #</td>
     $help(None)
   </tr>
-  #end if
 
   <tr>
     <td>Abstracts of results</td>
@@ -102,6 +101,7 @@ $QM -- QueryManager instance used for the query
   </tr>
   $hr("h_results_all", """All result abstracts on a single page.
   (can take a long time to load - downloading the zip file is recommended)""")
+  #end if
 
   <tr>
     <td>Abstracts of input examples</td>
@@ -164,16 +164,13 @@ $QM -- QueryManager instance used for the query
   of feature occurrences.""") 
   #end if
 
-  #if $QM.featinfo.base != 0
   <tr>
     <td>Base score</td>
     <td>$QM.featinfo.base</td> $help("h_base")
   </tr>
   $hr("h_base", """The log likelihood ratio of an empty article (one in 
   which every feature failed to occur).""") 
-  #end if
 
-  #if $QM.featinfo.prior != 0
   <tr>
     <td>Prior score</td>
     <td>$QM.featinfo.prior</td> $help("h_prior")
@@ -183,7 +180,6 @@ $QM -- QueryManager instance used for the query
   to obtain the final score).  Equals the logit of the estimated
   prevalence of relevant articles in Medline (which may be estimated
   from the input size or specified separately).""") 
-  #end if
 
   <tr>
     <td>Limit</td>

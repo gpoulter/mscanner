@@ -102,7 +102,10 @@ class FeatureScores(object):
         """Change the feature counts and numbers of documents, clear
         old score calculations, and calculate new scores."""
         if prior is None:
-            prior = nx.log(pdocs/ndocs)
+            if pdocs == 0 or ndocs == 0:
+                prior = 0
+            else:
+                prior = nx.log(pdocs/ndocs)
         base = 0
         update(self, locals())
         self.make_scores()

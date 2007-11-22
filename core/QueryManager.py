@@ -136,7 +136,7 @@ class QueryManager:
         
         @param input: Path to file listing PubMed IDs, or something convertible
         to a set PubMed IDs.
-
+        
         @return: True on success, False on failure."""
         if isinstance(input, basestring):
             logging.info("Loading PubMed IDs from %s", input.basename())
@@ -158,7 +158,7 @@ class QueryManager:
     def _make_feature_info(self, train_exclude=None):
         """Generate the L{featinfo} attribute using the L{pmids}
         as examples of relevant citations.
-
+        
         @param train_exclude: PMIDs to exclude from background when training
         """
         logging.info("Making scores for %d features", len(self.env.featmap))
@@ -186,7 +186,7 @@ class QueryManager:
             logging.info("Background PMIDs = Medline between %s and %s", 
                          str(self.t_mindate), str(self.t_maxdate))
             # Have the option to exclude more than just training PMIDs
-            if train_exclude is None: 
+            if train_exclude is None:
                 train_exclude = self.pmids
             ndocs, neg_counts = FeatureCounter(
                 docstream = rc.featurestream,

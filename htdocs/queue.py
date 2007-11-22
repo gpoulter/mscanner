@@ -81,10 +81,10 @@ descriptor_keys = dict(
     hidden=parsebool, # Whether to hide the output
     limit=int,        # Upper limit on number of results
     mindate=int,      # Minimum date to consider
+    minscore=float,   # Minimum classifier score to predict relevance
     numnegs=int,      # Number of irrelevant articles for CV
     operation=str,    # "retrieval" or "validation"
     prevalence=float, # Estimated fraction of relevant articles in Medline
-    relprob=float,    # Minimum probability of relevance
     submitted=float,  # Timestamp when the task was submitted
     )
 
@@ -161,11 +161,14 @@ class QueueStatus:
     def _load_tasklist(self):
         """Populate L{tasklist}.
         
-        @note: We only load files that are older than one second.  Without
-        this we sometimes catch files half-written by the web interface."""
+        @note: We only load files that are older than 1/20th second. Without
+        this we sometimes catch files half-written by the web interface. This
+        in turn means query_logic.py has to wait 0.05 seconds before going to
+        the status page, so that the task shows up.
+        """
         current_time = time.time()
         eligible_files = [f for f in rc.queue_path.files() \
-                          if f.mtime < current_time-1]
+                          if f.mtime < current_time-0.05]
         self.tasklist = [read_descriptor(f) for f in eligible_files]
         self.tasklist.sort(key=lambda x:x.submitted)
         self.running = self.tasklist[0] if self.tasklist else None
@@ -278,12 +281,13 @@ def mainloop():
                             dataset=task.dataset,
                             limit=task.limit,
                             env=env,
-                            threshold=logit(task.relprob),
+                            threshold=task.minscore,
                             prior=logit(task.prevalence),
                             mindate=task.mindate,
                             maxdate=None,
                             )
                         QM.query(task._filename)
+                        time.sleep(5)
                         QM.write_report()
                         QM.__del__()
                     elif task.operation == "validate":
@@ -314,10 +318,10 @@ def populate_test_queue():
         hidden = False,
         limit = 500,
         mindate = 19700101,
+        minscore = 0.0, 
         numnegs = 1000, 
         operation = "validate", 
         prevalence = 0.01,
-        relprob = 0.5, 
         submitted = time.time())
     write_descriptor(rc.queue_path/task.dataset, pmids, task)
     task.operation = "retrieval"

@@ -94,23 +94,23 @@ QueryForm = forms.Form(
         label="Result limit"),
     
     forms.Textbox(
+        "mindate", 
+        forms.Validator(date_is_valid, 
+        "Date should be YYYY/MM/DD, and the day before yesterday at latest."),
+        label="Minimum date", size=12),
+
+    forms.Textbox(
         "prevalence", 
         forms.Validator(lambda x: x.strip() == "" or 1e-6 <= float(x) <= 0.1,
             "Should be empty, or a number between 0.000001 (10^-6) and 0.1"),
         label="Estimated prevalence", size=8),
     
     forms.Textbox(
-        "relprob", 
-        forms.Validator(lambda x: 0.0001 <= float(x) <= 0.9999,
-            "Should be between 0.0001 and 0.9999."),
-        label="Minimum probability", size=8),
+        "minscore", 
+        forms.Validator(lambda x: -1000 <= float(x) <= 1000,
+            "Should be between -1000 and +1000."),
+        label="Minimum score", size=8),
     
-    forms.Textbox(
-        "mindate", 
-        forms.Validator(date_is_valid, 
-        "Date should be YYYY/MM/DD, and the day before yesterday at latest."),
-        label="Minimum date", size=12),
-
     forms.Textbox(
         "numnegs", 
         forms.Validator(lambda x: 100 <= int(x) <= 100000,
@@ -135,11 +135,11 @@ form_defaults = dict(
     hidden = False,
     limit = 1000,
     mindate = "0000/00/00",
+    minscore = "0",
     numnegs = 50000,
     operation = "retrieval",
     positives = "",
     prevalence = "",
-    relprob = 0.5,
 )
 """Default values for the query form"""
 
@@ -177,6 +177,7 @@ class QueryPage:
             queue.write_descriptor(rc.queue_path / inputs.dataset, 
                                    parse_pmids(inputs.positives), inputs)
             # Show status page for the task
+            time.sleep(0.05) # So we show up in the queue
             web.seeother("status?dataset=%s;delcode=%s" % 
                          (inputs.dataset, web.urlquote(delcode_plain)))
         else:

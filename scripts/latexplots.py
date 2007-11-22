@@ -132,7 +132,6 @@ def plot_score_density(fname, statlist):
     """
     logging.info("Plotting score densities to %s", fname)
     for idx, s in enumerate(statlist):
-        t = s.threshold
         px, py = DensityPlotter.gaussian_kernel_pdf(s.pscores)
         nx, ny = DensityPlotter.gaussian_kernel_pdf(s.nscores)
         subplot(2,2,idx+1)
@@ -140,7 +139,7 @@ def plot_score_density(fname, statlist):
         line_pos, = plot(px, py, color='red', label=r"Relevant")
         line_neg, = plot(nx, ny, color='blue', label=r"Irrelevant")
         line_threshold = axvline(
-            s.threshold, color='green', linewidth=1, label=r"Threshold")
+            s.uscores[s.bep_index], color='green', linewidth=1, label=r"Threshold")
         if idx == 0 or idx == 2:
             ylabel("Probability density")
         if idx == 2 or idx == 3:
@@ -199,10 +198,9 @@ def plot_roc(fname, statlist):
     ##title(r"Magnified ROC")
     xlabel(r"False Positive Rate (1-Specificity)")
     for (TPR, FPR), fmt, s  in zip(values, formats, statlist):
-        gplot(FPR, TPR, fmt, label=r"$\rm{"+s.title+r"}$", pos=0.96)
-    amount = 0.25
+        plot(FPR, TPR, fmt[0:2], label=s.title)
     legend(loc="lower right")
-    axis([0.0, amount, 1-amount, 1.0])
+    axis([0.0, 0.01, 0, 1.0])
     custom_show(fname)
 
 
@@ -220,9 +218,9 @@ def plot_precision(fname, statlist):
         TPR, PPV = smooth(s.TPR[::-1], s.PPV[::-1])
         gplot(TPR, PPV, fmt, label=r"$\rm{"+s.title+r"}$", pos=0.5)
     # Place X marks at threshold
-    plot([s.tuned.TPR for s in statlist], 
-         [s.tuned.PPV for s in statlist],
-         "kx", markeredgewidth=2)
+    #plot([s.tuned.TPR for s in statlist], 
+    #     [s.tuned.PPV for s in statlist],
+    #     "kx", markeredgewidth=2)
     # Draw legends
     legend(loc=(0.5, 0.15))
     axis([0.0, 1.0, 0.0, 1.0])
@@ -271,9 +269,9 @@ def do_publication():
     pg07 = load_stats(indir, "pg07", "PG07")
     control = load_stats(indir, "control", "Control")
     all = (aidsbio, radiology, pg07, control)
-    plot_roc("fig3_roc", all)
-    plot_precision("fig4_pr", all)
-    plot_score_density("fig2_density", all)
+    #plot_score_density("fig3_density", all)
+    plot_roc("fig4_roc", all)
+    #plot_precision("fig5_pr", all)
 
 
 

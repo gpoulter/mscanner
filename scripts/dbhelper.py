@@ -82,33 +82,36 @@ def regen_article_list(artdb, artlist):
     
 def pmid_dates(artdb, infile, outfile):
     """Get dates for PMIDs listed in L{infile}, writing PMID,date pairs
-    to L{outfile}.
+    to L{outfile} in increasing order of date.
     @param artdb: Path to Shelf with Article objects
     @param infile: Path to PubMed IDs (PMID lines)
     @param outfile: Path to write PMID YYYYMMDD lines to."""
+    lines = []
     adb = Shelf.open(artdb, "r")
     input = open(infile, "r")
-    output = open(outfile, "w")
     for line in input:
         if line.startswith("#"): continue
         pmid = int(line.split()[0])
         try:
             date = Date2Integer(adb[str(pmid)].date_completed)
+            lines.append((pmid,date))
         except KeyError, e:
             print e.message
-        else:
-            output.write("%s %08d\n" % (pmid,date))
-    input.close()
-    output.close()
     adb.close()
+    input.close()
+    lines.sort(key=lambda x:x[1])
+    with open(outfile, "w") as f:
+        for line in lines:
+            f.write("%s %08d\n" % line)
     
 
-def select_lines(infile, outfile, N, mindate, maxdate):
+def select_lines(infile, outfile, mindate="00000000", maxdate="99999999", N="0"):
     """Select random PMIDs from L{infile} and write them to L{outfile}.
     @param infile: Read PMID YYYYMMDD lines from this path.
     @param outfile: Write selected lines to this path.
     @param N: (string) Number of lines to output (N="0" outputs all matching)
     @param mindate, maxdate: Only consider YYYYMMDD strings between these
+    @return: Selected lines as (PMID,YYYYMMDD) pairs of strings
     """
     lines = []
     N = int(N)
@@ -125,6 +128,7 @@ def select_lines(infile, outfile, N, mindate, maxdate):
     with open(outfile, "w") as f:
         for line in lines:
             f.write("%s %s\n" % line)
+    return lines
 
 
 if __name__ == "__main__":

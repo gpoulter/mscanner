@@ -229,65 +229,37 @@ def plot_precision(fname, statlist):
     custom_show(fname)
 
 
-def plot_fmeasure(fname, s):
-    """Plots a single Precision/Recall/F-Measure curve"""
-    logging.info("Plotting PRF curve to %s", fname)
-    ##title(s.title + " performance versus threshold")
-    ylabel("Performance Measures")
-    xlabel("Decision Threshold")
-    # We only plot starting from score of -50
-    start = 0
-    while s.uscores[start] < -40:
-        start += 1
-    x = linspace(s.uscores[start], s.uscores[-1], npoints)
-    x, TPR = smooth(s.uscores[start:], s.TPR[start:], x)
-    x, PPV = smooth(s.uscores[start:], s.PPV[start:], x)
-    x, FM = smooth(s.uscores[start:], s.FM[start:], x)
-    x, FMa = smooth(s.uscores[start:], s.FMa[start:], x)
-    gplot(x, PPV, "b-D", label=r"$\rm{Precision}\ (\pi)$")
-    gplot(x, FMa, "c-o", label=r"$F\ (\alpha=%s)$" % str(s.alpha))
-    gplot(x, FM, "g-h", label=r"$F_1$")
-    gplot(x, TPR, "r-s", label=r"$\rm{Recall}\ (\rho)$")
-    axvline(s.threshold, c="k", label=r"$\rm{Threshold}$")
-    ylim(0,1)
-    legend(loc="upper right")
-    custom_show(fname)
-
 #### FUNCTIONS THAT USE THE ABOVE ####
 
-def do_retrievaltest():
+def do_iedb(fname):
     """Plots retrieval test results for 20% of PharmGKB to see how MScanner
     and PubMed compare at retrieving the remaining 80%.
     """
     logging.info("Plotting Retrieval curve for PG07")
-    pgdir = source_dir / "Retrieval" / "070626 Retrieval a_i 0.2 5k" / "pg07-retrieval"
-    # Retrieval vs rank for MScanner
-    mscanner_c = array([int(x) for x in (pgdir/"retrieval_stats.txt").lines()])
-    # Gold standard citations for PG07
-    pg_test = [int(x) for x in (pgdir/"retrieval_test.txt").lines()]
-    # PubMed query output
-    pubmed = mscanner_dir/"support"/"PubMed Pharmacogenetics"
-    pgx1 = [int(x) for x in (pubmed/"pgx1.txt").lines()]
-    # Retrieval vs rank for PubMed
-    pgx1_c = retrievaltest.compare_results_to_standard(pgx1, set(pg_test))
-    # Plot the graph
-    ax1 = subplot(111)
-    ##title("PG07 Retrieval Comparison")
-    ylabel("Fraction retrieved")
-    xlabel("False Positives (logarithmic scale)")
-    N = len(pg_test)
-    r = 4301
-    semilogx(range(1,r)-mscanner_c[1:r], mscanner_c[1:r]/N, "r", label="MScanner")
-    semilogx(range(1,r)-pgx1_c[1:r], pgx1_c[1:r]/N, "b", label="PubMed")
-    legend(loc="upper left")
-    grid(True)
-    gca().xaxis.grid(True, which='minor')
-    ax2 = twinx()
-    semilogx([1],[1])
-    ax2.set_xlim(1,r)
-    ax2.set_ylim(0,ax1.get_ylim()[1]*len(pg_test))
-    ylabel("True Positives")
-    custom_show("fig4_pg07retrieval")
+    indir = source_dir / "11.21 IEDB Query"
+    iedb_precision = 0.306415
+    lines = (indir/"perf_vs_rank.txt").lines()
+    N = len(lines)
+    precision = zeros(N, Float32)
+    recall = zeros(N, Float32)
+    ranks = zeros(N, Int32)
+    for i, line in enumerate(lines):
+        if i == 0: continue
+        _rank, _TP, _rec, _prec = line.strip().split(", ")
+        #print _rank, _TP, _rec, _prec
+        ranks[i] = int(_rank)
+        recall[i] = float(_rec)
+        precision[i] = float(_prec)
+    ylabel(r"Precision, Recall")
+    xlabel(r"Rank")
+    plot(ranks, recall, "r", label="MScanner recall")
+    plot(ranks, precision, "b", label="MScanner precision")
+    plot(ranks, ranks/N, 'c', label="IEDB query recall")
+    plot(ranks, zeros(N)+iedb_precision, 'g', label="IEDB query precision")
+    # Draw legends
+    legend(loc=(0.05, 0.7))
+    axis([0.0, N, 0.0, 1.0])
+    custom_show(fname)
 
 
 def do_publication():
@@ -316,10 +288,6 @@ def do_testplots():
     plot_score_density("test_density", (pg04,pg07,pg07,pg04))
     plot_roc("test_roc", (pg04,pg07))
     plot_precision("test_pr", (pg04,pg07))
-    #pg04alpha = PerformanceVectors(pg04.pscores, pg04.nscores, alpha=0.9)
-    #pg04alpha.threshold = pg04alpha.threshold_maximising(pg04alpha.FMa)
-    #pg04alpha.title = pg04.title
-    #plot_fmeasure("test_prf", pg04alpha)
 
 
 

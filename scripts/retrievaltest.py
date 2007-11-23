@@ -86,33 +86,30 @@ def plot_rank_performance(fname, textfname, tp_vs_rank, total_relevant, total_ir
            Data([0,total_query], [q_prec,q_prec], title="Query Precision", with="lines"))
 
 
-
-def compare_iedb_query(test=False):
+def compare_iedb_query():
     """We compare MScanner retrieval to the complex PubMed query
     used to create the gold standard for the IEDB classifier."""
-    dataset = "iedb_query"
+    dataset = "iedb-query-pre2004"
     outdir = rc.working / "query" / dataset
     if not outdir.exists(): outdir.makedirs()
     mindate, maxdate = 20040101, 20041231
-    t_mindate, t_maxdate = mindate, maxdate
-    trainpos_file = rc.corpora / "IEDB" / "iedb_pos_not2004.txt"
-    testpos_file = rc.corpora / "IEDB" / "iedb_pos_2004.txt"
-    testneg_file = rc.corpora / "IEDB" / "iedb_neg_2004.txt"
+    t_mindate, t_maxdate = 20040101, 20041231
+    trainpos_file = rc.corpora / "IEDB" / "iedb-pos-pre2004.txt"
+    testpos_file = rc.corpora / "IEDB" / "iedb-pos-2004.txt"
+    testneg_file = rc.corpora / "IEDB" / "iedb-neg-2004.txt"
     N_testnegs = len(testneg_file.lines())
-    testpos = iofunc.read_pmids(testpos_file)
+    testpos = set(iofuncs.read_pmids(testpos_file))
     limit = len(testpos) + N_testnegs
-    QM = QueryManager(outdir, dataset, limit, 
-                      mindate=mindate, maxdate=maxdate, 
+    QM = QueryManager(outdir, dataset, limit,
+                      mindate=mindate, maxdate=maxdate,
                       t_mindate=t_mindate, t_maxdate=t_maxdate)
     QM.query(trainpos_file)
     mscanner_results = [p for s,p in QM.results]
     truepos = truepos_vs_rank(mscanner_results, testpos)
-    plot_rank_performance(outdir/"pr_rank.png", 
-                          outdir/"pr_rank.txt",
-                          truepos, len(testpos),
-                          compare_irrelevant=N_testnegs)
+    plot_rank_performance(outdir/"pr_rank.png", outdir/"pr_rank.txt",
+                          truepos, len(testpos), N_testnegs)
     QM.write_report(maxreport=1000)
-    
+
 
 
 if __name__ == "__main__":

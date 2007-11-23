@@ -7,16 +7,13 @@ MScanner: Retrieving Medline citations using examples
 :Author: Graham Poulter
                                
 
-MScanner takes a set Medline citations, and trains a classifier to
-search for citations similar to the set as a whole.  
+MScanner is a binary classifier operating on all of Medline. It learns
+to predict relevant articles, given a set of relevant training
+examples.
 
-This source code is provided for people who wish to use MScanner as a
-starting point for another Medline classifier, and those who wish to
-construct more advanced operations - such as using MScanner output as
-the input to a Natural Language Processing system.
-
-If you just wish to query with some of your own data, rather use the
-public service on the MScanner_ homepage.
+This source code is for running a local version of MScanner_.  Use
+cases might include basing another classifier off the source code, or
+tying MScanner results into a natural language processing pipeline.
 
 .. _MScanner: http://mscanner.stanford.edu
 
@@ -29,11 +26,11 @@ Installation
 
   * Create any directories required by the `Directory Layout`_.
 
-  * Add ``INSTALL/source`` to the ``PYTHONPATH`` environment variable.
+  * Add ``INSTALL/mscanner`` to the ``PYTHONPATH`` environment variable.
     If done correctly, you should be able to ``import mscanner`` in a
     Python shell.
 
-  * Go to ``INSTALL/source/mscanner/fastscores`` and run GNU ``make`` to
+  * Go to ``INSTALL/mscanner/fastscores`` and run GNU ``make`` to
     compile the ``cscore.c`` program (Windows .exe and dll are
     provided)
 
@@ -43,13 +40,13 @@ Installation
   
   * Place the input `Input Data`_ in the correct locations.
 
-  * Run the unit tests by going into ``INSTALL/source/tests`` and
+  * Run the unit tests by going into ``INSTALL/mscanner/tests`` and
     running ``python __init__.py``
 
-  * Run ``INSTALL/source/bin/update.py`` to parse Medline and create
+  * Run ``INSTALL/mscanner/scripts/update.py`` to parse Medline and create
     the databases in ``INSTALL/data/cache``.
 
-  * Run the `Web Interface`_ or use ``INSTALL/source/bin/query.py`` as
+  * Run the `Web Interface`_ or use ``INSTALL/mscanner/scripts/query.py`` as
     as starting point for constructing a custom query operation.
 
 
@@ -58,14 +55,16 @@ Directory Layout
 
 The structure of  the ``INSTALL`` directory after extraction is as follows::
                                           
-     source/bin -- Executables (utilities and customised analyses)
-     source/doc -- INSTALL.txt
-     source/doc/api -- Generated API documentation in HTML
-     source/htdocs -- Web interface package
-     source/htdocs/static -- Static data available over the web
-     source/htdocs/static/output -- Where web outputs are placed
-     source/mscanner -- Core MScanner package
-     source/tests -- Unit tests for the MScanner package
+     mscanner/doc -- INSTALL.txt
+     mscanner/doc/api -- Generated API documentation in HTML
+     mscanner/core -- Core MScanner package
+     mscanner/fastscores -- C utilities for fast classification
+     mscanner/htdocs -- Web interface package
+     mscanner/htdocs/static -- Static data available over the web
+     mscanner/htdocs/static/output -- Where web outputs are placed
+     mscanner/medline -- Modules for parsing and storing Medline and features
+     mscanner/scripts -- Executables (database utilities and customised analyses)
+     mscanner/tests -- Unit tests
 
 Additionally create these directories to hold data::
 
@@ -78,17 +77,15 @@ Additionally create these directories to hold data::
 Input Data
 ==========
 
-MScanner requires the following data as input:
+MScanner requires the Medline_ Baseline distribution to generate the
+database.  Please contact the National Libraries of Medicine for a
+license. MScanner looks for the .xml.gz files of the FTP distribution
+of Baseline in ``INSTALL/data/medline`` (the ``rc.medline`` parameter)
 
-Medline_
- After signing a memorandum of understanding with the National Library
- of Medicine, Medline can be downloaded via FTP.  The FTP distribution
- is a directory of .xml.gz files.  MScanner looks for it in
- ``INSTALL/data/medline`` (set by the ``rc.medline`` parameter)
-
-Input PubMed IDs 
- Text file with one PubMed ID per line.  Data sets should be placed in
- ``INSTALL/data/corpora`` (set by the ``rc.corpora`` parameter)
+Training the classifier requires PubMed IDs of relevant training
+examples.  See the MScanner publication for more information.  Data
+sets should be placed in ``INSTALL/data/corpora`` (set by the
+``rc.corpora`` parameter)
 
 .. _Medline: http://www.nlm.nih.gov/bsd/licensee/2007_stats/baseline_doc.html
 
@@ -133,7 +130,7 @@ webserver.
 
 Start the queue process:
 
-  Execute ``INSTALL/source/htdocs/queue.py``.  This long-running
+  Execute ``INSTALL/mscanner/htdocs/queue.py``.  This long-running
   process watches ``INSTALL/data/queue`` for descriptor files
   deposited by the web interface, performs the requested
   query/validation tasks, and deposits the output in the static HTML
@@ -141,12 +138,12 @@ Start the queue process:
 
 Start the internal web server:
 
-  Execute ``INSTALL/source/htdocs/controller.py``.  The web server
+  Execute ``INSTALL/mscanner/htdocs/controller.py``.  The web server
   will run on ``http://localhost:8080``.  The web interface takes user
   input, reports on status of MScanner, and places descriptor files in
   the queue directory on submission of a query.
 
-To run under Apache:
+Or: run the web interface under Apache:
 
    Configure Apache to use ``controller.py`` as a CGI script.  Without
    URL rewriting you will have to access pages as 
@@ -157,16 +154,16 @@ Re-generating API Documentation
 -------------------------------
 
 API documentation is linked from the MScanner_ home page, and may
-already be provided under ``INSTALL/source/doc/api``.
+already be provided under ``INSTALL/mscanner/doc/api``.
 
 To re-generate the documentation, first install Epydoc_ , then navigate to
-the the ``INSTALL/source`` directory, and run::
+the the ``INSTALL/mscanner`` directory, and run::
 
     epydoc.py --config=doc/epydoc.txt
 
-To convert ``source/doc/INSTALL.txt`` (which is written in the
+To convert ``INSTALL/mscanner/doc/INSTALL.txt`` (which is written in the
 reStructuredText_ format) into ``INSTALL.html``, first install
-Docutils_, then navigate to ``INSTALL/source/doc`` and run::
+Docutils_, then navigate to ``INSTALL/mscanner/doc`` and run::
 
     rst2html.py INSTALL.txt > INSTALL.html
 
@@ -178,16 +175,9 @@ Docutils_, then navigate to ``INSTALL/source/doc`` and run::
 Configuration
 =============
 
-Default configuration is in
-``INSTALL/source/mscanner/configuration.py``, whih has descriptions of
-the MScanner rc-parameters.  The ``rc`` object holds all the global
-constants used by the MScanner library.
+Configuration is in ``INSTALL/mscanner/configuration.py``, which has
+MScanner resource parameters (and their descriptions). The ``rc``
+object holds all the global constants used by the MScanner library.
 
-Performing a query::
-         
-   from mscanner.core.QueryManager import QueryManager
-   QM = QueryManager(rc.working / "query" / "somedata", 
-                    dataset="somedata", limit=500)
-   QM.query(rc.corpora / "somedata.txt")
-   QM.write_report()
-
+See the scripts in ``INSTALL/mscanner/scripts`` for examples of using
+the MScanner API.  Help on the API is in ``INSTALL/mscanner/help/api``.

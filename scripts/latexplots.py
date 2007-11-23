@@ -190,16 +190,16 @@ def plot_roc(fname, statlist):
     ##title(r"ROC curves")
     ylabel(r"True Positive Rate (Recall)")
     xlabel(r"False Positive Rate (1-Specificity)")
-    for (TPR, FPR), fmt  in zip(values, formats):
-        plot(FPR, TPR, fmt[0:2])
+    for (TPR, FPR), fmt, s  in zip(values, formats, statlist):
+        plot(FPR, TPR, fmt[0:2], label=s.title)
     axis([0.0, 1.0, 0.0, 1.0])
+    legend(loc="lower right")
     # Plot zoomed in ROC curve
     subplot(122)
     ##title(r"Magnified ROC")
     xlabel(r"False Positive Rate (1-Specificity)")
     for (TPR, FPR), fmt, s  in zip(values, formats, statlist):
-        plot(FPR, TPR, fmt[0:2], label=s.title)
-    legend(loc="lower right")
+        plot(FPR, TPR, fmt[0:2])
     axis([0.0, 0.01, 0, 1.0])
     custom_show(fname)
 

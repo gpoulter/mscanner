@@ -32,8 +32,8 @@ class FeatureDatabaseTests(unittest.TestCase):
     
     def test_FeatureDatabase(self):
         d = FeatureDatabase()
-        d.setitem(1, nx.array([1,3], nx.uint16)) #eliminate duplicate features
-        d.setitem(2, nx.array([2,3], nx.uint16))
+        d.setitem(1, nx.array([1,3], d.ftype)) #eliminate duplicate features
+        d.setitem(2, nx.array([2,3], d.ftype))
         self.assert_(all(d.getitem(1) == [1,3]))
         self.assert_(all(d.getitem(2) == [2,3]))
         self.assertRaises(KeyError, d.getitem, 3)
@@ -62,9 +62,9 @@ class FeatureStreamTests(unittest.TestCase):
         with closing(FeatureStream(open(self.fn, "wb"))) as fs:
             pmids = (12,34,56)
             dates = (20070101, 19980308, 20001207)
-            feats = [nx.array([1,2,3,4], nx.uint16), 
-                     nx.array([5,6,7,8], nx.uint16), 
-                     nx.array([], nx.uint16)]
+            feats = [nx.array([1,2,3,4], fs.ftype), 
+                     nx.array([5,6,7,8], fs.ftype), 
+                     nx.array([], fs.ftype)]
             for pmid, date, feat in zip(pmids, dates, feats):
                 fs.write(pmid, date, feat)
         with closing(FeatureStream(open(self.fn, "rb"))) as fs:
@@ -165,12 +165,12 @@ class MedlineCacheTests(unittest.TestCase):
         logging.debug("Articles: %s", repr(a))
         self.assertEqual(a[0].pmid, 1)
         self.assertEqual(a[1].pmid, 2)
-        self.assertEqual(fmap.counts, [2, 2, 2, 2, 2, 2, 2, 1])
+        self.assertEqual(fmap.counts, [2, 2, 2, 1, 2, 2, 2, 2])
         self.assertEqual(
-            fmap.features, [
+            sorted(fmap.features), sorted([
                 (u'Q4', 'qual'), (u'Q5', 'qual'), (u'Q7', 'qual'), 
                 (u'T1', 'mesh'), (u'T2', 'mesh'), (u'T3', 'mesh'), (u'T6', 'mesh'), 
-                (u'0301-4851', 'issn')])
+                (u'0301-4851', 'issn')]))
 
 
 

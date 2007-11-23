@@ -23,9 +23,9 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 class FeatureMapping:
     """Persistent mapping between string features and feature IDs
 
-    Feature types used with L{__getitem__}, L{get_type_mask} and
-    L{add_article} are "mesh", "qual", "issn". A feature string could have more
-    than one type.
+    Feature types used with L{__getitem__}, L{get_type_mask} and L{add_article}
+    are "mesh", "qual", "issn", "word". A feature string could have more than
+    one type.
     
     This is really a table with columns (id,type,name,count), and keys of id
     and (type,name).
@@ -42,10 +42,13 @@ class FeatureMapping:
     
     @ivar counts: List, such that counts[id] == number of occurrences.  For
     score calculation this is the only column needed.
+    
+    @ivar ftype: Numpy integer type for representing features.
     """
 
-    def __init__(self, featfile=None):
+    def __init__(self, featfile=None, ftype=nx.uint16):
         """Initialise the database, setting L{featfile}"""
+        self.ftype = ftype
         self.featfile = featfile
         if self.featfile is not None:
             self.featfile_new = featfile+".new"
@@ -55,7 +58,8 @@ class FeatureMapping:
         self.counts = []
         if featfile is not None and self.featfile.exists():
             self.load()
-        
+
+
     def load(self):
         """Load feature mapping mapping from file as a tab-separated
         table for tuples (feature, type, count) with ID being the
@@ -74,6 +78,7 @@ class FeatureMapping:
                 else:
                     self.feature_ids[ftype][feat] = fid
 
+
     def dump(self):
         """Write the feature mapping to disk as a table of
         (name, type, count) where line number is ID+1"""
@@ -87,6 +92,7 @@ class FeatureMapping:
             self.featfile.remove()
         self.featfile_new.rename(self.featfile)
 
+
     def __getitem__(self, key):
         """Given a feature ID, return (feature, feature type). Given (feature,
         feature type), returns feature ID"""
@@ -97,15 +103,17 @@ class FeatureMapping:
         else:
             raise KeyError("Invalid key: %s" % str(key))
 
+
     def __len__(self):
         """Return number of distinct features"""
         return len(self.features)
 
+
     def get_type_mask(self, exclude_types):
         """Get a mask for excluded features
-
+        
         @param exclude_types: Types of features to exclude
-
+        
         @return: Boolean array for excluded features (but returns None if
         exclude_types is None) 
         """
@@ -117,15 +125,17 @@ class FeatureMapping:
                 exclude_feats[fid] = True
         return exclude_feats
 
+
     def add_article(self, **kwargs):
         """Add an article, given lists of features of different types.
         
-        @note: Dynamically creates new features IDs and feature types as necessary.
+        @note: Dynamically creates new features IDs and feature types as
+        necessary.
         
         @param kwargs: Mapping from feature types to lists of features for that
         type. e.g. C{mesh=["Term A","Term B"]}
         
-        @return: Numpy array of uint16 feature IDs
+        @return: Numpy array of feature IDs
         """
         result = []
         self.numdocs += 1
@@ -142,4 +152,4 @@ class FeatureMapping:
                 else:
                     self.counts[fdict[feat]] += 1
                 result.append(fdict[feat])
-        return nx.array(result, nx.uint16)
+        return nx.array(result, self.ftype)

@@ -59,7 +59,7 @@ class CScoreModuleTests(unittest.TestCase):
         """Test the system for fast feature counting"""
         fs = FeatureStream(open(tmpfile, "w"))
         for pmid, date, feats in self.citations:
-            fs.write(pmid, date, nx.array(feats, nx.uint16))
+            fs.write(pmid, date, nx.array(feats, fs.ftype))
         fs.close()
         fc = FeatureCounter(
             docstream = tmpfile,
@@ -83,7 +83,7 @@ class CScoreModuleTests(unittest.TestCase):
         # Write citations to disk
         fs = FeatureStream(open(tmpfile, "w"))
         for pmid, date, feats in self.citations:
-            fs.write(pmid, date, nx.array(feats, nx.uint16))
+            fs.write(pmid, date, nx.array(feats, fs.ftype))
         fs.close()
         # Construct the document score calculator
         scorer = ScoreCalculator(

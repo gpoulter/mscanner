@@ -34,7 +34,7 @@ class FeatureDatabase:
         @param dbenv: Optional database environment
         @param txn: Optional database transaction
         @param dbname: Logical database name
-        @param ftype: Numpy numeric feature type
+        @param ftype: Numpy integer type for representing features.
         """
         self.ftype = ftype
         if isinstance(flags, basestring):

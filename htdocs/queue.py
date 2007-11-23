@@ -163,12 +163,12 @@ class QueueStatus:
         
         @note: We only load files that are older than 1/20th second. Without
         this we sometimes catch files half-written by the web interface. This
-        in turn means query_logic.py has to wait 0.05 seconds before going to
+        in turn means query_logic.py has to wait 0.1 seconds before going to
         the status page, so that the task shows up.
         """
         current_time = time.time()
         eligible_files = [f for f in rc.queue_path.files() \
-                          if f.mtime < current_time-0.05]
+                          if f.mtime < current_time-0.1]
         self.tasklist = [read_descriptor(f) for f in eligible_files]
         self.tasklist.sort(key=lambda x:x.submitted)
         self.running = self.tasklist[0] if self.tasklist else None

@@ -42,6 +42,7 @@ class MedlineCache:
     @ivar narticles_path: Path to file containing the total number of PMIDs
     @ivar processed_path: Path to list of processed files
     @ivar use_transactions: If false, disable transaction engine
+    @ivar stopwords: Set of words not to use as features
     """
 
     def __init__(
@@ -54,6 +55,7 @@ class MedlineCache:
         article_list,
         processed_path,
         narticles_path,
+        stopwords_path=None,
         use_transactions=True):
         """Constructor parameters set corresponding instance variables."""
         self.db_env_home = db_env_home
@@ -64,6 +66,9 @@ class MedlineCache:
         self.article_list = article_list
         self.processed_path = processed_path
         self.narticles_path = narticles_path
+        self.stopwords = []
+        if stopwords_path is not None:
+            self.stopwords = stopwords_path.lines(retain=False)
         self.use_transactions = use_transactions
         self.recover = False
 
@@ -87,23 +92,6 @@ class MedlineCache:
         return dbenv
 
 
-    def _article_features(self, article):
-        """Given an article object, return its feature vector,
-        using L{featmap} to create new features as necessary"""
-        # Get MeSH headings, qualifiers and ISSN from article
-        headings = list()
-        quals = list()
-        for term in article.meshterms:
-            headings.append(term[0])
-            if(len(term)>1):
-                for q in term[1:]:
-                    if q not in quals:
-                        quals.append(q)
-        issns = [article.issn] if article.issn is not None else []
-        # Get the feature vector while possibly them to the feature mapping
-        return self.featmap.add_article(mesh=headings, qual=quals, issn=issns)
-
-
     def add_articles(self, articles, dbenv):
         """Store Articles and feature lists in the databases
         
@@ -120,30 +108,32 @@ class MedlineCache:
         txn = dbenv.txn_begin() if self.use_transactions else None
         try:
             artdb = Shelf.open(self.article_db, dbenv=dbenv, txn=txn)
-            meshfeatdb = FeatureDatabase(self.feature_db, dbenv=dbenv, txn=txn)
+            featdb = FeatureDatabase(self.feature_db, dbenv=dbenv, txn=txn)
             featstream = FeatureStream(open(self.feature_stream,"ab"))
             if not self.narticles_path.isfile():
-                narticles = len(meshfeatdb)
+                narticles = len(featdb)
             else:
                 narticles = int(self.narticles_path.text())
             pmidlist = [] # List of lines to add to articles file
             for art in articles:
                 # Refuse to add duplicates
-                if art.pmid in meshfeatdb: 
+                if art.pmid in featdb: 
                     continue
                 # Store record in article database
                 artdb[str(art.pmid)] = art
                 # Add PubMed ID to the list of Medline
                 pmidlist.append("%d %d" % (
                     art.pmid, Date2Integer(art.date_completed)))
-                # Calculate the feature vector
-                featids = self._article_features(art)
+                # Calculate the feature vector (MeSH features)
+                featids = self.featmap.add_article(**art.mesh_features())
+                # Calculate the feature vector (ALL features)
+                #featids = self.featmap.add_article(*art.all_features(self.stopwords))
                 # Associate PubMed ID with the feature vector
-                meshfeatdb.setitem(art.pmid, featids, txn)
+                featdb.setitem(art.pmid, featids, txn)
                 # Also add (PMID, date, features) to a fast-iteration stream
                 featstream.write(art.pmid, art.date_completed, featids)
             artdb.close()
-            meshfeatdb.close()
+            featdb.close()
             featstream.close()
             # Update the list of PubMed IDs in Medline
             self.article_list.write_lines(pmidlist, append=True)

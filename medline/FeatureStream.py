@@ -24,10 +24,14 @@ class FeatureStream:
     of PubMed ID, record completion date and a vector of Feature IDs for
     features present in the record.  This stream is 
     
-    @ivar stream: File-like object (read/write/close, binary strings)."""
+    @ivar stream: File-like object (read/write/close, binary strings).
+    
+    @ivar ftype: Numpy integer type for representing features.
+    """
 
-    def __init__(self, stream):
+    def __init__(self, stream, ftype=nx.uint16):
         self.stream = stream
+        self.ftype = ftype
 
 
     def close(self):
@@ -43,9 +47,10 @@ class FeatureStream:
         @param date: Either (year,month,day), or YYYMMDD integer date for the
         record.
         
-        @param features: Numpy array of uint16 feature IDs."""
-        if features.dtype != nx.uint16:
-            raise ValueError("Array dtype must be uint16, not %s" % str(features.dtype))
+        @param features: Numpy array of feature IDs."""
+        if features.dtype != self.ftype:
+            raise ValueError("Array dtype must be %s not %s" % (
+                str(self.ftype),str(features.dtype)))
         if isinstance(date, tuple):
             date = Date2Integer(date)
         self.stream.write(struct.pack("IIH", int(pmid), date, len(features)))
@@ -54,7 +59,7 @@ class FeatureStream:
 
     def __iter__(self):
         """Iterate over tuples of (PubMed ID, YYYYMMDD, features). The first
-        two are integers, and the last is a numpy arrays of uint16.
+        two are integers, and the last is a numpy integer array.
         
         @note: Rather use the C programs for ScoreCalculator and FeatureCounter
         in the L{mscanner.fastscores} package."""
@@ -62,7 +67,7 @@ class FeatureStream:
         head = self.stream.read(header_len)
         while len(head) == header_len:
             pmid, date, alen = struct.unpack("IIH", head)
-            yield (pmid, date, nx.fromfile(self.stream, nx.uint16, alen))
+            yield (pmid, date, nx.fromfile(self.stream, self.ftype, alen))
             head = self.stream.read(header_len)
 
 

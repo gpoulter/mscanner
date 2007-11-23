@@ -112,4 +112,42 @@ class Article:
                     yield r
                 root.clear()
 
+
+    def mesh_features(self):
+        """Get MeSH and Journal features of this article, returning
+        a mapping from feature type ('mesh', 'qual', 'issn') to
+        list of features with that type"""
+        # Get MeSH headings, qualifiers and ISSN from article
+        headings, quals = [], []
+        for term in self.meshterms:
+            headings.append(term[0])
+            if(len(term)>1):
+                for q in term[1:]:
+                    if q not in quals:
+                        quals.append(q)
+        issns = [self.issn] if self.issn is not None else []
+        # Get the feature vector while possibly them to the feature mapping
+        return dict(mesh=headings, qual=quals, issn=issns)
+
+
+    def word_features(self, stopwords):
+        """Return a list of word features present in the article"""
+        import re
+        text = self.title.lower() + " "
+        if self.abstract is not None:
+            text += self.abstract.lower()
+        # Get rid of non-alphabetics, and multiple spaces
+        losechars = re.compile(r'[^a-z]+')
+        text = losechars.sub(' ', text).strip().replace(' ',r'\s+')
+        # Keep only longish words not in stopwords
+        return [x for x in text.split() if len(x) >= 3 and x not in stopwords]
+
+
+    def all_features(self, stopwords):
+        """Like L{mesh_features}, but includes a 'word' feature type
+        with the word features as well"""
+        features = self.mesh_features()
+        features["word"] = self.word_features(stopwords)
+        return features
+
     

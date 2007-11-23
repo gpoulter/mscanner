@@ -61,6 +61,8 @@ rc.processed = lambda: rc.cache / "processed.txt"
 rc.medline = lambda: rc.working / "medline"
 ## Path for log file
 rc.logfile = lambda: rc.cache / "lastlog.txt"
+## Path to list of stop words
+rc.stopwords = lambda: rc.cache / "stop_words.txt"
 ## Path to corpora directory
 rc.corpora = lambda: rc.working / "corpora"
 ## Path to outputs directory

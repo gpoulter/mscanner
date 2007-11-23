@@ -177,7 +177,7 @@ class QueryPage:
             queue.write_descriptor(rc.queue_path / inputs.dataset, 
                                    parse_pmids(inputs.positives), inputs)
             # Show status page for the task
-            time.sleep(0.05) # So we show up in the queue
+            time.sleep(0.1) # So we show up in the queue
             web.seeother("status?dataset=%s;delcode=%s" % 
                          (inputs.dataset, web.urlquote(delcode_plain)))
         else:

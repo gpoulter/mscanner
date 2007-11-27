@@ -141,7 +141,7 @@ class Article:
         text = losechars.sub(' ', text).strip()
         text = re.sub(r'\s+', ' ', text)
         # Keep only longish words not in stopwords
-        return [x for x in text.split() if len(x) >= 3 and x not in stopwords]
+        return set(x for x in text.split() if len(x) >= 3 and x not in stopwords)
 
 
     def all_features(self, stopwords):

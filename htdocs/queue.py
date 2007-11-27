@@ -242,10 +242,10 @@ def mainloop():
     # Pre-load the article list vector
     updater.adata.article_list 
     try:
-        # time.time() of last output-cleaning
-        last_clean = 0 
-        # time.time() of last database update
-        last_update = 0 
+        # Time of last output clean
+        last_clean = time.time()
+        # Time of last database update
+        last_update = time.time()
         while True:
             
             # Delete oldest outputs daily

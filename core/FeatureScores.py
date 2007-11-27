@@ -271,7 +271,9 @@ class FeatureScores(object):
             pseudocount = s.pseudocount
         for t, score in sorted(
             enumerate(s.scores), key=lambda x:x[1], reverse=True):
-            if s.mask is not None and s.mask[t]:
+            if (s.mask is not None) and s.mask[t]:
+                continue
+            if s.pos_counts[t] == 0 and s.neg_counts[t] <= 5:
                 continue
             stream.write(
                 u'%.3f,%d,%d,%.2e,%.2e,%.2e,%d,%.2f,%s,"%s"\n' % 

@@ -87,6 +87,9 @@ QueryForm = forms.Form(
     forms.Checkbox(
         "hidden", forms.checkbox_validator, label="Hide output"),
     
+    forms.Checkbox(
+        "allfeatures", forms.checkbox_validator, label="Use all features"),
+    
     forms.Textbox(
         "limit", 
         forms.Validator(lambda x: 100 <= int(x) <= 10000,
@@ -129,6 +132,7 @@ QueryForm = forms.Form(
 
 # Initial values to fill into the form (see queue.py for meanings)
 form_defaults = dict(
+    allfeatures = False,
     captcha = "orange",
     delcode = "",
     dataset = "",
@@ -166,6 +170,7 @@ class QueryPage:
             inputs = qform.d
             inputs.submitted = time.time()
             inputs.hidden = forms.ischecked(inputs.hidden)
+            inputs.allfeatures = forms.ischecked(inputs.allfeatures)
             # MD5 hash the deletion code
             delcode_plain = inputs.delcode
             inputs.delcode = md5.new(delcode_plain).hexdigest()

@@ -75,7 +75,7 @@ class PharmdemoQuery(QueryManager):
         gd_articles = []
         gd_pmids = set()
         for score, pmid in chain(self.results, self.inputs):
-            a = self.env.artdb[str(pmid)]
+            a = self.adata.artdb[str(pmid)]
             a.genedrug = gdfinder[a]
             if len(a.genedrug) > 0:
                 gd_articles.append(a)

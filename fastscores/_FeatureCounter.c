@@ -18,7 +18,7 @@ Usage:
     unsigned int pmid; // PubMed ID of citation
     unsigned int date; // Record completion date
     unsigned short nfeatures; // Number of features
-    unsigned short features[nfeatures]; // Feature vector
+    ftype features[nfeatures]; // Features. ftype is unsigned short or int.
   };
 
   The output is a list of [numfeats] integers representing the
@@ -42,6 +42,11 @@ this program. If not, see <http://www.gnu.org/licenses/>. */
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef LONGFEATS
+typedef unsigned int ftype;
+#else
+typedef unsigned short ftype;
+#endif
 
 // Search sorted array A of length N for needle.
 // Return 1 if we find the needle, 0 if we do not
@@ -82,18 +87,18 @@ int main (int argc, char **argv)
     int pmid = 0; // PubMed ID of the current citation
     int ndocs = 0; // Number of documents counted
     unsigned short featvec_size = 0; // Size of current feature vector
-    unsigned short featvec[1000]; // Maximum of 1000 features per citation
+    ftype featvec[1000]; // Max 1000 features per citation (16 or 32 bit)
 
-    // Allocate space for excluded PMIDs 
+    // Allocate space for list of excluded PMIDs 
     int *excluded = (int*) malloc (numexcluded * sizeof(int));
     
-    // Allocate space for feature counts 
+    // Allocate space for vector of feature counts 
     int *featcounts = (int*) malloc (numfeats * sizeof(int));
 
-    // Read excluded PMIDs from input
+    // Read the excluded PMIDs from input
     fread(excluded, sizeof(int), numexcluded, stdin);
 
-    // Initialise feature counts to zero
+    // Initialise the feature counts to zero
     for(fi = 0; fi < numfeats; fi++) featcounts[fi] = 0;
 
     // Calculate citation scores
@@ -103,7 +108,7 @@ int main (int argc, char **argv)
         fread(&pmid, sizeof(unsigned int), 1, citefile);
         fread(&date, sizeof(unsigned int), 1, citefile);
         fread(&featvec_size, sizeof(unsigned short), 1, citefile);
-        fread(featvec, sizeof(unsigned short), featvec_size, citefile);
+        fread(featvec, sizeof(ftype), featvec_size, citefile);
         // Don't bother if the date is outside the range
         if ((date < mindate) || (date > maxdate)) {
             continue;

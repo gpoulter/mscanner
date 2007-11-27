@@ -13,7 +13,7 @@ import warnings
 warnings.simplefilter("ignore", UserWarning)
 
 from mscanner.configuration import rc
-from mscanner.medline.Databases import Databases
+from mscanner.medline.Databases import FeatureData, ArticleData
 from mscanner.core import iofuncs
 from mscanner.core.FeatureScores import FeatureScores, FeatureCounts
 from mscanner.core.metrics import (PerformanceVectors, PerformanceRange, 
@@ -75,17 +75,20 @@ class ValidationBase(object):
     """
 
     
-    def __init__(self, outdir, dataset, env=None):
-        """Constructor"""
-        self.dataset = dataset
-        self.outdir = outdir
+    def __init__(self, outdir, dataset, adata=None, fdata=None):
         if not outdir.exists():
             outdir.makedirs()
             outdir.chmod(0777)
-        self.env = env if env else Databases()
+        # Set attributes from constructor parameters
+        self.outdir = outdir
+        self.dataset = dataset
+        self.adata = adata if adata else ArticleData.Defaults()
+        self.fdata = fdata if fdata else FeatureData.Defaults_MeSH()
+        # Set additional attributes
         self.timestamp = time.time() 
         self.nfolds = None
-        self.pscores, self.nscores = None, None
+        self.pscores = None
+        self.nscores = None
         self.featinfo = None
         self.metric_vectors = None
         self.metric_range = None
@@ -118,7 +121,7 @@ class ValidationBase(object):
         @return: Two vectors, containing scores for the positive and negative
         articles respectively (unsorted for reconstruction of folds)."""
         self.validator = CrossValidator(
-            featdb = dict((k,self.env.featdb[k]) for k in 
+            featdb = dict((k,self.fdata.featuredb[k]) for k in 
                           chain(positives,negatives)),
             featinfo = self.featinfo,
             positives = positives,
@@ -152,9 +155,9 @@ class ValidationBase(object):
     def _init_featinfo(self):
         """Initialise L{featinfo} for use in validation"""
         self.featinfo = FeatureScores(
-            featmap = self.env.featmap, 
+            featmap = self.fdata.featmap, 
             pseudocount = rc.pseudocount, 
-            mask = self.env.featmap.get_type_mask(rc.exclude_types),
+            mask = self.fdata.featmap.type_mask(rc.exclude_types),
             make_scores = rc.make_scores,
             get_postmask = rc.get_postmask)
 
@@ -164,9 +167,9 @@ class ValidationBase(object):
         vectors of positive and negative citations."""
         self.featinfo.update(
             pos_counts = FeatureCounts(
-                len(self.env.featmap), self.env.featdb, pos),
+                len(self.fdata.featmap), self.fdata.featuredb, pos),
             neg_counts = FeatureCounts(
-                len(self.env.featmap), self.env.featdb, neg),
+                len(self.fdata.featmap), self.fdata.featuredb, neg),
             pdocs = len(pos),
             ndocs = len(neg))
 
@@ -242,12 +245,12 @@ def SplitValidation(ValidationBase):
         s.ptrain, s.ntrain = None, None
         s.ptest, s.ntest = None, None
         s.notfound_pmids = []
-        s.ptrain, broke, excl = iofuncs.read_pmids_careful(fptrain, s.env.featdb)
-        s.ptest, broke, excl = iofuncs.read_pmids_careful(fptest, s.env.featdb)
+        s.ptrain, broke, excl = iofuncs.read_pmids_careful(fptrain, s.fdata.featuredb)
+        s.ptest, broke, excl = iofuncs.read_pmids_careful(fptest, s.fdata.featuredb)
         s.ntrain, broke, excl = iofuncs.read_pmids_careful(
-            fntrain, s.env.featdb, set(s.ptrain))
+            fntrain, s.fdata.featuredb, set(s.ptrain))
         s.ntest, broke, excl = iofuncs.read_pmids_careful(
-            fntest, s.env.featdb, set(s.ptest))
+            fntest, s.fdata.featuredb, set(s.ptest))
         if len(s.ptrain)>0 and len(s.ptest)>0 \
            and len(s.ntrain)>0 and len(s.ntest)>0:
             s._init_featinfo()
@@ -271,8 +274,8 @@ def SplitValidation(ValidationBase):
         # Calculate cross-validated scores on training data
         train_pscores, train_nscores = s._crossvalid_scores(s.ptrain, s.ntrain)
         # Calculate split-sample scores on the testing data
-        s.pscores = s.featinfo.scores_of(s.env.featdb, s.ptest)
-        s.nscores = s.featinfo.scores_of(s.env.featdb, s.ntest)
+        s.pscores = s.featinfo.scores_of(s.fdata.featuredb, s.ptest)
+        s.nscores = s.featinfo.scores_of(s.fdata.featuredb, s.ntest)
         # Cross validation on training data for a threshold maximising utility
         trainperf = PerformanceVectors(
             train_pscores, train_nscores, rc.alpha, rc.utility_r)
@@ -350,7 +353,7 @@ class CrossValidation(ValidationBase):
             # Calculate the performance
             self._get_performance()
             if medline_size is None:
-                medline_size = len(self.env.article_list) - len(self.positives)
+                medline_size = len(self.fdata.article_list) - len(self.positives)
             v = self.metric_vectors
             self.pred_low = PredictedMetrics(
                 v.TPR, v.FPR, v.uscores, relevant_low, medline_size)
@@ -374,23 +377,23 @@ class CrossValidation(ValidationBase):
         if isinstance(pos, basestring):
             logging.info("Loading positive PubMed IDs from %s", pos.basename())
             self.positives, self.notfound_pmids, exclude = \
-                iofuncs.read_pmids_careful(pos, self.env.featdb)
+                iofuncs.read_pmids_careful(pos, self.fdata.featuredb)
         else:
             self.positives = nx.array(pos, nx.int32)
         if isinstance(neg, int):
             logging.info("Selecting %d random negative PubMed IDs" % neg)
             # Clamp number of negatives to the number available
-            maxnegs = len(self.env.article_list) - len(self.positives)
+            maxnegs = self.fdata.featmap.numdocs - len(self.positives)
             if neg > maxnegs:
                 neg = maxnegs
             # Take a sample of random citations
             self.negatives = self._random_subset(
-                neg, self.env.article_list, set(self.positives))
+                neg, self.adata.article_list, set(self.positives))
         elif isinstance(neg, basestring):
             logging.info("Loading negative PubMed IDs from %s", neg.basename())
             # Read list of negative PMIDs from disk
             self.negatives, notfound, exclude = iofuncs.read_pmids_careful(
-                    neg, self.env.featdb, set(self.positives))
+                    neg, self.fdata.featuredb, set(self.positives))
             self.notfound_pmids = list(self.notfound_pmids) + list(notfound)
             iofuncs.write_pmids(self.outdir/rc.report_negatives_exclude, exclude)
         else:

@@ -16,6 +16,8 @@ class FeatureCounter:
     @ivar docstream: Path to file containing feature vectors for documents to
     score, in L{mscanner.medline.FeatureStream.FeatureStream} format.
     
+    @ivar ftype: Type of the docstream features (uint16 or uint32).
+
     @ivar numdocs: Number of documents in the stream of feature vectors.
     
     @ivar numfeats: Number of distinct features in Medline (length of the 
@@ -27,14 +29,20 @@ class FeatureCounter:
     @ivar maxdate: YYYYMMDD integer: documents must have this date or earlier
     (default 33330303)
 
-    @ivar exclude: PMIDs that are not allowed to appear in the results    
+    @ivar exclude: PMIDs that are not allowed to appear in the results.
     """
-    
-    counter_path = path(__file__).dirname() / "_FeatureCounter"
-    """Executable file for counting features in a file"""
-    
+
+
+    @property
+    def counter(self):
+        """Return path to 16 or 32-bit feature counter executable"""
+        counter_base = path(__file__).dirname() / "_FeatureCounter"
+        return counter_base + {nx.uint16:"16",nx.uint32:"32"}[self.ftype]
+
+
     def __init__(self,
                  docstream,
+                 ftype,
                  numdocs,
                  numfeats,
                  mindate=None,
@@ -52,10 +60,10 @@ class FeatureCounter:
         
         @return: Number of documents counted, and vector of feature counts."""
         featcounts = nx.zeros(s.numfeats, nx.int32)
-        docs = FeatureStream(open(s.docstream, "rb"))
+        docs = FeatureStream(s.docstream, "rb", s.ftype)
         ndocs = 0
         try:
-            for docid, date, features in docs:
+            for docid, date, features in docs.iteritems():
                 if (date >= s.mindate and date <= s.maxdate 
                     and docid not in s.exclude):
                     featcounts[features] += 1
@@ -74,7 +82,7 @@ class FeatureCounter:
         @return: Number of documents counted, and vector of feature counts."""
         import subprocess as sp
         p = sp.Popen([
-            s.counter_path, 
+            s.counter,
             s.docstream,
             str(s.numdocs),
             str(s.numfeats),

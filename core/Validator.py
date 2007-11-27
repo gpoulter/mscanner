@@ -39,7 +39,7 @@ class CrossValidator:
     @ivar nfolds: Number of validation folds
 
     
-    @group From validate: pscores,nscores
+    @group Set by validate: pscores,nscores
     
     @ivar pscores: Scores of positive articles after validation
     

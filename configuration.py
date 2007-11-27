@@ -29,40 +29,23 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 rc = RCStorage()
 """Global configuration options"""
 
-#### PATH CONFIGURATION
+#### BASIC MSCANNER PATHS
 
 ## Path to MScanner source directory
 rc.sources = path(__file__).dirname()
-## Path to directory for report templates
-rc.templates = lambda: rc.sources / "core" / "templates"
-## Path to working information directory
-rc.working = lambda: rc.sources.parent / "data"
-## Path to cache directory
-rc.cache = lambda: rc.working / "cache"
 ## Path to web directory
 rc.htdocs = lambda: rc.sources / "htdocs"
-## DB environment directory
-rc.db_env_home = lambda: rc.cache / "db_home"
-## DB of article objects
-rc.articledb = lambda: rc.cache / "articles.db"
-## Path for list of of article IDs
-rc.articlelist = lambda: rc.cache / "articles.txt"
-## Path for number of articles
-rc.narticles = lambda: rc.cache / "narticles.txt"
-## Path for DB of term features for each article
-rc.featuredb = lambda: rc.cache / "features.db"
-## Path for binary stream of PMIDs and feature arrays
-rc.featurestream = lambda: rc.cache / "features.stream"
-## Path for feature<->ID mapping
-rc.featuremap = lambda: rc.cache / "featuremap.txt"
-## Path for list of files already processed
-rc.processed = lambda: rc.cache / "processed.txt"
+## Path to directory for report templates
+rc.templates = lambda: rc.sources / "core" / "templates"
+## Path to list of stop words
+rc.stopwords = lambda: rc.sources / "stopwords.txt"
+## Path to working information directory
+rc.working = lambda: rc.sources.parent / "data"
+
+### WORKING DIRECTORY PATHS
+
 ## Path for directory with compressed Medline
 rc.medline = lambda: rc.working / "medline"
-## Path for log file
-rc.logfile = lambda: rc.cache / "lastlog.txt"
-## Path to list of stop words
-rc.stopwords = lambda: rc.cache / "stop_words.txt"
 ## Path to corpora directory
 rc.corpora = lambda: rc.working / "corpora"
 ## Path to outputs directory
@@ -70,7 +53,39 @@ rc.web_report_dir = lambda: rc.htdocs / "static" / "output"
 ## Path to the descriptor queue
 rc.queue_path = lambda: rc.working / "queue"
 
-### ALL OUTPUTS
+## CACHE DIRECTORY FILES
+
+## Path to cache directory
+rc.cache = lambda: rc.working / "cache"
+## Path to database environment directory
+rc.db_env_home = lambda: rc.cache / "db_home"
+## Path to Article object database
+rc.articledb = lambda: rc.cache / "articles.db"
+## Path to list of of article IDs
+rc.articlelist = lambda: rc.cache / "articles.txt"
+## Path to track Medline files that have already been added
+rc.tracker = lambda: rc.cache / "processed.txt"
+## Path for log file
+rc.logfile = lambda: rc.cache / "lastlog.txt"
+
+## FEATURE DATABASE FILES (16 and 32-bit)
+
+## Path for DB of MeSH-features for each article
+rc.featuredb_mesh = lambda: rc.cache / "features_mesh.db"
+## Path for DB of all-features for each article
+rc.featuredb_all = lambda: rc.cache / "features_all.db"
+## Path for binary stream of PMIDs and MeSH-feature arrays
+rc.featurestream_mesh = lambda: rc.cache / "features_mesh.stream"
+## Path for binary stream of PMIDs and All-feature arrays
+rc.featurestream_all =  lambda: rc.cache / "features_all.stream"
+## Path for feature<->ID mapping for MeSH features
+rc.featuremap_mesh = lambda: rc.cache / "featuremap_mesh.txt"
+## Path for feature<->ID mapping for All features
+rc.featuremap_all =  lambda: rc.cache / "featuremap_all.txt"
+
+
+### ALL REPORTS
+
 ## Name of index file
 rc.report_index = path("index.html")
 ## Name of descriptor file
@@ -80,7 +95,8 @@ rc.report_term_scores = path("terms.csv")
 ## Name of file to echo the log to
 rc.report_logfile = path("logging.txt")
 
-### QUERY
+### QUERY OUTPUTS
+
 ## Name of list of scores of input PMIDs
 rc.report_input_scores = path("inputs.txt")
 ## Name of list of broken input PMIDs
@@ -96,7 +112,8 @@ rc.report_result_all = path("all_results.html")
 ## Name of zip file with ALL output citations records
 rc.report_result_all_zip = rc.report_result_all + ".zip"
 
-### VALIDATION
+### VALIDATION OUTPUTS
+
 ## Name of file with positive PMIDs and scores
 rc.report_positives = path("positives.txt")
 ## Name of file with broken positive PMIDs
@@ -120,10 +137,6 @@ rc.report_prediction_img = path("prediction.png")
 
 #### Non-Path parameters
 
-## Whether to use transactions while updating
-rc.use_transactions = False
-## Number of seconds to pause before next file while updating
-rc.save_delay = 3
 ## Server for sending e-mails
 rc.smtpserver = "smtp.uct.ac.za" # "smtp.stanford.edu"
 ## Email to send website queries to

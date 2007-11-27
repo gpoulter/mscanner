@@ -25,7 +25,8 @@ class FeatureDatabase:
     """Database for which PubMed ID is the key and array of Feature IDs are values
     """
     
-    def __init__(self, filename=None, flags='c', mode=0660, dbenv=None, txn=None, dbname=None, ftype=nx.uint16):
+    def __init__(self, filename=None, flags='c', mode=0660, 
+                 dbenv=None, txn=None, dbname=None, ftype=nx.uint16):
         """Initialise database
 
         @param filename: Path to database file
@@ -60,6 +61,10 @@ class FeatureDatabase:
     __del__ = close
 
 
+    def sync(self):
+        self.db.sync()
+
+
     def getitem(self, key, txn=None):
         """Return an ndarray object of values for a given key"""
         buf = self.db.get(str(key), txn=txn)
@@ -84,8 +89,6 @@ class FeatureDatabase:
         """Delete a given key from the database"""
         self.db.delete(str(key), txn=txn)
 
-
-    # Bunch of dictionary-like methods
 
     def __getitem__(self, key):
         return self.getitem(key)
@@ -128,6 +131,3 @@ class FeatureDatabase:
             yield rec[0], nx.fromstring(rec[1],self.ftype)
             rec = cur.next()
         cur.close()
-
-
-

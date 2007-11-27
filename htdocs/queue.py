@@ -38,11 +38,10 @@ import sys
 import time
 
 from mscanner.configuration import rc
-from mscanner.medline.Databases import Databases
 from mscanner.core.QueryManager import QueryManager
 from mscanner.core.ValidationManager import CrossValidation
 from mscanner.core import iofuncs
-from mscanner.scripts import update
+from mscanner.medline.Updater import Updater
 
 
                                      
@@ -75,17 +74,18 @@ def parsebool(s):
 
 
 descriptor_keys = dict(
-    captcha=str,      # Captcha value in the form
-    dataset=str,      # Name of the input corpus
-    delcode=str,      # MD5 of deletion code
-    hidden=parsebool, # Whether to hide the output
-    limit=int,        # Upper limit on number of results
-    mindate=int,      # Minimum date to consider
-    minscore=float,   # Minimum classifier score to predict relevance
-    numnegs=int,      # Number of irrelevant articles for CV
-    operation=str,    # "retrieval" or "validation"
-    prevalence=float, # Estimated fraction of relevant articles in Medline
-    submitted=float,  # Timestamp when the task was submitted
+    allfeatures=parsebool, # Whether to use abstract feautures (not just MeSH)
+    captcha=str,           # Captcha value in the form
+    dataset=str,           # Name of the input corpus
+    delcode=str,           # MD5 of deletion code
+    hidden=parsebool,      # Whether to hide the output
+    limit=int,             # Upper limit on number of results
+    mindate=int,           # Minimum date to consider
+    minscore=float,        # Minimum classifier score to predict relevance
+    numnegs=int,           # Number of irrelevant articles for CV
+    operation=str,         # "retrieval" or "validation"
+    prevalence=float,      # Fraction of relevant articles in Medline
+    submitted=float,       # Timestamp when the task was submitted
     )
 
 
@@ -237,15 +237,19 @@ def logit(probability):
 
 def mainloop():
     """Look for descriptor files every second"""
-    env = None
+    # The updater contains references to the databases
+    updater = Updater.Defaults()
+    # Pre-load the article list vector
+    updater.adata.article_list 
     try:
         # time.time() of last output-cleaning
         last_clean = 0 
         # time.time() of last database update
         last_update = 0 
         while True:
-            # Delete oldest outputs twice daily
-            if time.time() - last_clean > 12*3600:  
+            
+            # Delete oldest outputs daily
+            if time.time() - last_clean > 24*3600:  
                 logging.info("Looking for old datasets")
                 queue = QueueStatus()
                 queue.donelist.reverse() # Newest first
@@ -258,11 +262,7 @@ def mainloop():
             
             # Update the databases twice daily
             if time.time() - last_update > 12*3600:
-                if env is not None: env.close()
-                env = None
-                update.update_mscanner()
-                env = Databases()
-                env.article_list # long first load time
+                updater.add_directory(rc.medline, save_delay=0)
                 last_update = time.time()
             
             # Perform any queued tasks
@@ -275,12 +275,15 @@ def mainloop():
                 # Update task file mod time for the status display
                 task._filename.utime(None) 
                 try:
+                    fdata = (updater.fdata_all if task.allfeatures \
+                             else updater.fdata_mesh)
                     if task.operation == "retrieval":
                         QM = QueryManager(
                             outdir=outdir, 
                             dataset=task.dataset,
                             limit=task.limit,
-                            env=env,
+                            adata=updater.adata,
+                            fdata=fdata,
                             threshold=task.minscore,
                             prior=logit(task.prevalence),
                             mindate=task.mindate,
@@ -294,7 +297,8 @@ def mainloop():
                         VM = CrossValidation(
                             outdir=outdir, 
                             dataset=task.dataset,
-                            env=env)
+                            adata=updater.adata,
+                            fdata=fdata)                        
                         VM.validation(task._filename, task.numnegs)
                         VM.report_validation()
                         VM.__del__()
@@ -305,7 +309,9 @@ def mainloop():
                 # Nothing to do so sleep before the next iteration
                 time.sleep(1)
     finally:
-        if env is not None: env.close()
+        updater.adata.close()
+        updater.fdata_mesh.close()
+        updater.fdata_all.close()
 
 
 def populate_test_queue():
@@ -313,6 +319,7 @@ def populate_test_queue():
     from mscanner.core.Storage import Storage
     pmids = list(iofuncs.read_pmids(rc.corpora / "Test" / "gdsmall.txt"))
     task = Storage(
+        allfeatures = True,
         captcha = "orange",
         dataset = "gdqtest_valid",
         hidden = False,

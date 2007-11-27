@@ -20,7 +20,7 @@ import sys
 from mscanner.configuration import rc
 from mscanner.core import iofuncs
 from mscanner.core.QueryManager import QueryManager
-from mscanner.medline.Databases import Databases
+from mscanner.medline.Databases import FeatureData, ArticleData
 from mscanner.medline.FeatureStream import Date2Integer
 
 
@@ -100,7 +100,9 @@ def compare_iedb_query():
     N_testnegs = len(testneg_file.lines())
     testpos = set(iofuncs.read_pmids(testpos_file))
     limit = len(testpos) + N_testnegs
-    QM = QueryManager(outdir, dataset, limit,
+    #fdata = FeatureData.Defaults_MeSH()
+    fdata = FeatureData.Defaults_All()
+    QM = QueryManager(outdir, dataset, limit, fdata=fdata,
                       mindate=mindate, maxdate=maxdate,
                       t_mindate=t_mindate, t_maxdate=t_maxdate)
     QM.query(trainpos_file)
@@ -111,11 +113,6 @@ def compare_iedb_query():
     QM.write_report(maxreport=1000)
 
 
-
 if __name__ == "__main__":
     iofuncs.start_logger()
-    if len(sys.argv) != 2:
-        print "Please provide a Python expression to execute"
-    else:
-        eval(sys.argv[1])
-    logging.shutdown()
+    eval(sys.argv[1])

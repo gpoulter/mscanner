@@ -58,6 +58,13 @@ void double_array(int len, int *a) {
     for(i = 0; i < len; i++) a[i] *= 2; 
 }
 
+// We are using 16-bit or 32-bit features
+#ifdef LONGFEATS
+typedef unsigned int ftype;
+#else
+typedef unsigned short ftype;
+#endif
+
 
 // Holds PubMed ID and score of a citation
 typedef struct {
@@ -114,7 +121,7 @@ void cscore(
     int numresults = 0; // Number of available results to return
     float tmp_score = 0.0; // Accumulator for calculating record score
     unsigned short featvec_size = 0; // Size of current feature vector
-    unsigned short featvec[1000]; // Maximum of 1000 features per citation
+    ftype featvec[1000]; // Max 1000 features per citation (16 or 32-bit)
 
     // Scores of all citations 
     score_t *scores = (score_t*) malloc (numcites * sizeof(score_t));
@@ -132,7 +139,7 @@ void cscore(
         fread(&scores[pi].pmid, sizeof(unsigned int), 1, citefile);
         fread(&date, sizeof(unsigned int), 1, citefile);
         fread(&featvec_size, sizeof(unsigned short), 1, citefile);
-        fread(featvec, sizeof(unsigned short), featvec_size, citefile);
+        fread(featvec, sizeof(ftype), featvec_size, citefile);
         // Don't bother if the date is outside the range
         if ((date < mindate) || (date > maxdate)) {
             // Don't let it sneak in when sorting

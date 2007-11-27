@@ -10,9 +10,9 @@ from path import path
 import sys
 
 from mscanner.configuration import rc
-from mscanner.core.ValidationManager import SplitValidation, CrossValidation
 from mscanner.core import iofuncs
-from mscanner.medline.Databases import Databases
+from mscanner.core.ValidationManager import SplitValidation, CrossValidation
+from mscanner.medline.Databases import FeatureData, ArticleData
 
                                      
 __author__ = "Graham Poulter"                                        
@@ -41,7 +41,9 @@ dataset_map = {
 
 def validate(*datasets):
     """Perform cross-validation analysis on the main data sets"""
-    env = Databases()
+    adata = ArticleData.Defaults()
+    #fdata = FeatureData.Defaults_MeSH()
+    fdata = FeatureData.Defaults_All()
     for dataset in datasets:
         if dataset not in dataset_map:
             raise ValueError("Invalid Data Set %s" % dataset)
@@ -50,18 +52,18 @@ def validate(*datasets):
             pos = rc.corpora / pos
         if isinstance(neg, str):
             neg = rc.corpora / neg
-        op = CrossValidation(rc.working / "valid" / dataset, dataset, env)
+        op = CrossValidation(rc.working / "valid" / dataset, dataset, adata, fdata)
         op.validation(pos, neg)
         op.report_validation()
         #op.report_predicted(1000, 10000, 16000000)
-    env.close()
 
 
     
 def compare_trec_genomics():
     """Performs split-sample validation on the 2005 TREC Genomics track
     categorisation subtasks (Allele, Expression, GO, Tumor)."""
-    env = Databases()
+    adata = ArticleData.Defaults()
+    fdata = FeatureData.Defaults_MeSH()
     ntest = rc.corpora / "TREC" / "NEG_test.txt"
     ntrain = rc.corpora / "TREC" / "NEG_train.txt"
     for ds, Ur in [("A",17.0), ("E",64.0), ("G",11.0), ("T",231.0)]:
@@ -69,45 +71,40 @@ def compare_trec_genomics():
         dataset = "TREC_%s" % ds
         ptrain = rc.corpora / "TREC" / (ds + "train.txt")
         ptest = rc.corpora / "TREC" / (ds + "test.txt")
-        op = SplitValidation(rc.working / "valid" / dataset, dataset, env)
+        op = SplitValidation(rc.working / "valid" / dataset, dataset, adata, fdata)
         op.validation(ptrain, ntrain, ptest, ntest)
-    env.close()
 
 
 
 def compare_iedb_valid():
     """Performs cross validation using the IEDB gold standard data set"""
-    env = Databases()
+    adata = ArticleData.Defaults()
+    fdata = FeatureData.Defaults_MeSH()
     basedir = rc.working / "valid" / "iedb"
-    if not basedir.exists(): basedir.mkdir()
+    if not basedir.exists(): 
+        basedir.mkdir()
     rc.utility_r = None
     #for fbase in "ac", "allergen", "er", "other":
     for dataset in ("iedb",):
         pos = rc.corpora / "IEDB" / ("%s_pos.txt" % fbase)
         neg = rc.corpora / "IEDB" / ("%s_neg.txt" % fbase)
-        op = CrossValidation(basedir / dataset, dataset, env)
+        op = CrossValidation(basedir / dataset, dataset, adata, fdata)
         op.validation(pos, neg)
         op.report_validation()
-    env.close()
     
     
 if __name__ == "__main__":
     iofuncs.start_logger()
-    if len(sys.argv) != 2:
-        print "Please provide a Python expression to execute"
-    else:
-        eval(sys.argv[1])
+    eval(sys.argv[1])
 
 
 '''
 def compare_score_methods():
-    """Compare cross validation performance using different feature
-    score calculation methods on the PharmGKB data set."""
+    """Cross validation performance using the different feature score methods"""
     score_methods = [
         "scores_bayes",
         "scores_noabsence",
         "scores_rubin" ]
-    env = Databases()
     #train_rel = rc.corpora / "pharmgkb-070205.txt"
     #train_irrel = rc.corpora / "medline07-100k.txt"
     train_rel = rc.corpora / "genedrug-small.txt"
@@ -117,36 +114,24 @@ def compare_score_methods():
         op = CrossValidation(rc.working / "cmpscores" / dataset, dataset, env)
         op.validation(train_rel, train_irrel)
         op.report_validation()
-    env.close()
     
 def issn_features():
-    """Perform cross validation on for AIDSBio vs 100k, excluding ISSN features.
-    
-    The results show that adding ISSN features produces better
-    averaged precision in cross-validation."""
+    """Cross validation on for AIDSBio, excluding ISSN features. This shows that
+    ISSN features produces better averaged precision in cross-validation."""
     rc.exclude_types = ["issn"]
     pos, neg = dataset_map["aidsbio"]
     op = CrossValidation(rc.working / "valid" / "aidsbio-noissn", 
                          "AIDSBio without ISSN features")
     op.validation(rc.corpora / pos, rc.corpora / neg)
     op.report_validation()
-    op.env.close()
 
 def control_modality():
-    """Cross validation of Random10K against Medline100K results
-    in multiple modes in the article score distributions.
-    
-    The distribution becomes unimodal about zero if we eliminate features that
-    do not occur in positive citations. There are thousands of such features
-    all of which have a negative feature scores of roughly the same value (-9).
-    Random occurrences of 0,1,2 or 3 of those -9 features in test citations
-    causes the score of that citation to be shifted by -9, -18, -27 from
-    zero."""
+    """Cross validate Control against Medline100K, but without the features
+    unique to Medline100K that cause the multi-modal score distributions."""
     rc.get_postmask = "mask_nonpositives"
     pos, neg = dataset_map["control"]
     op = CrossValidation(rc.working / "valid" / "modality",
                          "Removing Control corpus multi-modality")
     op.validation(rc.corpora / pos, rc.corpora / neg)
     op.report_validation()
-    op.env.close()
 '''

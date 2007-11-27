@@ -19,12 +19,10 @@ import tempfile
 import unittest
 
 from mscanner.medline.Article import Article
-from mscanner.medline.Databases import load_articles
 from mscanner.medline.FeatureDatabase import FeatureDatabase
 from mscanner.medline.FeatureStream import FeatureStream
 from mscanner.medline.FeatureMapping import FeatureMapping
-from mscanner.medline.FileTracker import FileTracker
-from mscanner.medline.MedlineCache import MedlineCache
+from mscanner.medline.Updater import Updater
 from mscanner import tests
 
 
@@ -59,16 +57,16 @@ class FeatureStreamTests(unittest.TestCase):
             self.fn.remove()
         
     def test_FeatureStream(self):
-        with closing(FeatureStream(open(self.fn, "wb"))) as fs:
+        with closing(FeatureStream(self.fn, "ab", nx.uint32)) as fs:
             pmids = (12,34,56)
             dates = (20070101, 19980308, 20001207)
             feats = [nx.array([1,2,3,4], fs.ftype), 
                      nx.array([5,6,7,8], fs.ftype), 
                      nx.array([], fs.ftype)]
             for pmid, date, feat in zip(pmids, dates, feats):
-                fs.write(pmid, date, feat)
-        with closing(FeatureStream(open(self.fn, "rb"))) as fs:
-            rpmids, rdates, rfeats = zip(*[x for x in fs])
+                fs.additem(pmid, date, feat)
+        with closing(FeatureStream(self.fn, "rb", nx.uint32)) as fs:
+            rpmids, rdates, rfeats = zip(*list(fs.iteritems()))
             self.assertEqual(pmids, rpmids)
             self.assertEqual(dates, rdates)
             for a, ra in zip(feats, rfeats):
@@ -88,7 +86,7 @@ class FeatureMappingTests(unittest.TestCase):
 
     def test_FeatureMapping(self):
         fm = FeatureMapping(self.fn)
-        self.assert_(nx.all(fm.add_article(Q=["A","B"], T=["A","C"]) == [0,1,2,3]))
+        self.assert_(nx.all(fm.add_article(dict(Q=["A","B"], T=["A","C"])) == [0,1,2,3]))
         self.assertEqual([fm[i] for i in [0,1,2,3,]], [("A","Q"), ("B","Q"),("A","T"),("C","T")])
         self.assertEqual(fm[1], ("B","Q"))
         self.assertEqual(fm[("C","T")], 3)
@@ -99,7 +97,7 @@ class FeatureMappingTests(unittest.TestCase):
         fm.load()
         self.assertEqual(fm.features, [("A","Q"),("B","Q"),("A","T"),("C","T")])
         self.assertEqual(fm.feature_ids, {"Q":{"A":0,"B":1}, "T":{"A":2,"C":3}})
-        self.assert_(nx.all(fm.get_type_mask("Q") == [1,1,0,0]))
+        self.assert_(nx.all(fm.type_mask("Q") == [1,1,0,0]))
 
 
 
@@ -132,7 +130,7 @@ class XMLParserTests(unittest.TestCase):
 
 
 
-class MedlineCacheTests(unittest.TestCase):
+class UpdaterTests(unittest.TestCase):
 
     def setUp(self):
         self.home = path(tempfile.mkdtemp(prefix="medline-"))
@@ -140,53 +138,28 @@ class MedlineCacheTests(unittest.TestCase):
     def tearDown(self):
         self.home.rmtree(ignore_errors=True)
 
-    def test_MedlineCache(self):
+    def test_Updater(self):
+        from mscanner.configuration import rc
         h = self.home
+        rc.cache = h
         xml = h/"test.xml"
         test_pmids = h/"pmids.txt"
-        artdb = h/"articles.db"
-        featdb = h/"features.db"
-        featstream = h/"features.stream"
-        fmap = FeatureMapping(h/"featuremap.txt")
-        m = MedlineCache(fmap,
-                         h,
-                         artdb,
-                         featdb,
-                         featstream,
-                         h/"articles.txt",
-                         h/"processed.txt",
-                         h/"narticles.txt",
-                         use_transactions=True,)
+        m = Updater.Defaults()
         xml.write_text(xmltext)
         m.add_directory(h, save_delay=1)
-        #print "".join((h/"articles.txt").lines())
+        print "".join((h/"articles.txt").lines())
         test_pmids.write_lines(["1", "2"])
-        a = load_articles(artdb, test_pmids)
+        a = m.adata.load_articles(test_pmids)
         logging.debug("Articles: %s", repr(a))
+        logging.debug("%s", repr(m.fdata_all.featmap.features))
         self.assertEqual(a[0].pmid, 1)
         self.assertEqual(a[1].pmid, 2)
-        self.assertEqual(fmap.counts, [2, 2, 2, 1, 2, 2, 2, 2])
+        self.assertEqual(m.fdata_mesh.featmap.counts, [2, 2, 2, 1, 2, 2, 2, 2])
         self.assertEqual(
-            sorted(fmap.features), sorted([
+            sorted(m.fdata_mesh.featmap.features), sorted([
                 (u'Q4', 'qual'), (u'Q5', 'qual'), (u'Q7', 'qual'), 
                 (u'T1', 'mesh'), (u'T2', 'mesh'), (u'T3', 'mesh'), (u'T6', 'mesh'), 
                 (u'0301-4851', 'issn')]))
-
-
-
-class FileTrackerTest(unittest.TestCase):
-
-    @tests.usetempfile
-    def test_FileTracker(self, fn):
-        """For FileTracker.(__init__, add, toprocess, dump)"""
-        t = FileTracker(fn)
-        t.add(path("hack/a.xml"))
-        t.add(path("cough/b.xml"))
-        self.assertEqual(t.toprocess([path("foo/a.xml"), path("blah/c.xml")]), ["blah/c.xml"])
-        t.dump()
-        del t
-        t = FileTracker(fn)
-        self.assertEqual(t, set(['a.xml', 'b.xml']))
 
 
 

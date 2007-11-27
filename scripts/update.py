@@ -32,48 +32,35 @@ import cPickle
 import logging
 import sys
 
-from mscanner.medline.MedlineCache import MedlineCache
-from mscanner.medline.FeatureMapping import FeatureMapping
+from mscanner.medline.Updater import Updater
 from mscanner.configuration import rc
 from mscanner.core import iofuncs
 
 
-def update_mscanner(pickle=None):
-    """Look for MScanner updates in the rc.medline direcotry
-    
-    @param pickle: Path to a pickle of Article objects to be added instead.
-    """
-    medcache = MedlineCache(
-            FeatureMapping(rc.featuremap),
-            rc.db_env_home,
-            rc.articledb,
-            rc.featuredb,
-            rc.featurestream,
-            rc.articlelist,
-            rc.processed,
-            rc.narticles,
-            rc.use_transactions,
-            )
-    # Load articles from a pickle
-    if pickle is not None:
-        logging.info("Updating MScanner from " + pickle )
-        with open(pickle , "rb") as f:
-            articles = cPickle.load(f)
-        dbenv = medcache.create_dbenv()
-        medcache.add_articles(articles, dbenv)
-        dbenv.close()
-    # Parse articles from XML directory
-    else:
-        logging.info("Updating MScanner from " + rc.medline.relpath())
-        medcache.add_directory(rc.medline, rc.save_delay)
+def update_dir():
+    """Add articles to MScanner databases by parsing XML files in
+    a Medline directory."""
+    updater = Updater.Defaults()
+    logging.info("Updating MScanner from " + rc.medline.relpath())
+    updater.add_directory(rc.medline, save_delay=0)
+
+
+def update_pickle(pickle):    
+    """Add articles to MScanner database from a pickle.
+    @param pickle: Path to a pickled list of Article objects."""
+    logging.info("Updating MScanner from " + pickle )
+    with open(pickle , "rb") as f:
+        articles = cPickle.load(f)
+    updater = Updater.Defaults()
+    updater.add_articles(articles)
 
 
 if __name__ == "__main__":
     iofuncs.start_logger(logfile=False)
     if len(sys.argv) == 1:
-        update_mscanner()
+        update_dir()
     elif len(sys.argv) == 2:
-        update_mscanner(sys.argv[1])
+        update_pickle(sys.argv[1])
     else:
         print __doc__
     logging.shutdown()

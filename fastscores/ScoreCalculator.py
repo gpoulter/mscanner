@@ -4,6 +4,7 @@ from __future__ import division
 import logging
 import numpy as nx
 from path import path
+import platform
 
 from mscanner import update
 from mscanner.configuration import rc
@@ -33,6 +34,8 @@ class ScoreCalculator:
     @ivar docstream: Path to file containing feature vectors for documents to
     score, in L{mscanner.medline.FeatureStream.FeatureStream} format.
     
+    @ivar ftype: Type of the docstream features (uint16 or uint32).
+
     @ivar numdocs: Number of documents in the stream of feature vectors.
     
     @ivar featscores: Numpy array of double-precision feature scores.
@@ -42,25 +45,40 @@ class ScoreCalculator:
 
     @ivar limit: Maximum number of results to return.
     
-    @ivar threshold: Cutoff score for including an article in the results
+    @ivar threshold: Cutoff score for including an article in the results.
     
     @ivar mindate: YYYYMMDD integer: documents must have this date or later
-    (default 11110101)
+    (default 11110101).
     
     @ivar maxdate: YYYYMMDD integer: documents must have this date or earlier
-    (default 33330303)
+    (default 33330303).
 
-    @ivar exclude: Set of PMIDs that are not allowed to appear in the results
+    @ivar exclude: Set of PMIDs that are not allowed to appear in the results.
     """
     
-    executable_path = path(__file__).dirname() / "_ScoreCalculator"
-    """Path to executable for article score calculation"""
-    
-    dll_path = path(__file__).dirname() / "_ScoreCalculator.dll"
-    """Path to shared library for article score calculation"""
+    score_base = path(__file__).dirname() / "_ScoreCalculator"
+    """Base executable for article score calculation."""
+
+
+    @property
+    def score_exec(self):
+        """Name of executable for calculation, with 16 or 32-bit features."""
+        ext = ".exe" if platform.system() == "Windows" else ""
+        bits = {nx.uint16:"16",nx.uint32:"32"}[self.ftype]
+        return self.score_base + bits + ext
+
+
+    @property
+    def score_dll(self):
+        """Name of DLL for calculation, with 16 or 32-bit features."""
+        ext = ".dll" if platform.system() == "Windows" else ".so"
+        bits = {nx.uint16:"16",nx.uint32:"32"}[self.ftype]
+        return self.score_exec + bits + ext
+
 
     def __init__(self,
                  docstream,
+                 ftype,
                  numdocs,
                  featscores,
                  offset,
@@ -90,14 +108,14 @@ class ScoreCalculator:
         @return: List of (score, PMID) in decreasing order of score
         """
         score = s.cscore_dll
-        if s.dll_path.isfile():
+        if s.score_dll.isfile():
             try: 
                 import ctypes
             except ImportError: 
                 score = s.cscore_pipe
         else:
             score = s.cscore_pipe
-        if score == s.cscore_pipe and not s.executable_path.isfile():
+        if score == s.cscore_pipe and not s.score_exec.isfile():
             score = s.pyscore
         return score()
 
@@ -110,9 +128,9 @@ class ScoreCalculator:
         ndocs = 0
         logging.debug("Calculating article scores")
         marker = 0
-        docs = FeatureStream(open(s.docstream, "rb"))
+        docs = FeatureStream(s.docstream, "rb", s.ftype)
         try:
-            for idx, (docid, date, features) in enumerate(docs):
+            for idx, (docid, date, features) in enumerate(docs.iteritems()):
                 if idx == marker:
                     logging.debug("Scored %d citations so far", idx)
                     marker += 100000
@@ -136,7 +154,7 @@ class ScoreCalculator:
         import struct
         import subprocess as sp
         p = sp.Popen([
-            s.executable_path, 
+            s.score_exec, 
             s.docstream,
             str(s.numdocs),
             str(len(s.featscores)),

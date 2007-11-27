@@ -4,16 +4,17 @@ from __future__ import with_statement
 from __future__ import division
 
 import codecs
+from contextlib import closing
 import logging
 import numpy as nx
+from path import path
 import time
-from contextlib import closing
 import warnings
 warnings.simplefilter("ignore", UserWarning)
 
 from mscanner.configuration import rc
 from mscanner.medline import Shelf
-from mscanner.medline.Databases import Databases
+from mscanner.medline.Databases import FeatureData, ArticleData
 from mscanner.core.FeatureScores import FeatureScores, FeatureCounts
 from mscanner.core import CitationTable, iofuncs
 from mscanner.fastscores.ScoreCalculator import ScoreCalculator
@@ -48,7 +49,9 @@ class QueryManager:
     
     @ivar limit: Maximum number of results (may be fewer due to threshold)
     
-    @param env: L{Databases} to use (if None, we open them just for us).
+    @param adata: L{ArticleData} to use (create a default if None)
+    
+    @param fdata: L{Databases} to use (if None, we open them just for us).
 
     @ivar threshold: Decision threshold for the classifier (default should be 0).
     Use None to retrieve everything up to the result limit.
@@ -80,27 +83,28 @@ class QueryManager:
     """
 
 
-    def __init__(self, outdir, dataset, limit, env=None, 
+    def __init__(self, outdir, dataset, limit, 
+                 adata=None, fdata=None,
                  threshold=None, prior=None, 
                  mindate=None, maxdate=None, 
                  t_mindate=None, t_maxdate=None):
-        # Set attributes from parameters
+        if not outdir.exists():
+            outdir.makedirs()
+            outdir.chmod(0777)
+        # Set attributes from parameters in order
         self.outdir = outdir
         self.dataset = dataset
         self.limit = limit
+        self.adata = adata if adata else ArticleData.Defaults()
+        self.fdata = fdata if fdata else FeatureData.Defaults_MeSH()
         self.threshold = threshold
         self.prior = prior
         self.mindate = mindate
         self.maxdate = maxdate
         self.t_mindate = mindate if t_mindate is None else t_mindate
         self.t_maxdate = maxdate if t_maxdate is None else t_maxdate
-        # Create output dir
-        if not outdir.exists():
-            outdir.makedirs()
-            outdir.chmod(0777)
-        # Set more attributes
+        # Set internal attributes
         self.timestamp = time.time()
-        self.env = env if env else Databases()
         self.pmids = None
         self.featinfo = None
         self.inputs = None
@@ -141,7 +145,7 @@ class QueryManager:
         if isinstance(input, basestring):
             logging.info("Loading PubMed IDs from %s", input.basename())
             self.pmids, self.notfound_pmids, exclude = \
-                iofuncs.read_pmids_careful(input, self.env.featdb)
+                iofuncs.read_pmids_careful(input, self.fdata.featuredb)
             iofuncs.write_pmids(
                 self.outdir/rc.report_input_broken, self.notfound_pmids)
         else:
@@ -161,25 +165,25 @@ class QueryManager:
         
         @param train_exclude: PMIDs to exclude from background when training
         """
-        logging.info("Making scores for %d features", len(self.env.featmap))
+        logging.info("Making scores for %d features", len(self.fdata.featmap))
         # Parameters for the FeatureScores instance
         self.featinfo = FeatureScores(
-            featmap = self.env.featmap,
+            featmap = self.fdata.featmap,
             pseudocount = rc.pseudocount,
-            mask = self.env.featmap.get_type_mask(rc.exclude_types),
+            mask = self.fdata.featmap.type_mask(rc.exclude_types),
             make_scores = rc.make_scores,
             get_postmask = rc.get_postmask)
         
         # Count features from the positive articles
         pdocs = len(self.pmids)
         pos_counts = FeatureCounts(
-            len(self.env.featmap), self.env.featdb, self.pmids)
+            len(self.fdata.featmap), self.fdata.featuredb, self.pmids)
         
         # Background is all of Medline minus input examples
         if self.t_mindate is None and self.t_maxdate is None:
             logging.info("Background PMIDs = Medline - input PMIDs")
-            ndocs = self.env.featmap.numdocs - len(self.pmids)
-            neg_counts = nx.array(self.env.featmap.counts, nx.int32) - pos_counts
+            ndocs = self.fdata.featmap.numdocs - len(self.pmids)
+            neg_counts = nx.array(self.fdata.featmap.counts, nx.int32) - pos_counts
         
         # Background is Medline within a specific date range
         else:
@@ -189,12 +193,14 @@ class QueryManager:
             if train_exclude is None:
                 train_exclude = self.pmids
             ndocs, neg_counts = FeatureCounter(
-                docstream = rc.featurestream,
-                numdocs = self.env.featmap.numdocs,
-                numfeats = len(self.env.featmap),
+                docstream = path(self.fdata.fstream.stream.name),
+                ftype = self.fdata.fstream.ftype,
+                numdocs = self.fdata.featmap.numdocs,
+                numfeats = len(self.fdata.featmap),
                 mindate = self.t_mindate,
                 maxdate = self.t_maxdate,
-                exclude = train_exclude).c_counts()
+                exclude = train_exclude,
+                ).c_counts()
         
         # Evaluating feature scores from the counts
         self.featinfo.update(pos_counts, neg_counts, pdocs, ndocs, self.prior)
@@ -220,15 +226,16 @@ class QueryManager:
         # Calculate decreasing (score, PMID) for input PMIDs
         logging.info("Finding scores for %d input documents", len(self.pmids))
         self.inputs = zip(
-            self.featinfo.scores_of(self.env.featdb, self.pmids), 
+            self.featinfo.scores_of(self.fdata.featuredb, self.pmids), 
             self.pmids)
         self.inputs.sort(reverse=True)
         # Calculate results as decreasing (score, PMID)
         logging.info("Find scores of Medline between dates %s to %s", 
                      str(self.mindate), str(self.maxdate))
         self.results = ScoreCalculator(
-            rc.featurestream,
-            self.env.featmap.numdocs,
+            path(self.fdata.fstream.stream.name),
+            self.fdata.fstream.ftype,
+            self.fdata.featmap.numdocs,
             self.featinfo.scores,
             self.featinfo.base+self.featinfo.prior,
             self.limit,
@@ -264,7 +271,7 @@ class QueryManager:
         
         logging.debug("Writing citations to %s", rc.report_input_citations)
         self.inputs.sort(reverse=True)
-        inputs = [ (s,self.env.artdb[str(p)]) for s,p in self.inputs]
+        inputs = [ (s,self.adata.artdb[str(p)]) for s,p in self.inputs]
         CitationTable.write_citations(
             "input", self.dataset, inputs, 
             self.outdir/rc.report_input_citations, 
@@ -272,7 +279,7 @@ class QueryManager:
         
         logging.debug("Writing citations to %s", rc.report_result_citations)
         self.results.sort(reverse=True)
-        outputs = [ (s,self.env.artdb[str(p)]) for s,p in self.results[:maxreport] ]
+        outputs = [ (s,self.adata.artdb[str(p)]) for s,p in self.results[:maxreport] ]
         CitationTable.write_citations(
             "output", self.dataset, outputs,
             self.outdir/rc.report_result_citations, 

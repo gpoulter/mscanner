@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 
-"""Utility functions for working with files containing lists of PubMed IDs,
-and Berkeley DBs containing pickled Articles, and for regenerating
-the FeatureStream and article list.
+"""Utility functions for MScanner database files and files containing lists of
+PubMed IDs.
 
 Usage::
     ./dbhelper.py function_name arg1 arg2 [...]
 
-Please read the source code for the different functions available.
+Please see the source code for the different functions.
 
                                
 
@@ -20,25 +19,27 @@ it under the Do Whatever You Want Public License. Terms and conditions:
 from __future__ import with_statement
 from bsddb import db
 from contextlib import closing
+import numpy as nx
+from path import path
 import random
 import sys
-from path import path
 
+from mscanner.core import iofuncs
 from mscanner.medline.FeatureDatabase import FeatureDatabase
 from mscanner.medline.FeatureStream import FeatureStream, Date2Integer
+from mscanner.medline.Updater import Updater
 from mscanner.medline import Shelf
 
     
-def listkeys(dbfile, outfile):
+def dbkeys(dbfile, keylist):
     """List the keys in a Berkeley database.
-    
-    @param dbfile: Path to Berkeley DB
-    @param outfile: Path to write database keys one per line
+    @param dbfile: Path to Berkeley DB.
+    @param keylist: Path to write database keys one per line.
     """
     d = db.DB()
     d.open(dbfile, None, db.DB_HASH, db.DB_RDONLY)
     cur = d.cursor()
-    f = open(outfile, "w")
+    f = open(keylist, "w")
     rec = cur.first(dlen=0, doff=0)
     while rec is not None:
         f.write(rec[0]+"\n")
@@ -48,28 +49,49 @@ def listkeys(dbfile, outfile):
     f.close()
 
 
-def regen_stream(artdb, featdb, featstream):
-    """Use an Article Shelf and FeatureDatabase to create a FeatureStream.
+def featuredata():
+    """Regenerate the feauture databases from the article database. Please
+    move the old streams out of the way first!"""
+    updater = Updater.Defaults()
+    print "Updating MeSH-features data"
+    updater.fdata_mesh.add_articles((str(a.pmid), 
+        Date2Integer(a.date_completed), 
+        a.mesh_features())
+        for a in updater.adata.artdb.itervalues())
+    print "Updating all-features data"
+    updater.fdata_all.add_articles((str(a.pmid), 
+        Date2Integer(a.date_completed), 
+        a.all_features(updater.stopwords))
+        for a in updater.adata.artdb.itervalues())
+
+    
+
+def featurestream(artdb, featdb, featstream, bits):
+    """Regenerate a FeatureStream from an article db and FeatureDatabase.
     @param artdb: Path to Shelf with Article objects
     @param featdb: Path to FeatureDatabase
     @param featstream: Path to write re-generated FeatureStream to
+    @param bits: Either "16" or "32" for number of bits in a feature
     """
+    ftype = {"16":nx.uint16,"32":nx.uint32}[bits]
     adb = Shelf.open(artdb, "r")
-    fd = FeatureDatabase(featdb, "r")
-    fs = FeatureStream(open(featstream, "wb"))
+    fd = FeatureDatabase(featdb, "r", ftype=ftype)
+    if path(featstream).isfile():
+        path(featstream).remove()
+    fs = FeatureStream(featstream, "ab", ftype=ftype)
     for idx, (pmid, art) in enumerate(adb.iteritems()):
         if idx % 10000 == 0:
             print "Completed %d" % idx
-        fs.write(pmid, art.date_completed, fd[pmid])
+        fs.additem(pmid, art.date_completed, fd[pmid])
     fs.close()
     fd.close()
     adb.close()
 
 
-def regen_article_list(artdb, artlist):
-    """Regenerate the article list from the article database
+def articlelist(artdb, artlist):
+    """Regenerate the list of articles from the article database
     @param artdb: Path to Shelf with Article objects
-    @param artlist: Path to write PubMed IDs and YYYYMMDD lines to."""
+    @param articlelist: Path to write PubMed IDs and YYYYMMDD lines to."""
     adb = Shelf.open(artdb, "r")
     f = open(artlist, "w")
     for idx, (pmid, art) in enumerate(adb.iteritems()):
@@ -90,7 +112,8 @@ def pmid_dates(artdb, infile, outfile):
     adb = Shelf.open(artdb, "r")
     input = open(infile, "r")
     for line in input:
-        if line.startswith("#"): continue
+        if line.startswith("#"): 
+            continue
         pmid = int(line.split()[0])
         try:
             date = Date2Integer(adb[str(pmid)].date_completed)
@@ -132,15 +155,7 @@ def select_lines(infile, outfile, mindate="00000000", maxdate="99999999", N="0")
 
 
 if __name__ == "__main__":
-    action = sys.argv[1]
-    if action == "listkeys":
-        listkeys(*sys.argv[2:4])
-    elif action == "regen_stream":
-        regen_stream(sys.argv[2:5])
-    elif action == "regen_article_list":
-        regen_article_list(sys.argv[2:4])
-    elif action == "pmid_dates":
-        pmid_dates(*sys.argv[2:5])
-    elif action == "select_lines":
-        select_lines(*sys.argv[2:7])
+    # Call the named function with provided arguments
+    iofuncs.start_logger(logfile=False)
+    locals()[sys.argv[1]](*sys.argv[2:])
 

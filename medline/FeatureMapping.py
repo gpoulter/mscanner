@@ -23,17 +23,15 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 class FeatureMapping:
     """Persistent mapping between string features and feature IDs
 
-    Feature types used with L{__getitem__}, L{get_type_mask} and L{add_article}
-    are "mesh", "qual", "issn", "word". A feature string could have more than
-    one type.
+    Feature types are "mesh", "qual", "issn", "word".  This serves
+    to identify the source of features (e.g. "human" as a text word
+    is a separate feature from the "human" MeSH term).
     
     This is really a table with columns (id,type,name,count), and keys of id
     and (type,name).
 
     @ivar featfile: Path to text file with list of terms
 
-    @ivar featfile_new: Temporary feature file used while writing
-    
     @ivar numdocs: Number of documents used in creating the mapping
     
     @ivar features: List, such that features[id] == (name,type)
@@ -50,8 +48,6 @@ class FeatureMapping:
         """Initialise the database, setting L{featfile}"""
         self.ftype = ftype
         self.featfile = featfile
-        if self.featfile is not None:
-            self.featfile_new = featfile+".new"
         self.numdocs = 0
         self.features = []
         self.feature_ids = {}
@@ -84,18 +80,21 @@ class FeatureMapping:
         (name, type, count) where line number is ID+1"""
         if self.featfile is None:
             return
-        with codecs.open(self.featfile_new, "wb", "utf-8") as f:
+        _featfile_new = self.featfile + ".new"
+        with codecs.open(_featfile_new, "wb", "utf-8") as f:
             f.write("%s\n" % self.numdocs)
             for (feat, ftype), count in zip(self.features, self.counts):
-                f.write(feat+"\t"+ftype+"\t"+str(count)+"\n")
+                f.write("%s\t%s\t%d\n" % (feat,ftype,count))
         if self.featfile.isfile():
             self.featfile.remove()
-        self.featfile_new.rename(self.featfile)
+        _featfile_new.rename(self.featfile)
 
 
     def __getitem__(self, key):
-        """Given a feature ID, return (feature, feature type). Given (feature,
-        feature type), returns feature ID"""
+        """Get feature string, or feature ID depending on input.
+        @param key: If feature ID return (feature, feature type). 
+                    If (feature, feature type) returns feature ID
+        """
         if isinstance(key, int):
             return self.features[key]
         elif isinstance(key, tuple) and len(key) == 2:
@@ -109,7 +108,7 @@ class FeatureMapping:
         return len(self.features)
 
 
-    def get_type_mask(self, exclude_types):
+    def type_mask(self, exclude_types):
         """Get a mask for excluded features
         
         @param exclude_types: Types of features to exclude
@@ -126,20 +125,18 @@ class FeatureMapping:
         return exclude_feats
 
 
-    def add_article(self, **kwargs):
-        """Add an article, given lists of features of different types.
+    def add_article(self, features):
+        """Increment occurrence counts for features from an article. Returns
+        the feature vector. Non-existend features are created with count 1.
         
-        @note: Dynamically creates new features IDs and feature types as
-        necessary.
+        @param features: Mapping from feature types to lists of features for
+        that type. e.g. C{{"mesh": ["Term A","Term B"]}}
         
-        @param kwargs: Mapping from feature types to lists of features for that
-        type. e.g. C{mesh=["Term A","Term B"]}
-        
-        @return: Numpy array of feature IDs
+        @return: Feature vector for the article (array of feature IDs)
         """
         result = []
         self.numdocs += 1
-        for ftype, fstrings in kwargs.iteritems():
+        for ftype, fstrings in features.iteritems():
             if ftype not in self.feature_ids:
                 self.feature_ids[ftype] = {}
             fdict = self.feature_ids[ftype]

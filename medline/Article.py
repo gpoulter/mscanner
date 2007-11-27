@@ -114,14 +114,14 @@ class Article:
 
 
     def mesh_features(self):
-        """Get MeSH and Journal features of this article, returning
-        a mapping from feature type ('mesh', 'qual', 'issn') to
-        list of features with that type"""
+        """Return MeSH and Journal features in this article, as a mapping from
+        feature type to feature strings of that type. Types are 'mesh', 'qual'
+        and 'issn'."""
         # Get MeSH headings, qualifiers and ISSN from article
         headings, quals = [], []
         for term in self.meshterms:
             headings.append(term[0])
-            if(len(term)>1):
+            if len(term) > 1:
                 for q in term[1:]:
                     if q not in quals:
                         quals.append(q)
@@ -131,21 +131,22 @@ class Article:
 
 
     def word_features(self, stopwords):
-        """Return a list of word features present in the article"""
+        """Return a list of word features present in the article."""
         import re
         text = self.title.lower() + " "
         if self.abstract is not None:
             text += self.abstract.lower()
         # Get rid of non-alphabetics, and multiple spaces
         losechars = re.compile(r'[^a-z]+')
-        text = losechars.sub(' ', text).strip().replace(' ',r'\s+')
+        text = losechars.sub(' ', text).strip()
+        text = re.sub(r'\s+', ' ', text)
         # Keep only longish words not in stopwords
         return [x for x in text.split() if len(x) >= 3 and x not in stopwords]
 
 
     def all_features(self, stopwords):
-        """Like L{mesh_features}, but includes a 'word' feature type
-        with the word features as well"""
+        """Adds L{word_features} to L{mesh_features} using the 'word' feature
+        type."""
         features = self.mesh_features()
         features["word"] = self.word_features(stopwords)
         return features

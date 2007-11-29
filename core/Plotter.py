@@ -128,7 +128,6 @@ class Plotter:
         IQR = data[3*N//4] - data[N//4] # Inter-Quartile Range
         R = data[-1] - data[0] # Range
         bins = R//(2*IQR*N**(-1/3)) # Number of bins
-        #print N, IQR, R, bins
         return min(150, max(10, bins))
 
 

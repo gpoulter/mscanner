@@ -15,6 +15,7 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
+from mscanner.medline.FeatureStream import Date2Integer
 
 class Article:
     """Database record for a Medline citation.
@@ -114,9 +115,9 @@ class Article:
 
 
     def mesh_features(self):
-        """Return MeSH and Journal features in this article, as a mapping from
-        feature type to feature strings of that type. Types are 'mesh', 'qual'
-        and 'issn'."""
+        """Get MeSH and Journal featurwes for the article.
+        @return: Dictionary C{"mesh":[strings],"qual":[strings], "issn":[strings]}
+        for the features of each type."""
         # Get MeSH headings, qualifiers and ISSN from article
         headings, quals = [], []
         for term in self.meshterms:
@@ -131,24 +132,28 @@ class Article:
 
 
     def word_features(self, stopwords):
-        """Return a list of word features present in the article."""
+        """Get word features in the article.
+        @return: Dictionary C{"word":[strings]} with the word features."""
         import re
         text = self.title.lower() + " "
         if self.abstract is not None:
             text += self.abstract.lower()
-        # Get rid of non-alphabetics, and multiple spaces
-        losechars = re.compile(r'[^a-z]+')
-        text = losechars.sub(' ', text).strip()
-        text = re.sub(r'\s+', ' ', text)
-        # Keep only longish words not in stopwords
-        return set(x for x in text.split() if len(x) >= 3 and x not in stopwords)
+        # Collapse all non-alphabetics to single spaces and split into words
+        words = re.sub(r'[^a-z]+', ' ', text).split()
+        wordset = set(x for x in words if len(x) >= 3 and x not in stopwords)
+        return {"word":list(wordset)}
 
 
     def all_features(self, stopwords):
-        """Adds L{word_features} to L{mesh_features} using the 'word' feature
-        type."""
+        """Get union of L{mesh_features} and L{word_features}.
+        @return: Dictionary with mesh,qual,issn,word keys."""
         features = self.mesh_features()
-        features["word"] = self.word_features(stopwords)
+        features.update(self.word_features(stopwords))
         return features
-
     
+    
+    def fstream(self, features):
+        """Get a FeatureStream tuple for the article given a feature dictionary.
+        @param features: Result of L{mesh_features} and others.
+        @return: (PMID, YYYYMMDD, features)"""
+        return (self.pmid, Date2Integer(self.date_completed), features)

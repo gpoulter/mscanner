@@ -49,9 +49,9 @@ class QueryManager:
     
     @ivar limit: Maximum number of results (may be fewer due to threshold)
     
-    @param adata: L{ArticleData} to use (create a default if None)
+    @param adata: ArticleData to use (open default databases if None).
     
-    @param fdata: L{Databases} to use (if None, we open them just for us).
+    @param fdata: FeatureData to use (open default databases if None).
 
     @ivar threshold: Decision threshold for the classifier (default should be 0).
     Use None to retrieve everything up to the result limit.
@@ -166,13 +166,8 @@ class QueryManager:
         @param train_exclude: PMIDs to exclude from background when training
         """
         logging.info("Making scores for %d features", len(self.fdata.featmap))
-        # Parameters for the FeatureScores instance
-        self.featinfo = FeatureScores(
-            featmap = self.fdata.featmap,
-            pseudocount = rc.pseudocount,
-            mask = self.fdata.featmap.type_mask(rc.exclude_types),
-            make_scores = rc.make_scores,
-            get_postmask = rc.get_postmask)
+        # Initialise the score object without occurrence counts
+        self.featinfo = FeatureScores.Defaults(self.fdata.featmap)
         
         # Count features from the positive articles
         pdocs = len(self.pmids)
@@ -193,7 +188,7 @@ class QueryManager:
             if train_exclude is None:
                 train_exclude = self.pmids
             ndocs, neg_counts = FeatureCounter(
-                docstream = path(self.fdata.fstream.stream.name),
+                docstream = self.fdata.fstream.filename,
                 ftype = self.fdata.fstream.ftype,
                 numdocs = self.fdata.featmap.numdocs,
                 numfeats = len(self.fdata.featmap),

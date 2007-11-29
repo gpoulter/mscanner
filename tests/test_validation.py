@@ -81,7 +81,7 @@ class ValidatorTests(unittest.TestCase):
     def test_cross_validate(self):
         logging.debug("scores_bayes")
         self._check_scores(
-            FeatureScores([2,5,7], pseudocount = 0.1, make_scores="scores_bayes"),
+            FeatureScores([2,5,7], pseudocount = 0.1, scoremethod="scores_bayes"),
             nx.array([-2.39789534,  2.20616317,  2.20616317,  4.60405827]),
             nx.array([-4.60405827, -2.20616317, -2.20616317,  2.39789534]))
 
@@ -106,5 +106,5 @@ class ValidatorTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    tests.start_logging()
+    tests.start_logger()
     unittest.main()

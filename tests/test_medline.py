@@ -57,7 +57,7 @@ class FeatureStreamTests(unittest.TestCase):
             self.fn.remove()
         
     def test_FeatureStream(self):
-        with closing(FeatureStream(self.fn, "ab", nx.uint32)) as fs:
+        with closing(FeatureStream(self.fn, nx.uint32, "a")) as fs:
             pmids = (12,34,56)
             dates = (20070101, 19980308, 20001207)
             feats = [nx.array([1,2,3,4], fs.ftype), 
@@ -65,7 +65,7 @@ class FeatureStreamTests(unittest.TestCase):
                      nx.array([], fs.ftype)]
             for pmid, date, feat in zip(pmids, dates, feats):
                 fs.additem(pmid, date, feat)
-        with closing(FeatureStream(self.fn, "rb", nx.uint32)) as fs:
+        with closing(FeatureStream(self.fn, nx.uint32, "r")) as fs:
             rpmids, rdates, rfeats = zip(*list(fs.iteritems()))
             self.assertEqual(pmids, rpmids)
             self.assertEqual(dates, rdates)
@@ -85,8 +85,10 @@ class FeatureMappingTests(unittest.TestCase):
             self.fn.remove()
 
     def test_FeatureMapping(self):
-        fm = FeatureMapping(self.fn)
-        self.assert_(nx.all(fm.add_article(dict(Q=["A","B"], T=["A","C"])) == [0,1,2,3]))
+        fm = FeatureMapping(self.fn, nx.uint16)
+        features = dict(Q=["A","B"], T=["A","C"])
+        fm.add_article(features)
+        self.assert_(nx.all(fm.get_vector(features) == [0,1,2,3]))
         self.assertEqual([fm[i] for i in [0,1,2,3,]], [("A","Q"), ("B","Q"),("A","T"),("C","T")])
         self.assertEqual(fm[1], ("B","Q"))
         self.assertEqual(fm[("C","T")], 3)
@@ -97,7 +99,7 @@ class FeatureMappingTests(unittest.TestCase):
         fm.load()
         self.assertEqual(fm.features, [("A","Q"),("B","Q"),("A","T"),("C","T")])
         self.assertEqual(fm.feature_ids, {"Q":{"A":0,"B":1}, "T":{"A":2,"C":3}})
-        self.assert_(nx.all(fm.type_mask("Q") == [1,1,0,0]))
+        self.assert_(nx.all(fm.class_mask("Q") == [1,1,0,0]))
 
 
 
@@ -147,7 +149,7 @@ class UpdaterTests(unittest.TestCase):
         m = Updater.Defaults()
         xml.write_text(xmltext)
         m.add_directory(h, save_delay=1)
-        print "".join((h/"articles.txt").lines())
+        logging.debug("".join((h/"articles.txt").lines()))
         test_pmids.write_lines(["1", "2"])
         a = m.adata.load_articles(test_pmids)
         logging.debug("Articles: %s", repr(a))

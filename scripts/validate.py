@@ -128,7 +128,7 @@ def issn_features():
 def control_modality():
     """Cross validate Control against Medline100K, but without the features
     unique to Medline100K that cause the multi-modal score distributions."""
-    rc.get_postmask = "mask_nonpositives"
+    rc.postmask = "mask_nonpositives"
     pos, neg = dataset_map["control"]
     op = CrossValidation(rc.working / "valid" / "modality",
                          "Removing Control corpus multi-modality")

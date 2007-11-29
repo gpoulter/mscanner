@@ -66,21 +66,63 @@ class FeatureData:
         self.featmap.dump()
         self.featuredb.close()
         self.fstream.close()
+        
+        
+    def sync(self):
+        """Flush databases to disk"""
+        self.featmap.dump()
+        self.featuredb.sync()
+        self.fstream.flush()
 
 
     def add_articles(self, articles):
-        """Add articles to the databases and feature maps. 
+        """Incrementally add new articles to the existing feature 
+        database, stream and feature map.  
+        
         @param articles: Iterable of (PMID, date, features), as (string,
         YYYYMMDD integer, dictionary). The features dict maps string feature
         type to list of feature strings."""
         for pmid, date, features in articles:
             if pmid not in self.featuredb:
-                featvec = self.featmap.add_article(features)
+                self.featmap.add_article(features)
+                featvec = self.featmap.get_vector(features)
                 self.featuredb[pmid] = featvec
                 self.fstream.additem(pmid, date, featvec)
-        self.featmap.dump()
-        self.featuredb.sync()
-        self.fstream.flush()
+        self.sync()
+        
+        
+    def regenerate(self, articles):
+        """Regenerate feature map, feature stream and feature database. We only
+        regenerate those files that are currently empty (because they were
+        moved/deleted).
+        
+        @param articles: Iterable of (PMID, date, features), as (string,
+        YYYYMMDD integer, dictionary). The features dict maps string feature
+        type to list of feature strings."""
+        do_featmap = len(self.featmap) == 0
+        do_stream = self.fstream.filename.size == 0
+        do_featuredb = len(self.featuredb) == 0
+        if not (do_featmap or do_stream or do_featuredb):
+            logging.info("Not regenerating feature dbs as they are non-empty.")
+            return
+        if do_featmap: 
+            logging.info("Regen feature map %s.", self.featmap.filename.basename())
+        if do_stream: 
+            logging.info("Regen feature stream %s.", self.fstream.filename.basename())
+        if do_featuredb: 
+            logging.info("Regen feature database %s.", self.featuredb.filename.basename())
+        for count, (pmid, date, features) in enumerate(articles):
+            if count % 10000 == 0:
+                logging.debug("Regenerated %d articles.", count)
+            if do_featmap:
+                self.featmap.add_article(features)
+            if do_stream or do_featuredb:
+                featvec = self.featmap.get_vector(features)
+                if do_stream:
+                    self.fstream.additem(pmid, date, featvec)                
+                if do_featuredb:
+                    self.featuredb[str(pmid)] = featvec
+        self.sync()
 
 
 
@@ -119,13 +161,29 @@ class ArticleData:
             return self._article_list
         except AttributeError: 
             logging.info("Loading article list property.")
-            self._article_list = nx.array(
-                [int(x.split()[0]) for x in self.artlist_path.lines()])
+            if self.artlist_path.exists():
+                with open(self.artlist_path, "rb") as f:
+                    self._article_list = nx.array([int(t.split()[0]) for t in f], nx.uint32)
+            else:
+                self._article_list = nx.array([], nx.uint32)
             return self._article_list
 
 
+    def regenerate_artlist(self):
+        """Regenerate the list of articles from the article database."""
+        if len(self.article_list) != 0:
+            logging.info("Not regenerating article list as it is non-empty.")
+            return
+        del self._article_list
+        with open(self.artlist_path, "wb") as f:
+            for idx, (pmid, art) in enumerate(self.artdb.iteritems()):
+                if idx % 10000 == 0:
+                    logging.debug("Wrote %d to the article list." % idx)
+                f.write("%s %08d\n" % (pmid, Date2Integer(art.date_completed)))
+
+
     def add_articles(self, articles):
-        """Add articles to the database and article list
+        """Add new articles to both the database and the article list.
         @param articles: Iterable of L{Article} objects.
         """
         with open(self.artlist_path, "ab") as artlist:
@@ -139,24 +197,24 @@ class ArticleData:
             self.artdb.sync()
 
 
-    def load_articles(self, pmids_path):
+    def load_articles(self, filename):
         """Return Article objects given a file listing PubMed IDs, caching
         the results in a pickle.  The pickle has a ".pickle" on top of
         L{pmids_path}.
         
-        @param pmids_path: Path to a text file with one PubMed ID per line.
+        @param filename: Path to a text file with one PubMed ID per line.
         
         @return: List of Article objects (same order as text file).
         """
         import cPickle
         from path import path
         from mscanner.core.iofuncs import read_pmids
-        cache_path = path(pmids_path + ".pickle")
-        if cache_path.isfile():
-            with open(cache_path, "rb") as f:
-                return cPickle.load(f)
+        pickle = path(filename + ".pickle")
+        if pickle.isfile():
+            with open(pickle, "rb") as stream:
+                return cPickle.load(stream)
         else:
-            articles = [self.artdb[str(p)] for p in read_pmids(pmids_path)]
-            with open(cache_path, "wb") as f:
-                cPickle.dump(articles, f, protocol=2)
+            articles = [self.artdb[str(p)] for p in read_pmids(filename)]
+            with open(pickle, "wb") as stream:
+                cPickle.dump(articles, stream, protocol=2)
             return articles

@@ -141,7 +141,7 @@ class LeaveOutValidator(CrossValidator):
         self.nscores = nx.zeros(len(self.negatives), nx.float32)
         pdocs = len(self.positives)
         ndocs = len(self.negatives)
-        mask = self.featinfo.mask
+        mask = self.featinfo.premask
         # Set up pseudocount
         if isinstance(self.featinfo.pseudocount, nx.ndarray):
             ps = self.featinfo.pseudocount

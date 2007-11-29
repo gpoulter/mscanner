@@ -58,7 +58,7 @@ class CScoreModuleTests(unittest.TestCase):
     @tests.usetempfile
     def test_FeatureCounter(self, tmpfile):
         """Test the system for fast feature counting"""
-        fs = FeatureStream(tmpfile, ftype=nx.uint32)
+        fs = FeatureStream(tmpfile, nx.uint32)
         for pmid, date, feats in self.citations:
             fs.additem(pmid, date, nx.array(feats, fs.ftype))
         fs.close()
@@ -83,7 +83,7 @@ class CScoreModuleTests(unittest.TestCase):
         """Consistency test between the implemtnations for calculating """
         featscores = nx.array([0.1, 5.0, 10.0, -5.0, -6.0])
         # Write citations to disk
-        fs = FeatureStream(tmpfile, ftype=nx.uint32)
+        fs = FeatureStream(tmpfile, nx.uint32)
         for pmid, date, feats in self.citations:
             fs.additem(pmid, date, nx.array(feats, fs.ftype))
         fs.close()
@@ -128,13 +128,13 @@ class FeatureScoresTests(unittest.TestCase):
         self.nfreqs = nx.array([2,1,0])
         self.pdocs = 2
         self.ndocs = 3
-        self.featmap = FeatureMapping()
+        self.featmap = FeatureMapping(filename=None, ftype=nx.uint16)
 
 
     def test_pseudocount(s):
         """Constant pseudocount"""
         f = FeatureScores(s.featmap, pseudocount=0.1,
-                          make_scores="scores_noabsence")
+                          scoremethod="scores_noabsence")
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
         s.assert_(nx.allclose(
             f.scores, nx.array([-0.35894509,  0.93430924,  0.28768207])))
@@ -170,7 +170,7 @@ class FeatureScoresTests(unittest.TestCase):
         s.featmap.numdocs = 10
         s.featmap.counts = [3,2,1]
         f = FeatureScores(s.featmap, pseudocount=None,
-                          make_scores="scores_noabsence")
+                          scoremethod="scores_noabsence")
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
         logging.debug("Scores (noabsence): %s", pp.pformat(f.scores))
         s.assert_(nx.allclose(
@@ -180,8 +180,8 @@ class FeatureScoresTests(unittest.TestCase):
     def test_constpseudo(s):
         """Constant pseudocount in old score calculation, with masking."""
         f = FeatureScores(s.featmap, pseudocount=0.1,
-                          make_scores="scores_noabsence",
-                          get_postmask="mask_nonpositives")
+                          scoremethod="scores_noabsence",
+                          postmask="mask_nonpositives")
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
         logging.debug("Scores (constpseudo): %s", pp.pformat(f.scores))
         s.assert_(nx.allclose(

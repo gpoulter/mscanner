@@ -60,7 +60,7 @@ class FeatureCounter:
         
         @return: Number of documents counted, and vector of feature counts."""
         featcounts = nx.zeros(s.numfeats, nx.int32)
-        docs = FeatureStream(s.docstream, "rb", s.ftype)
+        docs = FeatureStream(s.docstream, s.ftype, "r")
         ndocs = 0
         try:
             for docid, date, features in docs.iteritems():

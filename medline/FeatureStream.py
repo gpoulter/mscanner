@@ -39,6 +39,8 @@ class FeatureStream:
     
     @ivar stream: File object underlying the stream.
     
+    @ivar filename: Path to the file holding the feature stream.
+    
     @ivar ftype: Numpy integer type for representing features.
     """
     
@@ -47,16 +49,23 @@ class FeatureStream:
     """Max feature vector bytes to read (detect stream errors)."""
 
 
-    def __init__(self, fname, mode="ab", ftype=nx.uint16):
+    def __init__(self, fname, ftype, mode="a"):
         """Initialise the stream.
-        @param fname: 
-        @param mode: Open file for reading (rb) or writing (ab).
+        @param fname: Path to file containing the stream.
+        @param mode: Two options: read/write (a) or read-only (r).
         """
-        if mode not in ["ab","rb"]:
+        if mode == "r":
+            mode = "rb"
+        elif mode == "a":
+            if not fname.exists():
+                fname.touch()
+            mode = "rb+"
+        else:
             raise ValueError("Invalid file mode %s" % mode)
-        self.stream = open(fname, mode)
+        self.filename = fname
         self.ftype = ftype
-
+        self.stream = open(fname, mode)
+        self.stream.seek(0,2) # EOF
 
     def close(self):
         """Close the underlying stream."""
@@ -78,8 +87,6 @@ class FeatureStream:
         record.
         
         @param features: Numpy array of feature IDs."""
-        if self.stream.mode != "ab":
-            raise NotImplementedError("Stream file is not open for append.")
         if features.dtype != self.ftype:
             raise ValueError("Array dtype must be %s not %s" % 
                              (str(self.ftype),str(features.dtype)))
@@ -91,15 +98,16 @@ class FeatureStream:
 
 
     def readitem(self, pos=None):
-        """Read a (PubMed ID, YYYYMMDD, feature vector) tuple at the current
-        location in the stream. The first two are integers, and the last is a
-        numpy integer array.         
-        @param pos: Seek here first. Bad things will happen if this is
-        wrong!"""
+        """Read a feature stream record from the current location.
+
+        @param pos: Seek here first. Very bad if the position is wrong! 
+        
+        @return: (PubMed ID, YYYYMMDD, feature vector) as (int,int,array) from
+        the stream."""
         if pos is not None:
             self.stream.seek(pos)
         head = self.stream.read(4+4+2)
-        if len(head) == 0: 
+        if len(head) == 0:
             return None
         pmid, date, alen = struct.unpack("IIH", head)
         #logging.debug("PMID=%d, DATE=%d, ALEN=%d", pmid, date, alen)
@@ -109,10 +117,11 @@ class FeatureStream:
 
 
     def iteritems(self):
-        """Iterate over results of L{readitem}. For iterating over the database
-        rather use ScoreCalculator and FeatureCounter in
-        L{mscanner.fastscores}."""
+        """Iterate over records obtained via of L{readitem}. This is quite slow
+        - ScoreCalculator and FeatureCounter in L{mscanner.fastscores} use C
+        code to iterate rapidly over the feature stream."""
         item = self.readitem(0)
         while item is not None:
             yield item
             item = self.readitem()
+        self.stream.seek(0,2) # EOF

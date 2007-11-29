@@ -31,7 +31,7 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 class Updater:    
     """Updates the databases with incoming Medline records. Reads data from XML
-    files, and writes to L{ArticleData}, L{FeatureData} and L{FileTracker}.
+    files, and writes to L{ArticleData} and L{FeatureData} objects.
     
     @ivar adata: L{ArticleData} to update article databases.
     @ivar fdata_mesh: L{FeatureData} to update MeSH article features.
@@ -44,7 +44,6 @@ class Updater:
     def __init__(self, adata, fdata_mesh, fdata_all, tracker, stopwords):
         """Constructor parameters set corresponding instance variables.
         @param stopwords: Path to file of stopwords.
-        @param tracker: Path to file to use with L{FileTracker}.
         """
         self.adata = adata
         self.fdata_mesh = fdata_mesh
@@ -64,42 +63,32 @@ class Updater:
                        rc.tracker, rc.stopwords)
 
 
-    @staticmethod
-    def dbenv(envdir, recover=False):
-        """Create a Berkeley DB environment (for transactions mostly).
-        @param envdir: Path to DB environment directory.
-        @return: DBEnv instance"""
-        if not envdir.isdir():
-            envdir.mkdir()
-        dbenv = db.DBEnv()
-        dbenv.set_lg_max(128*1024*1024) # 128Mb log files
-        dbenv.set_tx_max(1) # 1 transaction at a time
-        dbenv.set_cachesize(0, 8*1024*1024) # 8Mb shared cache
-        flags = db.DB_INIT_MPOOL|db.DB_CREATE
-        # Might try db.DB_RECOVER_FATAL
-        if recover: flags |= db.DB_RECOVER 
-        # Not using transactions due to time/space overhead.
-        if False: flags |= db.DB_INIT_TXN
-        dbenv.open(envdir, flags)
-        return dbenv
-    
-    
+    def regenerate(self):
+        """Regenerate some of the data structures.
+        @param artlist: Also regenerate article list from Article database.
+        """
+        self.adata.regenerate_artlist()
+        adb = self.adata.artdb
+        self.fdata_mesh.regenerate(
+            a.fstream(a.mesh_features()) for a in adb.itervalues())
+        self.fdata_all.regenerate(
+            a.fstream(a.all_features(self.stopwords)) for a in adb.itervalues())
+
+
     def add_articles(self, articles):
         """Update feature and article databases with a list of new article
         objects. Dispatches to the L{ArticleData} and L{FeatureData} instances.
         @param articles: List of Article objects """
         self.adata.add_articles(articles)
-        self.fdata_mesh.add_articles((str(a.pmid), 
-            Date2Integer(a.date_completed), 
-            a.mesh_features()) for a in articles)
-        self.fdata_all.add_articles((str(a.pmid), 
-            Date2Integer(a.date_completed), 
-            a.all_features(self.stopwords)) for a in articles)
+        self.fdata_mesh.add_articles(
+            a.fstream(a.mesh_features()) for a in articles)
+        self.fdata_all.add_articles(
+            a.fstream(a.all_features(self.stopwords)) for a in articles)
 
 
     def add_directory(self, medline=None, save_delay=5):
         """Adds articles from XML files to MScanner's databases
-
+        
         @param medline: Directory with .xml.gz files. If None we default to
         C{rc.medline}.
         
@@ -139,3 +128,23 @@ class Updater:
                          len(articles), idx+1, len(todo), filename.name)
             del articles
 
+
+    @staticmethod
+    def dbenv(envdir):
+        """Create a Berkeley DB environment - this supports multiple readers 
+        with a single writer.
+        @param envdir: Path to DB environment directory. 
+        @return: DBEnv instance"""
+        if not envdir.isdir():
+            envdir.mkdir()
+        dbenv = db.DBEnv()
+        dbenv.set_lg_max(128*1024*1024) # 128Mb log files
+        dbenv.set_tx_max(1) # 1 transaction at a time
+        dbenv.set_cachesize(0, 8*1024*1024) # 8Mb shared cache
+        flags = db.DB_INIT_MPOOL|db.DB_CREATE
+        # Might try db.DB_RECOVER_FATAL
+        #flags |= db.DB_RECOVER 
+        # Not using transactions due to time/space overhead.
+        #flags |= db.DB_INIT_TXN
+        dbenv.open(envdir, flags)
+        return dbenv

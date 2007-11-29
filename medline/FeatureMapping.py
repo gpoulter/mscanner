@@ -23,36 +23,41 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 class FeatureMapping:
     """Persistent mapping between string features and feature IDs
 
-    Feature types are "mesh", "qual", "issn", "word".  This serves
-    to identify the source of features (e.g. "human" as a text word
-    is a separate feature from the "human" MeSH term).
+    @note: Feature classes are "mesh", "qual", "issn", "word".  The class 
+    identifies the source of the feature, and allows the same string
+    to represent two different features - e.g. "human" as a "word" feature,
+    and "human" as a "mesh" feature.
     
-    This is really a table with columns (id,type,name,count), and keys of id
+    @note: This is really a table with columns (id,type,name,count), and keys of id
     and (type,name).
+    
+    @group Passed via constructor: filename, ftype
 
-    @ivar featfile: Path to text file with list of terms
-
-    @ivar numdocs: Number of documents used in creating the mapping
+    @ivar filename: Path to save the mapping to (None for memory only).
     
-    @ivar features: List, such that features[id] == (name,type)
+    @ivar ftype: Numpy type in feature vectors (uint16 or uint32).
     
-    @ivar feature_ids: Mapping, such that feature_ids[type][name] == id
+    @ivar numdocs: Number of documents added while creating the mapping.
     
-    @ivar counts: List, such that counts[id] == number of occurrences.  For
-    score calculation this is the only column needed.
+    @ivar features: Lookup list from feature ID to class and string
+    (features[id] == (name,class)).
     
-    @ivar ftype: Numpy integer type for representing features.
+    @ivar feature_ids: Lookup from feature class and string to feature ID
+    (feature_ids[class][name] == id)
+    
+    @ivar counts: Number of occurrences of each feature ID (counts[id] == #)
+    in Medline.
     """
 
-    def __init__(self, featfile=None, ftype=nx.uint16):
-        """Initialise the database, setting L{featfile}"""
+    def __init__(self, filename, ftype):
+        """Initialise the database"""
         self.ftype = ftype
-        self.featfile = featfile
+        self.filename = filename
         self.numdocs = 0
         self.features = []
         self.feature_ids = {}
         self.counts = []
-        if featfile is not None and self.featfile.exists():
+        if filename is not None and self.filename.exists():
             self.load()
 
 
@@ -63,31 +68,30 @@ class FeatureMapping:
         """
         self.features = []
         self.feature_ids = {}
-        with codecs.open(self.featfile, "rb", "utf-8") as f:
+        with codecs.open(self.filename, "rb", "utf-8") as f:
             self.numdocs = int(f.readline().strip())
             for fid, line in enumerate(f):
                 feat, ftype, count = line.strip().split("\t")
                 self.features.append((feat,ftype))
                 self.counts.append(int(count))
                 if ftype not in self.feature_ids:
-                    self.feature_ids[ftype] = {feat:fid}
-                else:
-                    self.feature_ids[ftype][feat] = fid
+                    self.feature_ids[ftype] = {}
+                self.feature_ids[ftype][feat] = fid
 
 
     def dump(self):
-        """Write the feature mapping to disk as a table of
-        (name, type, count) where line number is ID+1"""
-        if self.featfile is None:
+        """Write the feature mapping to disk as a table of (feature, type,
+        count) where feature ID+1 is the line number."""
+        if self.filename is None:
             return
-        _featfile_new = self.featfile + ".new"
-        with codecs.open(_featfile_new, "wb", "utf-8") as f:
+        _filename_new = self.filename + ".new"
+        with codecs.open(_filename_new, "wb", "utf-8") as f:
             f.write("%s\n" % self.numdocs)
             for (feat, ftype), count in zip(self.features, self.counts):
-                f.write("%s\t%s\t%d\n" % (feat,ftype,count))
-        if self.featfile.isfile():
-            self.featfile.remove()
-        _featfile_new.rename(self.featfile)
+                f.write("%s\t%s\t%d\n" % (feat, ftype, count))
+        if self.filename.isfile():
+            self.filename.remove()
+        _filename_new.rename(self.filename)
 
 
     def __getitem__(self, key):
@@ -108,45 +112,53 @@ class FeatureMapping:
         return len(self.features)
 
 
-    def type_mask(self, exclude_types):
-        """Get a mask for excluded features
-        
-        @param exclude_types: Types of features to exclude
-        
-        @return: Boolean array for excluded features (but returns None if
-        exclude_types is None) 
+    def class_mask(self, classes):
+        """Boolean mask for features of particular classes.
+        @param clases: Feature classes to exclude, like ["mesh","issn"].
+        @return: Boolean array for features of those classes.
         """
-        if not exclude_types:
-            return None
-        exclude_feats = nx.zeros(len(self.features), nx.bool)
-        for ftype in exclude_types:
-            for fid in self.feature_ids[ftype].itervalues():
-                exclude_feats[fid] = True
-        return exclude_feats
+        mask = nx.zeros(len(self.features), nx.bool)
+        for fclass in classes:
+            for fid in self.feature_ids[fclass].itervalues():
+                mask[fid] = True
+        return mask
+    
+    
+    def get_vector(self, features):
+        """Calculate the feature vector of an already-added article.
+        
+        @param features: Document features as a mapping from feature
+        class to feature strings, like C{{'mesh':['A','B']}}.
+     
+        @return: Feature vector of corresponding feature IDs.
+        """
+        nfeats = sum(len(v) for v in features.itervalues())
+        vector = nx.zeros(nfeats, self.ftype)
+        idx = 0
+        for fclass, featlist in features.iteritems():
+            for feature in featlist:
+                vector[idx] = self.feature_ids[fclass][feature]
+                idx += 1
+        return vector
 
 
     def add_article(self, features):
-        """Increment occurrence counts for features from an article. Returns
-        the feature vector. Non-existend features are created with count 1.
+        """Add an article to the feature map.  Add 1 to number of 
+        documents and to the count of each feature in the dictionary.
+        Features not present in the map are created with a count of 1.
         
-        @param features: Mapping from feature types to lists of features for
-        that type. e.g. C{{"mesh": ["Term A","Term B"]}}
-        
-        @return: Feature vector for the article (array of feature IDs)
-        """
-        result = []
+        @param features: Document features as a mapping from feature
+        class to feature strings, like C{{'mesh':['A','B']}}."""
         self.numdocs += 1
-        for ftype, fstrings in features.iteritems():
-            if ftype not in self.feature_ids:
-                self.feature_ids[ftype] = {}
-            fdict = self.feature_ids[ftype]
-            for feat in fstrings:
+        for fclass, featlist in features.iteritems():
+            if fclass not in self.feature_ids:
+                self.feature_ids[fclass] = {}
+            fdict = self.feature_ids[fclass]
+            for feat in featlist:
                 if feat not in fdict:
                     featid = len(self.features)
-                    self.features.append((feat,ftype))
+                    self.features.append((feat,fclass))
                     self.counts.append(1)
                     fdict[feat] = featid
                 else:
                     self.counts[fdict[feat]] += 1
-                result.append(fdict[feat])
-        return nx.array(result, self.ftype)

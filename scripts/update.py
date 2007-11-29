@@ -1,15 +1,10 @@
 #!/usr/bin/env python
 
-"""Update the MScanner database with new articles
+"""Update or regenerate the MScanner databases.
 
 Usage::
-    python update.py [somepickle]
+    ./update.py function_name arg1 arg2 [...]
 
-If a path to a pickle is given, load Article objects from the Pickle into
-the MScanner database.
-
-With no arguments, look for new XML files in the Medline path and add their
-contents to the database. 
 """
 
 from __future__ import with_statement
@@ -36,19 +31,25 @@ from mscanner.medline.Updater import Updater
 from mscanner.configuration import rc
 from mscanner.core import iofuncs
 
-
-def update_dir():
-    """Add articles to MScanner databases by parsing XML files in
-    a Medline directory."""
+def regenerate():
+    """Recreate feature map, feature stream, and featuredatabase"""
     updater = Updater.Defaults()
+    updater.regenerate()
+
+
+def add_directory():
+    """Add new articles to MScanner databases by parsing XML files in
+    a Medline directory."""
     logging.info("Updating MScanner from " + rc.medline.relpath())
+    updater = Updater.Defaults()
     updater.add_directory(rc.medline, save_delay=0)
 
 
-def update_pickle(pickle):    
+def add_pickle(pickle):    
     """Add articles to MScanner database from a pickle.
+    
     @param pickle: Path to a pickled list of Article objects."""
-    logging.info("Updating MScanner from " + pickle )
+    logging.info("Updating MScanner from " + pickle)
     with open(pickle , "rb") as f:
         articles = cPickle.load(f)
     updater = Updater.Defaults()
@@ -56,11 +57,6 @@ def update_pickle(pickle):
 
 
 if __name__ == "__main__":
+    # Call the named function with provided arguments
     iofuncs.start_logger(logfile=False)
-    if len(sys.argv) == 1:
-        update_dir()
-    elif len(sys.argv) == 2:
-        update_pickle(sys.argv[1])
-    else:
-        print __doc__
-    logging.shutdown()
+    locals()[sys.argv[1]](*sys.argv[2:])

@@ -22,19 +22,22 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
 class FeatureDatabase:
-    """Database for which PubMed ID is the key and array of Feature IDs are values
+    """Database mapping PubMed ID array of Feature IDs.
+    
+    @ivar db: Underlying instance of C{bsddb.db.DB}.
+    @ivar dbenv: Database environment used to open it.
+    @ivar name: Path to the database file.
     """
     
     def __init__(self, filename=None, flags='c', mode=0660, 
-                 dbenv=None, txn=None, dbname=None, ftype=nx.uint16):
+                 dbenv=None, txn=None, ftype=nx.uint16):
         """Initialise database
 
-        @param filename: Path to database file
-        @param flags: Opening flags (r,rw,w,c,n)
-        @param mode: Numeric file permissions
-        @param dbenv: Optional database environment
-        @param txn: Optional database transaction
-        @param dbname: Logical database name
+        @param filename: Path to database file.
+        @param flags: Opening flags (r,rw,w,c,n).
+        @param mode: Numeric file permissions.
+        @param dbenv: Optional database environment.
+        @param txn: Optional database transaction.
         @param ftype: Numpy integer type for representing features.
         """
         self.ftype = ftype
@@ -50,9 +53,11 @@ class FeatureDatabase:
             elif flags == 'n':
                 flags = db.DB_TRUNCATE | db.DB_CREATE
             else:
-                raise db.DBError("Flag %s is not in 'r', 'rw', 'w', 'c' or 'n'"  % str(flags))
+                raise db.DBError("Flag %s is not in r,rw,w,c,n"  % str(flags))
+        self.dbenv = dbenv
+        self.filename = filename
         self.db = db.DB(dbenv)
-        self.db.open(filename, dbname, db.DB_HASH, flags, mode, txn=txn)
+        self.db.open(filename, None, db.DB_HASH, flags, mode, txn=txn)
 
 
     def close(self):

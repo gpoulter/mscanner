@@ -44,18 +44,19 @@ class ValidationBase(object):
     Derived classes need to calculate all attributes other than those set in
     the constructor. The attributes are required by L{_write_report}.
     
-    @group Set in the constructor: env, outdir, dataset, timestamp
-
-    @ivar env: L{Databases} instance for accessing Medline
+    @group Set in the constructor: outdir, dataset, timestamp, adata, fdata
 
     @ivar outdir: Path to directory for output files, which is created if it
     does not exist.
     
     @ivar dataset: Title of the dataset to use when printing reports
 
+    @param adata: ArticleData to use (open default databases if None).
+    
+    @param fdata: FeatureData to use (open default databases if None).
+
+
     @ivar timestamp: Time at the start of the operation
-
-
     
     @ivar pscores: Result scores for positive articles
 
@@ -103,10 +104,6 @@ class ValidationBase(object):
     def _crossvalid_scores(self, positives, negatives):
         """Calculate article scores under cross validation
         
-        @param positives: Vector of relevant PubMed IDs
-        
-        @param negatives: Vector of irrelevant PubMed IDs
-        
         @note: Feature database lookups are slow so we cache them all
         beforehand in a dictionary.
         
@@ -117,6 +114,10 @@ class ValidationBase(object):
         can be split into validation folds.  The returned scores correspond,
         so you can zip(positives, pscores) and zip(negatives, nscores) to
         pair up the scores with the articles.
+        
+        @param positives: Vector of relevant PubMed IDs
+        
+        @param negatives: Vector of irrelevant PubMed IDs
         
         @return: Two vectors, containing scores for the positive and negative
         articles respectively (unsorted for reconstruction of folds)."""
@@ -150,16 +151,6 @@ class ValidationBase(object):
         average = v.metrics_for(idx)
         self.metric_range = PerformanceRange(
             self.pscores, self.nscores, self.nfolds, threshold, average)
-
-
-    def _init_featinfo(self):
-        """Initialise L{featinfo} for use in validation"""
-        self.featinfo = FeatureScores(
-            featmap = self.fdata.featmap, 
-            pseudocount = rc.pseudocount, 
-            mask = self.fdata.featmap.type_mask(rc.exclude_types),
-            make_scores = rc.make_scores,
-            get_postmask = rc.get_postmask)
 
 
     def _update_featscores(self, pos, neg):
@@ -253,8 +244,8 @@ def SplitValidation(ValidationBase):
             fntest, s.fdata.featuredb, set(s.ptest))
         if len(s.ptrain)>0 and len(s.ptest)>0 \
            and len(s.ntrain)>0 and len(s.ntest)>0:
-            s._init_featinfo()
-            s._test_scores()
+            self.featinfo = FeatureScores.Defaults(self.fdata.featmap)
+            s._get_scores()
             s._get_performance()
             s._write_report()
         else:
@@ -262,7 +253,7 @@ def SplitValidation(ValidationBase):
             return
 
 
-    def _test_scores(self):
+    def _get_scores(self):
         """Get performance statistics using split validation. 
         
         The training sample is used to calculate feature scores, which are then
@@ -312,7 +303,7 @@ class CrossValidation(ValidationBase):
         # Keep our own number of folds attribute
         self.nfolds = nfolds
         self.notfound_pmids = []
-        self._init_featinfo()
+        self.featinfo = FeatureScores.Defaults(self.fdata.featmap)
         # Try to load saved results
         try:
             self.positives, self.pscores = iofuncs.read_scores_array(
@@ -347,7 +338,7 @@ class CrossValidation(ValidationBase):
         @param relevant_high: Maximum expected relevant articles in Medline
 
         @param medline_size: Number of articles in rest of Medline, or None
-        to use L{Databases.article_list} minus relevant articles.
+        to use local database size minus relevant articles.
         """
         if len(self.positives)>0 and len(self.negatives)>0:
             # Calculate the performance

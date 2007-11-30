@@ -140,7 +140,7 @@ class ValidationBase(object):
         
         @param threshold: Specify a particular threshold, or None to estimate
         using F measure."""
-        logging.info("Eval performance using alpha=%s, utility_r=%s", 
+        logging.info("Getting performance vectors (alpha=%s, utility_r=%s)", 
                      str(rc.alpha), str(rc.utility_r))
         v = PerformanceVectors(self.pscores, self.nscores, rc.alpha, rc.utility_r)
         self.metric_vectors = v
@@ -157,7 +157,7 @@ class ValidationBase(object):
     def _update_featscores(self, pos, neg):
         """Update the feature scores in L{featinfo} using the given 
         vectors of positive and negative citations."""
-        logging.info("Calculating performance statistics from scores.")
+        logging.info("Updating feature scores.")
         self.featinfo.update(
             pos_counts = FeatureCounts(
                 len(self.fdata.featmap), self.fdata.featuredb, pos),

@@ -150,8 +150,7 @@ class UpdaterTests(unittest.TestCase):
         xml.write_text(xmltext)
         m.add_directory(h, save_delay=1)
         logging.debug("".join((h/"articles.txt").lines()))
-        test_pmids.write_lines(["1", "2"])
-        a = m.adata.load_articles(test_pmids)
+        a = [ m.adata.artdb[x] for x in ["1","2"] ]
         logging.debug("Articles: %s", repr(a))
         logging.debug("%s", repr(m.fdata_all.featmap.features))
         self.assertEqual(a[0].pmid, 1)

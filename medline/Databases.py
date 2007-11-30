@@ -3,6 +3,7 @@ database to be loaded at the same time, and for articles are added
 simultaneously to all of them databases."""
 
 from __future__ import with_statement
+from contextlib import closing
 import logging
 import numpy as nx
 
@@ -42,6 +43,7 @@ class FeatureData:
     def __init__(self, featmap, featdb, fstream, ftype, dbenv=None):
         """Constructor. 
         @param dbenv: Optional Berkeley database environment"""
+        logging.debug("Loading feature mapping from %s", featmap.basename())
         self.featmap = FeatureMapping(featmap, ftype=ftype)
         self.featuredb = FeatureDatabase(featdb, dbenv=dbenv, ftype=ftype)
         self.fstream = FeatureStream(fstream, ftype=ftype)
@@ -195,26 +197,3 @@ class ArticleData:
                         pmid, Date2Integer(art.date_completed)))
                     self.artdb[pmid] = art
             self.artdb.sync()
-
-
-    def load_articles(self, filename):
-        """Return Article objects given a file listing PubMed IDs, caching
-        the results in a pickle.  The pickle has a ".pickle" on top of
-        L{pmids_path}.
-        
-        @param filename: Path to a text file with one PubMed ID per line.
-        
-        @return: List of Article objects (same order as text file).
-        """
-        import cPickle
-        from path import path
-        from mscanner.core.iofuncs import read_pmids
-        pickle = path(filename + ".pickle")
-        if pickle.isfile():
-            with open(pickle, "rb") as stream:
-                return cPickle.load(stream)
-        else:
-            articles = [self.artdb[str(p)] for p in read_pmids(filename)]
-            with open(pickle, "wb") as stream:
-                cPickle.dump(articles, stream, protocol=2)
-            return articles

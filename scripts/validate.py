@@ -75,22 +75,22 @@ def compare_trec_genomics():
         op.validation(ptrain, ntrain, ptest, ntest)
 
 
-
 def compare_iedb_valid():
     """Performs cross validation using the IEDB gold standard data set"""
     adata = ArticleData.Defaults()
-    fdata = FeatureData.Defaults_MeSH()
-    basedir = rc.working / "valid" / "iedb"
-    if not basedir.exists(): 
+    #fdata = FeatureData.Defaults_MeSH()
+    fdata = FeatureData.Defaults_All()
+    basedir = rc.working / "valid" / "IEDB Query"
+    if not basedir.exists():
         basedir.mkdir()
     rc.utility_r = None
-    #for fbase in "ac", "allergen", "er", "other":
-    for dataset in ("iedb",):
-        pos = rc.corpora / "IEDB" / ("%s_pos.txt" % fbase)
-        neg = rc.corpora / "IEDB" / ("%s_neg.txt" % fbase)
-        op = CrossValidation(basedir / dataset, dataset, adata, fdata)
-        op.validation(pos, neg)
-        op.report_validation()
+    #for dataset in "ac", "allergen", "er", "other":
+    pos = rc.corpora / "IEDB" / "iedb-pos-dates.txt"
+    neg = rc.corpora / "IEDB" / "iedb-neg-dates.txt"
+    dataset = "IEDB Q word"
+    op = CrossValidation(basedir / dataset, dataset, adata, fdata)
+    op.validation(pos, neg)
+    op.report_validation()
     
     
 if __name__ == "__main__":

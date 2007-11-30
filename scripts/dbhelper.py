@@ -47,7 +47,7 @@ def dbkeys(dbfile, keylist):
     cur.close()
     d.close()
     f.close()
-
+    
 
 def pmid_dates(artdb, infile, outfile):
     """Get dates for PMIDs listed in L{infile}, writing PMID,date pairs

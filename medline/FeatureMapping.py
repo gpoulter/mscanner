@@ -66,7 +66,6 @@ class FeatureMapping:
         table for tuples (feature, type, count) with ID being the
         0-based index in the file.
         """
-        logging.debug("Loading feature mapping from %s", self.filename.basenam())
         self.features = []
         self.feature_ids = {}
         with codecs.open(self.filename, "rb", "utf-8") as f:

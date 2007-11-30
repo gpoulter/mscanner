@@ -2,8 +2,9 @@
 
 """Calculates cross validation results for the MScanner paper.
 
-Choose the action by using a Python expression::
-    python validate.py 'validate("aids-vs-500k")'
+Usage Example::
+    python validate.py sample aidsbio pg07
+    python validate.py iedb
 """
 
 from path import path
@@ -39,7 +40,7 @@ dataset_map = {
 """Map data set to pair of (positive,negative) paths for PubMed IDs."""
 
 
-def validate(*datasets):
+def sample(*datasets):
     """Perform cross-validation analysis on the main data sets"""
     adata = ArticleData.Defaults()
     #fdata = FeatureData.Defaults_MeSH()
@@ -59,11 +60,12 @@ def validate(*datasets):
 
 
     
-def compare_trec_genomics():
+def trec():
     """Performs split-sample validation on the 2005 TREC Genomics track
     categorisation subtasks (Allele, Expression, GO, Tumor)."""
     adata = ArticleData.Defaults()
     fdata = FeatureData.Defaults_MeSH()
+    #fdata = FeatureData.Defaults_All()
     ntest = rc.corpora / "TREC" / "NEG_test.txt"
     ntrain = rc.corpora / "TREC" / "NEG_train.txt"
     for ds, Ur in [("A",17.0), ("E",64.0), ("G",11.0), ("T",231.0)]:
@@ -75,27 +77,27 @@ def compare_trec_genomics():
         op.validation(ptrain, ntrain, ptest, ntest)
 
 
-def compare_iedb_valid():
+
+def iedb():
     """Performs cross validation using the IEDB gold standard data set"""
-    adata = ArticleData.Defaults()
-    #fdata = FeatureData.Defaults_MeSH()
-    fdata = FeatureData.Defaults_All()
-    basedir = rc.working / "valid" / "IEDB Query"
-    if not basedir.exists():
-        basedir.mkdir()
-    rc.utility_r = None
-    #for dataset in "ac", "allergen", "er", "other":
+    base = rc.working / "valid" / "IEDB Query"
+    dataset = "IEDB CV MeSH PMin0"
     pos = rc.corpora / "IEDB" / "iedb-pos-dates.txt"
     neg = rc.corpora / "IEDB" / "iedb-neg-dates.txt"
-    dataset = "IEDB Q word"
-    op = CrossValidation(basedir / dataset, dataset, adata, fdata)
+    if not base.exists(): base.mkdir()
+    adata = ArticleData.Defaults()
+    fdata = FeatureData.Defaults_MeSH()
+    #fdata = FeatureData.Defaults_All()
+    rc.utility_r = None
+    op = CrossValidation(base / dataset, dataset, adata, fdata)
     op.validation(pos, neg)
     op.report_validation()
     
     
 if __name__ == "__main__":
-    iofuncs.start_logger()
-    eval(sys.argv[1])
+    # Call the named function with provided arguments
+    iofuncs.start_logger(logfile=False)
+    locals()[sys.argv[1]](*sys.argv[2:])
 
 
 '''
@@ -128,7 +130,6 @@ def issn_features():
 def control_modality():
     """Cross validate Control against Medline100K, but without the features
     unique to Medline100K that cause the multi-modal score distributions."""
-    rc.postmask = "mask_nonpositives"
     pos, neg = dataset_map["control"]
     op = CrossValidation(rc.working / "valid" / "modality",
                          "Removing Control corpus multi-modality")

@@ -128,7 +128,7 @@ class DrugFinder:
         @rtype: C{[(string,int,int,string)]}
         """
         # Remove punctuation, such that words are all space-separated
-        reptext = re.sub(r'[^a-z]'," ", text.lower())
+        reptext = re.sub(r'[^a-z0-9]'," ", text.lower())
         result = []
         for PKID, regex in self.patterns.iteritems():
             for m in regex.finditer(reptext):

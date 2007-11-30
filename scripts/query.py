@@ -2,15 +2,9 @@
 
 """Performs queries using datasets from the MScanner paper
 
-Usage::
-
-    python query.py <dataset> [ <dataset> ... ]
-
 Example::
-
-    python query.py pg07 radiology aids
+    python query.py query pg07 radiology aids
 """
-
 
 import sys
 
@@ -41,11 +35,12 @@ dataset_map = {
     "radiology"   : "Paper/radiology.txt",
     "gdsmall"     : "Test/gdsmall.txt",
     "invalid"     : "Test/invalid.txt",
+    "iedb04"      : "IEDB/iedb-pos-pre2004.txt",
 }
 """Mapping from dataset code to input file"""
 
 
-def do_query(*datasets):
+def query(*datasets):
     adata = ArticleData.Defaults()
     #fdata = FeatureData.Defaults_MeSH()
     fdata = FeatureData.Defaults_All()
@@ -60,7 +55,8 @@ def do_query(*datasets):
     fdata.close()
 
 if __name__ == "__main__":
-    iofuncs.start_logger()
-    do_query(*sys.argv[1:])
+    # Call the named function with provided arguments
+    iofuncs.start_logger(logfile=False)
+    locals()[sys.argv[1]](*sys.argv[2:])
     
 

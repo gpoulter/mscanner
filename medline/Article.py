@@ -139,8 +139,11 @@ class Article:
         if self.abstract is not None:
             text += self.abstract.lower()
         # Collapse all non-alphabetics to single spaces and split into words
-        words = re.sub(r'[^a-z]+', ' ', text).split()
-        wordset = set(x for x in words if len(x) >= 3 and x not in stopwords)
+        words = re.sub(r'[^a-z0-9]+', ' ', text).split()
+        # Keep only non-numeric, non-stop, length>=3 words
+        numbers = re.compile(r"^[0-9]+$")
+        wordset = set(x for x in words if (
+            len(x) >= 3 and x not in stopwords and not numbers.match(x)))
         return {"word":list(wordset)}
 
 

@@ -155,12 +155,10 @@ rc.citations_per_file = 250
 ## Parameters affecting FeatureScores 
 
 ## Mask features with fewer occurrences in Medline
-rc.mincount = 5
+rc.mincount = 4
 ## Per-term pseudocount to use (None for background frequency)
 rc.pseudocount = None
 ## Types of features to exclude
 rc.class_mask = []
 ## Method name for calculating feature probabilities
 rc.scoremethod = "scores_bayes"
-## Method name for calculating mask after scores (may be None)
-rc.postmask = None

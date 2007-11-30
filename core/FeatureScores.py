@@ -26,7 +26,7 @@ class FeatureScores(object):
     """Feature score calculation and saving, with choice of calculation method,
     and methods to exclude certain kinds of features.
     
-    @group Set via constructor: featmap, pseudocount, scorefunction, premask, postmask
+    @group Set via constructor: featmap, pseudocount, scorefunction, mask
     
     @ivar featmap: L{FeatureMapping} object
     
@@ -35,13 +35,9 @@ class FeatureScores(object):
     
     @ivar scoremethod: Name of the method for calculating feature scores.
     
-    @ivar premask: Boolean array to pretend that certain feature IDs do
-    not exist at all.  Usually from L{FeatureMapping}) to exclude a class of 
-    features, or features identified as spurious.
-    
-    @ivar postmask: Name of a method that returns a boolean array to
-    set certain feature scores to zero (after the scores are calculated).
-    
+    @ivar maskfunc: Function taking L{FeatureScores} as a parameter, and 
+    returning a boolean array for setting L{mask}.
+       
     
     @group Set by update: pos_counts, neg_counts, pdocs, ndocs, prior
     
@@ -55,6 +51,9 @@ class FeatureScores(object):
     
     @ivar prior: Bayes prior to add to the score.  If None, estimate
     using the ratio of relevant to irrelevant articles in the data.
+    
+    @ivar mask: Boolean array for feature selection.  True positions indicate 
+    features to use, false positions are features that we pretend do not exist.
 
     
     @group Set via scoremethod: scores, pfreqs, nfreqs, base
@@ -73,13 +72,10 @@ class FeatureScores(object):
                  featmap,
                  pseudocount=None,
                  scoremethod="scores_bayes",
-                 premask=None,
-                 postmask=None):
+                 maskfunc=lambda x:None):
         """Initialise FeatureScores object (parameters are instance variables)"""
         if isinstance(scoremethod, basestring):
             scoremethod = getattr(self, scoremethod)
-        if isinstance(postmask, basestring):
-            postmask = getattr(self, postmask)
         prior = 0
         update(self, locals())
 
@@ -89,16 +85,18 @@ class FeatureScores(object):
         """Create a FeatureScores parameterised using the RC defaults.
         @param featmap: L{FeatureMapping} instance to use."""
         from mscanner.configuration import rc
-        # Mask excluded feature classes
-        premask = featmap.class_mask(rc.class_mask)
-        # Mask noise features (too few occurrences in Medline)
-        premask |= (nx.array(featmap.counts) < rc.mincount)
+        def maskfunc(fs):
+            # Exclude certain classes of features (word/mesh/issn)
+            r = fs.featmap.class_mask(rc.class_mask)
+            # Exclude features not occurring enough times in the data
+            r |= ((fs.pos_counts + fs.neg_counts) < rc.mincount)
+            #r |= fs.pos_counts < rc.mincount
+            return r
         return FeatureScores(
             featmap = featmap,
             pseudocount = rc.pseudocount,
-            premask = premask,
             scoremethod = rc.scoremethod,
-            postmask = rc.postmask)
+            maskfunc = maskfunc)
 
 
     def scores_of(self, featdb, pmids):
@@ -129,7 +127,7 @@ class FeatureScores(object):
         base = 0
         update(self, locals())
         self.scoremethod()
-        self._mask_features()
+        self._apply_mask()
         delattrs(self, "_stats", "_tfidf")
 
 
@@ -146,7 +144,7 @@ class FeatureScores(object):
         # Support scores for bernoulli successes
         s.present_scores = nx.log(s.pfreqs/s.nfreqs)
         # Support scores for bernoulli failures
-        s.absent_scores = nx.log( (1-s.pfreqs)/(1-s.nfreqs) )
+        s.absent_scores = nx.log( (1-s.pfreqs) / (1-s.nfreqs) )
         # Conversion to base score (no terms) and occurrence score
         s.base = nx.sum(s.absent_scores)
         s.scores = s.present_scores - s.absent_scores
@@ -176,32 +174,23 @@ class FeatureScores(object):
 
 
     def _make_pseudovec(s):
-        """Calculates a pseudocount vector based on background frequencies
-        if no constant pseudocount was specified"""
+        """Calculates a pseudocount vector of background frequencies,
+        if no constant pseudocount was specified."""
         if s.pseudocount is None:
             s.pseudocount = \
              nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
 
 
-    def _mask_features(self):
-        """Set some feature scores to zero, effectively excluding them
-        from consideration.  Uses L{premask} and L{postmask}"""
-        if self.premask is not None:
-            self.pos_counts[self.premask] = 0
-            self.neg_counts[self.premask] = 0
-            self.pfreqs[self.premask] = 0
-            self.nfreqs[self.premask] = 0
-            self.scores[self.premask] = 0
-        if self.postmask is not None:
-            self.scores[self.postmask()] = 0
-
-
-    def mask_nonpositives(s):
-        """Mask for features not represented in the positives
-        
-        @return: Boolean array for masked out features
-        """
-        return s.pos_counts == 0
+    def _apply_mask(self):
+        """Uses the result of L{maskfunc} to exclude certain features"""
+        mask = self.maskfunc(self)
+        self.mask = mask
+        if mask is not None:
+            self.pos_counts[mask] = 0
+            self.neg_counts[mask] = 0
+            self.pfreqs[mask] = 0
+            self.nfreqs[mask] = 0
+            self.scores[mask] = 0
 
 
     @property 
@@ -293,7 +282,7 @@ class FeatureScores(object):
             pseudocount = s.pseudocount
         for t, score in sorted(
             enumerate(s.scores), key=lambda x:x[1], reverse=True):
-            if (s.premask is not None) and s.premask[t]:
+            if (s.mask is not None) and s.mask[t]:
                 continue
             stream.write(
                 u'%.3f,%d,%d,%.2e,%.2e,%.2e,%d,%.2f,%s,"%s"\n' % 

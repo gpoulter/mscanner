@@ -42,7 +42,8 @@ def truepos_vs_rank(results, test):
     return TP_total
 
 
-def plot_rank_performance(fname, textfname, tp_vs_rank, total_relevant, total_irrelevant):
+def plot_rank_performance(fname, textfname, tp_vs_rank, 
+                          total_relevant, total_irrelevant):
     """Plot recall and precision versus rank.
 
     @param fname: File in which to draw the graph
@@ -50,7 +51,7 @@ def plot_rank_performance(fname, textfname, tp_vs_rank, total_relevant, total_ir
     @param textfname: File in which to write the text version of the graph
 
     @param tp_vs_rank: Vector where the values are the number of true positives
-    at rank (rank = vector index+1). 
+    as a function of (where rank = index+1). 
     
     @param total_relevant: Total number of relevant articles to be found.
     

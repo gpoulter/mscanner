@@ -121,6 +121,7 @@ class ValidationBase(object):
         
         @return: Two vectors, containing scores for the positive and negative
         articles respectively (unsorted for reconstruction of folds)."""
+        logging.info("Calculating scores under cross validation.")
         self.validator = CrossValidator(
             featdb = dict((k,self.fdata.featuredb[k]) for k in 
                           chain(positives,negatives)),
@@ -156,6 +157,7 @@ class ValidationBase(object):
     def _update_featscores(self, pos, neg):
         """Update the feature scores in L{featinfo} using the given 
         vectors of positive and negative citations."""
+        logging.info("Calculating performance statistics from scores.")
         self.featinfo.update(
             pos_counts = FeatureCounts(
                 len(self.fdata.featmap), self.fdata.featuredb, pos),
@@ -262,16 +264,16 @@ def SplitValidation(ValidationBase):
         threshold is then applied to the testing sample to obtain performance
         metrics."""
         s = self
-        # Calculate cross-validated scores on training data
+        logging.debug("Calculating cross-validated scores on training data")
         train_pscores, train_nscores = s._crossvalid_scores(s.ptrain, s.ntrain)
-        # Calculate split-sample scores on the testing data
+        logging.debug("Calculating scores of testing data")
         s.pscores = s.featinfo.scores_of(s.fdata.featuredb, s.ptest)
         s.nscores = s.featinfo.scores_of(s.fdata.featuredb, s.ntest)
-        # Cross validation on training data for a threshold maximising utility
+        logging.debug("Optimising threshold on training data")
         trainperf = PerformanceVectors(
             train_pscores, train_nscores, rc.alpha, rc.utility_r)
         threshold = trainperf.threshold_maximising(trainperf.U)[0]
-        # Apply that threshold to calculating performance on the test split
+        logging.debug("Calculating performance on testing data")
         self._get_performance(threshold)
 
 
@@ -311,6 +313,7 @@ class CrossValidation(ValidationBase):
             self.negatives, self.nscores = iofuncs.read_scores_array(
                 self.outdir/rc.report_negatives)
             self._update_featscores(self.positives, self.negatives)
+            logging.debug("Loaded saved cross validation results")
         # Failed to load, so perform cross validation
         except IOError:
             if not self._load_input(pos, neg):
@@ -341,10 +344,11 @@ class CrossValidation(ValidationBase):
         to use local database size minus relevant articles.
         """
         if len(self.positives)>0 and len(self.negatives)>0:
+            logging.debug("Reporting performance prediction metrics")
             # Calculate the performance
             self._get_performance()
             if medline_size is None:
-                medline_size = len(self.fdata.article_list) - len(self.positives)
+                medline_size = self.fdata.featmap.numdocs  - len(self.positives)
             v = self.metric_vectors
             self.pred_low = PredictedMetrics(
                 v.TPR, v.FPR, v.uscores, relevant_low, medline_size)
@@ -366,13 +370,13 @@ class CrossValidation(ValidationBase):
         @return: True if the load was successful, False otherwise.
         """
         if isinstance(pos, basestring):
-            logging.info("Loading positive PubMed IDs from %s", pos.basename())
+            logging.info("Reading relevant examples from %s", pos.basename())
             self.positives, self.notfound_pmids, exclude = \
                 iofuncs.read_pmids_careful(pos, self.fdata.featuredb)
         else:
             self.positives = nx.array(pos, nx.int32)
         if isinstance(neg, int):
-            logging.info("Selecting %d random negative PubMed IDs" % neg)
+            logging.info("Selecting %d random PubMed IDs for background." % neg)
             # Clamp number of negatives to the number available
             maxnegs = self.fdata.featmap.numdocs - len(self.positives)
             if neg > maxnegs:
@@ -381,13 +385,14 @@ class CrossValidation(ValidationBase):
             self.negatives = self._random_subset(
                 neg, self.adata.article_list, set(self.positives))
         elif isinstance(neg, basestring):
-            logging.info("Loading negative PubMed IDs from %s", neg.basename())
+            logging.info("Loading irrelevant examples from %s", neg.basename())
             # Read list of negative PMIDs from disk
             self.negatives, notfound, exclude = iofuncs.read_pmids_careful(
                     neg, self.fdata.featuredb, set(self.positives))
             self.notfound_pmids = list(self.notfound_pmids) + list(notfound)
             iofuncs.write_pmids(self.outdir/rc.report_negatives_exclude, exclude)
         else:
+            logging.info("Using directly supplied relevant PMIDs")
             self.negatives = nx.array(neg, nx.int32)
         # Writing out broken PubMed IDs
         iofuncs.write_pmids(

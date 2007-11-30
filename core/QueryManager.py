@@ -182,7 +182,7 @@ class QueryManager:
         
         # Background is Medline within a specific date range
         else:
-            logging.info("Background PMIDs = Medline between %s and %s", 
+            logging.info("Counting Medline between %s and %s for background.", 
                          str(self.t_mindate), str(self.t_maxdate))
             # Have the option to exclude more than just training PMIDs
             if train_exclude is None:
@@ -196,8 +196,10 @@ class QueryManager:
                 maxdate = self.t_maxdate,
                 exclude = train_exclude,
                 ).c_counts()
+            
         
         # Evaluating feature scores from the counts
+        logging.info("Calculating feature scores from counts.")
         self.featinfo.update(pos_counts, neg_counts, pdocs, ndocs, self.prior)
 
 
@@ -219,13 +221,13 @@ class QueryManager:
     def _make_results(self):
         """Perform the query to generate L{inputs} and L{results}"""
         # Calculate decreasing (score, PMID) for input PMIDs
-        logging.info("Finding scores for %d input documents", len(self.pmids))
+        logging.info("Calculating scores of the %d input documents.", len(self.pmids))
         self.inputs = zip(
             self.featinfo.scores_of(self.fdata.featuredb, self.pmids), 
             self.pmids)
         self.inputs.sort(reverse=True)
         # Calculate results as decreasing (score, PMID)
-        logging.info("Find scores of Medline between dates %s to %s", 
+        logging.info("Calculating Medline scores between %s to %s", 
                      str(self.mindate), str(self.maxdate))
         self.results = ScoreCalculator(
             path(self.fdata.fstream.stream.name),
@@ -239,7 +241,7 @@ class QueryManager:
             self.maxdate,
             set(self.pmids),
             ).score()
-        logging.info("Got %d results (limit %d)", len(self.results), self.limit)
+        logging.info("ScoreCalculator returned %d (limit %d)", len(self.results), self.limit)
 
 
     def write_report(self, maxreport=None):

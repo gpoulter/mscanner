@@ -154,7 +154,7 @@ rc.citations_per_file = 250
 
 ## Parameters affecting FeatureScores 
 
-## Mask features with fewer occurrences in Medline
+## Mask features having a Document Frequency lower than this
 rc.mincount = 4
 ## Per-term pseudocount to use (None for background frequency)
 rc.pseudocount = None

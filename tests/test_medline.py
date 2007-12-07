@@ -57,7 +57,7 @@ class FeatureStreamTests(unittest.TestCase):
             self.fn.remove()
         
     def test_FeatureStream(self):
-        with closing(FeatureStream(self.fn, nx.uint32, "a")) as fs:
+        with closing(FeatureStream(self.fn, nx.uint32, rdonly=False)) as fs:
             pmids = (12,34,56)
             dates = (20070101, 19980308, 20001207)
             feats = [nx.array([1,2,3,4], fs.ftype), 
@@ -65,7 +65,7 @@ class FeatureStreamTests(unittest.TestCase):
                      nx.array([], fs.ftype)]
             for pmid, date, feat in zip(pmids, dates, feats):
                 fs.additem(pmid, date, feat)
-        with closing(FeatureStream(self.fn, nx.uint32, "r")) as fs:
+        with closing(FeatureStream(self.fn, nx.uint32, rdonly=True)) as fs:
             rpmids, rdates, rfeats = zip(*list(fs.iteritems()))
             self.assertEqual(pmids, rpmids)
             self.assertEqual(dates, rdates)

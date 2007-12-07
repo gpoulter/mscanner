@@ -58,8 +58,8 @@ class Updater:
         a database environment."""
         dbenv = Updater.dbenv(rc.db_env_home)
         return Updater(ArticleData.Defaults(dbenv), 
-                       FeatureData.Defaults_MeSH(dbenv),
-                       FeatureData.Defaults_All(dbenv), 
+                       FeatureData.Defaults_MeSH(dbenv, rdonly=False),
+                       FeatureData.Defaults_All(dbenv, rdonly=False), 
                        rc.tracker, rc.stopwords)
 
 

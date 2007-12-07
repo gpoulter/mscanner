@@ -128,7 +128,7 @@ class ScoreCalculator:
         ndocs = 0
         logging.debug("Calculating article scores")
         marker = 0
-        docs = FeatureStream(s.docstream, s.ftype, "r")
+        docs = FeatureStream(s.docstream, s.ftype, rdonly=True)
         try:
             for idx, (docid, date, features) in enumerate(docs.iteritems()):
                 if idx == marker:

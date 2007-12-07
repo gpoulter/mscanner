@@ -14,7 +14,7 @@ class FeatureCounter:
     """Class for calculating feature counts in a subset of Medline.
 
     @ivar docstream: Path to file containing feature vectors for documents to
-    score, in L{mscanner.medline.FeatureStream.FeatureStream} format.
+    score, in FeatureStream format.
     
     @ivar ftype: Type of the docstream features (uint16 or uint32).
 
@@ -60,7 +60,7 @@ class FeatureCounter:
         
         @return: Number of documents counted, and vector of feature counts."""
         featcounts = nx.zeros(s.numfeats, nx.int32)
-        docs = FeatureStream(s.docstream, s.ftype, "r")
+        docs = FeatureStream(s.docstream, s.ftype, rdonly=True)
         ndocs = 0
         try:
             for docid, date, features in docs.iteritems():

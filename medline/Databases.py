@@ -38,43 +38,49 @@ class FeatureData:
     @ivar featuredb: Mapping from PubMed ID to list of features.
     
     @ivar fstream: L{FeatureStream} of (PMID, date, feature vector).
+    
+    @ivar rdonly: Boolean for opening databases read-only.
     """
     
-    def __init__(self, featmap, featdb, fstream, ftype, dbenv=None):
+    def __init__(self, featmap, featdb, fstream, ftype, dbenv=None, rdonly=True):
         """Constructor. 
         @param dbenv: Optional Berkeley database environment"""
+        self.rdonly = rdonly
         logging.debug("Loading feature mapping from %s", featmap.basename())
         self.featmap = FeatureMapping(featmap, ftype=ftype)
-        self.featuredb = FeatureDatabase(featdb, dbenv=dbenv, ftype=ftype)
-        self.fstream = FeatureStream(fstream, ftype=ftype)
+        self.featuredb = FeatureDatabase(featdb, "r" if rdonly else "c", 
+                                         dbenv=dbenv, ftype=ftype)
+        self.fstream = FeatureStream(fstream, ftype, rdonly)
 
 
     @staticmethod
-    def Defaults_MeSH(dbenv=None):
+    def Defaults_MeSH(dbenv=None, rdonly=True):
         """Construct using the RC defaults for MeSH feature space."""
         return FeatureData(rc.featuremap_mesh, rc.featuredb_mesh, 
-                           rc.featurestream_mesh, nx.uint16, dbenv)
+                           rc.featurestream_mesh, nx.uint16, dbenv, rdonly)
 
 
     @staticmethod
-    def Defaults_All(dbenv=None):
+    def Defaults_All(dbenv=None, rdonly=True):
         """Construct using RC defaults for the MeSH+Abstract feature space."""
         return FeatureData(rc.featuremap_all, rc.featuredb_all, 
-                           rc.featurestream_all, nx.uint32, dbenv)
+                           rc.featurestream_all, nx.uint32, dbenv, rdonly)
 
 
     def close(self):
         """Shut down the databases"""
-        self.featmap.dump()
+        if not self.rdonly:
+            self.featmap.dump()
         self.featuredb.close()
         self.fstream.close()
         
         
     def sync(self):
         """Flush databases to disk"""
-        self.featmap.dump()
-        self.featuredb.sync()
-        self.fstream.flush()
+        if not self.rdonly:
+            self.featmap.dump()
+            self.featuredb.sync()
+            self.fstream.flush()
 
 
     def add_articles(self, articles):
@@ -84,6 +90,8 @@ class FeatureData:
         @param articles: Iterable of (PMID, date, features), as (string,
         YYYYMMDD integer, dictionary). The features dict maps string feature
         type to list of feature strings."""
+        if self.rdonly:
+            raise NotImplementedError("Attempt to write to read-only databases")
         for pmid, date, features in articles:
             if pmid not in self.featuredb:
                 self.featmap.add_article(features)
@@ -101,6 +109,8 @@ class FeatureData:
         @param articles: Iterable of (PMID, date, features), as (string,
         YYYYMMDD integer, dictionary). The features dict maps string feature
         type to list of feature strings."""
+        if self.rdonly:
+            raise NotImplementedError("Attempt to write to read-only databases")
         do_featmap = len(self.featmap) == 0
         do_stream = self.fstream.filename.size == 0
         do_featuredb = len(self.featuredb) == 0

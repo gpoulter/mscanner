@@ -59,7 +59,7 @@ class CScoreModuleTests(unittest.TestCase):
     @tests.usetempfile
     def test_FeatureCounter(self, tmpfile):
         """Test the system for fast feature counting"""
-        fs = FeatureStream(tmpfile, nx.uint32)
+        fs = FeatureStream(tmpfile, nx.uint32, rdonly=False)
         for pmid, date, feats in self.citations:
             fs.additem(pmid, date, nx.array(feats, fs.ftype))
         fs.close()
@@ -84,7 +84,7 @@ class CScoreModuleTests(unittest.TestCase):
         """Consistency test between document score calculators."""
         featscores = nx.array([0.1, 5.0, 10.0, -5.0, -6.0] + [0]*145)
         # Write citations to disk
-        fs = FeatureStream(tmpfile, nx.uint32)
+        fs = FeatureStream(tmpfile, nx.uint32, rdonly=False)
         for pmid, date, feats in self.citations:
             fs.additem(pmid, date, nx.array(feats, fs.ftype))
         fs.close()

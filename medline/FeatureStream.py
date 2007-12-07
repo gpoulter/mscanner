@@ -42,30 +42,24 @@ class PlainFeatureStream:
     @ivar filename: Path to the file holding the feature stream.
     
     @ivar ftype: Numpy integer type for representing features.
+    
+    @ivar rdonly: Boolean for whether to open the stream read-only or appendable.
     """
     
     
     max_bytes = 2000
-    """Max feature vector bytes to read (detect stream errors)."""
+    """Max feature vector bytes to read (more implies a stream error)."""
 
 
-    def __init__(self, fname, ftype, mode="a"):
-        """Initialise the stream.
-        @param fname: Path to file containing the stream.
-        @param mode: Two options: read/write (a) or read-only (r).
-        """
-        if mode == "r":
-            mode = "rb"
-        elif mode == "a":
-            if not fname.exists():
-                fname.touch()
-            mode = "rb+"
-        else:
-            raise ValueError("Invalid file mode %s" % mode)
-        self.filename = fname
+    def __init__(self, filename, ftype, rdonly):
+        """Initialise the stream."""
+        self.filename = filename
         self.ftype = ftype
-        self.stream = open(fname, mode)
-        self.stream.seek(0,2) # EOF
+        self.rdonly = rdonly
+        if not filename.exists():
+            filename.touch()
+        self.stream = open(filename, "rb" if rdonly else "rb+")
+        self.stream.seek(0,2) # Go to end of file
 
 
     def close(self):
@@ -76,7 +70,8 @@ class PlainFeatureStream:
 
     def flush(self):
         """Flush the underlying stream"""
-        self.stream.flush()
+        if not self.rdonly:
+            self.stream.flush()
 
 
     def additem(self, pmid, date, features):

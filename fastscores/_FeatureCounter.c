@@ -51,7 +51,7 @@ typedef unsigned short ftype;
 // Search sorted array A of length N for needle.
 // Return 1 if we find the needle, 0 if we do not
 // http://en.wikipedia.org/wiki/Binary_search
-int binary_search(int *A, int N, int needle) {
+int binary_search(unsigned int *A, unsigned int N, unsigned int needle) {
     int low = 0;
     int high = N-1;
     int mid = 0;
@@ -73,24 +73,31 @@ int main (int argc, char **argv)
 {
     // Parameters
     char *cite_filename = argv[1];    // Name of citations file
-    int numcites = atoi (argv[2]);    // Number of citations
-    int numfeats = atoi (argv[3]);    // Number of features
-    int mindate = atoi (argv[4]);     // Minimum date to consider
-    int maxdate = atoi (argv[5]);     // Maximum date to consider
-    int numexcluded = atoi (argv[6]); // Number of excluded citations
+    unsigned int numcites = atoi (argv[2]);    // Number of citations
+    unsigned int numfeats = atoi (argv[3]);    // Number of features
+    unsigned int mindate = atoi (argv[4]);     // Minimum date to consider
+    unsigned int maxdate = atoi (argv[5]);     // Maximum date to consider
+    unsigned int numexcluded = atoi (argv[6]); // Number of excluded citations
     
     // Loop variables
     FILE *citefile = NULL; // File with citation scores
-    int pi = 0; // Loop variable: number of PubMed ID's so far
-    int fi = 0; // Loop variable: index into feature vector
-    int date = 0; // Date of the current citation
-    int pmid = 0; // PubMed ID of the current citation
-    int ndocs = 0; // Number of documents counted
+    unsigned int pi = 0; // Loop variable: number of PubMed ID's so far
+    unsigned int fi = 0; // Loop variable: index into feature vector
+    unsigned int date = 0; // Date of the current citation
+    unsigned int pmid = 0; // PubMed ID of the current citation
+    unsigned int ndocs = 0; // Number of documents counted
     unsigned short featvec_size = 0; // Size of current feature vector
     ftype featvec[1000]; // Max 1000 features per citation (16 or 32 bit)
 
+    #ifndef PLAINFEATS
+    unsigned short featvec_nbytes = 0; // Bytes in encoded feature vector
+    unsigned char bytes[4000]; // Bytes of encoded feature vector
+    unsigned int gap = 0; // Gap between feature IDs
+    unsigned int last = 0; // Value of previous decoded feature ID
+    #endif
+
     // Allocate space for list of excluded PMIDs 
-    int *excluded = (int*) malloc (numexcluded * sizeof(int));
+    unsigned int *excluded = (unsigned int*) malloc (numexcluded * sizeof(int));
     
     // Allocate space for vector of feature counts 
     int *featcounts = (int*) malloc (numfeats * sizeof(int));
@@ -107,8 +114,28 @@ int main (int argc, char **argv)
         // Read feature vector from the binary file
         fread(&pmid, sizeof(unsigned int), 1, citefile);
         fread(&date, sizeof(unsigned int), 1, citefile);
-        fread(&featvec_size, sizeof(unsigned short), 1, citefile);
-        fread(featvec, sizeof(ftype), featvec_size, citefile);
+        #ifdef PLAINFEATS
+            // Read plain feature vector
+            fread(&featvec_size, sizeof(unsigned short), 1, citefile);
+            fread(featvec, sizeof(ftype), featvec_size, citefile);
+        #else
+            // Decode variable byte encoded feature vector
+            fread(&featvec_nbytes, sizeof(unsigned short), 1, citefile);
+            fread(bytes, sizeof(unsigned char), featvec_nbytes, citefile);
+            gap = 0;
+            last = 0;
+            featvec_size = 0;
+            // Read groups of 7 bits, low to high.  
+            // Set high bit set marks end-of-number.
+            for(fi = 0; fi < featvec_nbytes; fi++) {
+                gap = (gap << 7) | (bytes[fi] & 0x7f);
+                if(bytes[fi] & 0x80) {
+                    last += gap;
+                    featvec[featvec_size++] = last;
+                    gap = 0;
+                }
+            }
+        #endif
         // Don't bother if the date is outside the range
         if ((date < mindate) || (date > maxdate)) {
             continue;

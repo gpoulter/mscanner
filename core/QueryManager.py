@@ -184,9 +184,10 @@ class QueryManager:
         else:
             logging.info("Counting Medline between %s and %s for background.", 
                          str(self.t_mindate), str(self.t_maxdate))
-            # Have the option to exclude more than just training PMIDs
+            # Use this option to exclude more than just the training PMIDs
             if train_exclude is None:
                 train_exclude = self.pmids
+            # Call the C program to count features
             ndocs, neg_counts = FeatureCounter(
                 docstream = self.fdata.fstream.filename,
                 ftype = self.fdata.fstream.ftype,
@@ -264,7 +265,7 @@ class QueryManager:
         
         logging.debug("Writing features to %s", rc.report_term_scores)
         with codecs.open(self.outdir/rc.report_term_scores, "wb", "utf-8") as f:
-            self.featinfo.write_csv(f)
+            self.featinfo.write_csv(f, rc.max_output_features)
         
         logging.debug("Writing citations to %s", rc.report_input_citations)
         self.inputs.sort(reverse=True)

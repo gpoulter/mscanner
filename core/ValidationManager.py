@@ -176,7 +176,7 @@ class ValidationBase(object):
         if not (self.outdir/rc.report_term_scores).exists():
             logging.debug("Writing features scores to %s", rc.report_term_scores)
             with codecs.open(self.outdir/rc.report_term_scores, "wb", "utf-8") as f:
-                self.featinfo.write_csv(f)
+                self.featinfo.write_csv(f, rc.max_output_features)
         # Aliases for the performance data
         p = self.metric_vectors
         t = self.metric_range.average

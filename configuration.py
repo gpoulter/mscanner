@@ -162,3 +162,5 @@ rc.pseudocount = None
 rc.class_mask = []
 ## Method name for calculating feature probabilities
 rc.scoremethod = "scores_bayes"
+## Only print the top N feature scores
+rc.max_output_features = 10000

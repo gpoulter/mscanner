@@ -139,6 +139,8 @@ class FeatureMapping:
             for feature in featlist:
                 vector[idx] = self.feature_ids[fclass][feature]
                 idx += 1
+        # See FeatureStream - sorted vectors can be compressed.
+        vector.sort() 
         return vector
 
 

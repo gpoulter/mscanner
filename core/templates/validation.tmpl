@@ -138,6 +138,15 @@ $VM -- Instance of ValidationBase
   $hr("h_base", """The log likelihood ratio of an empty article (one in 
   which every feature failed to occur).""") 
 
+  <tr>
+    <td>Min Document Frequency</td>
+    <td>$rc.mincount</td>
+    $help("h_mincount")
+  </tr>
+  $hr("h_mincount", """Minimum Document Frequency.  In each fold we only 
+  consider features with at least this many occurrences in the combined data 
+  (features with fewer than this many occurrences are considered noise).""")
+
   <tr class="newsection">
     <td>Average Precision</td>
     <td>#echo "%.5f" % $vectors.AvPrec #</td>

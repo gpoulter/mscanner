@@ -218,7 +218,15 @@ $QM -- QueryManager instance used for the query
   $hr("h_maxdate", """The maximum date considered when parsing Medline
   (both when making feature counts, and when querying)""")
   #end if
-
+  
+  <tr>
+    <td>Min Document Frequency</td>
+    <td>$rc.mincount</td>
+    $help("h_mincount")
+  </tr>
+  $hr("h_mincount", """Minimum Document Frequency.  We only consider features
+  that occur at least this many times in the combined data (features with fewer 
+  than this many occurrences are considered noise).""")
 
  </tbody>
  </table>

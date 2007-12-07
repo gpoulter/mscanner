@@ -42,6 +42,8 @@ dataset_map = {
 
 def sample(*datasets):
     """Perform cross-validation analysis on the main data sets"""
+    base = rc.working / "valid" / "Samples"
+    if not base.exists(): base.mkdir()
     adata = ArticleData.Defaults()
     #fdata = FeatureData.Defaults_MeSH()
     fdata = FeatureData.Defaults_All()
@@ -53,7 +55,7 @@ def sample(*datasets):
             pos = rc.corpora / pos
         if isinstance(neg, str):
             neg = rc.corpora / neg
-        op = CrossValidation(rc.working / "valid" / dataset, dataset, adata, fdata)
+        op = CrossValidation(base/dataset, dataset, adata, fdata)
         op.validation(pos, neg)
         op.report_validation()
         #op.report_predicted(1000, 10000, 16000000)
@@ -63,6 +65,8 @@ def sample(*datasets):
 def trec():
     """Performs split-sample validation on the 2005 TREC Genomics track
     categorisation subtasks (Allele, Expression, GO, Tumor)."""
+    base = rc.working / "valid" / "TREC"
+    if not base.exists(): base.mkdir()
     adata = ArticleData.Defaults()
     fdata = FeatureData.Defaults_MeSH()
     #fdata = FeatureData.Defaults_All()
@@ -73,23 +77,24 @@ def trec():
         dataset = "TREC_%s" % ds
         ptrain = rc.corpora / "TREC" / (ds + "train.txt")
         ptest = rc.corpora / "TREC" / (ds + "test.txt")
-        op = SplitValidation(rc.working / "valid" / dataset, dataset, adata, fdata)
+        op = SplitValidation(base/dataset, dataset, adata, fdata)
         op.validation(ptrain, ntrain, ptest, ntest)
 
 
 
 def iedb():
     """Performs cross validation using the IEDB gold standard data set"""
-    base = rc.working / "valid" / "IEDB Query"
-    dataset = "IEDB CV MeSH PMin0"
+    base = rc.working / "valid" / "IEDB_CV"
+    if not base.exists(): base.mkdir()
+    dataset = "IEDB CV MeSH DF4"
+    rc.mincount = 4
     pos = rc.corpora / "IEDB" / "iedb-pos-dates.txt"
     neg = rc.corpora / "IEDB" / "iedb-neg-dates.txt"
-    if not base.exists(): base.mkdir()
     adata = ArticleData.Defaults()
     fdata = FeatureData.Defaults_MeSH()
     #fdata = FeatureData.Defaults_All()
     rc.utility_r = None
-    op = CrossValidation(base / dataset, dataset, adata, fdata)
+    op = CrossValidation(base/dataset, dataset, adata, fdata)
     op.validation(pos, neg)
     op.report_validation()
     
@@ -103,18 +108,17 @@ if __name__ == "__main__":
 '''
 def compare_score_methods():
     """Cross validation performance using the different feature score methods"""
-    score_methods = [
-        "scores_bayes",
-        "scores_noabsence",
-        "scores_rubin" ]
-    #train_rel = rc.corpora / "pharmgkb-070205.txt"
-    #train_irrel = rc.corpora / "medline07-100k.txt"
-    train_rel = rc.corpora / "genedrug-small.txt"
-    train_irrel = rc.articlelist
+    base = rc.working / "valid" / "ScoreMethod"
+    if not base.exists(): base.mkdir()
+    score_methods = ["scores_bayes", "scores_noabsence", "scores_rubin"]
+    #train_P = rc.corpora / "pharmgkb-070205.txt"
+    #train_N = rc.corpora / "medline07-100k.txt"
+    train_P = rc.corpora / "genedrug-small.txt"
+    train_N = rc.articlelist
     for method in score_methods:
         dataset = "pg07-" + method
-        op = CrossValidation(rc.working / "cmpscores" / dataset, dataset, env)
-        op.validation(train_rel, train_irrel)
+        op = CrossValidation(base/dataset, dataset, env)
+        op.validation(train_P, train_N)
         op.report_validation()
     
 def issn_features():
@@ -123,7 +127,7 @@ def issn_features():
     rc.exclude_types = ["issn"]
     pos, neg = dataset_map["aidsbio"]
     op = CrossValidation(rc.working / "valid" / "aidsbio-noissn", 
-                         "AIDSBio without ISSN features")
+                         "AIDSBio without ISSN")
     op.validation(rc.corpora / pos, rc.corpora / neg)
     op.report_validation()
 
@@ -131,8 +135,8 @@ def control_modality():
     """Cross validate Control against Medline100K, but without the features
     unique to Medline100K that cause the multi-modal score distributions."""
     pos, neg = dataset_map["control"]
-    op = CrossValidation(rc.working / "valid" / "modality",
-                         "Removing Control corpus multi-modality")
+    op = CrossValidation(rc.working / "valid" / "multimodal",
+                         "Control Multi-modality")
     op.validation(rc.corpora / pos, rc.corpora / neg)
     op.report_validation()
 '''

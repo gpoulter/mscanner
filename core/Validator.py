@@ -115,23 +115,13 @@ class CrossValidator:
 
 
 class LeaveOutValidator(CrossValidator):
-    """Instead of N-fold cross validation, this class performs leave
-    out one validation in which all but one of the citations is used
-    to train the feature scores, which are then used to calculate
-    the score of the left out document.
-    
-    This is a lot slower than cross validation, although performance metrics
-    are a bit higher. We have optimised the calculation of scores by
-    calculating counts for all articles and just subtracting 1 for each feature
-    present in the left out article.
-    
-    Also, this version only has one scoring method: background Medline for
-    pseudocounts, with prior probability of observation being 50%. """
+    """Feature scores are determined by all but the article whose score we are
+    calculating. This method is deprecated (due to slow speed and not
+    fitting well with the FeatureScore object). Rather use 10-fold
+    cross validation."""
     
     def validate(self):
-        """Performs leave-out-one validation, returning the resulting scores.
-        
-        
+        """Performs leave-out-one validation.        
         @return: L{pscores}, L{nscores}
         """
         # Set up base feature scores
@@ -141,7 +131,6 @@ class LeaveOutValidator(CrossValidator):
         self.nscores = nx.zeros(len(self.negatives), nx.float32)
         pdocs = len(self.positives)
         ndocs = len(self.negatives)
-        mask = self.featinfo.premask
         # Set up pseudocount
         if isinstance(self.featinfo.pseudocount, nx.ndarray):
             ps = self.featinfo.pseudocount
@@ -150,7 +139,7 @@ class LeaveOutValidator(CrossValidator):
         marker = 0
         # Discount this article in feature score calculations
         def score_of(pmid, p_mod, n_mod):
-            f = [fid for fid in self.featdb[doc] if not mask or not mask[fid]]
+            f = self.featdb[doc]
             return nx.sum(nx.log(
                 ((pcounts[f]+p_mod+ps[f])/(pdocs+p_mod+2*ps[f]))/
                 ((ncounts[f]+n_mod+ps[f])/(ndocs+n_mod+2*ps[f]))))

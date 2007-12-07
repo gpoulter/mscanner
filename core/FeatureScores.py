@@ -270,8 +270,10 @@ class FeatureScores(object):
                   for t, tfidf in best_tfidfs ]
 
 
-    def write_csv(self, stream):
-        """Write features scores as CSV to an output stream"""
+    def write_csv(self, stream, maxfeats=None):
+        """Write features scores as CSV to an output stream.
+        @param stream: Object supporting a write method.
+        @param maxfeats: Optionally write only the top N features."""
         stream.write(u"score,positives,negatives,numerator,"\
                      u"denominator,pseudocount,termid,tfidf,type,term\n")
         s = self
@@ -280,10 +282,16 @@ class FeatureScores(object):
             pseudocount = nx.zeros_like(s.scores) + float(s.pseudocount)
         else:
             pseudocount = s.pseudocount
-        for t, score in sorted(
-            enumerate(s.scores), key=lambda x:x[1], reverse=True):
+        if maxfeats is None:
+            maxfeats = len(s.scores)
+        # Iterate over features by decreasing score. 
+        # idx is just to implement the maxfeats cutoff
+        for idx, (t, score) in enumerate(sorted(
+            enumerate(s.scores), key=lambda x:x[1], reverse=True)):
             if (s.mask is not None) and s.mask[t]:
                 continue
+            if idx > maxfeats:
+                break
             stream.write(
                 u'%.3f,%d,%d,%.2e,%.2e,%.2e,%d,%.2f,%s,"%s"\n' % 
                 (s.scores[t], s.pos_counts[t], s.neg_counts[t], 

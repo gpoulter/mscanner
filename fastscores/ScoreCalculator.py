@@ -122,7 +122,7 @@ class ScoreCalculator:
 
     def pyscore(s):
         """Pure python implementation of L{score}"""
-        logging.info("Performing query using ScoreCalculator.pyscore")
+        logging.info("Performing query using python scoring.")
         results = [(-100000, 0)] * s.limit
         import heapq
         ndocs = 0
@@ -150,7 +150,7 @@ class ScoreCalculator:
 
     def cscore_pipe(s):
         """Calculate article scores by piping to the cscore program"""
-        logging.info("Performing query using ScoreCalculator.cscore_pipe")
+        logging.info("Performing query using %s", s.score_exec)
         import struct
         import subprocess as sp
         p = sp.Popen([

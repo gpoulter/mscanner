@@ -63,11 +63,12 @@ class Updater:
                        rc.tracker, rc.stopwords)
 
 
-    def regenerate(self):
+    def regenerate(self, artlist=False):
         """Regenerate some of the data structures.
-        @param artlist: Also regenerate article list from Article database.
+        @param artlist: If True, check whether article list needs regenerating.
         """
-        self.adata.regenerate_artlist()
+        if artlist:
+            self.adata.regenerate_artlist()
         adb = self.adata.artdb
         self.fdata_mesh.regenerate(
             a.fstream(a.mesh_features()) for a in adb.itervalues())
@@ -79,6 +80,7 @@ class Updater:
         """Update feature and article databases with a list of new article
         objects. Dispatches to the L{ArticleData} and L{FeatureData} instances.
         @param articles: List of Article objects """
+        logging.warn("Adding articles to databases. DO NOT INTERRUPT!")
         self.adata.add_articles(articles)
         self.fdata_mesh.add_articles(
             a.fstream(a.mesh_features()) for a in articles)
@@ -104,29 +106,39 @@ class Updater:
             done = set()
         # Ordered list of non-completed files
         todo = sorted([f for f in infiles if f.basename() not in done])
-        # Loop over non-completed files
-        for idx, filename in enumerate(todo):
-            logging.info("Adding to cache: file %d out of %d (%s)", 
-                         idx+1, len(todo), filename.name)
-            for t in xrange(save_delay):
-                logging.debug("Saving in %d seconds...", save_delay-t)
-                time.sleep(1)
-            logging.debug("Parsing XML file %s", filename.basename())
-            try:
-                if filename.endswith(".gz"):
-                    infile = gzip.open(filename, 'r')
-                else:
-                    infile = open(filename, 'r')
-                articles = list(Article.parse_medline_xml(infile))
-                self.add_articles(articles)
-            finally:
-                infile.close()
-            # Update the file tracker
-            done.add(filename.basename())
-            self.tracker.write_lines(sorted(done)) # Don't break here!
-            logging.info("Added %d articles from file %d out of %d (%s)", 
-                         len(articles), idx+1, len(todo), filename.name)
-            del articles
+        try:
+            # Loop over non-completed files
+            for idx, filename in enumerate(todo):
+                for t in xrange(save_delay):
+                    logging.debug("Pausing for %d seconds...", save_delay-t)
+                    time.sleep(1)
+                try:
+                    logging.info("Parsing XML file %d out of %d (%s)", 
+                                 idx+1, len(todo), filename.name)
+                    if filename.endswith(".gz"):
+                        infile = gzip.open(filename, 'r')
+                    else:
+                        infile = open(filename, 'r')
+                    articles = list(Article.parse_medline_xml(infile))
+                except KeyboardInterrupt:
+                    logging.info("Safely interrupted.")
+                    raise
+                finally:
+                    infile.close()
+                try:
+                    self.add_articles(articles)
+                    done.add(filename.basename())
+                    self.tracker.write_lines(sorted(done))
+                    logging.info("Added %d articles from file %d out of %d (%s)", 
+                                 len(articles), idx+1, len(todo), filename.name)
+                    del articles
+                except KeyboardInterrupt:
+                    logging.error("Unsafely interrupted!!!")
+                    raise
+        finally:
+            logging.info("Please wait: synchronising feature maps (up to 10 minutes).")
+            self.fdata_mesh.sync()
+            self.fdata_all.sync()
 
 
     @staticmethod

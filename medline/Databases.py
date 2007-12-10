@@ -96,9 +96,8 @@ class FeatureData:
             if pmid not in self.featuredb:
                 self.featmap.add_article(features)
                 featvec = self.featmap.get_vector(features)
-                self.featuredb[pmid] = featvec
+                self.featuredb[str(pmid)] = featvec
                 self.fstream.additem(pmid, date, featvec)
-        self.sync()
         
         
     def regenerate(self, articles):

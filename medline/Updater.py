@@ -89,14 +89,20 @@ class Updater:
 
 
     def add_directory(self, medline=None, save_delay=5):
-        """Adds articles from XML files to MScanner's databases
+        """Adds articles from XML files to MScanner's databases.  
+        
+        @note: Do not CTRL-C the updater on Windows! We write the feature map
+        at the end inside a finally. However, windows CTRL-C exits immediately
+        (on Unix we get to clean up). There is no workaround - just don't break
+        mid-way on windows.
         
         @param medline: Directory with .xml.gz files. If None we default to
         C{rc.medline}.
         
         @param save_delay: Seconds to pause between files.
         """
-        if medline is None: medline = rc.medline
+        if medline is None: 
+            medline = rc.medline
         # List of input files
         infiles = medline.files("*.xml") + medline.files("*.xml.gz")
         # Set of completed files
@@ -139,6 +145,7 @@ class Updater:
             logging.info("Please wait: synchronising feature maps (up to 10 minutes).")
             self.fdata_mesh.sync()
             self.fdata_all.sync()
+            logging.info("Done synchronising (whew).")
 
 
     @staticmethod

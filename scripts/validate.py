@@ -86,13 +86,13 @@ def iedb():
     """Performs cross validation using the IEDB gold standard data set"""
     base = rc.working / "valid" / "IEDB_CV"
     if not base.exists(): base.mkdir()
-    dataset = "IEDB CV MeSH DF4"
+    dataset = "IEDB CV ALL DF4"
     rc.mincount = 4
     pos = rc.corpora / "IEDB" / "iedb-pos-dates.txt"
     neg = rc.corpora / "IEDB" / "iedb-neg-dates.txt"
     adata = ArticleData.Defaults()
-    fdata = FeatureData.Defaults_MeSH()
-    #fdata = FeatureData.Defaults_All()
+    #fdata = FeatureData.Defaults_MeSH()
+    fdata = FeatureData.Defaults_All()
     rc.utility_r = None
     op = CrossValidation(base/dataset, dataset, adata, fdata)
     op.validation(pos, neg)

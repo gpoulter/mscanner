@@ -172,6 +172,29 @@ $VM -- Instance of ValidationBase
   </tr>
   $hr("h_roc_stderr", """Standard error of the area
   under the ROC curve.  Calculated using the method of Hanley (1982).""")
+  
+  
+  <tr>
+    <td>11-point precision</td>
+    <td> 
+    <table>
+    <tr>
+    <td>Recall</td>
+    #for recall in [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0]
+    <td>#echo "%.1f" % recall#</td>
+    #end for
+    </tr>
+    <tr>
+    <td>Precision</td>
+    #for precision in $vectors.precision_11
+    <td>#echo "%.2f" % precision#</td>
+    #end for
+    </tr>
+    </table>
+    </td>
+    $help("h_precision11")
+  </tr>
+  $hr("h_precision11", """Precision at recall equal to 0, 0.1, ... 1.0""")
 
 </table>
 

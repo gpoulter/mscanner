@@ -164,13 +164,24 @@ def base_valid(outdir, dataset, featurespace, tab=None, df=None, ig=None):
         tab.add_results(op)
 
 
+def testing_precision():
+    """Testing the new 11-point precision-recall curves using interpolation"""
+    rc.mincount = 1
+    rc.min_infogain = 2e-5
+    rc.positives_only = False
+    rc.scoremethod = "scores_laplace_split"
+    s = base / "PRIOR" / "df1_ig2.0_all_radiology_sd124_meshq_laplace_split"
+    fspace, rc.class_mask = spaces["meshq"]
+    base_valid(s, "radiology", fspace)
+
+
 def compare_prior(ds):
     """Different priors"""
     rc.mincount = 1
-    rc.min_infogain = 0
+    rc.min_infogain = 2e-5
     rc.positives_only = False
-    s = base / "PRIOR" / "df1_ig0_all" / ds / ("sd%d"%rc.randseed)
-    tab = ResultsTable(s/"results.txt", append=True)
+    s = base / "PRIOR" / "df1_ig2.0_all" / ds / ("sd%d"%rc.randseed)
+    tab = ResultsTable(s/"results.txt", append=False)
     for fs in ["meshq","word","wmqia"]:
         fspace, rc.class_mask = spaces[fs]
         for method in ["bgfreq", "laplace_split", "laplace"]:
@@ -182,7 +193,7 @@ def compare_featselection(ds):
     """Different feature selection approaches."""
     rc.scoremethod = "scores_laplace_split"
     s = base / "SELN" / "lsplit" / ds / ("sd%d"%rc.randseed)
-    tab = ResultsTable(s/"results.txt", append=True)
+    tab = ResultsTable(s/"results.txt", append=False)
     for fs in ["meshq","word","wmqia"]:
         fspace, rc.class_mask = spaces[fs]
         # Information Gain
@@ -200,11 +211,11 @@ def compare_featselection(ds):
 def compare_featspace(ds):
     """Different feature spaces"""
     rc.mincount = 1
-    rc.min_infogain = 0
+    rc.min_infogain = 2e-5
     rc.positives_only = True
     rc.scoremethod = "scores_laplace_split"
-    s = base / "FSPACE" / "lsplit_df1_ig0_pos" / ds / ("sd%d"%rc.randseed)
-    tab = ResultsTable(s/"results.txt", append=True)
+    s = base / "FSPACE" / "lsplit_df1_ig2.0_all" / ds / ("sd%d"%rc.randseed)
+    tab = ResultsTable(s/"results.txt", append=False)
     for fs in spaces:
         fspace, rc.class_mask = spaces[fs]
         base_valid(s/fs, ds, fspace, tab)
@@ -213,9 +224,14 @@ def compare_featspace(ds):
 def compare_all(*dslist):
     """Perform all three aspect-comparisons (prior, featurespace and Document
     Frequency), on each of the given data sets."""
+    logging.info("COMPARING PRIORS")
     for ds in dslist:
         compare_prior(ds)
+    logging.info("COMPARING FEATURE SELECTION")
+    for ds in dslist:
         compare_featselection(ds)
+    logging.info("COMPARING FEATURE SPACES")
+    for ds in dslist:
         compare_featspace(ds)
 
 
@@ -227,7 +243,7 @@ def compare_wordextract(ds):
     rc.scoremethod = "scores_laplace_split"
     rc.class_mask = []
     s = base / "WORD" / "lsplit_df1_ig0_all" / ds / ("sd%d"%rc.randseed)
-    tab = ResultsTable(s/"results.txt", append=True)
+    tab = ResultsTable(s/"results.txt", append=False)
     for fs in ["word", "word_folded", "word_nodash", "word_num"]:
         base_valid(s/fs, ds, "feats_"+fs, tab)
     base_valid(s/"iedbword", ds, "feats_iedb_word", tab)

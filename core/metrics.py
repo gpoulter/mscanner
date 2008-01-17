@@ -269,30 +269,21 @@ class PerformanceVectors:
     
 
     def _precision_11_point_curve(self):
-        """Return the 11-point curve of precision versus recall. Precision is
-        evaluated at recall of 0, 0.1, ..., 0.9, 1.0."""
-        self.precision_11 = []
-        idx = 0
-        TPR = self.TPR
-        PPV = self.PPV
+        """Return the interpolated 11-point curve of precision versus recall.
+        Precision is evaluated at recall of 0, 0.1, ..., 0.9, 1.0."""
+        TPR, PPV = self.TPR, self.PPV
         N = len(self.TPR)
+        self.precision_11 = [0] * 11
+        idx = 0
+        curprec = 0
         # Decreasing recall, increasing precision as idx increases
-        for target in reversed(nx.arange(0,1.1,0.1)):
-            # Raise the index (and precision) until recall drops 
-            while idx < N and TPR[idx] >= target:
+        for i, recall in enumerate(nx.linspace(1,0,11)):
+            # Select greatest precision that has recall >= target recall
+            while idx < N and TPR[idx] >= recall:
+                if PPV[idx] > curprec:
+                    curprec = PPV[idx]
                 idx += 1
-            if idx == N:
-                self.precision_11.append(self.PPV[N-1])
-                break
-            if idx == 0:
-                raise RuntimeError("At i=0, expected TPR 1.0 not %g" % TPR[idx])
-            x1 = TPR[idx-1] # High recall
-            y1 = PPV[idx-1] # Low precision
-            x2 = TPR[idx] # Low recall
-            y2 = PPV[idx] # High precision
-            m = (y2-y1)/(x2-x1) # negative gradient
-            precision = y1 + m*(target - x1) # interpolated precision
-            self.precision_11.append(precision)
+            self.precision_11[i] = curprec
         self.precision_11.reverse()
 
 

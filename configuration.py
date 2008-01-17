@@ -38,7 +38,7 @@ rc.root = lambda: rc.sources.parent
 ## Path to data directory (inputs and databases)
 rc.working = lambda: rc.root / "data"
 ## Path to ArticleData (with FeatureData subdirs)
-rc.articles_home = lambda: rc.working / "articles_bmc"
+rc.articles_home = lambda: rc.working / "articles_iedb"
 ## Path to report templates
 rc.templates = lambda: rc.sources / "core" / "templates"
 ## Path to list of stop words

@@ -14,16 +14,8 @@ Usage:
 [maxdate] \
 < feature_scores > results
 
-  The [citations] file consists of [numcites] records, which are
-  binary records, which can be expressed as the structure::
-
-  struct {
-    unsigned int pmid; // PubMed ID of citation
-    unsigned int date; // Record completion date
-    unsigned short nfeatures; // Number of features
-    unsigned short features[nfeatures]; // Feature vector
-  };
-
+  See _FeatureCounter.c for format of the [citations] file.
+  
   The feature scores from standard input are a list of [numfeats]
   64-bit doubles.
 
@@ -58,14 +50,6 @@ void double_array(int len, int *a) {
     for(i = 0; i < len; i++) a[i] *= 2; 
 }
 
-// We are using 16-bit or 32-bit features
-#ifdef LONGFEATS
-typedef unsigned int ftype;
-#else
-typedef unsigned short ftype;
-#endif
-
-
 // Holds PubMed ID and score of a citation
 typedef struct {
     float score;
@@ -81,6 +65,17 @@ int compare_scores(const void *a, const void *b) {
 
 #ifdef CSCORE
 int main (int argc, char **argv)
+{
+    // Parameters
+    char *cite_filename = argv[1];    // Name of citations file
+    unsigned int numcites = atoi (argv[2]);    // Number of citations
+    unsigned int numfeats = atoi (argv[3]);    // Number of features
+    float offset = atof (argv[4]);    // Amount to add to scores
+    unsigned int limit = atoi (argv[5]);       // Number of results to return
+    float threshold = atof (argv[6]); // Minimum score to consider
+    unsigned int mindate = atoi (argv[7]);     // Minimum date to consider
+    unsigned int maxdate = atoi (argv[8]);     // Maximum date to consider
+
 #else
 void cscore(
     // INPUT PARAMETERS
@@ -98,21 +93,9 @@ void cscore(
     float *o_scores,       // Output array for scores
     int *o_pmids           // Output array for pmids
     ) 
-#endif
 {
+#endif
 
-    #ifdef CSCORE
-    // Parameters
-    char *cite_filename = argv[1];    // Name of citations file
-    unsigned int numcites = atoi (argv[2]);    // Number of citations
-    unsigned int numfeats = atoi (argv[3]);    // Number of features
-    float offset = atof (argv[4]);    // Amount to add to scores
-    unsigned int limit = atoi (argv[5]);       // Number of results to return
-    float threshold = atof (argv[6]); // Minimum score to consider
-    unsigned int mindate = atoi (argv[7]);     // Minimum date to consider
-    unsigned int maxdate = atoi (argv[8]);     // Maximum date to consider
-    #endif
-    
     // Loop variables
     FILE *citefile = NULL; // File with citation scores
     unsigned int pi = 0; // Loop variable: number of PubMed ID's so far
@@ -121,20 +104,19 @@ void cscore(
     int numresults = 0; // Number of available results to return
     float tmp_score = 0.0; // Accumulator for calculating record score
     unsigned short featvec_size = 0; // Size of current feature vector
-    ftype featvec[1000]; // Max 1000 features per citation (16 or 32-bit)
+    unsigned int featvec[1000]; // Max 1000 features per citation (16 or 32-bit)
 
-    #ifndef PLAINFEATS
+    // Handle variable byte encoding
     unsigned short featvec_nbytes = 0; // Bytes in encoded feature vector
     unsigned char bytes[4000]; // Bytes of encoded feature vector
     unsigned int gap = 0; // Gap between feature IDs
     unsigned int last = 0; // Value of previous decoded feature ID
-    #endif
 
     // Scores of all citations 
     score_t *scores = (score_t*) malloc (numcites * sizeof(score_t));
 
     #ifdef CSCORE
-    // Allocate space for scores and read from input
+    // Allocate space for feature scores and read them from input
     double *featscores = (double*) malloc (numfeats * sizeof(double));
     fread(featscores, sizeof(double), numfeats, stdin);
     #endif
@@ -145,28 +127,24 @@ void cscore(
         // Read feature vector from the binary file
         fread(&scores[pi].pmid, sizeof(unsigned int), 1, citefile);
         fread(&date, sizeof(unsigned int), 1, citefile);
-        #ifdef PLAINFEATS
-            // Read plain feature vector
-            fread(&featvec_size, sizeof(unsigned short), 1, citefile);
-            fread(featvec, sizeof(ftype), featvec_size, citefile);
-        #else
-            // Decode variable byte encoded feature vector
-            fread(&featvec_nbytes, sizeof(unsigned short), 1, citefile);
-            fread(bytes, sizeof(unsigned char), featvec_nbytes, citefile);
-            gap = 0;
-            last = 0;
-            featvec_size = 0;
-            // Read groups of 7 bits, low to high.  
-            // Set high bit set marks end-of-number.
-            for(fi = 0; fi < featvec_nbytes; fi++) {
-                gap = (gap << 7) | (bytes[fi] & 0x7f);
-                if(bytes[fi] & 0x80) {
-                    last += gap;
-                    featvec[featvec_size++] = last;
-                    gap = 0;
-                }
+        
+        // Decode variable byte encoded feature vector
+        fread(&featvec_nbytes, sizeof(unsigned short), 1, citefile);
+        fread(bytes, sizeof(unsigned char), featvec_nbytes, citefile);
+        gap = 0;
+        last = 0;
+        featvec_size = 0;
+        // Read groups of 7 bits, low to high.  
+        // Set high bit set marks end-of-number.
+        for(fi = 0; fi < featvec_nbytes; fi++) {
+            gap = (gap << 7) | (bytes[fi] & 0x7f);
+            if(bytes[fi] & 0x80) {
+                last += gap;
+                featvec[featvec_size++] = last;
+                gap = 0;
             }
-        #endif
+        }
+        
         // Don't bother if the date is outside the range
         if ((date < mindate) || (date > maxdate)) {
             // Don't let it sneak in when sorting

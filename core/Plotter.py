@@ -41,6 +41,20 @@ class Plotter:
         self.gnuplot = Gnuplot()
 
 
+    def interpolate(self, x, y):
+        """Return 8000-point of interpolation of the x,y graph (please ensure
+        that x is increasing order!), but only interpolate if the vector is
+        longer than 12000 elements."""
+        from scipy.interpolate import interp1d
+        if len(x) >= 12000:
+            x_new = nx.linspace(x[0], x[-1], 8000)
+            interpolator = interp1d(x,y)
+            y_new = interpolator(x_new)
+            return x_new, y_new
+        else:
+            return x, y
+
+
     def plot_predictions(self, fname, predicted_low, predicted_high):
         """Given L{PredictedMetrics} instance, plot the predicted query
         performance (TPR and PPV vs number of results).
@@ -73,6 +87,8 @@ class Plotter:
         if fname.exists() and not self.overwrite: return
         g = self.gnuplot
         logging.debug("Plotting ROC curve to %s", fname.basename())
+        # We get FPR and TPR decreasing, but interpolation is increasing-only
+        FPR, TPR = self.interpolate(FPR[::-1], TPR[::-1]) 
         g.reset()
         g.title("ROC curve (TPR vs FPR)")
         g.ylabel("True Positive Rate (TPR)")
@@ -88,6 +104,8 @@ class Plotter:
         if fname.exists() and not self.overwrite: return
         g = self.gnuplot
         logging.debug("Plotting Precision-Recall curve to %s", fname.basename())
+        # We get TPR decreasing as threshold increases, reverse for interpolation
+        TPR, PPV = self.interpolate(TPR[::-1], PPV[::-1])
         g.reset()
         g.title("Precision vs Recall")
         g.ylabel("Precision")
@@ -103,16 +121,20 @@ class Plotter:
         if fname.exists() and not self.overwrite: return
         g = self.gnuplot
         logging.debug("Plotting F-Measure curve to %s", fname.basename())
+        npscores, TPR = self.interpolate(pscores, TPR)
+        npscores, PPV = self.interpolate(pscores, PPV)
+        npscores, FM  = self.interpolate(pscores, FM)
+        npscores, FMa = self.interpolate(pscores, FMa)
         g.reset()
         g.title("Precision and Recall vs Threshold")
         g.ylabel("Precision, Recall, F-Measure, F-Measure Alpha")
         g.xlabel("Threshold Score")
         g("set terminal png")
         g("set output '%s'" % fname)
-        g.plot(Data(pscores, TPR, title="Recall",     with="lines"),
-               Data(pscores, PPV, title="Precision",  with="lines"),
-               Data(pscores, FM,  title="F1 Measure", with="lines"),
-               Data(pscores, FMa, title="F Measure",  with="lines"),
+        g.plot(Data(npscores, TPR, title="Recall",     with="lines"),
+               Data(npscores, PPV, title="Precision",  with="lines"),
+               Data(npscores, FM,  title="F1 Measure", with="lines"),
+               Data(npscores, FMa, title="F Measure",  with="lines"),
                Data([threshold, threshold], [0,0.99], title="threshold", with="lines"))
 
 

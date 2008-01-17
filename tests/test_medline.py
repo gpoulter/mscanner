@@ -26,10 +26,65 @@ from mscanner.medline.Updater import Updater
 from mscanner import tests
 
 
+class ArticleTests(unittest.TestCase):
+    """Test feature extraction from articles"""
+    
+    def setUp(self):
+        self.article = Article(
+            pmid=1,
+            title="TTT1 DDD1",
+            abstract="AAA1.AAA2-FFF2 QQQ2 JJJ1 TTT1",
+            journal="JJJ1",
+            issn="III1",
+            date_completed=(2000,6,29),
+            pubyear=1999,
+            meshterms=[("DDD1",),("DDD2",),("DDD3","QQQ1","QQQ2"),("DDD6","QQQ2")],
+            authors=[("FFF1","LLL1"),("FFF2","LLL2")])
+    
+    def test_feats_iedb(self):
+        ft = self.article.feats_iedb_concat()
+        self.assertEqual(ft["iedb"], 
+        ['AAA1', 'DDD1', 'DDD2', 'DDD3', 'DDD6', 'LLL1', 
+         'LLL2', 'QQQ1', 'TTT1', 'QQQ2', 'JJJ1', 'AAA2-FFF2'])
+        logging.debug(str(ft))
+        # IEDB features, just using title/abstract words
+        ft = self.article.feats_iedb_word()
+        self.assertEqual(ft["iedb"], 
+        ['AAA1', 'DDD1', 'TTT1', 'QQQ2', 'JJJ1', 'AAA2-FFF2'])
+
+    def test_feats_mesh_qual_issn(self):
+        ft = self.article.feats_mesh_qual_issn()
+        logging.debug(str(ft))
+        self.assertEqual(ft, {
+            'qual': ['QQQ1', 'QQQ2'], 
+            'issn': ['III1'], 
+            'mesh': ['DDD1', 'DDD2', 'DDD3', 'DDD6']}
+        )
+
+    def test_feats_author(self):
+        ft = self.article.feats_author()
+        self.assertEqual(ft["au"], ["FFF1 LLL1", "FFF2 LLL2"])
+        logging.debug(str(ft))
+
+    def test_feats_wmqia(self):
+        ft = self.article.feats_wmqia()
+        self.assertEqual(ft["w"], 
+          ['AAA1', 'DDD1', 'TTT1', 'QQQ2', 'JJJ1', 'AAA2-FFF2'])
+        logging.debug(str(ft))
+
+    def test_feats_wmqia_filt(self):
+        ft = self.article.feats_wmqia_filt()
+        self.assertEqual(ft["w"], 
+          ['AAA1', 'TTT1', 'JJJ1', 'AAA2-FFF2'])
+        logging.debug(str(ft))
+
+
+
 class FeatureDatabaseTests(unittest.TestCase):
     
     def test_FeatureDatabase(self):
-        d = FeatureDatabase()
+        """Store feature vectors in FeatureDatabase and read them back."""
+        d = FeatureDatabase(nx.uint32)
         d.setitem(1, nx.array([1,3], d.ftype)) #eliminate duplicate features
         d.setitem(2, nx.array([2,3], d.ftype))
         self.assert_(all(d.getitem(1) == [1,3]))
@@ -57,25 +112,23 @@ class FeatureStreamTests(unittest.TestCase):
             self.fn.remove()
         
     def test_FeatureStream(self):
-        with closing(FeatureStream(self.fn, nx.uint32, rdonly=False)) as fs:
-            pmids = (12,34,56)
-            dates = (20070101, 19980308, 20001207)
-            feats = [nx.array([1,2,3,4], fs.ftype), 
-                     nx.array([5,6,7,8], fs.ftype), 
-                     nx.array([], fs.ftype)]
+        """Write to FeatureStream, and read it all back."""
+        pmids = (12,34,56)
+        dates = (20070101, 19980308, 20001207)
+        feats = [[1,2,3,4], [5,6,7,8], []]
+        with closing(FeatureStream(self.fn, rdonly=False)) as fs:
             for pmid, date, feat in zip(pmids, dates, feats):
                 fs.additem(pmid, date, feat)
-        with closing(FeatureStream(self.fn, nx.uint32, rdonly=True)) as fs:
+        with closing(FeatureStream(self.fn, rdonly=True)) as fs:
             rpmids, rdates, rfeats = zip(*list(fs.iteritems()))
             self.assertEqual(pmids, rpmids)
             self.assertEqual(dates, rdates)
             for a, ra in zip(feats, rfeats):
-                self.assert_(all(a == ra))
+                self.assertEqual(a, ra)
 
 
 
 class FeatureMappingTests(unittest.TestCase):
-    """For FeatureMapping class"""
 
     def setUp(self):
         self.fn = path(tempfile.mktemp())
@@ -85,10 +138,11 @@ class FeatureMappingTests(unittest.TestCase):
             self.fn.remove()
 
     def test_FeatureMapping(self):
-        fm = FeatureMapping(self.fn, nx.uint16)
+        """Store feature vectors in FeatureMapping and check the tally."""
+        fm = FeatureMapping(self.fn)
         features = dict(Q=["A","B"], T=["A","C"])
         fm.add_article(features)
-        self.assert_(nx.all(fm.get_vector(features) == [0,1,2,3]))
+        self.assertEqual(fm.get_vector(features), [0,1,2,3])
         self.assertEqual([fm[i] for i in [0,1,2,3,]], [("A","Q"), ("B","Q"),("A","T"),("C","T")])
         self.assertEqual(fm[1], ("B","Q"))
         self.assertEqual(fm[("C","T")], 3)
@@ -110,6 +164,7 @@ class XMLParserTests(unittest.TestCase):
             self.assertEqual(v, getattr(b, k))
 
     def test_parse_medline_xml(self):
+        """Parse Medline XML and compare against correct Article object."""
         a1 = Article(
             pmid=1,
             title="T1",
@@ -141,23 +196,27 @@ class UpdaterTests(unittest.TestCase):
         self.home.rmtree(ignore_errors=True)
 
     def test_Updater(self):
+        """Parse a sample directory and compare against known feature counts"""
         from mscanner.configuration import rc
         h = self.home
-        rc.cache = h
+        rc.articles_home = h
+        rc.features_home = h
         xml = h/"test.xml"
         test_pmids = h/"pmids.txt"
-        m = Updater.Defaults()
+        featurespaces = [("feats_mesh_qual_issn",nx.uint16),
+                         ("feats_wmqia",nx.uint16)]
+        m = Updater.Defaults(featurespaces)
         xml.write_text(xmltext)
         m.add_directory(h, save_delay=1)
         logging.debug("".join((h/"articles.txt").lines()))
         a = [ m.adata.artdb[x] for x in ["1","2"] ]
         logging.debug("Articles: %s", repr(a))
-        logging.debug("%s", repr(m.fdata_all.featmap.features))
+        logging.debug("%s", repr(m.fdata_list[1].featmap.features))
         self.assertEqual(a[0].pmid, 1)
         self.assertEqual(a[1].pmid, 2)
-        self.assertEqual(m.fdata_mesh.featmap.counts, [2, 2, 2, 1, 2, 2, 2, 2])
+        self.assertEqual(m.fdata_list[0].featmap.counts, [2, 2, 2, 1, 2, 2, 2, 2])
         self.assertEqual(
-            sorted(m.fdata_mesh.featmap.features), sorted([
+            sorted(m.fdata_list[0].featmap.features), sorted([
                 (u'Q4', 'qual'), (u'Q5', 'qual'), (u'Q7', 'qual'), 
                 (u'T1', 'mesh'), (u'T2', 'mesh'), (u'T3', 'mesh'), (u'T6', 'mesh'), 
                 (u'0301-4851', 'issn')]))
@@ -275,3 +334,7 @@ xmltext = u'''<?xml version="1.0"?>
 if __name__ == "__main__":
     tests.start_logger()
     unittest.main()
+    #suite = unittest.TestLoader().loadTestsFromTestCase(ArticleTests)
+    #unittest.TextTestRunner(verbosity=2).run(suite)
+
+

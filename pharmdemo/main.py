@@ -102,8 +102,10 @@ class PharmdemoValidation(CrossValidation):
         @return: Set of PubMed IDs which have gene-drug co-occurrences.
         """
         logging.info("Getting gene-drug associations") 
-        pos_arts = Databases.load_articles(rc.articledb, self.positives)
-        neg_arts = Databases.load_articles(rc.articledb, self.negatives)
+        adata = Databases.ArticleData.Defaults()
+        pos_arts = [ adata.artdb[x] for x in self.positives ]
+        neg_arts = [ adata.artdb[x] for x in self.negatives ]
+        adata.close()
         gdfinder = genedrug.open_genedrug_finder(
             rc.genedrug, rc.drugtable, rc.gapscore)
         postfilter = set()

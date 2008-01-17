@@ -49,9 +49,9 @@ class QueryManager:
     
     @ivar limit: Maximum number of results (may be fewer due to threshold)
     
-    @param adata: ArticleData to use (open default databases if None).
+    @param adata: Selected ArticleData (article database).
     
-    @param fdata: FeatureData to use (open default databases if None).
+    @param fdata: Selected FeatureData (document representation of articles).
 
     @ivar threshold: Decision threshold for the classifier (default should be 0).
     Use None to retrieve everything up to the result limit.
@@ -83,8 +83,7 @@ class QueryManager:
     """
 
 
-    def __init__(self, outdir, dataset, limit, 
-                 adata=None, fdata=None,
+    def __init__(self, outdir, dataset, limit, adata, fdata,
                  threshold=None, prior=None, 
                  mindate=None, maxdate=None, 
                  t_mindate=None, t_maxdate=None):
@@ -95,8 +94,8 @@ class QueryManager:
         self.outdir = outdir
         self.dataset = dataset
         self.limit = limit
-        self.adata = adata if adata else ArticleData.Defaults()
-        self.fdata = fdata if fdata else FeatureData.Defaults_MeSH()
+        self.adata = adata
+        self.fdata = fdata
         self.threshold = threshold
         self.prior = prior
         self.mindate = mindate
@@ -190,7 +189,6 @@ class QueryManager:
             # Call the C program to count features
             ndocs, neg_counts = FeatureCounter(
                 docstream = self.fdata.fstream.filename,
-                ftype = self.fdata.fstream.ftype,
                 numdocs = self.fdata.featmap.numdocs,
                 numfeats = len(self.fdata.featmap),
                 mindate = self.t_mindate,
@@ -232,7 +230,6 @@ class QueryManager:
                      str(self.mindate), str(self.maxdate))
         self.results = ScoreCalculator(
             path(self.fdata.fstream.stream.name),
-            self.fdata.fstream.ftype,
             self.fdata.featmap.numdocs,
             self.featinfo.scores,
             self.featinfo.base+self.featinfo.prior,

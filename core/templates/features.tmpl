@@ -1,5 +1,5 @@
 ## Prints a table summarising the number of features
-## stats -- Instance of FeatureScores.stats 
+## stats -- Instance of FeatureScores.FeatureStats
 
 <h2>Feature Statistics</h2>
 
@@ -12,20 +12,20 @@
   <thead>
     <tr>
       <th>Quantity</th>
-      <th>Positives</th>
-      <th>Negatives</th>
+      <th>Relevant Docs</th>
+      <th>Irrelevant Docs</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <th>Number of documents</th>
-      <td>$stats.pdocs</td>
-      <td>$stats.ndocs</td>
+      <td>$stats.pos_docs</td>
+      <td>$stats.neg_docs</td>
     </tr>
     <tr>
       <th>Number of distinct features</th>
-      <td>$stats.pos_distinct_feats</td>
-      <td>$stats.neg_distinct_feats</td>
+      <td>$stats.pos_distinct</td>
+      <td>$stats.neg_distinct</td>
     </tr>
     <tr>
       <th>Total feature occurrences</th>
@@ -34,8 +34,14 @@
     </tr>
     <tr>
       <th>Terms per document</th>
-      <td>#echo "%.3f" % $stats.feats_per_pos #</td>
-      <td>#echo "%.3f" % $stats.feats_per_neg #</td>
+      <td>#echo "%.3f" % $stats.pos_average #</td>
+      <td>#echo "%.3f" % $stats.neg_average #</td>
+    </tr>
+    <tr>
+      <td colspan="3">
+      In total, $stats.feats_used features are in use, 
+      and $stats.feats_masked features are ignored.
+      </td>
     </tr>
   </tbody>
 </table>

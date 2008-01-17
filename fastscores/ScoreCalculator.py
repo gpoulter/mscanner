@@ -34,8 +34,6 @@ class ScoreCalculator:
     @ivar docstream: Path to file containing feature vectors for documents to
     score, in L{mscanner.medline.FeatureStream.FeatureStream} format.
     
-    @ivar ftype: Type of the docstream features (uint16 or uint32).
-
     @ivar numdocs: Number of documents in the stream of feature vectors.
     
     @ivar featscores: Numpy array of double-precision feature scores.
@@ -47,11 +45,9 @@ class ScoreCalculator:
     
     @ivar threshold: Cutoff score for including an article in the results.
     
-    @ivar mindate: YYYYMMDD integer: documents must have this date or later
-    (default 11110101).
+    @ivar mindate: YYYYMMDD as integer: ignore documents before this date.
     
-    @ivar maxdate: YYYYMMDD integer: documents must have this date or earlier
-    (default 33330303).
+    @ivar maxdate: YYYYMMDD as integer: ignore documents after this date.
 
     @ivar exclude: Set of PMIDs that are not allowed to appear in the results.
     """
@@ -62,23 +58,20 @@ class ScoreCalculator:
 
     @property
     def score_exec(self):
-        """Name of executable for calculation, with 16 or 32-bit features."""
+        """Name of executable for calculation."""
         ext = ".exe" if platform.system() == "Windows" else ""
-        bits = {nx.uint16:"16",nx.uint32:"32"}[self.ftype]
-        return self.score_base + bits + ext
+        return self.score_base + ext
 
 
     @property
     def score_dll(self):
-        """Name of DLL for calculation, with 16 or 32-bit features."""
+        """Name of DLL for calculation."""
         ext = ".dll" if platform.system() == "Windows" else ".so"
-        bits = {nx.uint16:"16",nx.uint32:"32"}[self.ftype]
-        return self.score_exec + bits + ext
+        return self.score_exec + ext
 
 
     def __init__(self,
                  docstream,
-                 ftype,
                  numdocs,
                  featscores,
                  offset,
@@ -128,7 +121,7 @@ class ScoreCalculator:
         ndocs = 0
         logging.debug("Calculating article scores")
         marker = 0
-        docs = FeatureStream(s.docstream, s.ftype, rdonly=True)
+        docs = FeatureStream(s.docstream, rdonly=True)
         try:
             for idx, (docid, date, features) in enumerate(docs.iteritems()):
                 if idx == marker:

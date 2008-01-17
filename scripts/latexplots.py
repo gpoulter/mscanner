@@ -274,7 +274,6 @@ def do_publication():
     #plot_precision("fig5_pr", all)
 
 
-
 def do_testplots():
     """Tests the plot functions using some old smaller datasets"""
     global indir

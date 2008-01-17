@@ -27,6 +27,7 @@ from contextlib import closing
 import cPickle
 from gzip import GzipFile
 import logging
+import numpy as nx
 from path import path
 import sys
 
@@ -35,34 +36,50 @@ from mscanner.medline.Updater import Updater
 from mscanner.configuration import rc
 from mscanner.core import iofuncs
 
+featurespaces = [
+    ("feats_mesh_qual_issn", nx.uint16), 
+    ("feats_wmqia", nx.uint32),
+    ("feats_wmqia_filt", nx.uint32),
+    ("feats_iedb_word", nx.uint32),
+    ("feats_iedb_concat", nx.uint32),
+    ("feats_word", nx.uint32),
+    ("feats_word_folded", nx.uint32),
+    ("feats_word_nodash", nx.uint32),
+    ("feats_word_num", nx.uint32),
+]
+
+
 def regenerate():
-    """Recreate feature map, feature stream, and featuredatabase"""
-    updater = Updater.Defaults()
+    """Regenerate the FeatureMap, FeatureStream, FeatureDatabase
+    and article list - but only those that have been deleted from dist."""
+    updater = Updater.Defaults(featurespaces)
     updater.regenerate()
 
 
-def add_directory():
+def medline():
     """Add new articles to MScanner databases by parsing XML files in
     a Medline directory."""
     logging.info("Updating MScanner from " + rc.medline.relpath())
-    updater = Updater.Defaults()
+    updater = Updater.Defaults(featurespaces)
     updater.add_directory(rc.medline, save_delay=3)
 
 
-def add_pickle(pickle):    
-    """Add articles to MScanner database from a gzip'd pickle.
-    
-    @param pickle: Path to a gzip'd pickled list of Article objects."""
-    pickle = path(pickle)
-    logging.debug("Updating database from pickle %s", pickle.basename())
-    with closing(GzipFile(pickle, "rb")) as zf:
-        articles = cPickle.load(zf)
-    updater = Updater.Defaults()
-    updater.add_articles(articles)
+def load_pickles(*pickles):    
+    """Add articles to MScanner database from gzip'd pickles, each
+    of which contains a list of Article objects."""
+    updater = Updater.Defaults(featurespaces)
+    for pickle in pickles:
+        pickle = path(pickle)
+        logging.debug("Updating database from pickle %s", pickle.basename())
+        with closing(GzipFile(pickle, "rb")) as zf:
+            articles = cPickle.load(zf)
+        updater.add_articles(articles, sync=False)
+    updater.sync() # Only syncing writes FeatureMapping to disk.
+    updater.close() # Closing won't write the FeatureMapping.
 
     
-def make_pickle(filename):
-    """Write a Gzip Pickle of Article objects for later use with L{add_pickle}.
+def save_pickle(filename):
+    """Write a Gzip Pickle of Article objects for later use with L{load_pickles}.
     If filename is x.txt, the output will be in x.pickle.gz.
     
     @param filename: Path to list of PubMed IDs.
@@ -74,8 +91,7 @@ def make_pickle(filename):
     articles = []
     for pmid in iofuncs.read_pmids(filename):
         try:
-            art = adata.artdb[str(pmid)]
-            articles.append(art)
+            articles.append(adata.artdb[str(pmid)])
         except KeyError:
             logging.debug("%d not found in database", pmid)
     logging.debug("Writing articles to pickle %s", pickle.basename())

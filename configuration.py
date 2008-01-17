@@ -29,62 +29,52 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 rc = RCStorage()
 """Global configuration options"""
 
-#### BASIC MSCANNER PATHS
+## DYNAMIC PATHS
 
-## Path to MScanner source directory
+## This file is at the top source directory
 rc.sources = path(__file__).dirname()
-## Path to web directory
-rc.htdocs = lambda: rc.sources / "htdocs"
-## Path to directory for report templates
+## Path to root directory containing sources and data
+rc.root = lambda: rc.sources.parent
+## Path to data directory (inputs and databases)
+rc.working = lambda: rc.root / "data"
+## Path to ArticleData (with FeatureData subdirs)
+rc.articles_home = lambda: rc.working / "articles_bmc"
+## Path to report templates
 rc.templates = lambda: rc.sources / "core" / "templates"
 ## Path to list of stop words
 rc.stopwords = lambda: rc.sources / "stopwords.txt"
-## Path to working information directory
-rc.working = lambda: rc.sources.parent / "data"
-
-### WORKING DIRECTORY PATHS
-
-## Path for directory with compressed Medline
+## Path to Medline XML
 rc.medline = lambda: rc.working / "medline"
-## Path to corpora directory
+## Path to corpora
 rc.corpora = lambda: rc.working / "corpora"
-## Path to outputs directory
-rc.web_report_dir = lambda: rc.htdocs / "static" / "output"
-## Path to the descriptor queue
+## Path to web output directory
+rc.web_report_dir = lambda: rc.sources / "htdocs" / "static" / "output"
+## Path to web descriptor queue
 rc.queue_path = lambda: rc.working / "queue"
 
-## CACHE DIRECTORY FILES
+## ARTICLE DATABASE FILES (in articles_home)
 
-## Path to cache directory
-rc.cache = lambda: rc.working / "cache"
 ## Path to database environment directory
-rc.db_env_home = lambda: rc.cache / "db_home"
+rc.db_env_home = path("db_home")
 ## Path to Article object database
-rc.articledb = lambda: rc.cache / "articles.db"
+rc.articledb = path("articles.db")
 ## Path to list of of article IDs
-rc.articlelist = lambda: rc.cache / "articles.txt"
+rc.articlelist = path("articles.txt")
 ## Path to track Medline files that have already been added
-rc.tracker = lambda: rc.cache / "processed.txt"
+rc.tracker = path("processed.txt")
 ## Path for log file
-rc.logfile = lambda: rc.cache / "lastlog.txt"
+rc.logfile = path("lastlog.txt")
 
-## FEATURE DATABASE FILES (16 and 32-bit)
+## FEATURE DATABASE FILES (in a subdir of articles_home)
 
-## Path for DB of MeSH-features for each article
-rc.featuredb_mesh = lambda: rc.cache / "features_mesh.db"
-## Path for DB of all-features for each article
-rc.featuredb_all = lambda: rc.cache / "features_all.db"
-## Path for binary stream of PMIDs and MeSH-feature arrays
-rc.featurestream_mesh = lambda: rc.cache / "features_mesh.stream"
-## Path for binary stream of PMIDs and All-feature arrays
-rc.featurestream_all =  lambda: rc.cache / "features_all.stream"
-## Path for feature<->ID mapping for MeSH features
-rc.featuremap_mesh = lambda: rc.cache / "featuremap_mesh.txt"
-## Path for feature<->ID mapping for All features
-rc.featuremap_all =  lambda: rc.cache / "featuremap_all.txt"
+## Base name for DB of MeSH-features for each article
+rc.featuredb = path("features.db")
+## Base name for binary stream of PMIDs and MeSH-feature arrays
+rc.featurestream = path("features.stream")
+## Base name for feature<->ID mapping for MeSH features
+rc.featuremap = path("featuremap.txt")
 
-
-### ALL REPORTS
+### COMMON REPORT FILES
 
 ## Name of index file
 rc.report_index = path("index.html")
@@ -95,7 +85,7 @@ rc.report_term_scores = path("terms.csv")
 ## Name of file to echo the log to
 rc.report_logfile = path("logging.txt")
 
-### QUERY OUTPUTS
+### QUERY REPORT FILES
 
 ## Name of list of scores of input PMIDs
 rc.report_input_scores = path("inputs.txt")
@@ -110,9 +100,9 @@ rc.report_result_citations = path("results.html")
 ## Name of file with *ALL* outupt citation records
 rc.report_result_all = path("all_results.html")
 ## Name of zip file with ALL output citations records
-rc.report_result_all_zip = rc.report_result_all + ".zip"
+rc.report_result_all_zip = path(rc.report_result_all + ".zip")
 
-### VALIDATION OUTPUTS
+### VALIDATION REPORT FILES
 
 ## Name of file with positive PMIDs and scores
 rc.report_positives = path("positives.txt")
@@ -151,16 +141,26 @@ rc.alpha = 0.5
 rc.utility_r = None
 ## Number of citations per output file
 rc.citations_per_file = 250
+## Random seed to use for cross validation shuffle (to get the same
+## shuffle each time).  Set to None to get a different seed on each run.
+rc.randseed = 124
 
 ## Parameters affecting FeatureScores 
 
-## Mask features having a Document Frequency lower than this
-rc.mincount = 4
-## Per-term pseudocount to use (None for background frequency)
-rc.pseudocount = None
-## Types of features to exclude
+## Exclude features occurring fewer times in the data
+rc.mincount = 1
+## Exclude features of theses classes. e.g. ["mesh","issn"]
 rc.class_mask = []
+## Exclude features with less than this Information Gain (IG)
+rc.min_infogain = 0
+## If True, exclude features not occurring in any relevant articles
+rc.positives_only = False
 ## Method name for calculating feature probabilities
-rc.scoremethod = "scores_bayes"
-## Only print the top N feature scores
-rc.max_output_features = 10000
+rc.scoremethod = "scores_laplace_split"
+## Print at most this many feature scores
+rc.max_output_features = 50000
+
+## Initialise article stopwords
+
+from mscanner.medline import Article
+Article.init_stopwords(rc.stopwords)

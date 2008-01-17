@@ -154,14 +154,32 @@ $QM -- QueryManager instance used for the query
   </tr>
   $hr("h_written", """Time at which this file was written.""")
 
-  #if isinstance($QM.featinfo.pseudocount, float)
   <tr>
-    <td>Pseudocount</td>
-    <td>$QM.featinfo.pseudocount</td>
-    $help("h_pseudocount")
+    <td>Feature score method</td>
+    <td>$QM.featinfo.scoremethod</td>
+    $help("h_scoremethod")
   </tr>
-  $hr("h_pseudocount", """Prior frequency (estimated background frequency) 
-  of feature occurrences.""") 
+  $hr("h_scoremethod", """Name of the method used to calculate feature scores.
+  Docstring for the method: """ + getattr($QM.featinfo, $QM.featinfo.scoremethod).__doc__)
+
+  #if $rc.mincount > 1
+  <tr>
+    <td>Min Document Frequency</td>
+    <td>$rc.mincount</td>
+    $help("h_mincount")
+  </tr>
+  $hr("h_mincount", """We exclude features occurring fewer than this many times
+  in the data""")
+  #end if
+  
+  #if $rc.min_infogain > 0
+  <tr>
+    <td>Min Information Gain</td>
+    <td>$rc.min_infogain</td>
+    $help("h_min_infogain")
+  </tr>
+  $hr("h_min_infogain", """We exclude features with less than this value of
+  Information Gain.""")
   #end if
 
   <tr>
@@ -219,15 +237,6 @@ $QM -- QueryManager instance used for the query
   (both when making feature counts, and when querying)""")
   #end if
   
-  <tr>
-    <td>Min Document Frequency</td>
-    <td>$rc.mincount</td>
-    $help("h_mincount")
-  </tr>
-  $hr("h_mincount", """Minimum Document Frequency.  We only consider features
-  that occur at least this many times in the combined data (features with fewer 
-  than this many occurrences are considered noise).""")
-
  </tbody>
  </table>
 

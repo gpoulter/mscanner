@@ -3,33 +3,24 @@
 F = _FeatureCounter
 C = _ScoreCalculator
 
-# Set up above using 16 and 32 bit features
-F16 = $(F)16
-F32 = $(F)32
-C16 = $(C)16
-C32 = $(C)32
-
 GCC = gcc -lm
-GCCL = $(GCC) -DLONGFEATS
-BINARIES = $(C16) $(C32) $(F16) $(F32)
+BINARIES = $(C) $(F)
 WINBINS = $(BINARIES:%=%.exe)
 
 all: $(BINARIES)
 
 clean:
 	rm -f $(BINARIES) $(WINBINS)
+	
+## Unix pipes approach
 
-$(F16): $(F).c
+$(F): $(F).c
 	$(GCC) -o $@ $<
 
-$(F32): $(F).c	
-	$(GCCL) -o $@ $<
-
-$(C16): $(C).c
+$(C): $(C).c
 	$(GCC) -DCSCORE -o $@ $<
-
-$(C32): $(C).c
-	$(GCCL) -DCSCORE -o $@ $<
+	
+## Shared library approach (but ctypes broken on Solaris)
 
 #$(C).so: $(C).c
 #	$(GCC) -shared -o $@ $<

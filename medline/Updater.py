@@ -10,7 +10,7 @@ import time
 from mscanner.configuration import rc
 from mscanner.medline.Article import Article
 from mscanner.medline.Databases import ArticleData, FeatureData
-from mscanner.medline.FeatureStream import Date2Integer
+from mscanner.medline.FeatureStream import DateAsInteger
 
 
                                      
@@ -33,62 +33,72 @@ class Updater:
     """Updates the databases with incoming Medline records. Reads data from XML
     files, and writes to L{ArticleData} and L{FeatureData} objects.
     
-    @ivar adata: L{ArticleData} to update article databases.
-    @ivar fdata_mesh: L{FeatureData} to update MeSH article features.
-    @ivar fdata_all: L{FeatureData} to update all article features.
-    @ivar tracker: Path to list of processed files.
+    @ivar adata: L{ArticleData} instance containing article database.
+    @ivar fdata_list: List of L{FeatureData} instances for article representations.
+    @ivar tracker: Path to the list of completed Medline XML files.
     @ivar stopwords: Set of words not to use as features.
     """
 
 
-    def __init__(self, adata, fdata_mesh, fdata_all, tracker, stopwords):
-        """Constructor parameters set corresponding instance variables.
-        @param stopwords: Path to file of stopwords.
-        """
+    def __init__(self, adata, fdata_list, tracker):
+        """Constructor parameters set corresponding instance variables."""
         self.adata = adata
-        self.fdata_mesh = fdata_mesh
-        self.fdata_all = fdata_all
+        self.fdata_list = fdata_list
         self.tracker = tracker
-        self.stopwords = [] if stopwords is None else stopwords.lines(retain=False)
+
+
+    def close(self):
+        """Close all L{ArticleData} and L{FeatureData} instances"""
+        self.adata.close()
+        for fdata in self.fdata_list:
+            fdata.close()
+
+
+    def sync(self):
+        """Synchronise the FeatureData objects to disk, which can take up to 10
+        minutes if there are a lot of features in the FeatureMap."""
+        logging.info("PLEASE WAIT while overwriting feature maps.")
+        for fdata in self.fdata_list:
+            fdata.sync()
+        logging.info("DONE overwriting feature maps.")
 
 
     @staticmethod
-    def Defaults():
-        """Construct an Updater using the RC parameter defaults, and 
-        a database environment."""
-        dbenv = Updater.dbenv(rc.db_env_home)
-        return Updater(ArticleData.Defaults(dbenv), 
-                       FeatureData.Defaults_MeSH(dbenv, rdonly=False),
-                       FeatureData.Defaults_All(dbenv, rdonly=False), 
-                       rc.tracker, rc.stopwords)
+    def Defaults(featurespaces):
+        """Construct an Updater using default path names..
+        
+        @param featurespaces: List of (name,ftype) pairs, where name specifies a
+        feature-getting method on L{Article}, and ftype is uint16/uint32 for the
+        FeatureDatabase numpy type."""
+        return Updater(
+            ArticleData.Defaults(), 
+            [FeatureData.Defaults(name,ftype,rdonly=False) 
+             for name,ftype in featurespaces], 
+            rc.articles_home/rc.tracker)
+    
+
+    def regenerate(self):
+        """Regenerate L{FeatureData} from the L{ArticleData}."""
+        self.adata.regenerate_artlist()
+        for fdata in self.fdata_list:
+            fdata.regenerate(self.adata.artdb.itervalues())
 
 
-    def regenerate(self, artlist=False):
-        """Regenerate some of the data structures.
-        @param artlist: If True, check whether article list needs regenerating.
-        """
-        if artlist:
-            self.adata.regenerate_artlist()
-        adb = self.adata.artdb
-        self.fdata_mesh.regenerate(
-            a.fstream(a.mesh_features()) for a in adb.itervalues())
-        self.fdata_all.regenerate(
-            a.fstream(a.all_features(self.stopwords)) for a in adb.itervalues())
+    def add_articles(self, articles, sync=True):
+        """Add a list of new article objects to L{ArticleData} and
+        L{FeatureData} instances.
 
-
-    def add_articles(self, articles):
-        """Update feature and article databases with a list of new article
-        objects. Dispatches to the L{ArticleData} and L{FeatureData} instances.
-        @param articles: List of Article objects """
+        @param articles: List of Article objects to add.
+        
+        @param sync: If True, synchronise feature maps after adding."""
         logging.warn("Adding articles to databases. DO NOT INTERRUPT!")
         self.adata.add_articles(articles)
-        self.fdata_mesh.add_articles(
-            a.fstream(a.mesh_features()) for a in articles)
-        self.fdata_all.add_articles(
-            a.fstream(a.all_features(self.stopwords)) for a in articles)
+        for fdata in self.fdata_list:
+            fdata.add_articles(articles)
+        if sync: self.sync()
 
 
-    def add_directory(self, medline=None, save_delay=5):
+    def add_directory(self, medline, save_delay=5):
         """Adds articles from XML files to MScanner's databases.  
         
         @note: Do not CTRL-C the updater on Windows! We write the feature map
@@ -101,8 +111,6 @@ class Updater:
         
         @param save_delay: Seconds to pause between files.
         """
-        if medline is None: 
-            medline = rc.medline
         # List of input files
         infiles = medline.files("*.xml") + medline.files("*.xml.gz")
         # Set of completed files
@@ -132,7 +140,7 @@ class Updater:
                 finally:
                     infile.close()
                 try:
-                    self.add_articles(articles)
+                    self.add_articles(articles, sync=False)
                     done.add(filename.basename())
                     self.tracker.write_lines(sorted(done))
                     logging.info("Added %d articles from file %d out of %d (%s)", 
@@ -142,28 +150,4 @@ class Updater:
                     logging.error("Unsafely interrupted!!!")
                     raise
         finally:
-            logging.info("Please wait: synchronising feature maps (up to 10 minutes).")
-            self.fdata_mesh.sync()
-            self.fdata_all.sync()
-            logging.info("Done synchronising (whew).")
-
-
-    @staticmethod
-    def dbenv(envdir):
-        """Create a Berkeley DB environment - this supports multiple readers 
-        with a single writer.
-        @param envdir: Path to DB environment directory. 
-        @return: DBEnv instance"""
-        if not envdir.isdir():
-            envdir.mkdir()
-        dbenv = db.DBEnv()
-        dbenv.set_lg_max(128*1024*1024) # 128Mb log files
-        dbenv.set_tx_max(1) # 1 transaction at a time
-        dbenv.set_cachesize(0, 8*1024*1024) # 8Mb shared cache
-        flags = db.DB_INIT_MPOOL|db.DB_CREATE
-        # Might try db.DB_RECOVER_FATAL
-        #flags |= db.DB_RECOVER 
-        # Not using transactions due to time/space overhead.
-        #flags |= db.DB_INIT_TXN
-        dbenv.open(envdir, flags)
-        return dbenv
+            self.sync()

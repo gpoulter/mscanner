@@ -1,6 +1,7 @@
 """Calculates feature scores from occurrence counts"""
 
 from __future__ import division
+import logging
 import numpy as nx
 
 from mscanner import update, delattrs
@@ -26,57 +27,44 @@ class FeatureScores(object):
     """Feature score calculation and saving, with choice of calculation method,
     and methods to exclude certain kinds of features.
     
-    @group Set via constructor: featmap, pseudocount, scorefunction, mask
+    @group Set via constructor: featmap, scoremethod
     
     @ivar featmap: L{FeatureMapping} object
     
-    @ivar pseudocount: Prior count to use for features, or None to use prior
-    counts equal to Medline frequency.
+    @ivar scoremethod: Name of the method to call for calculating feature scores.
     
-    @ivar scoremethod: Name of the method for calculating feature scores.
-    
-    @ivar maskfunc: Function taking L{FeatureScores} as a parameter, and 
-    returning a boolean array for setting L{mask}.
-       
     
     @group Set by update: pos_counts, neg_counts, pdocs, ndocs, prior
     
-    @ivar pos_counts: Array of feature counts in positive documents.
+    @ivar pos_counts: Number of positive documents having each feature.
     
-    @ivar neg_counts: Array of feature counts in negatives documents.
+    @ivar neg_counts: Number of negative documents having each feature.
     
     @ivar pdocs: Number of positive documents.
     
     @ivar ndocs: Number of negative documents.
     
-    @ivar prior: Bayes prior to add to the score.  If None, estimate
-    using the ratio of relevant to irrelevant articles in the data.
+    @ivar prior: The prior log odds of relevance.  If None, estimate
+    using the log of the ratio of relevant to irrelevant articles in the data.
     
-    @ivar mask: Boolean array for feature selection.  True positions indicate 
-    features to use, false positions are features that we pretend do not exist.
+    @ivar mask: Boolean array of features to exclude (for feature selection).
+    Features corresponding to True positions are set to zero.
 
-    
+
     @group Set via scoremethod: scores, pfreqs, nfreqs, base
     
     @ivar scores: Score of each feature.
   
-    @ivar pfreqs: Numerator of score fraction.
+    @ivar pfreqs: For positive documents, the estimated fraction having each feature.
     
-    @ivar nfreqs: Denominator of score fraction.
+    @ivar nfreqs: For negative documents, the estimated fraction having each feature.
     
     @ivar base: Value to be added to all article scores (typically the
     score of an article with zero features).
     """
 
-    def __init__(self, 
-                 featmap,
-                 pseudocount=None,
-                 scoremethod="scores_bayes",
-                 maskfunc=lambda x:None):
+    def __init__(self, featmap, scoremethod):
         """Initialise FeatureScores object (parameters are instance variables)"""
-        if isinstance(scoremethod, basestring):
-            scoremethod = getattr(self, scoremethod)
-        prior = 0
         update(self, locals())
 
 
@@ -85,18 +73,7 @@ class FeatureScores(object):
         """Create a FeatureScores parameterised using the RC defaults.
         @param featmap: L{FeatureMapping} instance to use."""
         from mscanner.configuration import rc
-        def maskfunc(fs):
-            # Exclude certain classes of features (word/mesh/issn)
-            r = fs.featmap.class_mask(rc.class_mask)
-            # Exclude features not occurring enough times in the data
-            r |= ((fs.pos_counts + fs.neg_counts) < rc.mincount)
-            #r |= fs.pos_counts < rc.mincount
-            return r
-        return FeatureScores(
-            featmap = featmap,
-            pseudocount = rc.pseudocount,
-            scoremethod = rc.scoremethod,
-            maskfunc = maskfunc)
+        return FeatureScores(featmap, rc.scoremethod)
 
 
     def scores_of(self, featdb, pmids):
@@ -109,7 +86,7 @@ class FeatureScores(object):
         off = self.base + self.prior
         sc = self.scores
         return nx.array([off+nx.sum(sc[featdb[d]]) for d in pmids], nx.float32)
-    
+
 
     def __len__(self):
         """Number of features"""
@@ -117,55 +94,133 @@ class FeatureScores(object):
 
 
     def update(self, pos_counts, neg_counts, pdocs, ndocs, prior=None):
-        """Change the feature counts and numbers of documents, clear
-        old score calculations, and calculate new scores."""
+        """Change the feature counts and numbers of documents and re-calculate
+        the feature scores."""
         if prior is None:
             if pdocs == 0 or ndocs == 0:
-                prior = 0
+                prior = 0.0
             else:
+                # Convert prior probability of relevance to a log odds
                 prior = nx.log(pdocs/ndocs)
-        base = 0
         update(self, locals())
-        self.scoremethod()
-        self._apply_mask()
+        # Call the method to exclude certain features
+        self.mask = self.get_mask()
+        # Call the method to calculate feature scores
+        getattr(self, self.scoremethod)()
+        # Allow TFIDF property to recalculate
         delattrs(self, "_stats", "_tfidf")
 
 
-    def scores_bayes(s):
-        """Estimate support scores of features assuming documents are 
-        generated by a multivariate Bernoulli distribution.  Feature 
-        non-occurrence is modeled as a base score for the document with
-        no features, and an adjustment to the feature occurrence scores."""
-        s._make_pseudovec()
-        # Posterior term frequencies in relevant articles
-        s.pfreqs = (s.pseudocount+s.pos_counts) / (1+s.pdocs)
-        # Posterior term frequencies in irrelevant articles
-        s.nfreqs = (s.pseudocount+s.neg_counts) / (1+s.ndocs)
-        # Support scores for bernoulli successes
-        s.present_scores = nx.log(s.pfreqs/s.nfreqs)
-        # Support scores for bernoulli failures
-        s.absent_scores = nx.log( (1-s.pfreqs) / (1-s.nfreqs) )
-        # Conversion to base score (no terms) and occurrence score
-        s.base = nx.sum(s.absent_scores)
-        s.scores = s.present_scores - s.absent_scores
+    def get_mask(self):
+        """Create feature mask for excluded feature classes, document
+        frequency cutoff and information gain cutoff - using RC parameters."""
+        from mscanner.configuration import rc
+        r = nx.zeros(len(self.pos_counts), nx.bool)
+        if rc.class_mask:
+            # Exclude certain classes of features (word/mesh/issn)
+            r |= self.featmap.class_mask(rc.class_mask)
+        if rc.mincount > 0:
+            # Exclude features not having enough occurrences
+            r |= ((self.pos_counts + self.neg_counts) < rc.mincount)
+        if rc.positives_only:
+            # Exclude features not occurring in any relevant articles
+            r |= (self.pos_counts == 0)
+        if rc.min_infogain > 0:
+            # Exclude features not having enough information gain
+            r |= (self.infogain() < rc.min_infogain)
+        return r
 
 
-    def scores_noabsence(s):
-        """Like scores_bayes, but ignoring non-occurring features, resulting
-        in higher document scores (the ranking is almost the same though)."""
-        s.base = 0
-        s._make_pseudovec()
-        s.pfreqs = (s.pseudocount+s.pos_counts) / (1+s.pdocs)
-        s.nfreqs = (s.pseudocount+s.neg_counts) / (1+s.ndocs)
-        s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
+    def infogain(s):
+        """Calculate the Information Gain (L{infogain}) of each feature."""
+        # Entropy in bits
+        def info(p): 
+            return -p*nx.log2(p)
+        
+        # Number of documents
+        N = s.pdocs + s.ndocs 
+        # Number documents that have term i 
+        T = s.pos_counts + s.neg_counts 
+        
+        # Fraction of documents that have term i 
+        # (probability of term being present)
+        pT = T / N
+        
+        # Fraction of documents that are relevant
+        # (prior probability of relevance)
+        pR = s.pdocs / N
+        
+        # Fraction of relevant documents amonst documents that have term i
+        # (posterior probability of relevance given presence of term)
+        pRgT = (s.pos_counts+1) / (T+2)
+        
+        # Fraction of relevant documents amongst documents not having term i
+        # (posterior probability of relevance given absence of term)
+        pRgNT = (s.pdocs-s.pos_counts+1) / (N-T+2)
+        
+        pI = s.ndocs / N
+        pIgT = (s.neg_counts+1) / (T+2)
+        pIgNT = (s.ndocs-s.neg_counts+1) / (N-T+2)
+        
+        # Information gain is entropy before knowing whether it's present or
+        # absent, minus expected entropy after knowing.
+        return (info(pR)+info(pI)) - (
+            pT*(info(pRgT)+info(pIgT)) + (1-pT)*(info(pRgNT)+info(pIgNT)))
+
+
+    def scores_bayes(s, pos_a, pos_ab, neg_a, neg_ab):
+        """Estimate support scores of features assuming documents are generated
+        by a multivariate Bernoulli distribution. Applies the L{mask}
+        attribute. Feature non-occurrence is modeled as a base score for the
+        document with no features, and an adjustment to the feature occurrence
+        scores.
+        
+        @param pos_a, pos_ab: Beta prior (a=successes, ab=total) for relevant articles.
+        @param neg_a, neg_ab: Beta prior (a=successes, ab=total) for irrelevant articles.
+        """
+        # Posterior probability of term given relevance of document
+        s.pfreqs = (pos_a+s.pos_counts) / (pos_ab+s.pdocs) 
+        # Posterior probability of term given irrelevance of document
+        s.nfreqs = (neg_a+s.neg_counts) / (neg_ab+s.ndocs)
+        # Support scores for bernoulli successes (apply mask)
+        s.success_scores = nx.log(s.pfreqs / s.nfreqs)
+        s.success_scores[s.mask] = 0
+        # Support scores for bernoulli failures (apply mask)
+        s.failure_scores = nx.log((1-s.pfreqs) / (1-s.nfreqs))
+        s.failure_scores[s.mask] = 0
+        # Conver success/failure to base score and occurrence score
+        s.base = nx.sum(s.failure_scores)
+        s.scores = s.success_scores - s.failure_scores
+
+
+    def scores_laplace(s):
+        """For feature probabilities we use the Laplace prior of 1 success and
+        1 failure in each class. Use with a mask that excludes features not
+        occurring in relevant articles."""
+        s.scores_bayes(1, 2, 1, 2)
+
+
+    def scores_laplace_split(s):
+        """For feature probabilities we use a Laplace prior, of 1 success and 1
+        failure in total, split between the classes according to size. This
+        avoids class skew problems."""
+        p = s.pdocs / (s.pdocs + s.ndocs)
+        s.scores_bayes(p, 2*p, 1-p, 2*(1-p))
+
+
+    def scores_bgfreq(s):
+        """The prior is 'background frequency' successes, out of 1 total occurrence 
+        in each class."""
+        bgvec = s.background_vector
+        s.scores_bayes(bgvec, 1, bgvec, 1)
 
 
     def scores_rubin(s):
-        """Estimates a "log likelihood ratio" as a product of the likelihood
-        ratios for each occurring features, where zero probabilities are 
-        replaced with 1e-8."""
+        """Maximum likelihood classifier: score is a product of the likelihood
+        ratios for each occurring features. Uses ML estimates, with zero
+        probabilities are replaced by 1e-8 (ignores other masks)"""
         s.base = 0
-        s.pseudocount = 0
+        s.prior = 0
         s.pfreqs = s.pos_counts / float(s.pdocs)
         s.nfreqs = s.neg_counts / float(s.ndocs)
         s.pfreqs[s.pfreqs == 0.0] = 1e-8
@@ -173,59 +228,65 @@ class FeatureScores(object):
         s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
 
 
-    def _make_pseudovec(s):
-        """Calculates a pseudocount vector of background frequencies,
-        if no constant pseudocount was specified."""
-        if s.pseudocount is None:
-            s.pseudocount = \
+    @property
+    def background_vector(s):
+        """Vector of background probability of occurrence
+        of each feature in Medline (for use in regularisation)."""
+        if not hasattr(s, "_background_vector"):
+            s._background_vector = \
              nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
-
-
-    def _apply_mask(self):
-        """Uses the result of L{maskfunc} to exclude certain features"""
-        mask = self.maskfunc(self)
-        self.mask = mask
-        if mask is not None:
-            self.pos_counts[mask] = 0
-            self.neg_counts[mask] = 0
-            self.pfreqs[mask] = 0
-            self.nfreqs[mask] = 0
-            self.scores[mask] = 0
+        return s._background_vector
 
 
     @property 
     def stats(self):
-        """A Storage instance with statistics about the features
-        
-        The following keys are present:
-            - pos_occurrences: Total feature occurrences in positives
-            - neg_occurrences: Total feature occurrences in negatives
-            - feats_per_pos: Number of features per positive article
-            - feats_per_neg: Number of features per negative article
-            - distinct_feats: Number of distinct features
-            - pos_distinct_feats: Number of of distinct features in positives
-            - neg_distinct_feats: Number of of distinct features in negatives
-        """
         try: 
             return self._stats
         except AttributeError: 
             pass
-        s = Storage()
-        s.pdocs = self.pdocs
-        s.ndocs = self.ndocs
-        s.num_feats = len(self)
-        s.pos_occurrences = int(nx.sum(self.pos_counts)) 
-        s.feats_per_pos = 0.0
-        if self.pdocs > 0:
-            s.feats_per_pos = s.pos_occurrences / s.pdocs 
-        s.neg_occurrences = int(nx.sum(self.neg_counts))
-        s.feats_per_neg = 0.0
-        if self.ndocs > 0:
-            s.feats_per_neg = s.neg_occurrences / s.ndocs 
-        s.pos_distinct_feats = len(nx.nonzero(self.pos_counts)[0]) 
-        s.neg_distinct_feats = len(nx.nonzero(self.neg_counts)[0]) 
-        self._stats = s
+        self._stats = self.FeatureStats(self)
         return self._stats
+
+
+    class FeatureStats:
+        """Stores statistics about a L{FeatureScores}
+        
+        @ivar feats_total: Total number of features in the feature space.
+        @ivar feats_masked: Number of masked features (unused, given zero score).
+        @ivar feats_used: Number of features in use (non-zero scores).
+        
+        @ivar pos_docs, neg_docs: Number of documents in positive/negative
+        corpus.
+        
+        @ivar pos_occurrences, neg_occurrences: Total number of feature
+        occurrences in the positive/negative corpus.
+        
+        @ivar pos_average, neg_average: Average number of features per
+        positive/negative document.
+        
+        @ivar pos_distinct, neg_distinct: Number of different unmasked features
+        in positive/negative document.
+        """
+        
+        def __init__(s, featscores):
+            fs = featscores
+            m = fs.mask
+            
+            s.feats_total = len(fs)
+            s.feats_masked = sum(m)
+            s.feats_used = s.feats_total - s.feats_masked
+            
+            s.pos_docs = fs.pdocs
+            s.neg_docs = fs.ndocs
+            
+            s.pos_occurrences = int(nx.sum(fs.pos_counts[~m]))
+            s.neg_occurrences = int(nx.sum(fs.neg_counts[~m]))
+            
+            s.pos_average = s.pos_occurrences / fs.pdocs if fs.pdocs > 0 else 0.0
+            s.neg_average = s.neg_occurrences / fs.ndocs if fs.ndocs > 0 else 0.0
+            
+            s.pos_distinct = sum((fs.pos_counts != 0) & ~m)
+            s.neg_distinct = sum((fs.neg_counts != 0) & ~m)
 
 
     @property
@@ -274,29 +335,31 @@ class FeatureScores(object):
         """Write features scores as CSV to an output stream.
         @param stream: Object supporting a write method.
         @param maxfeats: Optionally write only the top N features."""
-        stream.write(u"score,positives,negatives,numerator,"\
-                     u"denominator,pseudocount,termid,tfidf,type,term\n")
+        stream.write(u"score,positives,negatives,"\
+                     u"numerator,denominator,"\
+                     u"termid,type,term\n")
         s = self
         s.tfidf
-        if not isinstance(s.pseudocount, nx.ndarray):
-            pseudocount = nx.zeros_like(s.scores) + float(s.pseudocount)
-        else:
-            pseudocount = s.pseudocount
         if maxfeats is None:
             maxfeats = len(s.scores)
-        # Iterate over features by decreasing score. 
-        # idx is just to implement the maxfeats cutoff
-        for idx, (t, score) in enumerate(sorted(
-            enumerate(s.scores), key=lambda x:x[1], reverse=True)):
-            if (s.mask is not None) and s.mask[t]:
+        nmasked = sum(s.mask)
+        logging.info("There are %d features, %d masked and %d unmasked",
+                     len(s.mask), nmasked, len(s.mask)-nmasked)
+        # Don't print more than maxfeats features (save space)
+        numfeats = 0
+        # Sort by decreasing score
+        for (t, score) in sorted(
+            enumerate(s.scores), key=lambda x:x[1], reverse=True):
+            if s.mask[t]:
                 continue
-            if idx > maxfeats:
+            numfeats += 1
+            if numfeats > maxfeats:
                 break
             stream.write(
-                u'%.3f,%d,%d,%.2e,%.2e,%.2e,%d,%.2f,%s,"%s"\n' % 
+                u'%.3f,%d,%d, %.2e,%.2e, %d,%s,"%s"\n' % 
                 (s.scores[t], s.pos_counts[t], s.neg_counts[t], 
-                 s.pfreqs[t], s.nfreqs[t], pseudocount[t], t,
-                 s.tfidf[t], s.featmap[t][1], s.featmap[t][0]))
+                 s.pfreqs[t], s.nfreqs[t], 
+                 t, s.featmap[t][1], s.featmap[t][0]))
 
 
 

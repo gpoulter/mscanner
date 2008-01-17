@@ -32,6 +32,7 @@ from __future__ import division
 
 import logging
 import math
+import numpy as nx
 import os
 from path import path
 import sys
@@ -128,6 +129,7 @@ def write_descriptor(fpath, pmids, params):
         if pmids is not None:
             for pmid in pmids:
                 f.write(str(pmid)+"\n")
+        f.flush()
 
 
 class QueueStatus:
@@ -159,16 +161,9 @@ class QueueStatus:
 
     
     def _load_tasklist(self):
-        """Populate L{tasklist}.
-        
-        @note: We only load files that are older than 1/20th second. Without
-        this we sometimes catch files half-written by the web interface. This
-        in turn means query_logic.py has to wait 0.1 seconds before going to
-        the status page, so that the task shows up.
-        """
+        """Populate L{tasklist}."""
         current_time = time.time()
-        eligible_files = [f for f in rc.queue_path.files() \
-                          if f.mtime < current_time-0.1]
+        eligible_files = [f for f in rc.queue_path.files()]
         self.tasklist = [read_descriptor(f) for f in eligible_files]
         self.tasklist.sort(key=lambda x:x.submitted)
         self.running = self.tasklist[0] if self.tasklist else None
@@ -238,7 +233,10 @@ def logit(probability):
 def mainloop():
     """Look for descriptor files every second"""
     # The updater contains references to the databases
-    updater = Updater.Defaults()
+    updater = Updater.Defaults([
+        ("feats_mesh", nx.uint16),
+        ("feats_word_mqi_all", nx.uint32),
+    ])
     # Pre-load the article list vector
     updater.adata.article_list 
     try:
@@ -275,8 +273,8 @@ def mainloop():
                 # Update task file mod time for the status display
                 task._filename.utime(None) 
                 try:
-                    fdata = (updater.fdata_all if task.allfeatures \
-                             else updater.fdata_mesh)
+                    # Choose MeSH+Abstract or MeSH-only feature space
+                    fdata = updater.fdata_list[1 if task.allfeatures else 0]
                     if task.operation == "retrieval":
                         QM = QueryManager(
                             outdir=outdir, 
@@ -309,9 +307,7 @@ def mainloop():
                 # Nothing to do so sleep before the next iteration
                 time.sleep(1)
     finally:
-        updater.adata.close()
-        updater.fdata_mesh.close()
-        updater.fdata_all.close()
+        updater.close()
 
 
 def populate_test_queue():

@@ -37,7 +37,11 @@ class CrossValidator:
     @ivar negatives: Array of negative PMIDs for validation
     
     @ivar nfolds: Number of validation folds
-
+    
+    @ivar randseed: Used with numpy.random.seed to get the same shuffle of the
+    data before partitioning (to see how different parameters affect
+    performance, without stochastic variation from the shuffle making it harder
+    to tell how big the difference is).
     
     @group Set by validate: pscores,nscores
     
@@ -46,10 +50,7 @@ class CrossValidator:
     @ivar nscores: Scores of negative articles after validation
     """
 
-    def __init__(self, featdb, featinfo, positives,  negatives, nfolds):
-        """Constructor parameters set corresponding instance attributes."""
-        pscores = None
-        nscores = None
+    def __init__(self, featdb, featinfo, positives, negatives, nfolds, randseed=None):
         update(self, locals())
 
 
@@ -69,18 +70,21 @@ class CrossValidator:
         return starts, sizes
 
 
-    def validate(self, randomise=True):
+    def validate(self, _randomise=True):
         """Perform n-fold validation and return the raw performance measures
         
-        @param randomise: Randomise validation splits (use False for debugging)
-        
+        @param _randomise: If True, shuffle the corpora before partitioning
+        into folds. Only use False for unit testing.
+       
         @return: L{pscores}, L{nscores}
         """
         s = self
         pdocs = len(s.positives)
         ndocs = len(s.negatives)
         logging.debug("Cross-validating %d pos and %d neg items", pdocs, ndocs)
-        if randomise:
+        if _randomise:
+            logging.debug("Shuffling corpora with seed %s", str(s.randseed))
+            nx.random.seed(s.randseed)
             nx.random.shuffle(s.positives)
             nx.random.shuffle(s.negatives)
         s.pstarts, s.psizes = s.make_partitions(pdocs, s.nfolds)
@@ -111,42 +115,3 @@ class CrossValidator:
             s.nscores[nstart:nstart+nsize] = s.featinfo.scores_of(
                 s.featdb, s.negatives[nstart:nstart+nsize])
         return s.pscores, s.nscores
-
-
-
-class LeaveOutValidator(CrossValidator):
-    """Feature scores are determined by all but the article whose score we are
-    calculating. This method is deprecated (due to slow speed and not
-    fitting well with the FeatureScore object). Rather use 10-fold
-    cross validation."""
-    
-    def validate(self):
-        """Performs leave-out-one validation.        
-        @return: L{pscores}, L{nscores}
-        """
-        # Set up base feature scores
-        pcounts = FeatureCounts(len(self.featinfo), self.featdb, self.positives)
-        ncounts = FeatureCounts(len(self.featinfo), self.featdb, self.negatives)
-        self.pscores = nx.zeros(len(self.positives), nx.float32)
-        self.nscores = nx.zeros(len(self.negatives), nx.float32)
-        pdocs = len(self.positives)
-        ndocs = len(self.negatives)
-        # Set up pseudocount
-        if isinstance(self.featinfo.pseudocount, nx.ndarray):
-            ps = self.featinfo.pseudocount
-        else:
-            ps = nx.zeros(len(self.featinfo), nx.float32) + self.featinfo.pseudocount
-        marker = 0
-        # Discount this article in feature score calculations
-        def score_of(pmid, p_mod, n_mod):
-            f = self.featdb[doc]
-            return nx.sum(nx.log(
-                ((pcounts[f]+p_mod+ps[f])/(pdocs+p_mod+2*ps[f]))/
-                ((ncounts[f]+n_mod+ps[f])/(ndocs+n_mod+2*ps[f]))))
-        # Get scores for positive articles
-        for idx, doc in enumerate(self.positives):
-            self.pscores[idx] = score_of(doc, -1, 0)
-        # Get scores for negative articles
-        for idx, doc in enumerate(self.negatives):
-            self.nscores[idx] = score_of(doc, 0, -1)
-        return self.pscores, self.nscores

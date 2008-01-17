@@ -180,7 +180,7 @@ def start_logger(console=True, logfile=True):
     format = logging.Formatter("%(asctime)-9s %(levelname)-8s %(message)s", "%H:%M:%S")
     # Configure primary file logger
     if logfile:
-        filelog = logging.FileHandler(rc.logfile, "a")
+        filelog = logging.FileHandler(rc.articles_home/rc.logfile, "a")
         filelog.setFormatter(format)
         rootlog.addHandler(filelog)
     # Configure logging to console

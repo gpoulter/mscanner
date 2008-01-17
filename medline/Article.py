@@ -1,6 +1,5 @@
 """Provides the Article class"""
 
-
                                      
 __author__ = "Graham Poulter"                                        
 __license__ = """This program is free software: you can redistribute it and/or
@@ -15,7 +14,18 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
-from mscanner.medline.FeatureStream import Date2Integer
+import logging
+import re
+
+# List of words to ignore in free text
+stopwords = []
+
+def init_stopwords(filename):
+    """Initialise the L{stopwords} module variable."""
+    global stopwords
+    if filename is not None:
+        stopwords = filename.lines(retain=False)
+
 
 class Article:
     """Database record for a Medline citation.
@@ -114,10 +124,12 @@ class Article:
                 root.clear()
 
 
-    def mesh_features(self):
-        """Get MeSH and Journal featurwes for the article.
-        @return: Dictionary C{"mesh":[strings],"qual":[strings], "issn":[strings]}
-        for the features of each type."""
+    def feats_mesh_qual_issn(self):
+        """Features derived rom MeSH descriptor, MeSH qualifier, and Journal
+        ISSN (abbreviated 'MQI')
+        
+        @return: Dictionary with 'mesh','qual','issn' keys, and with values
+        being list of string feature of each type."""
         # Get MeSH headings, qualifiers and ISSN from article
         headings, quals = [], []
         for term in self.meshterms:
@@ -126,37 +138,107 @@ class Article:
                 for q in term[1:]:
                     if q not in quals:
                         quals.append(q)
-        issns = [self.issn] if self.issn is not None else []
+        issns = [] if self.issn is None else [self.issn]
         # Get the feature vector while possibly them to the feature mapping
         return dict(mesh=headings, qual=quals, issn=issns)
 
 
-    def word_features(self, stopwords):
-        """Get word features in the article.
-        @return: Dictionary C{"word":[strings]} with the word features."""
-        import re
-        text = self.title.lower() + " "
+    def feats_word(self):
+        """Alphanumeric case-folded features derived from title and abstract/
+        
+        @return: Dictionary with the key 'word', and value being a list
+        of word feature strings."""
+        text = ""
+        if self.title is not None:
+            text = self.title + " "
         if self.abstract is not None:
-            text += self.abstract.lower()
+            text += self.abstract
         # Collapse all non-alphabetics to single spaces and split into words
-        words = re.sub(r'[^a-z0-9]+', ' ', text).split()
-        # Keep only non-numeric, non-stop, length>=3 words
+        words = re.sub(r'[^A-Za-z0-9-]+', ' ', text).split()
+        # Keep only non-numeric, non-stop, length>1 words
         numbers = re.compile(r"^[0-9]+$")
-        wordset = set(x for x in words if (
-            len(x) >= 3 and x not in stopwords and not numbers.match(x)))
-        return {"word":list(wordset)}
+        wordset = set(x for x in words if (len(x) > 1 and 
+                x.lower() not in stopwords and not numbers.match(x)))
+        return {"w":list(wordset)}
+    
+    def feats_word_folded(self):
+        """Like feats_word, but with case-folding"""
+        ft = self.feats_word()
+        return {"w":list(set(x.lower() for x in ft["w"]))}
+    
+    def feats_word_nodash(self):
+        """Like feats_word, but without hyphens"""
+        text = ""
+        if self.title is not None: text = self.title + " "
+        if self.abstract is not None: text += self.abstract
+        words = re.sub(r'[^A-Za-z0-9]+', ' ', text).split()
+        numbers = re.compile(r"^[0-9]+$")
+        wordset = set(x for x in words if (len(x) > 1 and x.lower() not in stopwords and not numbers.match(x)))
+        return {"w":list(wordset)}
+    
+    def feats_word_num(self):
+        """Like feats_word, but with numbers"""
+        text = ""
+        if self.title is not None: text = self.title + " "
+        if self.abstract is not None: text += self.abstract
+        words = re.sub(r'[^A-Za-z0-9-]+', ' ', text).split()
+        wordset = set(x for x in words if (len(x) > 1 and x.lower() not in stopwords))
+        return {"w":list(wordset)}
 
 
-    def all_features(self, stopwords):
-        """Get union of L{mesh_features} and L{word_features}.
-        @return: Dictionary with mesh,qual,issn,word keys."""
-        features = self.mesh_features()
-        features.update(self.word_features(stopwords))
+    def feats_author(self):
+        """Space 'au', with features like 'JS Bloggs' for author names"""
+        return {"a": [F+" "+L for F,L in self.authors if F and L]}
+
+
+    def feats_wmqia(self):
+        """Union of the L{feats_mesh_qual_issn}, L{feats_word} and
+        L{feats_author} spaces. 
+        @return: Feature dictionary with w,mesh,qual,issn,au keys."""
+        features = self.feats_mesh_qual_issn()
+        features.update(self.feats_word())
+        features.update(self.feats_author())
         return features
     
     
-    def fstream(self, features):
-        """Get a FeatureStream tuple for the article given a feature dictionary.
-        @param features: Result of L{mesh_features} and others.
-        @return: (PMID, YYYYMMDD, features)"""
-        return (self.pmid, Date2Integer(self.date_completed), features)
+    def feats_wmqia_filt(self):
+        """Like L{feats_wmqia}, but remove word features that occur in MeSH
+        features."""
+        ft = self.feats_wmqia()
+        meshtext = (" ".join(ft["mesh"] + ft["qual"])).lower()
+        meshwords = set(re.sub(r'[^a-z0-9-]+', ' ', meshtext).split())
+        ft["w"] = [x for x in ft["w"] if x.lower() not in meshwords]
+        return ft
+
+
+    def feats_iedb_word(self):
+        """IEDB features from title and abstract only"""
+        text = ""
+        if self.title is not None:
+            text = self.title + " "
+        if self.abstract is not None:
+            text += self.abstract
+        words = set(x for x in re.sub(r'[^A-Za-z0-9-]+', ' ', text).split() 
+                    if x.lower() not in stopwords)
+        return {"iedb":list(words)}
+
+
+    def feats_iedb_concat(self):
+        """IEDB features: Concatenate title, abstract, MeSH, journal.  No 
+        case folding."""
+        text = []
+        if self.title is not None:
+            text.append(self.title)
+        if self.abstract is not None:
+            text.append(self.abstract)
+        if self.journal is not None:
+            text.append(self.journal)
+        for first,last in self.authors:
+            if last is not None:
+                text.append(last)
+        for term in self.meshterms:
+            text.extend(term)
+        text = " ".join(text)
+        words = set(x for x in re.sub(r'[^A-Za-z0-9-]+', ' ', text).split()
+                    if x.lower() not in stopwords)
+        return {"iedb":list(words)}

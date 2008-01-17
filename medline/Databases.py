@@ -10,7 +10,7 @@ import numpy as nx
 from mscanner.configuration import rc
 from mscanner.medline.FeatureMapping import FeatureMapping
 from mscanner.medline.FeatureDatabase import FeatureDatabase
-from mscanner.medline.FeatureStream import FeatureStream, Date2Integer
+from mscanner.medline.FeatureStream import FeatureStream, DateAsInteger
 from mscanner.medline import Shelf 
 
 
@@ -29,6 +29,12 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
+def _endof(path):
+    """Return last two parts of the path, for displaying paths when the full
+    path is too long, but just the filename looks ambiguous."""
+    return "/".join(path.splitall()[-2:])
+
+
 class FeatureData:
     """Wraps the files handling feature ID information - namely the
     L{FeatureMapping}, L{FeatureDatabase} and L{FeatureStream}.
@@ -39,38 +45,41 @@ class FeatureData:
     
     @ivar fstream: L{FeatureStream} of (PMID, date, feature vector).
     
-    @ivar rdonly: Boolean for opening databases read-only.
+    @ivar extractor: Function taking an L{Article} parameter and returning
+    feature dictionary as {space:[features]}.
+    
+    @ivar featurespace: Name of a method of L{Article} which will generate
+    the features, which is also the subdirectory in rc.articles_home where
+    the feature databases are to be kep.
+    
+    @ivar ftype: Numpy type for FeatureDatabase (uint16 or uint32).
+        
+    @ivar rdonly: If True, open all databases read-only.
     """
     
-    def __init__(self, featmap, featdb, fstream, ftype, dbenv=None, rdonly=True):
-        """Constructor. 
-        @param dbenv: Optional Berkeley database environment"""
+    def __init__(self, ftype, featmap, featdb, fstream, featurespace, rdonly=True):
+        self.ftype = ftype
         self.rdonly = rdonly
-        logging.debug("Loading feature mapping from %s", featmap.basename())
-        self.featmap = FeatureMapping(featmap, ftype=ftype)
-        self.featuredb = FeatureDatabase(featdb, "r" if rdonly else "c", 
-                                         dbenv=dbenv, ftype=ftype)
-        self.fstream = FeatureStream(fstream, ftype, rdonly)
+        logging.debug("Loading feature mapping from %s", _endof(featmap))
+        self.featmap = FeatureMapping(featmap)
+        self.featuredb = FeatureDatabase(ftype, featdb, "r" if rdonly else "c")
+        self.fstream = FeatureStream(fstream, rdonly)
+        self.featurespace = featurespace
 
 
-    @staticmethod
-    def Defaults_MeSH(dbenv=None, rdonly=True):
-        """Construct using the RC defaults for MeSH feature space."""
-        return FeatureData(rc.featuremap_mesh, rc.featuredb_mesh, 
-                           rc.featurestream_mesh, nx.uint16, dbenv, rdonly)
-
-
-    @staticmethod
-    def Defaults_All(dbenv=None, rdonly=True):
-        """Construct using RC defaults for the MeSH+Abstract feature space."""
-        return FeatureData(rc.featuremap_all, rc.featuredb_all, 
-                           rc.featurestream_all, nx.uint32, dbenv, rdonly)
-
+    @staticmethod 
+    def Defaults(featurespace, ftype, rdonly=True):
+        """Initialise L{FeatureData} using standard file paths. L{ftype},
+        L{featurespace} and L{rdonly} are as in the constructor."""
+        base = rc.articles_home / featurespace
+        # Create feature database directory if necessary
+        if not base.exists(): base.makedirs()
+        return FeatureData(ftype, base/rc.featuremap, base/rc.featuredb, 
+                           base/rc.featurestream, featurespace, rdonly)
+    
 
     def close(self):
         """Shut down the databases"""
-        if not self.rdonly:
-            self.featmap.dump()
         self.featuredb.close()
         self.fstream.close()
         
@@ -87,13 +96,14 @@ class FeatureData:
         """Incrementally add new articles to the existing feature 
         database, stream and feature map.  
         
-        @param articles: Iterable of (PMID, date, features), as (string,
-        YYYYMMDD integer, dictionary). The features dict maps string feature
-        type to list of feature strings."""
+        @param articles: Iterable Article objects."""
         if self.rdonly:
             raise NotImplementedError("Attempt to write to read-only databases")
-        for pmid, date, features in articles:
+        for article in articles:
+            pmid = article.pmid
             if pmid not in self.featuredb:
+                date = DateAsInteger(article.date_completed)
+                features = getattr(article, self.featurespace)()
                 self.featmap.add_article(features)
                 featvec = self.featmap.get_vector(features)
                 self.featuredb[str(pmid)] = featvec
@@ -101,28 +111,29 @@ class FeatureData:
         
         
     def regenerate(self, articles):
-        """Regenerate feature map, feature stream and feature database. We only
-        regenerate those files that are currently empty (because they were
-        moved/deleted).
+        """Regenerate feature map, feature stream and feature database, but
+        only if they have been deleted. FeatureMapping is flushed to disk only
+        at the end.
         
-        @param articles: Iterable of (PMID, date, features), as (string,
-        YYYYMMDD integer, dictionary). The features dict maps string feature
-        type to list of feature strings."""
+        @param articles: Iterable of all Article objects in the L{ArticleData}."""
         if self.rdonly:
-            raise NotImplementedError("Attempt to write to read-only databases")
+            raise NotImplementedError("Failed: may not write read-only databases.")
         do_featmap = len(self.featmap) == 0
         do_stream = self.fstream.filename.size == 0
         do_featuredb = len(self.featuredb) == 0
         if not (do_featmap or do_stream or do_featuredb):
-            logging.info("Not regenerating feature dbs as they are non-empty.")
+            logging.info("Done: nothing to do as databases already have data.")
             return
         if do_featmap: 
-            logging.info("Regen feature map %s.", self.featmap.filename.basename())
+            logging.info("Regen feature map %s.", _endof(self.featmap.filename))
         if do_stream: 
-            logging.info("Regen feature stream %s.", self.fstream.filename.basename())
+            logging.info("Regen feature stream %s.", _endof(self.fstream.filename))
         if do_featuredb: 
-            logging.info("Regen feature database %s.", self.featuredb.filename.basename())
-        for count, (pmid, date, features) in enumerate(articles):
+            logging.info("Regen feature database %s.", _endof(self.featuredb.filename))
+        for count, article in enumerate(articles):
+            pmid = article.pmid
+            date = DateAsInteger(article.date_completed)
+            features = getattr(article, self.featurespace)()
             if count % 10000 == 0:
                 logging.debug("Regenerated %d articles.", count)
             if do_featmap:
@@ -146,17 +157,20 @@ class ArticleData:
     @ivar artlist_path: Path to file listing PubMed ID and record date.
     """
     
-    def __init__(self, artdb, artlist, dbenv=None):
+    def __init__(self, artdb_path, artlist_path):
         """Constructor for setting attributes to be used by the remaining
         methods."""
-        self.artdb = Shelf.open(artdb, dbenv=dbenv)
-        self.artlist_path = artlist
+        self.artdb = Shelf.open(artdb_path)
+        self.artlist_path = artlist_path
 
 
     @staticmethod
-    def Defaults(dbenv=None):
-        """Construct an instance using default RC parameters."""
-        return ArticleData(rc.articledb, rc.articlelist, dbenv)
+    def Defaults():
+        """Instantiate L{ArticleData} using default paths"""
+        base = rc.articles_home
+        # Create new article repository if necessary
+        if not base.exists(): base.makedirs()
+        return ArticleData(base/rc.articledb, base/rc.articlelist)
 
 
     def close(self):
@@ -171,30 +185,35 @@ class ArticleData:
         try:
             return self._article_list
         except AttributeError: 
-            logging.info("Loading article list property.")
+            logging.info("Loading article list from %s", _endof(self.artlist_path))
             if self.artlist_path.exists():
                 with open(self.artlist_path, "rb") as f:
-                    self._article_list = nx.array([int(t.split()[0]) for t in f], nx.uint32)
+                    self._article_list = nx.array(
+                        [int(t.split()[0]) for t in f], nx.uint32)
             else:
                 self._article_list = nx.array([], nx.uint32)
             return self._article_list
 
 
     def regenerate_artlist(self):
-        """Regenerate the list of articles from the article database."""
-        if len(self.article_list) != 0:
-            logging.info("Not regenerating article list as it is non-empty.")
+        """Regenerate the list of articles from the article database. Flushes
+        to disk at the end."""
+        if self.artlist_path.exists():
+            logging.info("Not regenerating article list: the file already exists.")
             return
-        del self._article_list
+        if hasattr(self, "_article_list"):
+            del self._article_list
         with open(self.artlist_path, "wb") as f:
             for idx, (pmid, art) in enumerate(self.artdb.iteritems()):
                 if idx % 10000 == 0:
                     logging.debug("Wrote %d to the article list." % idx)
-                f.write("%s %08d\n" % (pmid, Date2Integer(art.date_completed)))
+                f.write("%s %08d\n" % (pmid, DateAsInteger(art.date_completed)))
+            f.flush()
 
 
     def add_articles(self, articles):
-        """Add new articles to both the database and the article list.
+        """Add new articles to both the database and the article list.  Flushes
+        to disk at the end.
         @param articles: Iterable of L{Article} objects.
         """
         with open(self.artlist_path, "ab") as artlist:
@@ -203,6 +222,7 @@ class ArticleData:
                 pmid = str(art.pmid)
                 if pmid not in self.artdb: 
                     artlist.write("%s %d\n" % (
-                        pmid, Date2Integer(art.date_completed)))
+                        pmid, DateAsInteger(art.date_completed)))
                     self.artdb[pmid] = art
             self.artdb.sync()
+            artlist.flush()

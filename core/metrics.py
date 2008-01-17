@@ -303,13 +303,18 @@ class PerformanceVectors:
         return self.uscores[idx], idx
 
 
-    def index_for(self, threshold):
+    def index_for(s, threshold):
         """Calculate index into L{uscores} corresponding to given threshold.
-        @return: The highest available threshold less than the specified one,
-        and its index in L{uscores}."""
-        diffs = self.uscores - threshold
-        idx = nx.nonzero(diffs == nx.min(diffs[diffs >= 0]))[0][0]
-        return self.uscores[idx], idx
+        @return: The highest available threshold at least as low as the
+        specified one, and its index in L{uscores}."""
+        above_threshold = s.uscores[s.uscores >= threshold]
+        if len(above_threshold) > 0:
+            real_threshold = above_threshold[0] # Lowest above
+            threshold_idx = nx.nonzero(s.uscores == real_threshold)[0][0]
+            return real_threshold, threshold_idx
+        else:
+            # Nothing scores above the threshold, just take the highest
+            return s.uscores[-1], len(s.uscores)-1
 
 
     def matrix_for(self, index):

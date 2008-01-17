@@ -21,7 +21,7 @@ from mscanner.configuration import rc
 from mscanner.core import iofuncs
 from mscanner.core.QueryManager import QueryManager
 from mscanner.medline.Databases import FeatureData, ArticleData
-from mscanner.medline.FeatureStream import Date2Integer
+from mscanner.medline.FeatureStream import DateAsInteger
 
 
 def truepos_vs_rank(results, test):
@@ -55,10 +55,11 @@ def plot_rank_performance(fname, textfname, tp_vs_rank,
     
     @param total_relevant: Total number of relevant articles to be found.
     
-    @param compare_irrelevant: The number of irrelevant articles retrieved by
-    the query that was manually filtered to yield the L{total_relevant}. We use
+    @param total_irrelevant: The number of irrelevant articles retrieved by
+    the query that was manually filtered to yield the total_relevant. We use
     this to calculate the precision of the PubMed query against which we are
-    comparing. """
+    comparing. 
+    """
     logging.debug("Plotting Retrieval curve to %s", fname.basename())
     from Gnuplot import Gnuplot, Data
     g = Gnuplot()
@@ -90,8 +91,9 @@ def plot_rank_performance(fname, textfname, tp_vs_rank,
 def compare_iedb_query():
     """We compare MScanner retrieval to the complex PubMed query
     used to create the gold standard for the IEDB classifier."""
-    dataset = "iedb-query-pre2004"
-    outdir = rc.working / "query" / dataset
+    dataset = "IEDBQuery-Long"
+    rc.mincount = 0
+    outdir = rc.working / "output" / dataset
     if not outdir.exists(): outdir.makedirs()
     mindate, maxdate = 20040101, 20041231
     t_mindate, t_maxdate = 20040101, 20041231

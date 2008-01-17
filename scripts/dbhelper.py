@@ -26,13 +26,14 @@ import sys
 
 from mscanner.core import iofuncs
 from mscanner.medline.FeatureDatabase import FeatureDatabase
-from mscanner.medline.FeatureStream import FeatureStream, Date2Integer
+from mscanner.medline.FeatureStream import FeatureStream, DateAsInteger
 from mscanner.medline.Updater import Updater
 from mscanner.medline import Shelf
 
     
 def dbkeys(dbfile, keylist):
     """List the keys in a Berkeley database.
+    
     @param dbfile: Path to Berkeley DB.
     @param keylist: Path to write database keys one per line.
     """
@@ -52,6 +53,7 @@ def dbkeys(dbfile, keylist):
 def pmid_dates(artdb, infile, outfile):
     """Get dates for PMIDs listed in L{infile}, writing PMID,date pairs
     to L{outfile} in increasing order of date.
+    
     @param artdb: Path to Shelf with Article objects
     @param infile: Path to PubMed IDs (PMID lines)
     @param outfile: Path to write PMID YYYYMMDD lines to."""
@@ -63,7 +65,7 @@ def pmid_dates(artdb, infile, outfile):
             continue
         pmid = int(line.split()[0])
         try:
-            date = Date2Integer(adb[str(pmid)].date_completed)
+            date = DateAsInteger(adb[str(pmid)].date_completed)
             lines.append((pmid,date))
         except KeyError, e:
             print e.message
@@ -77,6 +79,7 @@ def pmid_dates(artdb, infile, outfile):
 
 def select_lines(infile, outfile, mindate="00000000", maxdate="99999999", N="0"):
     """Select random PMIDs from L{infile} and write them to L{outfile}.
+    
     @param infile: Read PMID YYYYMMDD lines from this path.
     @param outfile: Write selected lines to this path.
     @param N: (string) Number of lines to output (N="0" outputs all matching)

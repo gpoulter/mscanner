@@ -16,41 +16,30 @@ class FeatureCounter:
     @ivar docstream: Path to file containing feature vectors for documents to
     score, in FeatureStream format.
     
-    @ivar ftype: Type of the docstream features (uint16 or uint32).
-
     @ivar numdocs: Number of documents in the stream of feature vectors.
     
     @ivar numfeats: Number of distinct features in Medline (length of the 
     vector of feature counts).
 
-    @ivar mindate: YYYYMMDD integer: documents must have this date or later
-    (default 11110101)
+    @ivar mindate: YYYYMMDD as integer: ignore documents before this date.
     
-    @ivar maxdate: YYYYMMDD integer: documents must have this date or earlier
-    (default 33330303)
+    @ivar maxdate: YYYYMMDD as integer: ignore documents after this date.
 
     @ivar exclude: PMIDs that are not allowed to appear in the results.
     """
 
 
-    @property
-    def counter(self):
-        """Return path to 16 or 32-bit feature counter executable"""
-        counter_base = path(__file__).dirname() / "_FeatureCounter"
-        return counter_base + {nx.uint16:"16",nx.uint32:"32"}[self.ftype]
-
-
     def __init__(self,
                  docstream,
-                 ftype,
                  numdocs,
                  numfeats,
                  mindate=None,
                  maxdate=None,
                  exclude=set(),
                  ):
-        if mindate is None: mindate = 10110101
-        if maxdate is None: maxdate = 30330303
+        if mindate is None: mindate = 11110101
+        if maxdate is None: maxdate = 99990101
+        self.counter_path = path(__file__).dirname() / "_FeatureCounter"
         update(self, locals())
 
 
@@ -60,7 +49,7 @@ class FeatureCounter:
         
         @return: Number of documents counted, and vector of feature counts."""
         featcounts = nx.zeros(s.numfeats, nx.int32)
-        docs = FeatureStream(s.docstream, s.ftype, rdonly=True)
+        docs = FeatureStream(s.docstream, rdonly=True)
         ndocs = 0
         try:
             for docid, date, features in docs.iteritems():
@@ -82,7 +71,7 @@ class FeatureCounter:
         @return: Number of documents counted, and vector of feature counts."""
         import subprocess as sp
         p = sp.Popen([
-            s.counter,
+            s.counter_path,
             s.docstream,
             str(s.numdocs),
             str(s.numfeats),
@@ -95,4 +84,6 @@ class FeatureCounter:
         ndocs = struct.unpack("I", p.stdout.read(4))[0]
         # Then a vector of feature counts
         featcounts = nx.fromfile(p.stdout, nx.int32, s.numfeats)
+        # Make child terminate
+        p.stdout.close()
         return ndocs, featcounts

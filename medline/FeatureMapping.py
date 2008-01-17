@@ -23,19 +23,15 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 class FeatureMapping:
     """Persistent mapping between string features and feature IDs
 
-    @note: Feature classes are "mesh", "qual", "issn", "word".  The class 
-    identifies the source of the feature, and allows the same string
-    to represent two different features - e.g. "human" as a "word" feature,
-    and "human" as a "mesh" feature.
+    @note: Feature classes are "mesh", "qual", "issn", "w" (word), "a"
+    (author). The class identifies the source of the feature, and allows the
+    same string to represent two different features - e.g. "human" as a "word"
+    feature, and "human" as a "mesh" feature.
     
-    @note: This is really a table with columns (id,type,name,count), and keys of id
-    and (type,name).
+    @note: This is really a table of (id,type,name,count), with two indexes:
+    ID->(type,name,count) and (type,name)->ID.
     
-    @group Passed via constructor: filename, ftype
-
     @ivar filename: Path to save the mapping to (None for memory only).
-    
-    @ivar ftype: Numpy type in feature vectors (uint16 or uint32).
     
     @ivar numdocs: Number of documents added while creating the mapping.
     
@@ -49,9 +45,8 @@ class FeatureMapping:
     in Medline.
     """
 
-    def __init__(self, filename, ftype):
+    def __init__(self, filename):
         """Initialise the database"""
-        self.ftype = ftype
         self.filename = filename
         self.numdocs = 0
         self.features = []
@@ -71,12 +66,12 @@ class FeatureMapping:
         with codecs.open(self.filename, "rb", "utf-8") as f:
             self.numdocs = int(f.readline().strip())
             for fid, line in enumerate(f):
-                feat, ftype, count = line.strip().split("\t")
-                self.features.append((feat,ftype))
+                feat, fclass, count = line.strip().split("\t")
+                self.features.append((feat,fclass))
                 self.counts.append(int(count))
-                if ftype not in self.feature_ids:
-                    self.feature_ids[ftype] = {}
-                self.feature_ids[ftype][feat] = fid
+                if fclass not in self.feature_ids:
+                    self.feature_ids[fclass] = {}
+                self.feature_ids[fclass][feat] = fid
 
 
     def dump(self):
@@ -87,8 +82,8 @@ class FeatureMapping:
         _filename_new = self.filename + ".new"
         with codecs.open(_filename_new, "wb", "utf-8") as f:
             f.write("%s\n" % self.numdocs)
-            for (feat, ftype), count in zip(self.features, self.counts):
-                f.write("%s\t%s\t%d\n" % (feat, ftype, count))
+            for (feat, fclass), count in zip(self.features, self.counts):
+                f.write("%s\t%s\t%d\n" % (feat, fclass, count))
         if self.filename.isfile():
             self.filename.remove()
         _filename_new.rename(self.filename)
@@ -114,8 +109,8 @@ class FeatureMapping:
 
     def class_mask(self, classes):
         """Boolean mask for features of particular classes.
-        @param clases: Feature classes to exclude, like ["mesh","issn"].
-        @return: Boolean array for features of those classes.
+        @param classes: List of feature classes to exclude, e.g. ["mesh","issn"].
+        @return: Boolean array that is True at features of excluded classes.
         """
         mask = nx.zeros(len(self.features), nx.bool)
         for fclass in classes:
@@ -132,14 +127,11 @@ class FeatureMapping:
      
         @return: Feature vector of corresponding feature IDs.
         """
-        nfeats = sum(len(v) for v in features.itervalues())
-        vector = nx.zeros(nfeats, self.ftype)
-        idx = 0
+        vector = []
         for fclass, featlist in features.iteritems():
             for feature in featlist:
-                vector[idx] = self.feature_ids[fclass][feature]
-                idx += 1
-        # Sort prior to compression in EncodedFeatureStream
+                vector.append(self.feature_ids[fclass][feature])
+        # *MUST* Sort prior to compression in EncodedFeatureStream
         vector.sort() 
         return vector
 

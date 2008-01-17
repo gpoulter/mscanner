@@ -29,16 +29,16 @@ class FeatureDatabase:
     @ivar name: Path to the database file.
     """
     
-    def __init__(self, filename=None, flags='c', mode=0660, 
-                 dbenv=None, txn=None, ftype=nx.uint16):
+    def __init__(self, ftype, filename=None, flags='c', mode=0660, 
+                 dbenv=None, txn=None):
         """Initialise database
 
+        @param ftype: Numpy type for features (uint16 or uint32).
         @param filename: Path to database file.
         @param flags: Opening flags (r,rw,w,c,n).
         @param mode: Numeric file permissions.
         @param dbenv: Optional database environment.
         @param txn: Optional database transaction.
-        @param ftype: Numpy integer type for representing features.
         """
         self.ftype = ftype
         if isinstance(flags, basestring):
@@ -80,9 +80,10 @@ class FeatureDatabase:
 
     def setitem(self, key, features, txn=None):
         """Associate integer key with an ndarray object of values"""
-        if features.dtype != self.ftype:
-            raise ValueError("array type mismatch: " + 
-                             str(features.dtype) + " for key " + str(key))
+        if isinstance(features, list):
+            features = nx.array(features, self.ftype)
+        elif features.dtype != self.ftype:
+            raise ValueError("Type error: " + str(features.dtype) + " for key " + str(key))
         try:
             self.db.put(str(key), features.tostring(), txn=txn)
         except ValueError, e:

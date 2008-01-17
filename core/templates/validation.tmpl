@@ -113,6 +113,14 @@ $VM -- Instance of ValidationBase
   examples (randomly sampled from Medline).  Dividing the file into 10 
   parts yields the cross validation folds.""")
 
+  <tr>
+    <td>Feature score method</td>
+    <td>$VM.featinfo.scoremethod</td>
+    $help("h_scoremethod")
+  </tr>
+  $hr("h_scoremethod", """Name of the method used to calculate feature scores.
+  Docstring for the method: """ + getattr($VM.featinfo, $VM.featinfo.scoremethod).__doc__)
+
   <tr class="newsection">
     <td>Number of folds</td>
     <td>$range.nfolds</td>
@@ -143,10 +151,27 @@ $VM -- Instance of ValidationBase
     <td>$rc.mincount</td>
     $help("h_mincount")
   </tr>
-  $hr("h_mincount", """Minimum Document Frequency.  In each fold we only 
-  consider features with at least this many occurrences in the combined data 
-  (features with fewer than this many occurrences are considered noise).""")
+  $hr("h_mincount", """Minimum Document Frequency.  In each fold, we
+  exclude features occurring fewer than this many times in the data""")
+  
+  <tr>
+    <td>Min Information Gain</td>
+    <td>$rc.min_infogain</td>
+    $help("h_min_infogain")
+  </tr>
+  $hr("h_min_infogain", """Minimum Information Gain.  In each fold, we
+  exclude features with less than this information gain.""")
 
+  <tr>
+    <td>Score threshold</td>
+    <td>#echo "%.3f" % $range.threshold #</td>
+    $help("h_threshold")
+  </tr>
+  $hr("h_threshold", """If an article has a score greater than or
+  equal to this value, classify it as relevant.  The threshold
+  is either the lowest one >= 0, or may be chosen to obtain break-even,
+  maximum F measure, or maximum utility.""")
+  
   <tr class="newsection">
     <td>Average Precision</td>
     <td>#echo "%.5f" % $vectors.AvPrec #</td>
@@ -155,6 +180,15 @@ $VM -- Instance of ValidationBase
   $hr("h_avprec", """Precision averaged over all ranks where
   an article is retrieved.""")
   
+  <tr>
+    <td>Break-Even <span class="footnote">(precision=recall)</span></td>
+    <td>#echo "%.3f" % $vectors.breakeven #</td>
+    $help("h_break_even")
+  </tr>
+  $hr("h_break_even", """Shared value at the point where Recall = Precision =
+  F1-measure. Typically the F1-Measure at break-even is slightly lower than the
+  maximum F1-Measure.""")
+
   <tr class="newsection">
     <td>Area under ROC curve (AUC)</td>
     <td>#echo "%.5f" % $vectors.W #</td>
@@ -266,17 +300,6 @@ $VM -- Instance of ValidationBase
     </colgroup>
 
     <tr>
-      <td>Score threshold</td>
-      <td>#echo "%.2f" % $range.threshold #</td>
-      $help("h_threshold")
-    </tr>
-    $hr("h_threshold", """Articles with log probability ratio 
-    scores higher than this are predicted positive.  Either the closest
-    article score to zero is used, or we chose a threshold to
-    maximise F score or Utility (which is the case if we achieve
-    the F score or Utility maxima mentioned below).""")
-  
-    <tr>
       <td><b>Precision (PPV)</b> 
       <span class="footnote">&pi;=TP/(TP+FP)</span></td>
       <td>$range.fmt_stats("precision")</td>
@@ -320,15 +343,6 @@ $VM -- Instance of ValidationBase
     $hr("h_max_f1", """This is the F_1 measure that would be achieved if we
     had set &alpha;=0.5""")
     
-    <tr class="newsection">
-      <td><b>Break-Even</b> <span class="footnote">(where precision=recall)</span></td>
-      <td>#echo "%.3f" % $vectors.breakeven #</td>
-      $help("h_break_even")
-    </tr>
-    $hr("h_break_even", """Shared value at the point where Recall = Precision =
-    F1-measure. Typically the F1-Measure at break-even is slightly lower than the
-    maximum F1-Measure.""")
-
   </table>
 </div>
 

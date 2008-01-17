@@ -11,14 +11,14 @@ Usage:
 [maxdate] \
 > feature_socres
 
-  The [citations] file consists of [numcites] records, which are
-  binary records, which can be expressed as the structure::
+  The [citations] file consists of [numcites] records, in the format
+  used by FeatureStream.py
 
   struct {
     unsigned int pmid; // PubMed ID of citation
     unsigned int date; // Record completion date
-    unsigned short nfeatures; // Number of features
-    ftype features[nfeatures]; // Features. ftype is unsigned short or int.
+    unsigned short nbytes; // Number of bytes in encoded feature vector
+    char features[nbytes]; // Variable-byte-encoded feature vector
   };
 
   The output is a list of [numfeats] integers representing the
@@ -41,12 +41,6 @@ this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include <stdio.h>
 #include <stdlib.h>
-
-#ifdef LONGFEATS
-typedef unsigned int ftype;
-#else
-typedef unsigned short ftype;
-#endif
 
 // Search sorted array A of length N for needle.
 // Return 1 if we find the needle, 0 if we do not
@@ -87,14 +81,12 @@ int main (int argc, char **argv)
     unsigned int pmid = 0; // PubMed ID of the current citation
     unsigned int ndocs = 0; // Number of documents counted
     unsigned short featvec_size = 0; // Size of current feature vector
-    ftype featvec[1000]; // Max 1000 features per citation (16 or 32 bit)
+    unsigned int featvec[1000]; // Max 1000 features per citation (16 or 32 bit)
 
-    #ifndef PLAINFEATS
     unsigned short featvec_nbytes = 0; // Bytes in encoded feature vector
     unsigned char bytes[4000]; // Bytes of encoded feature vector
     unsigned int gap = 0; // Gap between feature IDs
     unsigned int last = 0; // Value of previous decoded feature ID
-    #endif
 
     // Allocate space for list of excluded PMIDs 
     unsigned int *excluded = (unsigned int*) malloc (numexcluded * sizeof(int));
@@ -114,28 +106,24 @@ int main (int argc, char **argv)
         // Read feature vector from the binary file
         fread(&pmid, sizeof(unsigned int), 1, citefile);
         fread(&date, sizeof(unsigned int), 1, citefile);
-        #ifdef PLAINFEATS
-            // Read plain feature vector
-            fread(&featvec_size, sizeof(unsigned short), 1, citefile);
-            fread(featvec, sizeof(ftype), featvec_size, citefile);
-        #else
-            // Decode variable byte encoded feature vector
-            fread(&featvec_nbytes, sizeof(unsigned short), 1, citefile);
-            fread(bytes, sizeof(unsigned char), featvec_nbytes, citefile);
-            gap = 0;
-            last = 0;
-            featvec_size = 0;
-            // Read groups of 7 bits, low to high.  
-            // Set high bit set marks end-of-number.
-            for(fi = 0; fi < featvec_nbytes; fi++) {
-                gap = (gap << 7) | (bytes[fi] & 0x7f);
-                if(bytes[fi] & 0x80) {
-                    last += gap;
-                    featvec[featvec_size++] = last;
-                    gap = 0;
-                }
+
+        // Decode variable byte encoded feature vector
+        fread(&featvec_nbytes, sizeof(unsigned short), 1, citefile);
+        fread(bytes, sizeof(unsigned char), featvec_nbytes, citefile);
+        gap = 0;
+        last = 0;
+        featvec_size = 0;
+        // Read groups of 7 bits, low to high.  
+        // Set high bit set marks end-of-number.
+        for(fi = 0; fi < featvec_nbytes; fi++) {
+            gap = (gap << 7) | (bytes[fi] & 0x7f);
+            if(bytes[fi] & 0x80) {
+                last += gap;
+                featvec[featvec_size++] = last;
+                gap = 0;
             }
-        #endif
+        }
+        
         // Don't bother if the date is outside the range
         if ((date < mindate) || (date > maxdate)) {
             continue;

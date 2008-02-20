@@ -235,6 +235,7 @@ def mainloop():
     # The updater contains references to the databases
     updater = Updater.Defaults([
         ("feats_mesh_qual_issn", nx.uint16),
+        ("feats_wmqia", nx.uint32),
     ])
     # Pre-load the article list vector
     updater.adata.article_list 

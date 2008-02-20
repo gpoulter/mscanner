@@ -160,12 +160,14 @@ class Article:
         wordset = set(x for x in words if (len(x) > 1 and 
                 x.lower() not in stopwords and not numbers.match(x)))
         return {"w":list(wordset)}
-    
+
+
     def feats_word_folded(self):
         """Like feats_word, but with case-folding"""
         ft = self.feats_word()
         return {"w":list(set(x.lower() for x in ft["w"]))}
-    
+
+
     def feats_word_nodash(self):
         """Like feats_word, but without hyphens"""
         text = ""
@@ -175,7 +177,8 @@ class Article:
         numbers = re.compile(r"^[0-9]+$")
         wordset = set(x for x in words if (len(x) > 1 and x.lower() not in stopwords and not numbers.match(x)))
         return {"w":list(wordset)}
-    
+
+
     def feats_word_num(self):
         """Like feats_word, but with numbers"""
         text = ""

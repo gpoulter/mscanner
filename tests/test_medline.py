@@ -63,7 +63,7 @@ class ArticleTests(unittest.TestCase):
 
     def test_feats_author(self):
         ft = self.article.feats_author()
-        self.assertEqual(ft["au"], ["FFF1 LLL1", "FFF2 LLL2"])
+        self.assertEqual(ft["a"], ["FFF1 LLL1", "FFF2 LLL2"])
         logging.debug(str(ft))
 
     def test_feats_wmqia(self):

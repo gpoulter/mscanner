@@ -143,7 +143,8 @@ rc.utility_r = None
 rc.citations_per_file = 250
 ## Random seed to use for cross validation shuffle (to get the same
 ## shuffle each time).  Set to None to get a different seed on each run.
-rc.randseed = 124
+#rc.randseed = 124
+rc.randseed = None
 
 ## Parameters affecting FeatureScores 
 

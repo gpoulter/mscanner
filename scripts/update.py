@@ -38,14 +38,14 @@ from mscanner.core import iofuncs
 
 featurespaces = [
     ("feats_mesh_qual_issn", nx.uint16), 
-    ("feats_wmqia", nx.uint32),
-    ("feats_wmqia_filt", nx.uint32),
-    ("feats_iedb_word", nx.uint32),
-    ("feats_iedb_concat", nx.uint32),
-    ("feats_word", nx.uint32),
-    ("feats_word_folded", nx.uint32),
-    ("feats_word_nodash", nx.uint32),
-    ("feats_word_num", nx.uint32),
+    #("feats_wmqia", nx.uint32),
+    #("feats_wmqia_filt", nx.uint32),
+    #("feats_iedb_word", nx.uint32),
+    #("feats_iedb_concat", nx.uint32),
+    #("feats_word", nx.uint32),
+    #("feats_word_folded", nx.uint32),
+    #("feats_word_nodash", nx.uint32),
+    #("feats_word_num", nx.uint32),
 ]
 
 

@@ -64,9 +64,9 @@ class FeatureMapping:
         self.features = []
         self.feature_ids = {}
         with codecs.open(self.filename, "rb", "utf-8") as f:
-            self.numdocs = int(f.readline().strip())
+            self.numdocs = int(f.readline())
             for fid, line in enumerate(f):
-                feat, fclass, count = line.strip().split("\t")
+                feat, fclass, count = line.split("\t")
                 self.features.append((feat,fclass))
                 self.counts.append(int(count))
                 if fclass not in self.feature_ids:
@@ -81,9 +81,9 @@ class FeatureMapping:
             return
         _filename_new = self.filename + ".new"
         with codecs.open(_filename_new, "wb", "utf-8") as f:
-            f.write("%s\n" % self.numdocs)
+            f.write(u"%d\n" % self.numdocs)
             for (feat, fclass), count in zip(self.features, self.counts):
-                f.write("%s\t%s\t%d\n" % (feat, fclass, count))
+                f.write(u"%s\t%s\t%d\n" % (feat, fclass, count))
         if self.filename.isfile():
             self.filename.remove()
         _filename_new.rename(self.filename)

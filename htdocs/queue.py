@@ -234,8 +234,7 @@ def mainloop():
     """Look for descriptor files every second"""
     # The updater contains references to the databases
     updater = Updater.Defaults([
-        ("feats_mesh", nx.uint16),
-        ("feats_word_mqi_all", nx.uint32),
+        ("feats_mesh_qual_issn", nx.uint16),
     ])
     # Pre-load the article list vector
     updater.adata.article_list 

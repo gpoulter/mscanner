@@ -258,9 +258,10 @@ def bmc(*datasets):
     rc.positives_only = False
     fspace, cmask = spaces[fs]
     rc.class_mask = cmask
-    s = base / "bmc" / "validation"
+    s = base / "samples" / "valid"
+    tab = ResultsTable(s/"summary.txt", append=True)
     for ds in datasets:
-        base_valid(s/ds, ds, fspace)
+        base_valid(s/ds, ds, fspace, tab)
 
 
 def gdsmall():

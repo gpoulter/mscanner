@@ -2,8 +2,8 @@
 
 from __future__ import with_statement
 import codecs
+from contextlib import closing
 import numpy as nx
-
 
                                      
 __author__ = "Graham Poulter"                                        
@@ -63,7 +63,7 @@ class FeatureMapping:
         """
         self.features = []
         self.feature_ids = {}
-        with codecs.open(self.filename, "rb", "utf-8") as f:
+        with closing(codecs.open(self.filename, "rb", "utf-8")) as f:
             self.numdocs = int(f.readline())
             for fid, line in enumerate(f):
                 feat, fclass, count = line.split("\t")
@@ -80,7 +80,9 @@ class FeatureMapping:
         if self.filename is None:
             return
         _filename_new = self.filename + ".new"
-        with codecs.open(_filename_new, "wb", "utf-8") as f:
+        # Python Solaris bug: Using 'with codecs.open(...' gives
+        # UnicodeError when writing chars like u"\xd8"
+        with closing(codecs.open(_filename_new, "wb", "utf-8")) as f:
             f.write(u"%d\n" % self.numdocs)
             for (feat, fclass), count in zip(self.features, self.counts):
                 f.write(u"%s\t%s\t%d\n" % (feat, fclass, count))

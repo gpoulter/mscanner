@@ -154,6 +154,11 @@ class FeatureMappingTests(unittest.TestCase):
         self.assertEqual(fm.features, [("A","Q"),("B","Q"),("A","T"),("C","T")])
         self.assertEqual(fm.feature_ids, {"Q":{"A":0,"B":1}, "T":{"A":2,"C":3}})
         self.assert_(nx.all(fm.class_mask("Q") == [1,1,0,0]))
+        # Test if it can read/write bad characters
+        fm.add_article({"Q":u"A\xd8"})
+        fm.dump()
+        fm.load()
+        logging.debug("%s", str(fm.features))
 
 
 
@@ -335,6 +340,7 @@ if __name__ == "__main__":
     tests.start_logger()
     unittest.main()
     #suite = unittest.TestLoader().loadTestsFromTestCase(ArticleTests)
+    #suite = unittest.TestLoader().loadTestsFromTestCase(FeatureMappingTests)
     #unittest.TextTestRunner(verbosity=2).run(suite)
 
 

@@ -4,6 +4,7 @@
 """
 
 from __future__ import with_statement
+import codecs
 from contextlib import closing
 
 
@@ -58,8 +59,7 @@ class Exporter:
         """Write PubMed IDs gene-drug associations as CSV
         
         @param fname: Path to output file."""
-        import codecs
-        with codecs.open(fname, "wb", "utf-8") as f:
+        with closing(codecs.open(fname, "wb", "utf-8")) as f:
             f.write("PMID,GENE,DRUG\n")
             for (gene,drug),pmids in self.gdcounts.iteritems():
                 for pmid in pmids:

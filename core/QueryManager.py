@@ -261,7 +261,7 @@ class QueryManager:
             maxreport = len(self.results)
         
         logging.debug("Writing features to %s", rc.report_term_scores)
-        with codecs.open(self.outdir/rc.report_term_scores, "wb", "utf-8") as f:
+        with closing(codecs.open(self.outdir/rc.report_term_scores, "wb", "utf-8")) as f:
             self.featinfo.write_csv(f, rc.max_output_features)
         
         logging.debug("Writing citations to %s", rc.report_input_citations)

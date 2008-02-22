@@ -128,7 +128,8 @@ rc.report_prediction_img = path("prediction.png")
 #### Non-Path parameters
 
 ## Server for sending e-mails
-rc.smtpserver = "smtp.uct.ac.za" # "smtp.stanford.edu"
+rc.smtpserver = "smtp.uct.ac.za" 
+#rc.smtpserver = "smtp.stanford.edu"
 ## Email to send website queries to
 rc.webmaster_email = "xxxxxxxxxxxxxxxxxxxxxxxx"
 ## Base directory for the website

@@ -37,8 +37,8 @@ $getVar("errors", "")
   
 #end if
 
-<p>Outputs for $len($queue.donelist) tasks follow. Queries for which the "hide" box
-was ticked are not listed.</p>
+<p>Outputs for $len($queue.donelist) tasks are listed below. 
+Queries for which the "hide" box was ticked are not listed.</p>
 
 </div><!--class=narrow-->
 
@@ -54,7 +54,7 @@ was ticked are not listed.</p>
     </tr>
   </thead>
   <tbody>
-    #for d in $queue.donelist
+    #for d in reversed($queue.donelist)
     <tr>
       <td class="del">
         <input type="radio" name="dataset" value="$d.dataset">

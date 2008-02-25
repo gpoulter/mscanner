@@ -130,6 +130,16 @@ records to serve as irrelevant training examples.
 #def contents
 <div class="narrow">
 
+##<p style="border-style:solid;border-width:1px;padding:1em">
+##We are loading the new database, queries will work again at 25 Feb 12:00 GMT.
+##</p>
+
+#if $inputs.note is not None
+<p style="border-style:solid;border-width:1px;padding:1ex;border-color:red;">
+$inputs.note
+</p>
+#end if
+
 <form id="query" action="" method="post">
   
   <fieldset>

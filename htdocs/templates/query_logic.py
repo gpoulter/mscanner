@@ -126,6 +126,12 @@ QueryForm = forms.Form(
           ("validate", "Cross validation operation") ],
         forms.Validator(lambda x: x in ["retrieval", "validate"], 
                         "Invalid operation")),
+
+    validators = [
+    forms.Validator(lambda x: (x.operation == "retrieval") or
+                    (x.operation == "validate" and len(parse_pmids(x.positives)) >= 30),
+                    "Must have at least 30 PMIDs to do validation")
+    ]
 )
 """Structure of the query form"""
 

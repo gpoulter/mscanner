@@ -120,5 +120,5 @@ class OutputPage:
                     zf.close()
                     outfile.chmod(0777)
                 ds = web.urlquote(page.target)
-                web.seeother("static/output/" + ds + "/" + ds + ".zip")
+                web.seeother(rc.web_root + "static/output/" + ds + "/" + ds + ".zip")
             

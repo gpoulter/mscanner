@@ -51,6 +51,8 @@ rc.corpora = lambda: rc.working / "corpora"
 rc.web_report_dir = lambda: rc.sources / "htdocs" / "static" / "output"
 ## Path to web descriptor queue
 rc.queue_path = lambda: rc.working / "queue"
+## URL for the web root followed by a "/"
+rc.web_root = "http://mscanner.stanford.edu/"
 
 ## ARTICLE DATABASE FILES (in articles_home)
 

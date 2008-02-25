@@ -317,7 +317,7 @@ def populate_test_queue():
     task = Storage(
         allfeatures = True,
         captcha = "orange",
-        dataset = "gdqtest_valid",
+        dataset = "gd_wmqia_valid",
         hidden = False,
         limit = 500,
         mindate = 19700101,
@@ -328,7 +328,7 @@ def populate_test_queue():
         submitted = time.time())
     write_descriptor(rc.queue_path/task.dataset, pmids, task)
     task.operation = "retrieval"
-    task.dataset = "gdqtest_query"
+    task.dataset = "gd_wmqia_query"
     task.submitted += 5
     write_descriptor(rc.queue_path/task.dataset, pmids, task)
 

@@ -15,7 +15,8 @@ import sys
 from mscanner.configuration import rc
 from mscanner.core import iofuncs
 from mscanner.core.ValidationManager import SplitValidation, CrossValidation
-from mscanner.medline.Databases import FeatureData, ArticleData
+from mscanner.medline.FeatureData import FeatureData
+from mscanner.medline.ArticleData import ArticleData
 
                                      
 __author__ = "Graham Poulter"                                        
@@ -49,6 +50,10 @@ dataset_map = {
 spaces = {
     "iedbword":     ("feats_iedb_word", []),
     "iedbconcat":   ("feats_iedb_concat", []),
+
+    "wordnum":      ("feats_word_num", []),
+    "wordnofold":   ("feats_word_nofold", []),
+    "wordstrip":    ("feats_word_strip", []),
     
     "wmqia":        ("feats_wmqia", []),
     "wmqiafilt":    ("feats_wmqia_filt", []),
@@ -171,7 +176,7 @@ def testing_precision():
     rc.positives_only = False
     rc.scoremethod = "scores_laplace_split"
     s = base / "PRIOR" / "df1_ig2.0_all_radiology_sd124_meshq_laplace_split"
-    fspace, rc.class_mask = spaces["meshq"]
+    fspace, rc.type_mask = spaces["meshq"]
     base_valid(s, "radiology", fspace)
 
 
@@ -183,7 +188,7 @@ def compare_prior(ds):
     s = base / "PRIOR" / "df1_ig2.0_all" / ds / ("sd%d"%rc.randseed)
     tab = ResultsTable(s/"results.txt", append=False)
     for fs in ["meshq","word","wmqia"]:
-        fspace, rc.class_mask = spaces[fs]
+        fspace, rc.type_mask = spaces[fs]
         for method in ["bgfreq", "laplace_split", "laplace"]:
             rc.scoremethod = "scores_" + method
             base_valid(s/fs/method, ds, fspace, tab)
@@ -195,7 +200,7 @@ def compare_featselection(ds):
     s = base / "SELN" / "lsplit" / ds / ("sd%d"%rc.randseed)
     tab = ResultsTable(s/"results.txt", append=False)
     for fs in ["meshq","word","wmqia"]:
-        fspace, rc.class_mask = spaces[fs]
+        fspace, rc.type_mask = spaces[fs]
         # Information Gain
         for ig in [0, 1e-5, 2e-5, 1e-4]:
             base_valid(s/fs/("ig%.1f_df1_all"%(ig*1e5)), ds, fspace, tab, df=1, ig=ig)
@@ -217,7 +222,7 @@ def compare_featspace(ds):
     s = base / "FSPACE" / "lsplit_df1_ig2.0_all" / ds / ("sd%d"%rc.randseed)
     tab = ResultsTable(s/"results.txt", append=False)
     for fs in spaces:
-        fspace, rc.class_mask = spaces[fs]
+        fspace, rc.type_mask = spaces[fs]
         base_valid(s/fs, ds, fspace, tab)
 
 
@@ -241,24 +246,25 @@ def compare_wordextract(ds):
     rc.min_infogain = 0
     rc.positives_only = False
     rc.scoremethod = "scores_laplace_split"
-    rc.class_mask = []
+    rc.type_mask = []
     s = base / "WORD" / "lsplit_df1_ig0_all" / ds / ("sd%d"%rc.randseed)
     tab = ResultsTable(s/"results.txt", append=False)
-    for fs in ["word", "word_folded", "word_nodash", "word_num"]:
-        base_valid(s/fs, ds, "feats_"+fs, tab)
+    for fs in ["word", "wordnofold", "wordstrip", "wordnum"]:
+        fspace, rc.type_mask = spaces[fs]
+        base_valid(s/fs, ds, fspace, tab)
     base_valid(s/"iedbword", ds, "feats_iedb_word", tab)
 
 
 def bmc(*datasets):
     """Do the cross-validation on the sample topics from the BMC manuscript."""
     fs = "meshqi"
-    rc.scoremethod = "scores_bgfreq"
-    rc.mincount = 1
+    #rc.scoremethod = "scores_bgfreq"
+    rc.scoremethod = "scores_laplace_split"
+    rc.mincount = 2
     rc.min_infogain = 0
     rc.positives_only = False
-    fspace, cmask = spaces[fs]
-    rc.class_mask = cmask
-    s = base / "samples" / "valid"
+    fspace, rc.type_mask = spaces[fs]
+    s = base / "bmc" / "valid"
     tab = ResultsTable(s/"summary.txt", append=True)
     for ds in datasets:
         base_valid(s/ds, ds, fspace, tab)
@@ -272,7 +278,7 @@ def gdsmall():
     rc.mincount = 1
     rc.min_infogain = 0
     rc.positives_only = False
-    fspace, rc.class_mask = spaces[fs]
+    fspace, rc.type_mask = spaces[fs]
     s = base / ds / "validation"
     base_valid(s, ds, fspace)
 
@@ -283,25 +289,3 @@ if __name__ == "__main__":
         adata = ArticleData.Defaults()
     # Call the named function with provided arguments
     locals()[sys.argv[1]](*sys.argv[2:])
-
-
-'''
-def trec():
-    """Performs split-sample validation on the 2005 TREC Genomics track
-    categorisation subtasks (Allele, Expression, GO, Tumor)."""
-    groupdir = rc.root / "results" / "TREC"
-    if not groupdir.exists(): groupdir.mkdir()
-    fdata = FeatureData.Defaults("feats_word_mesh_all_filt", nx.uint32)
-    rc.mincount = 4
-    rc.scoremethod = "laplace_split"
-    ntest = rc.corpora / "TREC" / "NEG_test.txt"
-    ntrain = rc.corpora / "TREC" / "NEG_train.txt"
-    for ds, Ur in [("A",17.0), ("E",64.0), ("G",11.0), ("T",231.0)]:
-        rc.utility_r = Ur
-        dataset = "TREC_%s" % ds
-        ptrain = rc.corpora / "TREC" / (ds + "train.txt")
-        ptest = rc.corpora / "TREC" / (ds + "test.txt")
-        op = SplitValidation(groupdir/dataset, dataset, adata, fdata)
-        op.validation(ptrain, ntrain, ptest, ntest)
-    fdata.close()
-'''

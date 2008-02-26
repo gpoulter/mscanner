@@ -14,7 +14,8 @@ import warnings
 warnings.simplefilter("ignore", UserWarning)
 
 from mscanner.configuration import rc
-from mscanner.medline.Databases import FeatureData, ArticleData
+from mscanner.medline.FeatureData import FeatureData
+from mscanner.medline.ArticleData import ArticleData
 from mscanner.core import iofuncs
 from mscanner.core.FeatureScores import FeatureScores, FeatureCounts
 from mscanner.core.metrics import (PerformanceVectors, PerformanceRange, 
@@ -250,6 +251,7 @@ def SplitValidation(ValidationBase):
         if len(s.ptrain)>0 and len(s.ptest)>0 \
            and len(s.ntrain)>0 and len(s.ntest)>0:
             self.featinfo = FeatureScores.Defaults(self.fdata.featmap)
+            self.featinfo.numdocs = self.adata.article_count # For scores_bgfreq
             s._get_scores()
             s._get_performance()
             s._write_report()
@@ -309,6 +311,7 @@ class CrossValidation(ValidationBase):
         self.nfolds = nfolds
         self.notfound_pmids = []
         self.featinfo = FeatureScores.Defaults(self.fdata.featmap)
+        self.featinfo.numdocs = self.adata.article_count # For scores_bgfreq
         # Try to load saved results
         try:
             self.positives, self.pscores = iofuncs.read_scores_array(
@@ -351,7 +354,7 @@ class CrossValidation(ValidationBase):
             # Calculate the performance
             self._get_performance()
             if medline_size is None:
-                medline_size = self.fdata.featmap.numdocs  - len(self.positives)
+                medline_size = self.adata.article_count - len(self.positives)
             v = self.metric_vectors
             self.pred_low = PredictedMetrics(
                 v.TPR, v.FPR, v.uscores, relevant_low, medline_size)
@@ -382,7 +385,7 @@ class CrossValidation(ValidationBase):
             
         if isinstance(neg, int):
             logging.info("Selecting %d random PubMed IDs for background." % neg)
-            maxnegs = self.fdata.featmap.numdocs - len(self.positives)
+            maxnegs = self.adata.article_count - len(self.positives)
             if neg > maxnegs: neg = maxnegs
             self.negatives = self._random_subset(
                 neg, self.adata.article_list, set(self.positives))

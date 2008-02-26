@@ -62,6 +62,8 @@ rc.db_env_home = path("db_home")
 rc.articledb = path("articles.db")
 ## Path to list of of article IDs
 rc.articlelist = path("articles.txt")
+## Path to number of articles
+rc.articlecount = path("numarticles.txt")
 ## Path to track Medline files that have already been added
 rc.tracker = path("processed.txt")
 ## Path for log file
@@ -74,7 +76,7 @@ rc.featuredb = path("features.db")
 ## Base name for binary stream of PMIDs and MeSH-feature arrays
 rc.featurestream = path("features.stream")
 ## Base name for feature<->ID mapping for MeSH features
-rc.featuremap = path("featuremap.txt")
+rc.featuremap = path("featuremap.sqlite")
 
 ### COMMON REPORT FILES
 
@@ -151,13 +153,13 @@ rc.randseed = None
 
 ## Parameters affecting FeatureScores 
 
-## Exclude features occurring fewer times in the data
-rc.mincount = 1
-## Exclude features of theses classes. e.g. ["mesh","issn"]
-rc.class_mask = []
-## Exclude features with less than this Information Gain (IG)
+## Select features with at least this many features
+rc.mincount = 2
+## Don't select features of theses classes. e.g. ["mesh","issn"]
+rc.type_mask = []
+## Select features with at least this much Information Gain (IG)
 rc.min_infogain = 0
-## If True, exclude features not occurring in any relevant articles
+## If True, select only features found in relevant articles
 rc.positives_only = False
 ## Method name for calculating feature probabilities
 rc.scoremethod = "scores_laplace_split"

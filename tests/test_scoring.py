@@ -58,6 +58,7 @@ class CScoreModuleTests(unittest.TestCase):
         self.assert_(nx.allclose(a, b))
     """
 
+
     @tests.usetempfile
     def test_FeatureCounter(self, tmpfile):
         """Test the system for fast feature counting"""
@@ -82,7 +83,7 @@ class CScoreModuleTests(unittest.TestCase):
     @tests.usetempfile
     def test_ScoreCalculator(self, tmpfile):
         """Consistency test between document score calculators."""
-        featscores = nx.array([0.1, 5.0, 10.0, -5.0, -6.0] + [0]*145)
+        featscores = nx.array([0.1, 5.0, 10.0, -5.0, -6.0] + [0]*145, nx.float32)
         # Write citations to disk
         with closing(FeatureStream(tmpfile, rdonly=False)) as fs:
             for pmid, date, feats in self.citations:
@@ -120,9 +121,9 @@ class CScoreModuleTests(unittest.TestCase):
 
 
 class FeatureScoresTests(unittest.TestCase):
-    """Tests of the L{scoring} module"""
     
     def setUp(s):
+        """Put together dummy article database and FeatureMapping"""
         s.articles = [
             # Positive articles
             ["A","B","D"],
@@ -133,6 +134,7 @@ class FeatureScoresTests(unittest.TestCase):
             ["B","A"],
             ["B","C"],
         ]
+        s.numdocs = len(s.articles)
         s.pos = range(0,3)
         s.neg = range(3,6)
         # Calculate the necessaries
@@ -141,7 +143,7 @@ class FeatureScoresTests(unittest.TestCase):
             s.featmap.add_article({"Z":x})
         s.featdb = {}
         for i, x in enumerate(s.articles):
-            s.featdb[i] = s.featmap.get_vector({"Z":x})
+            s.featdb[i] = s.featmap.make_vector({"Z":x})
         s.pdocs = len(s.pos)
         s.ndocs = len(s.neg)
         s.pfreqs = FeatureCounts(len(s.featmap), s.featdb, s.pos)
@@ -149,7 +151,7 @@ class FeatureScoresTests(unittest.TestCase):
 
 
     def test_TFIDF(s):
-        """Check calculation of TF-IDF."""
+        """Calculation of TF-IDF."""
         f = FeatureScores(s.featmap, "scores_laplace_split")
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
         #tfidfs = nx.array([])
@@ -158,45 +160,53 @@ class FeatureScoresTests(unittest.TestCase):
 
 
     def test_InformationGain(s):
+        """Calculation of Information Gain."""
         rc.min_infogain = 0.01
         f = FeatureScores(s.featmap, "scores_laplace_split")
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
-        IG = f.infogain()
-        logging.debug("Information Gain %s", pp.pformat(IG))
+        selected = nx.ones(len(s.featmap), nx.bool)
+        selected[0] = False
+        IG = f.infogain(selected)
+        logging.debug("Information Gain: %s", pp.pformat(IG))
+        # Note: first feature (with IG=0) was de-selected
         s.assert_(nx.allclose(IG, 
         [ 0.02592725,  0.02592725,  0.02592725,  0.        ,  0.02592725]))
 
 
     def test_FeatureStats(s):
+        """Feature statistics calculation."""
         rc.mincount = 2
         f = FeatureScores(s.featmap, "scores_laplace_split")
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
         t = f.stats
         s.assertEqual(t.pos_distinct, 3)
         s.assertEqual(t.pos_occurrences, 6)
-        logging.debug(pp.pformat(t.__dict__))
+        logging.debug("Feature Statistics: %s", pp.pformat(t.__dict__))
+        logging.debug("P counts: %s", pp.pformat(s.pfreqs))
+        logging.debug("N counts: %s", pp.pformat(s.nfreqs))
     
 
     def test_FeatureCounts(self):
-        """Check that FeatureCounts tallies occurrences correctly."""
+        """FeatureCounts for total occurrences of each feature in a collection."""
         featdb = {1:[1,2], 2:[2,3], 3:[3,4]}
         counts = FeatureCounts(5, featdb, [1,2,3])
         self.assert_(nx.all(counts == [0,1,2,2,1]))
+
 
     def _scoremethodtester(s, scoremethod, answer):
         """Test a score calculation method"""
         rc.mincount = 0
         rc.min_infogain = 0
-        rc.class_mask = []
+        rc.type_mask = []
         logging.info("FeatureScores(%s)", scoremethod)
         f = FeatureScores(s.featmap, scoremethod)
+        f.numdocs = s.numdocs # For scores_bgfreq
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
-        logging.debug("P counts: %s", pp.pformat(s.pfreqs))
-        logging.debug("N counts: %s", pp.pformat(s.nfreqs))
-        logging.debug("P freqs: %s", pp.pformat(f.pfreqs))
-        logging.debug("N freqs: %s", pp.pformat(f.nfreqs))
-        logging.debug("Y Success: %s", pp.pformat(f.success_scores))
-        logging.debug("Y Failure: %s", pp.pformat(f.failure_scores))
+        #logging.debug("P freqs: %s", pp.pformat(f.pfreqs))
+        #logging.debug("N freqs: %s", pp.pformat(f.nfreqs))
+        #logging.debug("Y Success: %s", pp.pformat(f.success_scores))
+        #logging.debug("Y Failure: %s", pp.pformat(f.failure_scores))
+        logging.debug("Selected: %s", pp.pformat(f.features))
         logging.debug("Base %f, Scores: %s", f.base, pp.pformat(f.scores))
         s.assert_(nx.allclose(f.scores, nx.array(answer)))
 
@@ -204,14 +214,18 @@ class FeatureScoresTests(unittest.TestCase):
     def test_scores_bgfreq(self):
         """Score calculation using background counts."""
         self._scoremethodtester("scores_bgfreq", 
-            [ 2.24819092, -2.24819092,  2.248191  ,  0.        , -2.248191  ])
+            [ 0, 2.24819092, -2.24819092,  2.248191  ,  0.        , -2.248191  ])
 
 
     def test_scores_laplace_split(self):
         """Score calculation using split-laplace counts."""
         self._scoremethodtester("scores_laplace_split", 
-            [ 1.43508453, -1.43508453,  1.43508453,  0.        , -1.43508453])
+            [ 0, 1.43508453, -1.43508453,  1.43508453,  0.        , -1.43508453])
 
+    def test_scores_laplace_split(self):
+        """Score calculation using split-laplace counts."""
+        self._scoremethodtester("scores_laplace_split", 
+            [ 0, 1.43508453, -1.43508453,  1.43508453,  0.        , -1.43508453])
 
 
 

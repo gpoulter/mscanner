@@ -143,7 +143,7 @@ class Article:
         return dict(mesh=headings, qual=quals, issn=issns)
 
 
-    def feats_word(self):
+    def feats_word(self, numbers=False, lowcase=True):
         """Alphanumeric case-folded features derived from title and abstract/
         
         @return: Dictionary with the key 'word', and value being a list
@@ -153,45 +153,50 @@ class Article:
             text = self.title + " "
         if self.abstract is not None:
             text += self.abstract
-        # Collapse all non-alphabetics to single spaces and split into words
-        words = re.sub(r'[^A-Za-z0-9-]+', ' ', text).split()
-        # Keep only non-numeric, non-stop, length>1 words
-        numbers = re.compile(r"^[0-9]+$")
-        wordset = set(x for x in words if (len(x) > 1 and 
-                x.lower() not in stopwords and not numbers.match(x)))
+        if lowcase: text = text.lower()
+        # Strip non-word characters before and after a word
+        r_word = re.compile(r"^\W*(.*?)\W*$", re.UNICODE)
+        # Detect numbers
+        r_number = re.compile(r'^[0-9eE\W]+$')
+        # Split on space characters
+        wordset = set()
+        for word in re.compile(r"\s|\'s|--|[!#$^\"{};:&]").split(text):
+            word = r_word.match(word).group(1)
+            if len(word) > 1 and\
+               (word.lower() not in stopwords) and\
+               (numbers or not r_number.match(word)):
+                # Title-case all words as at start of sentence
+                if not lowcase: word = word[0].upper() + word[1:]
+                wordset.add(word)
         return {"w":list(wordset)}
 
 
-    def feats_word_folded(self):
-        """Like feats_word, but with case-folding"""
-        ft = self.feats_word()
-        return {"w":list(set(x.lower() for x in ft["w"]))}
-
-
-    def feats_word_nodash(self):
-        """Like feats_word, but without hyphens"""
-        text = ""
-        if self.title is not None: text = self.title + " "
-        if self.abstract is not None: text += self.abstract
-        words = re.sub(r'[^A-Za-z0-9]+', ' ', text).split()
-        numbers = re.compile(r"^[0-9]+$")
-        wordset = set(x for x in words if (len(x) > 1 and x.lower() not in stopwords and not numbers.match(x)))
-        return {"w":list(wordset)}
+    def feats_word_nofold(self):
+        """Like L{feats_word}, but without case-folding."""
+        return self.feats_word(lowcase=False)
 
 
     def feats_word_num(self):
-        """Like feats_word, but with numbers"""
+        """Like L{feats_word}, but including numbers."""
+        return self.feats_word(numbers=True)
+
+
+    def feats_word_strip(self):
+        """Word features using splitting on all non-word characters 
+        (instead of keeping non-word characters that are inside words)."""
         text = ""
-        if self.title is not None: text = self.title + " "
-        if self.abstract is not None: text += self.abstract
-        words = re.sub(r'[^A-Za-z0-9-]+', ' ', text).split()
-        wordset = set(x for x in words if (len(x) > 1 and x.lower() not in stopwords))
+        if self.title is not None: text = self.title.lower() + " "
+        if self.abstract is not None: text += self.abstract.lower()
+        r_word = re.compile(r"\W+", re.UNICODE)
+        wordset = set(x for x in r_word.split(text) 
+                      if len(x) > 1 and x not in stopwords)
         return {"w":list(wordset)}
 
 
     def feats_author(self):
-        """Space 'au', with features like 'JS Bloggs' for author names"""
-        return {"a": [F+" "+L for F,L in self.authors if F and L]}
+        """Return dictionary with key 'a', and features like 'js bloggs' for
+        author names - converted to lowercase because of Medline record inconsistency."""
+        return {"a": [(F+" "+L).lower() for F,L in self.authors if F and L]}
 
 
     def feats_wmqia(self):
@@ -208,25 +213,13 @@ class Article:
         """Like L{feats_wmqia}, but remove word features that occur in MeSH
         features."""
         ft = self.feats_wmqia()
-        meshtext = (" ".join(ft["mesh"] + ft["qual"])).lower()
-        meshwords = set(re.sub(r'[^a-z0-9-]+', ' ', meshtext).split())
+        meshlowtext = (" ".join(ft["mesh"] + ft["qual"])).lower()
+        meshwords = set(re.compile(r'\W+', re.UNICODE).split(meshlowtext))
         ft["w"] = [x for x in ft["w"] if x.lower() not in meshwords]
         return ft
 
 
-    def feats_iedb_word(self):
-        """IEDB features from title and abstract only"""
-        text = ""
-        if self.title is not None:
-            text = self.title + " "
-        if self.abstract is not None:
-            text += self.abstract
-        words = set(x for x in re.sub(r'[^A-Za-z0-9-]+', ' ', text).split() 
-                    if x.lower() not in stopwords)
-        return {"iedb":list(words)}
-
-
-    def feats_iedb_concat(self):
+    def feats_iedb_concat(self, justword=False):
         """IEDB features: Concatenate title, abstract, MeSH, journal.  No 
         case folding."""
         text = []
@@ -234,14 +227,19 @@ class Article:
             text.append(self.title)
         if self.abstract is not None:
             text.append(self.abstract)
-        if self.journal is not None:
-            text.append(self.journal)
-        for first,last in self.authors:
-            if last is not None:
-                text.append(last)
-        for term in self.meshterms:
-            text.extend(term)
+        if justword == False:
+            if self.journal is not None:
+                text.append(self.journal)
+            for first,last in self.authors:
+                if last is not None:
+                    text.append(last)
+            for term in self.meshterms:
+                text.extend(term)
         text = " ".join(text)
-        words = set(x for x in re.sub(r'[^A-Za-z0-9-]+', ' ', text).split()
-                    if x.lower() not in stopwords)
+        words = set(x for x in text.split() if x.lower() not in stopwords)
         return {"iedb":list(words)}
+
+
+    def feats_iedb_word(self):
+        """LIke {feats_iedb_concat}, but only with title/abstract features"""
+        return self.feats_iedb_concat(justword=True)

@@ -3,6 +3,8 @@
 from __future__ import division
 import logging
 import numpy as nx
+from itertools import izip
+from heapq import nlargest
 
 from mscanner import update, delattrs
 from mscanner.core.Storage import Storage
@@ -34,21 +36,29 @@ class FeatureScores(object):
     @ivar scoremethod: Name of the method to call for calculating feature scores.
     
     
-    @group Set by update: pos_counts, neg_counts, pdocs, ndocs, prior
-    
-    @ivar pos_counts: Number of positive documents having each feature.
-    
-    @ivar neg_counts: Number of negative documents having each feature.
+    @group Set by update: pdocs, ndocs, pos_counts, neg_counts, selected,
+    features, pos_selected, neg_selected, prior
     
     @ivar pdocs: Number of positive documents.
     
     @ivar ndocs: Number of negative documents.
     
+    @ivar pos_counts: Array with number of positive occurrences for each feature.
+    
+    @ivar neg_counts: Array with number of negative occurrences for each feature.
+    
+    @ivar selected: Boolean array with True position corresponds to selected features.
+    
+    @ivar features: Array listing the feature IDs of the L{selected} features.
+
+    @ivar pos_selected: Array with number of positive documents for each
+    selected feature, corresponding to L{features}.
+    
+    @ivar neg_selected: Array with number of negative documents for each
+    selected feature, corresponding to L{features}.
+
     @ivar prior: The prior log odds of relevance.  If None, estimate
     using the log of the ratio of relevant to irrelevant articles in the data.
-    
-    @ivar mask: Boolean array of features to exclude (for feature selection).
-    Features corresponding to True positions are set to zero.
 
 
     @group Set via scoremethod: scores, pfreqs, nfreqs, base
@@ -88,59 +98,78 @@ class FeatureScores(object):
         return nx.array([off+nx.sum(sc[featdb[d]]) for d in pmids], nx.float32)
 
 
-    def __len__(self):
-        """Number of features"""
-        return len(self.featmap)
-
-
     def update(self, pos_counts, neg_counts, pdocs, ndocs, prior=None):
         """Change the feature counts and numbers of documents and re-calculate
         the feature scores."""
-        if prior is None:
+        # Set attributes from parameters
+        self.pdocs = pdocs
+        self.ndocs = ndocs
+        self.pos_counts = pos_counts
+        self.neg_counts = neg_counts
+        self.prior = prior
+        if self.prior is None:
             if pdocs == 0 or ndocs == 0:
-                prior = 0.0
+                self.prior = 0.0
             else:
                 # Convert prior probability of relevance to a log odds
-                prior = nx.log(pdocs/ndocs)
-        update(self, locals())
-        # Call the method to exclude certain features
-        self.mask = self.get_mask()
-        # Call the method to calculate feature scores
+                self.prior = nx.log(pdocs/ndocs)
+        # Get boolean array for selected features
+        self.selected = self.get_selected()
+        # Get list of unmasked features and condensed count vectors
+        self.features = nx.arange(len(self.selected))[self.selected]
+        self.pos_selected = self.pos_counts[self.selected]
+        self.neg_selected = self.neg_counts[self.selected]
+        # Call the method to calculate feature scores (it respects the mask)
         getattr(self, self.scoremethod)()
-        # Allow TFIDF property to recalculate
+        # Get rid of TFIDF property to recalculate
         delattrs(self, "_stats", "_tfidf")
 
 
-    def get_mask(self):
-        """Create feature mask for excluded feature classes, document
-        frequency cutoff and information gain cutoff - using RC parameters."""
+    def get_selected(s):
+        """Return a boolean feature selection array. True positions correspond
+        to features that we keep.  Especially with word features, the
+        number of selected features must be kept reasonably small.
+        """
         from mscanner.configuration import rc
-        r = nx.zeros(len(self.pos_counts), nx.bool)
-        if rc.class_mask:
-            # Exclude certain classes of features (word/mesh/issn)
-            r |= self.featmap.class_mask(rc.class_mask)
+        selected = nx.ones(len(s.pos_counts), nx.bool)
+        selected[0] = False
+        if rc.type_mask:
+            # Keep only features that are not of the specified types
+            selected &= ~s.featmap.type_mask(rc.type_mask)
         if rc.mincount > 0:
-            # Exclude features not having enough occurrences
-            r |= ((self.pos_counts + self.neg_counts) < rc.mincount)
+            # Keep only features having enough occurrences
+            selected &= ((s.pos_counts + s.neg_counts) >= rc.mincount)
         if rc.positives_only:
-            # Exclude features not occurring in any relevant articles
-            r |= (self.pos_counts == 0)
+            # Keep only features found in a relevant article
+            selected &= (s.pos_counts != 0)
         if rc.min_infogain > 0:
-            # Exclude features not having enough information gain
-            r |= (self.infogain() < rc.min_infogain)
-        return r
+            # Keep features above the information gain limit. Information gain
+            # is expensive so only calculate it on features that have passed so
+            # far.
+            selected[selected] &= (s.infogain(selected) >= rc.min_infogain)
+        return selected
 
 
-    def infogain(s):
-        """Calculate the Information Gain (L{infogain}) of each feature."""
+    def infogain(s, selected):
+        """Calculate the Information Gain (L{infogain}) of so-far-selecte features.
+        
+        @param selected: A boolean array over all features, where True marks
+        features that have passed feature selection so far.
+        
+        @return: Array over selected features with information gain values.
+        """
+        logging.debug("Calculating info gain on %d features out of %d", sum(selected), len(selected))
+        pos = s.pos_counts[selected]
+        neg = s.neg_counts[selected]
+                
         # Entropy in bits
         def info(p): 
             return -p*nx.log2(p)
         
         # Number of documents
-        N = s.pdocs + s.ndocs 
+        N = s.pdocs + s.ndocs
         # Number documents that have term i 
-        T = s.pos_counts + s.neg_counts 
+        T = pos + neg
         
         # Fraction of documents that have term i 
         # (probability of term being present)
@@ -148,24 +177,23 @@ class FeatureScores(object):
         
         # Fraction of documents that are relevant
         # (prior probability of relevance)
-        pR = s.pdocs / N
+        EpR = info(s.pdocs / N)
+        EpI = info(s.ndocs / N)
         
         # Fraction of relevant documents amonst documents that have term i
         # (posterior probability of relevance given presence of term)
-        pRgT = (s.pos_counts+1) / (T+2)
+        EpRgT = info((pos+1) / (T+2))
+        EpIgT = info((neg+1) / (T+2))
         
         # Fraction of relevant documents amongst documents not having term i
         # (posterior probability of relevance given absence of term)
-        pRgNT = (s.pdocs-s.pos_counts+1) / (N-T+2)
-        
-        pI = s.ndocs / N
-        pIgT = (s.neg_counts+1) / (T+2)
-        pIgNT = (s.ndocs-s.neg_counts+1) / (N-T+2)
+        EpRgNT = info((s.pdocs+1-pos) / (N-T+2))
+        EpIgNT = info((s.ndocs+1-neg) / (N-T+2))
         
         # Information gain is entropy before knowing whether it's present or
         # absent, minus expected entropy after knowing.
-        return (info(pR)+info(pI)) - (
-            pT*(info(pRgT)+info(pIgT)) + (1-pT)*(info(pRgNT)+info(pIgNT)))
+        return (EpR+EpI) - (pT*(EpRgT+EpIgT) + (1-pT)*(EpRgNT+EpIgNT))
+    
 
 
     def scores_bayes(s, pos_a, pos_ab, neg_a, neg_ab):
@@ -175,22 +203,27 @@ class FeatureScores(object):
         document with no features, and an adjustment to the feature occurrence
         scores.
         
+        This method sets L{pfreqs}, L{nfreqs}, L{success_scores} and
+        L{failure_scores} only on selected features. E.g. L{pfreqs}[i] is the
+        score of the feature with ID L{features}[i]. However, L{scores} is for
+        all features. L{scores}[i] is the score of feature with ID of i.
+        
         @param pos_a, pos_ab: Beta prior (a=successes, ab=total) for relevant articles.
         @param neg_a, neg_ab: Beta prior (a=successes, ab=total) for irrelevant articles.
         """
         # Posterior probability of term given relevance of document
-        s.pfreqs = (pos_a+s.pos_counts) / (pos_ab+s.pdocs) 
+        s.pfreqs = (pos_a+s.pos_selected) / (pos_ab+s.pdocs) 
         # Posterior probability of term given irrelevance of document
-        s.nfreqs = (neg_a+s.neg_counts) / (neg_ab+s.ndocs)
-        # Support scores for bernoulli successes (apply mask)
+        s.nfreqs = (neg_a+s.neg_selected) / (neg_ab+s.ndocs)
+        # Support scores for bernoulli successes (then apply mask)
         s.success_scores = nx.log(s.pfreqs / s.nfreqs)
-        s.success_scores[s.mask] = 0
-        # Support scores for bernoulli failures (apply mask)
+        # Support scores for bernoulli failures (then apply mask)
         s.failure_scores = nx.log((1-s.pfreqs) / (1-s.nfreqs))
-        s.failure_scores[s.mask] = 0
-        # Conver success/failure to base score and occurrence score
+        # Convert success/failure to base score and occurrence score
         s.base = nx.sum(s.failure_scores)
-        s.scores = s.success_scores - s.failure_scores
+        # Create score vector for ALL features, single-precision, with zeros at non-selected features
+        s.scores = nx.zeros(len(s.featmap), nx.float32)
+        s.scores[s.selected] = nx.float32(s.success_scores - s.failure_scores)
 
 
     def scores_laplace(s):
@@ -226,15 +259,16 @@ class FeatureScores(object):
         s.pfreqs[s.pfreqs == 0.0] = 1e-8
         s.nfreqs[s.nfreqs == 0.0] = 1e-8
         s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
+        s.scores[~s.selected] = 0
 
 
     @property
     def background_vector(s):
-        """Vector of background probability of occurrence
-        of each feature in Medline (for use in regularisation)."""
+        """Array with the background probability of occurrence of each selected
+        feature."""
         if not hasattr(s, "_background_vector"):
-            s._background_vector = \
-             nx.array(s.featmap.counts, nx.float32) / s.featmap.numdocs
+            # WARNING: This requires s.numdocs set from ArticleData.article_count
+            s._background_vector = s.featmap.counts[s.selected] / s.numdocs
         return s._background_vector
 
 
@@ -251,9 +285,8 @@ class FeatureScores(object):
     class FeatureStats:
         """Stores statistics about a L{FeatureScores}
         
+        @ivar feats_selected: Number of features that passed feature selection.
         @ivar feats_total: Total number of features in the feature space.
-        @ivar feats_masked: Number of masked features (unused, given zero score).
-        @ivar feats_used: Number of features in use (non-zero scores).
         
         @ivar pos_docs, neg_docs: Number of documents in positive/negative
         corpus.
@@ -270,109 +303,95 @@ class FeatureScores(object):
         
         def __init__(s, featscores):
             fs = featscores
-            m = fs.mask
             
-            s.feats_total = len(fs)
-            s.feats_masked = sum(m)
-            s.feats_used = s.feats_total - s.feats_masked
+            s.feats_selected = sum(fs.selected)
+            s.feats_total = len(fs.selected)
             
             s.pos_docs = fs.pdocs
             s.neg_docs = fs.ndocs
             
-            s.pos_occurrences = int(nx.sum(fs.pos_counts[~m]))
-            s.neg_occurrences = int(nx.sum(fs.neg_counts[~m]))
+            s.pos_occurrences = int(nx.sum(fs.pos_selected))
+            s.neg_occurrences = int(nx.sum(fs.neg_selected))
             
             s.pos_average = s.pos_occurrences / fs.pdocs if fs.pdocs > 0 else 0.0
             s.neg_average = s.neg_occurrences / fs.ndocs if fs.ndocs > 0 else 0.0
             
-            s.pos_distinct = sum((fs.pos_counts != 0) & ~m)
-            s.neg_distinct = sum((fs.neg_counts != 0) & ~m)
+            s.pos_distinct = sum(fs.pos_selected != 0)
+            s.neg_distinct = sum(fs.neg_selected != 0)
 
 
     @property
     def tfidf(self):
-        """Vector of TF-IDF scores for each feature
+        """Vector of TF-IDF scores for each feature in L{features}.  That is,
+        for unmasked features only.
         
-        Cache TF-IDF scores for terms, where for term frequency (TF) we treat
-        the positive corpus as a single large document, but for inverse
-        document frequency (IDF) each citation is a separate document."""
+        To obtain term frequency (TF) we treat the positive corpus as a single
+        large document. To obtain inverse document frequency (IDF), we consider
+        each Medline record to be a separate document."""
         try: 
             return self._tfidf
         except AttributeError: 
             pass
-        self._tfidf = nx.zeros(len(self.pos_counts), dtype=float)
+        self._tfidf = nx.zeros(len(self.pos_selected), dtype=float)
         # Document frequency
-        docfreq_t = self.pos_counts+self.neg_counts
+        df_t = self.pos_selected + self.neg_selected
         # Number of documents
-        N = self.pdocs+self.ndocs # number of documents
-        # Mask to exclude zero-frequency features
-        u = (docfreq_t != 0) 
+        N = self.pdocs + self.ndocs
         # Inverse Document Frequency (log N/df_t)
-        idf = nx.log(N / docfreq_t[u])
+        idf = nx.log(N / df_t)
+        # Get rid of zero-frequency features
+        idf[df_t == 0] = 0
         # Term frequency
-        tf = (self.pos_counts[u] / nx.sum(self.pos_counts))
+        tf = self.pos_selected / nx.sum(self.pos_selected)
         # Calculate TF.IDF
-        self._tfidf[u] = tf * idf
+        self._tfidf = tf * idf
         return self._tfidf
+    
 
-
-    def get_best_tfidfs(self, count):
-        """Construct a table about the features with the best TF.IDF.
+    def get_best_tfidfs(s, maxfeats, min_tfidf=0.001):
+        """Get a table of features with the highest TFIDF values, up to a limit
+        and only for TF-IDFs above a minimum.
         
-        @param count: Maximum of rows to return.
+        @param maxfeats: Maximum number of features to return.
+        
+        @param min_tfidf: Minimum value of TF*IDF to return.
         
         @return: List of (Feature ID, TFIDF, (feature, featureclass), 
         feature score, positive count, negative count)."""
-        from heapq import nlargest
-        best_tfidfs = nlargest(
-            count, enumerate(self.tfidf), key=lambda x:x[1])
-        return [ (t, tfidf, self.featmap[t], self.scores[t], 
-                  self.pos_counts[t], self.neg_counts[t])
-                  for t, tfidf in best_tfidfs ]
+        best_tfidfs = nlargest(maxfeats, izip(s.tfidf, s.features))
+        return [ (t, tfidf, s.featmap.get_feature(t), s.scores[t], 
+                  s.pos_counts[t], s.neg_counts[t])
+                  for tfidf, t in best_tfidfs if tfidf >= min_tfidf ]
 
 
-    def write_csv(self, stream, maxfeats=None):
-        """Write features scores as CSV to an output stream.
-        @param stream: Object supporting a write method.
-        @param maxfeats: Optionally write only the top N features."""
-        stream.write(u"score,positives,negatives,"\
-                     u"numerator,denominator,"\
-                     u"termid,type,term\n")
-        s = self
-        s.tfidf
-        if maxfeats is None:
-            maxfeats = len(s.scores)
-        nmasked = sum(s.mask)
-        logging.info("There are %d features, %d masked and %d unmasked",
-                     len(s.mask), nmasked, len(s.mask)-nmasked)
-        # Don't print more than maxfeats features (save space)
-        numfeats = 0
-        # Sort by decreasing score
-        for (t, score) in sorted(
-            enumerate(s.scores), key=lambda x:x[1], reverse=True):
-            if s.mask[t]:
-                continue
-            numfeats += 1
-            if numfeats > maxfeats:
-                break
-            stream.write(
-                u'%.3f,%d,%d, %.2e,%.2e, %d,%s,"%s"\n' % 
-                (s.scores[t], s.pos_counts[t], s.neg_counts[t], 
-                 s.pfreqs[t], s.nfreqs[t], 
-                 t, s.featmap[t][1], s.featmap[t][0]))
+    def write_csv(s, stream, maxfeats=None):
+        """Write scores of selected features as CSV to an output stream.
+        
+        @param stream: File-like object, supporting a unicode write method.
+        
+        @param maxfeats: Write only the top N selected features (None for all selected).
+        """
+        logging.info("There are %d selected features out of %d total.", sum(s.selected), len(s.selected))
+        # Output features by decreasing score
+        stream.write(u"score,pos_count,neg_count,termid,type,term\n")
+        if maxfeats is None: maxfeats = len(s.selected)
+        for (score, t) in nlargest(maxfeats, izip(s.scores[s.selected], s.features)):
+            fname, ftype = s.featmap.get_feature(t)
+            stream.write(u'%.3f,%d,%d,%d,%s,"%s"\n' % 
+            (s.scores[t], s.pos_counts[t], s.neg_counts[t], t, ftype, fname))
 
 
 
 def FeatureCounts(nfeats, featdb, docids):
     """Count occurrenes of each feature in a set of articles
 
-    @param nfeats: Number of distinct features (length of L{docids})
+    @param nfeats: Size of feature space.
 
-    @param featdb: Mapping from document ID to array of feature IDs
+    @param featdb: Dictionary to look up feature vector by document ID.
 
-    @param docids: Iterable of document IDs whose features are to be counted
+    @param docids: Iterable of document IDs.
 
-    @return: Array of length L{nfeats}, containing occurrence count of each feature
+    @return: Array of length L{nfeats}, with the number of occurrences of each feature.
     """
     counts = nx.zeros(nfeats, nx.int32)
     for docid in docids:

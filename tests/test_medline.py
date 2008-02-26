@@ -18,66 +18,15 @@ from path import path
 import tempfile
 import unittest
 
+from mscanner.configuration import rc
 from mscanner.medline.Article import Article
+from mscanner.medline.FeatureData import FeatureData
+from mscanner.medline.ArticleData import ArticleData
 from mscanner.medline.FeatureDatabase import FeatureDatabase
 from mscanner.medline.FeatureStream import FeatureStream
 from mscanner.medline.FeatureMapping import FeatureMapping
 from mscanner.medline.Updater import Updater
 from mscanner import tests
-
-
-class ArticleTests(unittest.TestCase):
-    """Test feature extraction from articles"""
-    
-    def setUp(self):
-        self.article = Article(
-            pmid=1,
-            title="TTT1 DDD1",
-            abstract="AAA1.AAA2-FFF2 QQQ2 JJJ1 TTT1",
-            journal="JJJ1",
-            issn="III1",
-            date_completed=(2000,6,29),
-            pubyear=1999,
-            meshterms=[("DDD1",),("DDD2",),("DDD3","QQQ1","QQQ2"),("DDD6","QQQ2")],
-            authors=[("FFF1","LLL1"),("FFF2","LLL2")])
-    
-    def test_feats_iedb(self):
-        ft = self.article.feats_iedb_concat()
-        self.assertEqual(ft["iedb"], 
-        ['AAA1', 'DDD1', 'DDD2', 'DDD3', 'DDD6', 'LLL1', 
-         'LLL2', 'QQQ1', 'TTT1', 'QQQ2', 'JJJ1', 'AAA2-FFF2'])
-        logging.debug(str(ft))
-        # IEDB features, just using title/abstract words
-        ft = self.article.feats_iedb_word()
-        self.assertEqual(ft["iedb"], 
-        ['AAA1', 'DDD1', 'TTT1', 'QQQ2', 'JJJ1', 'AAA2-FFF2'])
-
-    def test_feats_mesh_qual_issn(self):
-        ft = self.article.feats_mesh_qual_issn()
-        logging.debug(str(ft))
-        self.assertEqual(ft, {
-            'qual': ['QQQ1', 'QQQ2'], 
-            'issn': ['III1'], 
-            'mesh': ['DDD1', 'DDD2', 'DDD3', 'DDD6']}
-        )
-
-    def test_feats_author(self):
-        ft = self.article.feats_author()
-        self.assertEqual(ft["a"], ["FFF1 LLL1", "FFF2 LLL2"])
-        logging.debug(str(ft))
-
-    def test_feats_wmqia(self):
-        ft = self.article.feats_wmqia()
-        self.assertEqual(ft["w"], 
-          ['AAA1', 'DDD1', 'TTT1', 'QQQ2', 'JJJ1', 'AAA2-FFF2'])
-        logging.debug(str(ft))
-
-    def test_feats_wmqia_filt(self):
-        ft = self.article.feats_wmqia_filt()
-        self.assertEqual(ft["w"], 
-          ['AAA1', 'TTT1', 'JJJ1', 'AAA2-FFF2'])
-        logging.debug(str(ft))
-
 
 
 class FeatureDatabaseTests(unittest.TestCase):
@@ -140,25 +89,23 @@ class FeatureMappingTests(unittest.TestCase):
     def test_FeatureMapping(self):
         """Store feature vectors in FeatureMapping and check the tally."""
         fm = FeatureMapping(self.fn)
-        features = dict(Q=["A","B"], T=["A","C"])
-        fm.add_article(features)
-        self.assertEqual(fm.get_vector(features), [0,1,2,3])
-        self.assertEqual([fm[i] for i in [0,1,2,3,]], [("A","Q"), ("B","Q"),("A","T"),("C","T")])
-        self.assertEqual(fm[1], ("B","Q"))
-        self.assertEqual(fm[("C","T")], 3)
-        self.assert_(nx.all(fm.counts == [1,1,1,1]))
-        fm.dump()
-        fm.load()
-        fm.dump()
-        fm.load()
-        self.assertEqual(fm.features, [("A","Q"),("B","Q"),("A","T"),("C","T")])
-        self.assertEqual(fm.feature_ids, {"Q":{"A":0,"B":1}, "T":{"A":2,"C":3}})
-        self.assert_(nx.all(fm.class_mask("Q") == [1,1,0,0]))
-        # Test if it can read/write bad characters
-        fm.add_article({"Q":u"A\xd8"})
-        fm.dump()
-        fm.load()
-        logging.debug("%s", str(fm.features))
+        a1 = dict(Q=["A","B"], T=["A","C"])
+        # Test adding of a feature vector
+        fm.add_article(a1)
+        self.assertEqual(fm.make_vector(a1), [1,2,3,4])
+        self.assertEqual([fm.get_feature(i) for i in [1,2,3,4]], [("A","Q"), ("B","Q"),("A","T"),("C","T")])
+        self.assert_(nx.all(fm.counts == [0,1,1,1,1]))
+        self.assert_(nx.all(fm.type_mask("Q") == [1,1,1,0,0]))
+        # Test read/write of unicode characters
+        a2 = {"Q":["B", u"D\xd8"]}
+        fm.add_article(a2)
+        logging.debug("%s", str(fm.get_feature(5)))
+        # Test removing of a feature vector
+        self.assert_(nx.all(fm.counts == [0,1,2,1,1,1]))
+        fm.remove_vector(fm.make_vector(a2))
+        del fm._counts
+        self.assert_(nx.all(fm.counts == [0,1,1,1,1,0]))
+        fm.con.close()
 
 
 
@@ -170,7 +117,7 @@ class XMLParserTests(unittest.TestCase):
 
     def test_parse_medline_xml(self):
         """Parse Medline XML and compare against correct Article object."""
-        a1 = Article(
+        a_correct = Article(
             pmid=1,
             title="T1",
             abstract="A1",
@@ -180,48 +127,97 @@ class XMLParserTests(unittest.TestCase):
             pubyear=1999,
             meshterms=[("T1",),("T2",),("T3","Q4","Q5"),("T6","Q7")],
             authors=[("F1","L1"),("F2","L2")])
-        a2 = Article(
+        b_correct = Article(
             pmid=2,
             title="T2",
             abstract="A2",
             date_completed=(2000,6,29),
             meshterms=[("T1",),("T2",),("T3","Q4","Q5"),("T6","Q7")])
-        b1, b2 = list(Article.parse_medline_xml(StringIO(xmltext)))
-        self.art_equal(a1, b1)
-        self.art_equal(a2, b2)
+        a, b = list(Article.parse_medline_xml(StringIO(xmltext)))
+        self.art_equal(a, a_correct)
+        self.art_equal(b, b_correct)
 
+
+class ArticleDataTests(unittest.TestCase):
+    """Tests of ArticleData"""
+    
+    def setUp(self):
+        self.home = path(tempfile.mkdtemp(prefix="adata-"))
+        rc.articles_home = self.home
+
+    def tearDown(self):
+        self.home.rmtree(ignore_errors=True)
+        
+    def test(self):
+        """Tests of ArticleData"""
+        adata = ArticleData.Defaults()
+        adata.add_articles([Article(33,date_completed=(1980,01,01)),
+                            Article(44,date_completed=(1990,01,02))])
+        self.assertEqual(adata.article_count, 2)
+        all(adata.article_list == [33,44])
+        adata.artlist_path.remove()
+        adata.artcount_path.remove()
+        adata.regenerate_artlist()
+        self.assertEqual(adata.article_count, 2)
+        all(adata.article_list == [33,44])
+
+
+class FeatureDataTests(unittest.TestCase):
+    """Tests of FeatureData"""
+    
+    def setUp(self):
+        self.home = path(tempfile.mkdtemp(prefix="adata-"))
+        rc.articles_home = self.home
+
+    def tearDown(self):
+        self.home.rmtree(ignore_errors=True)
+        
+    def test(self):
+        """Tests of FeatureData"""
+        articles = [
+            Article(333,date_completed=(1990,01,01),meshterms=[("A","B"),"C"]),
+            Article(444,date_completed=(1990,01,01),meshterms=[("D","B"),"E"])]
+        fd = FeatureData.Defaults("feats_mesh_qual_issn", nx.uint16, False)
+        fd.add_articles(articles)
+        fd.close()
+        fd.featuredb.filename.remove()
+        fd.featmap.filename.remove()
+        fd.fstream.filename.remove()
+        fd = FeatureData.Defaults("feats_mesh_qual_issn", nx.uint16, False)
+        fd.regenerate(articles)
+        fd.close()
 
 
 class UpdaterTests(unittest.TestCase):
+    """Tests L{Updater}, L{ArticleData}, L{FeatureData}"""
 
     def setUp(self):
         self.home = path(tempfile.mkdtemp(prefix="medline-"))
+        rc.articles_home = self.home
 
     def tearDown(self):
         self.home.rmtree(ignore_errors=True)
 
     def test_Updater(self):
         """Parse a sample directory and compare against known feature counts"""
-        from mscanner.configuration import rc
         h = self.home
-        rc.articles_home = h
-        rc.features_home = h
         xml = h/"test.xml"
         test_pmids = h/"pmids.txt"
-        featurespaces = [("feats_mesh_qual_issn",nx.uint16),
-                         ("feats_wmqia",nx.uint16)]
+        featurespaces = [("feats_mesh_qual_issn", nx.uint16),
+                         ("feats_wmqia", nx.uint16)]
         m = Updater.Defaults(featurespaces)
         xml.write_text(xmltext)
         m.add_directory(h, save_delay=1)
-        logging.debug("".join((h/"articles.txt").lines()))
+        #logging.debug("ARTICLES.TXT: " + "".join((h/"articles.txt").lines()))
         a = [ m.adata.artdb[x] for x in ["1","2"] ]
-        logging.debug("Articles: %s", repr(a))
-        logging.debug("%s", repr(m.fdata_list[1].featmap.features))
+        #logging.debug("Articles: %s", repr(a))
+        #logging.debug("%s", repr(m.fdata_list[1].featmap.con.execute("SELECT name,type FROM fmap").fetchall()))
         self.assertEqual(a[0].pmid, 1)
         self.assertEqual(a[1].pmid, 2)
-        self.assertEqual(m.fdata_list[0].featmap.counts, [2, 2, 2, 1, 2, 2, 2, 2])
+        self.assert_(nx.all(m.fdata_list[0].featmap.counts == [0, 2, 2, 2, 1, 2, 2, 2, 2]))
         self.assertEqual(
-            sorted(m.fdata_list[0].featmap.features), sorted([
+            sorted(m.fdata_list[0].featmap.con.execute("SELECT name,type FROM fmap").fetchall()), 
+                sorted([(u'', u''),
                 (u'Q4', 'qual'), (u'Q5', 'qual'), (u'Q7', 'qual'), 
                 (u'T1', 'mesh'), (u'T2', 'mesh'), (u'T3', 'mesh'), (u'T6', 'mesh'), 
                 (u'0301-4851', 'issn')]))

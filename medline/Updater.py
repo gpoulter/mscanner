@@ -9,7 +9,8 @@ import time
 
 from mscanner.configuration import rc
 from mscanner.medline.Article import Article
-from mscanner.medline.Databases import ArticleData, FeatureData
+from mscanner.medline.FeatureData import FeatureData
+from mscanner.medline.ArticleData import ArticleData
 from mscanner.medline.FeatureStream import DateAsInteger
 
 
@@ -54,26 +55,17 @@ class Updater:
             fdata.close()
 
 
-    def sync(self):
-        """Synchronise the FeatureData objects to disk, which can take up to 10
-        minutes if there are a lot of features in the FeatureMap."""
-        logging.info("PLEASE WAIT while overwriting feature maps.")
-        for fdata in self.fdata_list:
-            fdata.sync()
-        logging.info("DONE overwriting feature maps.")
-
-
     @staticmethod
     def Defaults(featurespaces):
-        """Construct an Updater using default path names..
+        """Construct an Updater using default path names.
         
-        @param featurespaces: List of (name,ftype) pairs, where name specifies a
-        feature-getting method on L{Article}, and ftype is uint16/uint32 for the
-        FeatureDatabase numpy type."""
+        @param featurespaces: List of (feature space name, numpy type) pairs.
+        The name specifies a feature-getting method on L{Article}, and the
+        numpy type is uint16/uint32 for FeatureDatabase."""
         return Updater(
             ArticleData.Defaults(), 
-            [FeatureData.Defaults(name,ftype,rdonly=False) 
-             for name,ftype in featurespaces], 
+            [FeatureData.Defaults(name, numtype, rdonly=False) 
+                for name, numtype in featurespaces], 
             rc.articles_home/rc.tracker)
     
 
@@ -87,15 +79,12 @@ class Updater:
     def add_articles(self, articles, sync=True):
         """Add a list of new article objects to L{ArticleData} and
         L{FeatureData} instances.
-
         @param articles: List of Article objects to add.
-        
         @param sync: If True, synchronise feature maps after adding."""
         logging.warn("Adding articles to databases. DO NOT INTERRUPT!")
         self.adata.add_articles(articles)
         for fdata in self.fdata_list:
             fdata.add_articles(articles)
-        if sync: self.sync()
 
 
     def add_directory(self, medline, save_delay=5):
@@ -120,34 +109,33 @@ class Updater:
             done = set()
         # Ordered list of non-completed files
         todo = sorted([f for f in infiles if f.basename() not in done])
-        try:
-            # Loop over non-completed files
-            for idx, filename in enumerate(todo):
-                for t in xrange(save_delay):
-                    logging.debug("Pausing for %d seconds...", save_delay-t)
-                    time.sleep(1)
-                try:
-                    logging.info("Parsing XML file %d out of %d (%s)", 
-                                 idx+1, len(todo), filename.name)
-                    if filename.endswith(".gz"):
-                        infile = gzip.open(filename, 'r')
-                    else:
-                        infile = open(filename, 'r')
-                    articles = list(Article.parse_medline_xml(infile))
-                except KeyboardInterrupt:
-                    logging.info("Safely interrupted.")
-                    raise
-                finally:
-                    infile.close()
-                try:
-                    self.add_articles(articles, sync=False)
-                    done.add(filename.basename())
-                    self.tracker.write_lines(sorted(done))
-                    logging.info("Added %d articles from file %d out of %d (%s)", 
-                                 len(articles), idx+1, len(todo), filename.name)
-                    del articles
-                except KeyboardInterrupt:
-                    logging.error("Unsafely interrupted!!!")
-                    raise
-        finally:
-            self.sync()
+        # Loop over non-completed files
+        for idx, filename in enumerate(todo):
+            for t in xrange(save_delay):
+                logging.debug("Pausing for %d seconds...", save_delay-t)
+                time.sleep(1)
+            # Parse the XML file
+            try:
+                logging.info("Parsing XML file %d out of %d (%s)", 
+                             idx+1, len(todo), filename.name)
+                if filename.endswith(".gz"):
+                    infile = gzip.open(filename, 'r')
+                else:
+                    infile = open(filename, 'r')
+                articles = list(Article.parse_medline_xml(infile))
+            except KeyboardInterrupt:
+                logging.info("Safely interrupted.")
+                raise
+            finally:
+                infile.close()
+            # Add the articles to the databases
+            try:
+                self.add_articles(articles, sync=False)
+                done.add(filename.basename())
+                self.tracker.write_lines(sorted(done))
+                logging.info("Added %d articles from file %d out of %d (%s)", 
+                             len(articles), idx+1, len(todo), filename.name)
+                del articles
+            except KeyboardInterrupt:
+                logging.error("Unsafely interrupted!!!")
+                raise

@@ -18,10 +18,12 @@ it under the Do Whatever You Want Public License. Terms and conditions:
 
 from __future__ import with_statement
 from bsddb import db
+import codecs
 from contextlib import closing
 import numpy as nx
 from path import path
 import random
+import sqlite3
 import sys
 
 from mscanner.core import iofuncs
@@ -82,19 +84,18 @@ def select_lines(infile, outfile, mindate="00000000", maxdate="99999999", N="0")
     
     @param infile: Read PMID YYYYMMDD lines from this path.
     @param outfile: Write selected lines to this path.
-    @param N: (string) Number of lines to output (N="0" outputs all matching)
-    @param mindate, maxdate: Only consider YYYYMMDD strings between these
+    @param mindate, maxdate: Only consider YYYYMMDD strings between these values.
+    @param N: (string) Number of lines to pint (N="0" outputs all matching lines)
     @return: Selected lines as (PMID,YYYYMMDD) pairs of strings
     """
     lines = []
     N = int(N)
-    input = open(infile, "r")
-    for line in input:
-        if line.startswith("#"): continue
-        pmid, date = line.strip().split()
-        if date >= mindate and date <= maxdate:
-            lines.append((pmid,date))
-    input.close()
+    with open(infile, "r") as input:
+        for line in input:
+            if line.startswith("#"): continue
+            pmid, date = line.strip().split()
+            if date >= mindate and date <= maxdate:
+                lines.append((pmid,date))
     if N > 0:
         lines = random.sample(lines, N)
     lines.sort(key=lambda x:x[1])
@@ -102,6 +103,23 @@ def select_lines(infile, outfile, mindate="00000000", maxdate="99999999", N="0")
         for line in lines:
             f.write("%s %s\n" % line)
     return lines
+
+
+def update_featmap(infile, outfile):
+    """Read in the old FeatureMapping format and write the SQLite version"""
+    with closing(codecs.open(infile, "rb", "utf-8")) as input:
+        input.readline() # Get past article count
+        with closing(sqlite3.connect(outfile)) as con:
+            con.execute("""CREATE TABLE IF NOT EXISTS fmap (
+              id INTEGER PRIMARY KEY,
+              type TEXT, name TEXT, count INTEGER,
+              UNIQUE(type,name) )""")
+            for fid, line in enumerate(input):
+                fname, ftype, count = line.split("\t")
+                count = int(count)
+                con.execute("INSERT INTO fmap VALUES(?,?,?,?)", 
+                            (fid, ftype, fname, count))
+            con.commit()
 
 
 if __name__ == "__main__":

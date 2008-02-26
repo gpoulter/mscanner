@@ -20,7 +20,8 @@ from mscanner.configuration import rc
 from mscanner.core import iofuncs
 from mscanner.core.QueryManager import QueryManager
 from mscanner.core.ValidationManager import CrossValidation
-from mscanner.medline import Databases
+from mscanner.medline.FeatureData import FeatureData
+from mscanner.medline.ArticleData import ArticleData
 from mscanner.pharmdemo import genedrug
 from mscanner.pharmdemo.Exporter import Exporter
 
@@ -102,7 +103,7 @@ class PharmdemoValidation(CrossValidation):
         @return: Set of PubMed IDs which have gene-drug co-occurrences.
         """
         logging.info("Getting gene-drug associations") 
-        adata = Databases.ArticleData.Defaults()
+        adata = ArticleData.Defaults()
         pos_arts = [ adata.artdb[x] for x in self.positives ]
         neg_arts = [ adata.artdb[x] for x in self.negatives ]
         adata.close()

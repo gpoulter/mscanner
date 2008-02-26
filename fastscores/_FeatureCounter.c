@@ -3,26 +3,20 @@ specified date range.
 
 Usage:
 
-./featcounts \
-[citations] \
-[numdocs] \
-[numfeats] \
-[mindate] \
-[maxdate] \
-> feature_socres
+./featcounts [citations] [numdocs] [numfeats] [mindate] [maxdate] > scores
 
   The [citations] file consists of [numcites] records, in the format
   used by FeatureStream.py
 
   struct {
-    unsigned int pmid; // PubMed ID of citation
-    unsigned int date; // Record completion date
+    unsigned int pmid;     // PubMed ID of citation
+    unsigned int date;     // Date of Medline record completion
     unsigned short nbytes; // Number of bytes in encoded feature vector
     char features[nbytes]; // Variable-byte-encoded feature vector
   };
 
-  The output is a list of [numfeats] integers representing the
-  feature counts.
+  The output is an array of [numfeats] 32-bit integers, with the number
+  of occurrences of each feature in the stream, within the specified date range.
   
                                  
 */
@@ -41,6 +35,7 @@ this program. If not, see <http://www.gnu.org/licenses/>. */
 
 #include <stdio.h>
 #include <stdlib.h>
+
 
 // Search sorted array A of length N for needle.
 // Return 1 if we find the needle, 0 if we do not
@@ -66,7 +61,7 @@ int binary_search(unsigned int *A, unsigned int N, unsigned int needle) {
 int main (int argc, char **argv)
 {
     // Parameters
-    char *cite_filename = argv[1];    // Name of citations file
+    char *cite_filename = argv[1];             // Name of citations file
     unsigned int numcites = atoi (argv[2]);    // Number of citations
     unsigned int numfeats = atoi (argv[3]);    // Number of features
     unsigned int mindate = atoi (argv[4]);     // Minimum date to consider
@@ -100,7 +95,7 @@ int main (int argc, char **argv)
     // Initialise the feature counts to zero
     for(fi = 0; fi < numfeats; fi++) featcounts[fi] = 0;
 
-    // Calculate citation scores
+    // Loop for calculating feature counts in the databse
     citefile = fopen(cite_filename, "rb");
     for(pi = 0; pi < numcites; pi++) {
         // Read feature vector from the binary file
@@ -132,10 +127,10 @@ int main (int argc, char **argv)
         if (binary_search(excluded, numexcluded, pmid) == 1) {
             continue;
         }
-        // Add up the feature scores
+        // Increment feature counts
         for(fi = 0; fi < featvec_size; fi++)
             featcounts[featvec[fi]]++;
-        // Counted features for one more document
+        // Increment document count
         ndocs++;
     }
     fclose(citefile);

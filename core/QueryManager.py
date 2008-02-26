@@ -14,7 +14,8 @@ warnings.simplefilter("ignore", UserWarning)
 
 from mscanner.configuration import rc
 from mscanner.medline import Shelf
-from mscanner.medline.Databases import FeatureData, ArticleData
+from mscanner.medline.FeatureData import FeatureData
+from mscanner.medline.ArticleData import ArticleData
 from mscanner.core.FeatureScores import FeatureScores, FeatureCounts
 from mscanner.core import CitationTable, iofuncs
 from mscanner.fastscores.ScoreCalculator import ScoreCalculator
@@ -167,6 +168,7 @@ class QueryManager:
         logging.info("Making scores for %d features", len(self.fdata.featmap))
         # Initialise the score object without occurrence counts
         self.featinfo = FeatureScores.Defaults(self.fdata.featmap)
+        self.featinfo.numdocs = self.adata.article_count # For scores_bgfreq
         
         # Count features from the positive articles
         pdocs = len(self.pmids)
@@ -176,7 +178,7 @@ class QueryManager:
         # Background is all of Medline minus input examples
         if self.t_mindate is None and self.t_maxdate is None:
             logging.info("Background PMIDs = Medline - input PMIDs")
-            ndocs = self.fdata.featmap.numdocs - len(self.pmids)
+            ndocs = self.adata.article_count - len(self.pmids)
             neg_counts = nx.array(self.fdata.featmap.counts, nx.int32) - pos_counts
         
         # Background is Medline within a specific date range
@@ -189,7 +191,7 @@ class QueryManager:
             # Call the C program to count features
             ndocs, neg_counts = FeatureCounter(
                 docstream = self.fdata.fstream.filename,
-                numdocs = self.fdata.featmap.numdocs,
+                numdocs = self.adata.article_count,
                 numfeats = len(self.fdata.featmap),
                 mindate = self.t_mindate,
                 maxdate = self.t_maxdate,
@@ -230,7 +232,7 @@ class QueryManager:
                      str(self.mindate), str(self.maxdate))
         self.results = ScoreCalculator(
             path(self.fdata.fstream.stream.name),
-            self.fdata.featmap.numdocs,
+            self.adata.article_count,
             self.featinfo.scores,
             self.featinfo.base+self.featinfo.prior,
             self.limit,

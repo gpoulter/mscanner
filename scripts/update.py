@@ -31,7 +31,7 @@ import numpy as nx
 from path import path
 import sys
 
-from mscanner.medline.Databases import ArticleData
+from mscanner.medline.ArticleData import ArticleData
 from mscanner.medline.Updater import Updater
 from mscanner.configuration import rc
 from mscanner.core import iofuncs
@@ -39,13 +39,12 @@ from mscanner.core import iofuncs
 featurespaces = [
     ("feats_mesh_qual_issn", nx.uint16), 
     ("feats_wmqia", nx.uint32),
-    #("feats_wmqia_filt", nx.uint32),
-    #("feats_iedb_word", nx.uint32),
-    #("feats_iedb_concat", nx.uint32),
-    #("feats_word", nx.uint32),
-    #("feats_word_folded", nx.uint32),
-    #("feats_word_nodash", nx.uint32),
-    #("feats_word_num", nx.uint32),
+    ("feats_wmqia_filt", nx.uint32),
+    ("feats_iedb_word", nx.uint32),
+    ("feats_iedb_concat", nx.uint32),
+    ("feats_word_nofold", nx.uint32),
+    ("feats_word_num", nx.uint32),
+    ("feats_word_strip", nx.uint32),
 ]
 
 

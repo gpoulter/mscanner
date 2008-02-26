@@ -31,3 +31,10 @@ def delattrs(obj, *vars):
             delattr(obj, ivar)
         except AttributeError:
             pass
+
+
+def endpath(path,parts=2):
+    """Return last parts of the path, for displaying paths when the full path
+    is too long just the filename is not unique."""
+    return "/".join(path.splitall()[-parts:])
+

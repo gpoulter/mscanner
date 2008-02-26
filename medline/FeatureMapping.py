@@ -1,9 +1,9 @@
-"""Provides a mapping between features and integer IDs"""
+"""Provides a mapping between feature strings and their integer IDs"""
 
-from __future__ import with_statement
-import codecs
-from contextlib import closing
+from mscanner import delattrs
+import logging
 import numpy as nx
+import sqlite3
 
                                      
 __author__ = "Graham Poulter"                                        
@@ -23,138 +23,136 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 class FeatureMapping:
     """Persistent mapping between string features and feature IDs
 
-    @note: Feature classes are "mesh", "qual", "issn", "w" (word), "a"
-    (author). The class identifies the source of the feature, and allows the
-    same string to represent two different features - e.g. "human" as a "word"
-    feature, and "human" as a "mesh" feature.
+    Database columns are id (feature ID), type (feature type),
+    name (feature string), and count (feature count).  
     
-    @note: This is really a table of (id,type,name,count), with two indexes:
-    ID->(type,name,count) and (type,name)->ID.
+    Feature type is one of "mesh", "qual", "issn", "w" (word) and "a" (author).
+    Database is indexed by id and (type,name).
     
-    @ivar filename: Path to save the mapping to (None for memory only).
+    @ivar con: The SQLite database connection.
     
-    @ivar numdocs: Number of documents added while creating the mapping.
-    
-    @ivar features: Lookup list from feature ID to class and string
-    (features[id] == (name,class)).
-    
-    @ivar feature_ids: Lookup from feature class and string to feature ID
-    (feature_ids[class][name] == id)
-    
-    @ivar counts: Number of occurrences of each feature ID (counts[id] == #)
-    in Medline.
+    @ivar filename: Path to SQLite database file.
     """
 
     def __init__(self, filename):
         """Initialise the database"""
         self.filename = filename
-        self.numdocs = 0
-        self.features = []
-        self.feature_ids = {}
-        self.counts = []
-        if filename is not None and self.filename.exists():
-            self.load()
-
-
-    def load(self):
-        """Load feature mapping mapping from file as a tab-separated
-        table for tuples (feature, type, count) with ID being the
-        0-based index in the file.
-        """
-        self.features = []
-        self.feature_ids = {}
-        with closing(codecs.open(self.filename, "rb", "utf-8")) as f:
-            self.numdocs = int(f.readline())
-            for fid, line in enumerate(f):
-                feat, fclass, count = line.split("\t")
-                self.features.append((feat,fclass))
-                self.counts.append(int(count))
-                if fclass not in self.feature_ids:
-                    self.feature_ids[fclass] = {}
-                self.feature_ids[fclass][feat] = fid
-
-
-    def dump(self):
-        """Write the feature mapping to disk as a table of (feature, type,
-        count) where feature ID+1 is the line number."""
-        if self.filename is None:
-            return
-        _filename_new = self.filename + ".new"
-        # Python Solaris bug: Using 'with codecs.open(...' gives
-        # UnicodeError when writing chars like u"\xd8"
-        with closing(codecs.open(_filename_new, "wb", "utf-8")) as f:
-            f.write(u"%d\n" % self.numdocs)
-            for (feat, fclass), count in zip(self.features, self.counts):
-                f.write(u"%s\t%s\t%d\n" % (feat, fclass, count))
-        if self.filename.isfile():
-            self.filename.remove()
-        _filename_new.rename(self.filename)
-
-
-    def __getitem__(self, key):
-        """Get feature string, or feature ID depending on input.
-        @param key: If feature ID return (feature, feature type). 
-                    If (feature, feature type) returns feature ID
-        """
-        if isinstance(key, int):
-            return self.features[key]
-        elif isinstance(key, tuple) and len(key) == 2:
-            return self.feature_ids[key[1]][key[0]]
+        if filename is None:
+            self.con = sqlite3.connect(":memory:")
         else:
+            self.con = sqlite3.connect(filename)
+        self.con.execute("""CREATE TABLE IF NOT EXISTS fmap (
+          id INTEGER PRIMARY KEY,
+          type TEXT, name TEXT, count INTEGER,
+          UNIQUE(type,name) )""")
+        # Make sure a dummy feature occupies the zeroth index
+        if self.con.execute("SELECT * FROM fmap LIMIT 1").fetchone() is None:
+            self.con.execute("INSERT INTO fmap VALUES(0, '', '', 0)")
+
+
+    def get_feature(self, fid):
+        """Retrieve (feature name, feature type) given feature ID."""
+        row = self.con.execute(
+            "SELECT name, type FROM fmap WHERE id=?", (fid,)).fetchone()
+        if row is None:
             raise KeyError("Invalid key: %s" % str(key))
+        return row
 
 
     def __len__(self):
-        """Return number of distinct features"""
-        return len(self.features)
+        """Return number of features in the table"""
+        return self.con.execute("SELECT count(id) FROM fmap").fetchone()[0]
 
 
-    def class_mask(self, classes):
-        """Boolean mask for features of particular classes.
-        @param classes: List of feature classes to exclude, e.g. ["mesh","issn"].
-        @return: Boolean array that is True at features of excluded classes.
-        """
-        mask = nx.zeros(len(self.features), nx.bool)
-        for fclass in classes:
-            for fid in self.feature_ids[fclass].itervalues():
+    @staticmethod
+    def holders(n):
+        """Return a '(?,?,?)' place-holder tuple with n question marks"""
+        if n < 1:
+            raise ValueError("Must have at least one '?' in the tuple")
+        return "(?" + (",?" * (n-1)) + ")"
+
+
+    def type_mask(self, ftypes):
+        """Boolean array to mark features of the specified type.
+        
+        @param ftypes: List of feature types to exclude, e.g. ["mesh","issn"].
+        
+        @return: Boolean array indexed by feature ID. True positions correspond
+        to features of the types specified in L{ftypes}."""
+        mask = nx.zeros(len(self), nx.bool)
+        mask[0] = True # Always mask the dummy feature
+        if len(ftypes) > 0:
+            for fid, in self.con.execute(
+                "SELECT id FROM fmap WHERE type IN "+
+                self.holders(len(ftypes)), ftypes):
                 mask[fid] = True
         return mask
     
     
-    def get_vector(self, features):
-        """Calculate the feature vector of an already-added article.
+    def make_vector(self, featuredict):
+        """Calculate vector of feature IDs representing an instance, given a
+        dictionary with the types and names of the features of the instance
         
-        @param features: Document features as a mapping from feature
-        class to feature strings, like C{{'mesh':['A','B']}}.
+        @param featuredict: Dictionary whose keys are feature types, with
+        values being a list of feature names of that type, such as
+        C{{'mesh':['A','B','C']}}.
      
-        @return: Feature vector of corresponding feature IDs.
+        @return: Vector of feature IDs.
         """
         vector = []
-        for fclass, featlist in features.iteritems():
-            for feature in featlist:
-                vector.append(self.feature_ids[fclass][feature])
-        # *MUST* Sort prior to compression in EncodedFeatureStream
+        for ftype, featlist in featuredict.iteritems():
+            if len(featlist) > 0:
+                for fid, in self.con.execute(
+                    "SELECT id FROM fmap WHERE type='" + ftype + "' AND name IN "
+                    + self.holders(len(featlist)), featlist):
+                    vector.append(fid)
+        # Sort vector prior to compression by EncodedFeatureStream
         vector.sort() 
         return vector
 
 
-    def add_article(self, features):
-        """Add an article to the feature map.  Add 1 to number of 
-        documents and to the count of each feature in the dictionary.
-        Features not present in the map are created with a count of 1.
+    @property
+    def counts(self):
+        """Array with the number of occurrences of each feature. Array index is
+        the feature ID.
         
-        @param features: Document features as a mapping from feature
-        class to feature strings, like C{{'mesh':['A','B']}}."""
-        self.numdocs += 1
-        for fclass, featlist in features.iteritems():
-            if fclass not in self.feature_ids:
-                self.feature_ids[fclass] = {}
-            fdict = self.feature_ids[fclass]
-            for feat in featlist:
-                if feat not in fdict:
-                    featid = len(self.features)
-                    self.features.append((feat,fclass))
-                    self.counts.append(1)
-                    fdict[feat] = featid
+        Note that the first element (0) is a dummy feature with count zero,
+        because the feature ID is the SQLite ROWID, which starts from 1."""
+        try:
+            return self._counts
+        except AttributeError:
+            self._counts = nx.zeros(len(self), nx.uint32)
+            for id,count in self.con.execute("SELECT id,count FROM fmap ORDER BY id"):
+                self._counts[id] = count
+            return self._counts
+
+
+    def remove_vector(self, featurevector):
+        """Remove an article's feature vector from the feature map by
+        decrementing the stored count of each feature (also decrements
+        L{counts}). Does NOT remove features whose count has dropped to
+        zero."""
+        self.con.execute("UPDATE fmap SET count=(count-1) WHERE id IN "+
+                         self.holders(len(featurevector)), featurevector)
+        self._counts[featurevector] -= 1
+
+
+    def add_article(self, featuredict):
+        """Add an article to the feature map. Increments the occurrence
+        count for features already represented.
+        
+        @param featuredict: Dictionary keyed by feature type, where each value
+        is a list of feature strings of that type C{{'mesh':['A','B']}}."""
+        c = self.con.cursor()
+        for ftype, featurelist in featuredict.iteritems():
+            for fname in featurelist:
+                row = c.execute("SELECT id FROM fmap WHERE type=? AND name=?", 
+                                (ftype, fname)).fetchone()
+                if row is None:
+                    c.execute("INSERT INTO fmap (type,name,count) VALUES(?,?,?)",
+                              (ftype, fname, 1))
                 else:
-                    self.counts[fdict[feat]] += 1
+                    c.execute("UPDATE fmap SET count=(count+1) WHERE id=?", row)
+        c.close()
+        # Will need to recalculate count vector if number of features changed
+        delattrs(self, "_counts")

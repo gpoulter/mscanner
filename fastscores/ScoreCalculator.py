@@ -206,7 +206,7 @@ class ScoreCalculator:
         cscore.cscore(
             s.docstream,
             s.numdocs,
-            len(s.featscores), 
+            len(s.featscores),
             s.offset,
             output_size,
             s.threshold,
@@ -214,7 +214,7 @@ class ScoreCalculator:
             s.maxdate,
             s.featscores,
             byref(o_numresults),
-            o_scores, 
+            o_scores,
             o_pmids)
         # Go through results in decreasing order to filter them
         count_filtered = 0

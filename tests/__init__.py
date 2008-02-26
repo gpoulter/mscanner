@@ -30,6 +30,7 @@ def start_logger():
 
 def suite():
     modules = [
+        "test_article",
         "test_iofuncs",
         "test_medline",
         "test_scoring",

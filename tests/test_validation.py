@@ -82,7 +82,7 @@ class ValidatorTests(unittest.TestCase):
         """Cross validation with scores_laplace_split."""
         rc.mincount = 0
         rc.min_infogain = 0
-        rc.class_mask = []
+        rc.type_mask = []
         self._check_scores(
             FeatureScores([2,5,7], "scores_laplace_split"),
             nx.array([-1.09861231,  2.45673585,  2.45673585,  3.55534816]),

@@ -1,4 +1,5 @@
-"""A class for rapid iteration over the records in Medline."""
+"""Stores feature vector representations of articles in a binary stream
+that can be rapidly processed by the C programs under fastscores."""
 
 from bsddb import db
 import logging
@@ -22,11 +23,11 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
 class FeatureStream:
-    """Class for reading/writing a binary stream of Medline records, consisting
-    of PubMed ID, record completion date and a vector of Feature IDs for
-    features present in the record.  This stream is 
-    
-    @note: The feature stream is compressed using variable byte encoding. See
+    """Reads and writes a binary stream of feature vectors, which contains the
+    PubMed ID of the instance, the Medline record completion date, and the
+    vector of feature IDs describing the record.
+     
+    @note: Each feature vector is compressed using variable byte encoding. See
     http://nlp.stanford.edu/IR-book/html/htmledition/variable-byte-codes-1.html.
     
     @ivar stream: File object underlying the stream.

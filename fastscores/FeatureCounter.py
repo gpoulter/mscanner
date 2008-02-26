@@ -16,7 +16,7 @@ class FeatureCounter:
     @ivar docstream: Path to file containing feature vectors for documents to
     score, in FeatureStream format.
     
-    @ivar numdocs: Number of documents in the stream of feature vectors.
+    @ivar numdocs: Number of documents in the stream article stream.
     
     @ivar numfeats: Number of distinct features in Medline (length of the 
     vector of feature counts).

@@ -12,7 +12,8 @@ import sys
 from mscanner.configuration import rc
 from mscanner.core import iofuncs
 from mscanner.core.QueryManager import QueryManager
-from mscanner.medline.Databases import FeatureData, ArticleData
+from mscanner.medline.FeatureData import FeatureData
+from mscanner.medline.ArticleData import ArticleData
 
 
                                      
@@ -83,10 +84,9 @@ def gdsmall():
     ds = "gdsmall"
     s = base / ds / "query"
     rc.scoremethod = "scores_bgfreq"
-    base_query(s/"MQI_bgfreq_df0", ds, "feats_mesh_qual_issn", df=0)
-    base_query(s/"WMQIA_bgfreq_df4", ds, "feats_word_mqi_all", df=4)
-    rc.scoremethod = "scores_laplace_split"
-    base_query(s/"WMQIF_lsplit_df4", ds, "feats_word_mqi_filt", df=4)
+    base_query(s/"MQI_bgfreq_df1", ds, "feats_mesh_qual_issn", df=1)
+    #rc.scoremethod = "scores_laplace_split"
+    #base_query(s/"WMQIA_bgfreq_df4", ds, "feats_wmqia", df=4)
 
 
 if __name__ == "__main__":

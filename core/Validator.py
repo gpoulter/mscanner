@@ -91,8 +91,8 @@ class CrossValidator:
         s.nstarts, s.nsizes = s.make_partitions(ndocs, s.nfolds)
         s.pscores = nx.zeros(pdocs, nx.float32)
         s.nscores = nx.zeros(ndocs, nx.float32)
-        pcounts = FeatureCounts(len(s.featinfo), s.featdb, s.positives)
-        ncounts = FeatureCounts(len(s.featinfo), s.featdb, s.negatives)
+        pcounts = FeatureCounts(len(s.featinfo.featmap), s.featdb, s.positives)
+        ncounts = FeatureCounts(len(s.featinfo.featmap), s.featdb, s.negatives)
         for fold, (pstart,psize,nstart,nsize) in \
             enumerate(zip(s.pstarts,s.psizes,s.nstarts,s.nsizes)):
             logging.debug("Fold %d: pstart = %d, psize = %s; nstart = %d, nsize = %d", 
@@ -100,10 +100,10 @@ class CrossValidator:
             # Get new feature scores
             s.featinfo.update(
                 pos_counts = pcounts - FeatureCounts(
-                    len(s.featinfo), s.featdb, 
+                    len(s.featinfo.featmap), s.featdb, 
                     s.positives[pstart:pstart+psize]), 
                 neg_counts = ncounts - FeatureCounts(
-                    len(s.featinfo), s.featdb, 
+                    len(s.featinfo.featmap), s.featdb, 
                     s.negatives[nstart:nstart+nsize]),
                 pdocs = pdocs-psize, 
                 ndocs = ndocs-nsize,

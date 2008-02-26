@@ -17,7 +17,7 @@ Usage:
   See _FeatureCounter.c for format of the [citations] file.
   
   The feature scores from standard input are a list of [numfeats]
-  64-bit doubles.
+  32-bit single-precision floats.
 
   The output is a list of [limit] citation scores as score_t structures,
   where each citation score has [offset] added to it beforehand.
@@ -87,7 +87,7 @@ void cscore(
     float threshold,       // Minimum score to consider
     unsigned int mindate,  // Minimum date to consider
     unsigned int maxdate,  // Maximum date to consider
-    double *featscores,    // Array of feature scores
+    float *featscores,     // Array of feature scores
     // OUTPUT PARAMETERS
     int *o_numresults,     // Output scalar for number of results
     float *o_scores,       // Output array for scores
@@ -117,8 +117,8 @@ void cscore(
 
     #ifdef CSCORE
     // Allocate space for feature scores and read them from input
-    double *featscores = (double*) malloc (numfeats * sizeof(double));
-    fread(featscores, sizeof(double), numfeats, stdin);
+    float *featscores = (float*) malloc (numfeats * sizeof(float));
+    fread(featscores, sizeof(float), numfeats, stdin);
     #endif
 
     // Calculate citation scores

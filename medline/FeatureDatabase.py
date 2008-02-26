@@ -137,3 +137,99 @@ class FeatureDatabase:
             yield rec[0], nx.fromstring(rec[1],self.ftype)
             rec = cur.next()
         cur.close()
+
+
+## POSSIBLE REPLACEMENT OF FeatureDatabase
+
+import sqlite3
+from FeatureStream import vb_encode, vb_decode
+
+class FeatureVectors:
+    """Stores documents in feature vector form in an SQLite database. The
+    columns are 'pmid' (PubMed id), 'date' (record date) and 'features'
+    (variable-byte-encoded vector of feature IDs representing a document).
+    
+    Note that we do not support removing documents from the database, because
+    the feature stream cannot remove documents either.
+    
+    @ivar con: The SQLite database connection.
+    
+    @ivar filename: Path to SQLite database file.
+    """
+
+    def __init__(self, filename):
+        """Initialise the database"""
+        self.filename = filename
+        if filename is None:
+            self.con = sqlite3.connect(":memory:")
+        else:
+            self.con = sqlite3.connect(filename)
+        self.con.execute("""CREATE TABLE IF NOT EXISTS docs (
+          pmid INTEGER PRIMARY KEY, date INTEGER, features BLOB)""")
+
+
+    def __contains__(self, pmid):
+        """Detect whether a vector for a document is already stored"""
+        return self.con.execute("SELECT pmid FROM docs WHERE pmid=?",
+                                (pmid,)).fetchone() is not None
+
+    def __len__(self):
+        """Return number of documents in the database"""
+        return self.con.execute("SELECT count(pmid) FROM docs").fetchone()[0]
+
+
+    def add_record(self, pmid, date, featurevector):
+        """Store a feature vector in the databse.
+        @param pmid: PubMed ID of document
+        @param date: Record date
+        @param featurevector: List/array/iterable of feature IDs
+        """
+        self.con.execute("INSERT INTO docs VALUES(?,?,?)", (pmid, date, 
+                          sqlite3.Binary(vb_encode(featurevector))))
+
+
+    def update_record(self, pmid, date, featurevector):
+        """As for L{add_record}"""
+        self.con.execute("UPDATE docs SET date=?, features=? WHERE pmid=?", 
+                         (date, sqlite3.Binary(vb_encode(featurevector)), pmid))
+    
+    
+    def get_record(self, pmid):
+        """Retrieve a record from the database.
+        @param pmid: Document to retrieve
+        @return: (pmid, date, featurevector) for the document, where pmid
+        and date are integers, and featurevector is a list of feature IDs.
+        """
+        row = self.con.execute("SELECT * FROM docs WHERE pmid=?", (pmid,)).fetchone()
+        if row is None:
+            raise KeyError("PubMed ID %d not found in database" % pmid)
+        pmid, date, blob = row
+        return pmid, date, list(vb_decode(blob))
+    
+
+    def get_vector(self, pmid):
+        """Retrieve just the feature vector of a record"""
+        return self.get_record(pmid)[2]
+
+
+    def iteritems(self, mindate=None, maxdate=None):
+        """Iterate over (pmid, date, featurevector) from the database.
+        @param mindate, maxdate: Limit the dates to consider.
+        """
+        base = "SELECT * FROM docs "
+        if mindate is not None and maxdate is not None:
+            cursor = self.con.execute(base+"WHERE date>=? AND date<=?", (mindate,maxdate))
+        elif mindate is not None:
+            cursor = self.con.execute(base+"WHERE date>=?", (mindate,))
+        elif maxdate is not None:
+            cursor = self.con.execute(base+"WHERE date<=?", (maxdate,))
+        else:
+            cursor = self.con.execute(base)
+        for pmid, date, blob in cursor:
+            vector = list(vb_decode(blob))
+            yield pmid, date, vector
+
+
+
+
+

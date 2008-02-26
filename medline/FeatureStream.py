@@ -1,9 +1,7 @@
 """Stores feature vector representations of articles in a binary stream
 that can be rapidly processed by the C programs under fastscores."""
 
-from bsddb import db
 import logging
-import numpy as nx
 import struct
 
 
@@ -72,13 +70,12 @@ class FeatureStream:
         
         @param date: The YYYYMMDD integer date for the record.
         
-        @param features: Numpy array of feature IDs."""
+        @param features: Array/list/iterable of feature IDs."""
         if not isinstance(date, int): 
             raise ValueError("Date must be integer format")
-        #logging.debug("PMID=%d, DATE=%d, LEN=%d", int(pmid), date, len(features))
-        data = vb_encode(features)
-        self.stream.write(struct.pack("IIH", int(pmid), date, data.nbytes))
-        data.tofile(self.stream)
+        vbstring = vb_encode(features)
+        self.stream.write(struct.pack("IIH", int(pmid), date, len(vbstring)))
+        self.stream.write(vbstring)
 
 
     def readitem(self, pos=None):
@@ -91,14 +88,11 @@ class FeatureStream:
         if pos is not None:
             self.stream.seek(pos)
         head = self.stream.read(4+4+2)
-        if len(head) == 0:
-            return None
+        if len(head) == 0: return None
         pmid, date, nbytes = struct.unpack("IIH", head)
-        #logging.debug("PMID=%d, DATE=%d, LEN=%d", pmid, date, alen)
         if nbytes > self.max_bytes:
             raise ValueError("Vector too long (%d) due to bad seek.", nbytes)
-        data = nx.fromfile(self.stream, nx.uint8, nbytes)
-        return (pmid, date, list(vb_decode(data)))
+        return pmid, date, list(vb_decode(self.stream.read(nbytes)))
 
 
     def iteritems(self):
@@ -124,39 +118,41 @@ def DateFromInteger(intdate):
 
 
 def vb_encode(numbers):
-    """Encode a sorted vector using variable byte encoding of the difference
+    """Encode a sorted array using variable byte encoding of the difference
     between successive items. Each gap is encoded as reverse of the byte list
     one would obtain by writing the least 7 bits with high bit set, followed by
-    higher groups of 7 bits until no bits remain.  If C{numbers} is not
-    sorted, bad things will happen.
+    higher groups of 7 bits until no bits remain. If C{numbers} is not sorted,
+    bad things will happen.
     
-    @param numbers: Sorted list of numbers. 
-    @return: Numpy uint8  vector with the encoding."""
-    result = []
-    last = 0
+    @param numbers: Sorted list/array/iterable of positive increasing numbers. 
+    @return: Variable-byte-encoded string."""
+    result = [] # Char-list of the encoded array
+    last = 0 # Previous number in array
     for number in numbers:
         gap = number - last
         last = number
         # Higher bits are are pushed at the front
-        bytes = [0x80 | (gap & 0x7f)]
+        bytes = [ chr(0x80 | (gap & 0x7f)) ]
         gap >>= 7
         while gap > 0:
-            bytes.insert(0, gap & 0x7f)
-            gap >>= 7            
+            bytes.insert(0, chr(gap & 0x7f))
+            gap >>= 7
         result.extend(bytes)
-    return nx.array(result, nx.uint8)
+    return "".join(result)
 
 
-def vb_decode(bytestream):
-    """Decode a sorted vector whose gaps have been variable-byte encoded. 
-    To read a gap: push the least 7 bits of current byte into the least 
-    bits of the output, and repeat, stopping when the high bit is set.
+def vb_decode(bytestring):
+    """Decode a variable-byte-encoding string into the original sorted array.
+    To read a gap: push the least 7 bits of current byte into the least bits of
+    the output, and repeat, stopping when the high bit is set.
     
-    @param bytestream: Numpy uint8 vector in variable byte encoding. 
-    @return: Sorted iteration of numbers. """
-    gap = 0
-    last = 0
-    for byte in bytestream:
+    @param bytestream: Variable-byte-encoded string. 
+    @return: Iterator over the decoded values (smallest to biggest).
+    """
+    gap = 0 # Difference between latest array item and the previous one
+    last = 0 # Previous number in the array
+    for char in bytestring:
+        byte = ord(char)
         gap = (gap << 7) | (byte & 0x7f)
         if byte & 0x80:
             last += gap

@@ -22,7 +22,7 @@ from mscanner.configuration import rc
 from mscanner.medline.Article import Article
 from mscanner.medline.FeatureData import FeatureData
 from mscanner.medline.ArticleData import ArticleData
-from mscanner.medline.FeatureDatabase import FeatureDatabase
+from mscanner.medline.FeatureDatabase import FeatureDatabase, FeatureVectors
 from mscanner.medline.FeatureStream import FeatureStream
 from mscanner.medline.FeatureMapping import FeatureMapping
 from mscanner.medline.Updater import Updater
@@ -50,6 +50,24 @@ class FeatureDatabaseTests(unittest.TestCase):
         self.assertRaises(ValueError, d.setitem, 4, nx.array([3.3,4]))
 
 
+class FeatureVectorsTests(unittest.TestCase):
+    """FeatureVector SQLite database tests"""
+    
+    def test(self):
+        d = FeatureVectors(filename=None)
+        d.add_record(1, 19990101, [1,3]) 
+        d.add_record(2, 20000101, [2,3,5434,3243232])
+        self.failUnless(d.get_vector(1) == [1,3])
+        self.failUnless(d.get_vector(2) == [2,3,5434,3243232])
+        self.assertRaises(KeyError, d.get_vector, 3)
+        self.failUnless(1 in d)
+        self.failUnless(2 in d)
+        self.failIf(3 in d)
+        filtered = list(d.iteritems(20000101,20020101))
+        self.assertEqual(len(filtered), 1)
+        self.assertEqual(filtered[0], (2, 20000101, [2,3,5434,3243232]))
+        self.assertEqual(len(d), 2)
+    
 
 class FeatureStreamTests(unittest.TestCase):
 
@@ -60,11 +78,11 @@ class FeatureStreamTests(unittest.TestCase):
         if self.fn.isfile():
             self.fn.remove()
         
-    def test_FeatureStream(self):
+    def test(self):
         """Write to FeatureStream, and read it all back."""
         pmids = (12,34,56)
         dates = (20070101, 19980308, 20001207)
-        feats = [[1,2,3,4], [5,6,7,8], []]
+        feats = [[1,2,6,5484], [5,6,8342,9000,9001], []]
         with closing(FeatureStream(self.fn, rdonly=False)) as fs:
             for pmid, date, feat in zip(pmids, dates, feats):
                 fs.additem(pmid, date, feat)
@@ -79,16 +97,9 @@ class FeatureStreamTests(unittest.TestCase):
 
 class FeatureMappingTests(unittest.TestCase):
 
-    def setUp(self):
-        self.fn = path(tempfile.mktemp())
-
-    def tearDown(self):
-        if self.fn.isfile():
-            self.fn.remove()
-
-    def test_FeatureMapping(self):
-        """Store feature vectors in FeatureMapping and check the tally."""
-        fm = FeatureMapping(self.fn)
+    def test(self):
+        """FeatureMapping - store and retrieve instances."""
+        fm = FeatureMapping(filename=None)
         a1 = dict(Q=["A","B"], T=["A","C"])
         # Test adding of a feature vector
         fm.add_article(a1)

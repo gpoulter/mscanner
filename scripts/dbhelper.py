@@ -27,8 +27,6 @@ import sqlite3
 import sys
 
 from mscanner.core import iofuncs
-from mscanner.medline.FeatureDatabase import FeatureDatabase
-from mscanner.medline.FeatureStream import FeatureStream, DateAsInteger
 from mscanner.medline.Updater import Updater
 from mscanner.medline import Shelf
 
@@ -59,6 +57,7 @@ def pmid_dates(artdb, infile, outfile):
     @param artdb: Path to Shelf with Article objects
     @param infile: Path to PubMed IDs (PMID lines)
     @param outfile: Path to write PMID YYYYMMDD lines to."""
+    from mscanner.medline.FeatureStream import DateAsInteger
     lines = []
     adb = Shelf.open(artdb, "r")
     input = open(infile, "r")
@@ -105,8 +104,8 @@ def select_lines(infile, outfile, mindate="00000000", maxdate="99999999", N="0")
     return lines
 
 
-def update_featmap(infile, outfile):
-    """Read in the old FeatureMapping format and write the SQLite version"""
+def upgrade_featmap(infile, outfile):
+    """Read in the old FeatureMapping text format and write the SQLite version"""
     with closing(codecs.open(infile, "rb", "utf-8")) as input:
         input.readline() # Get past article count
         with closing(sqlite3.connect(outfile)) as con:
@@ -120,6 +119,23 @@ def update_featmap(infile, outfile):
                 con.execute("INSERT INTO fmap VALUES(?,?,?,?)", 
                             (fid, ftype, fname, count))
             con.commit()
+
+
+def upgrade_featdb(infile, outfile):
+    """Read in FeatureStream write SQLite version"""
+    from mscanner.medline.FeatureDatabase import FeatureVectors
+    from mscanner.medline.FeatureStream import FeatureStream
+    with closing(FeatureStream(path(infile),rdonly=True)) as fs:
+        fv = FeatureVectors(outfile)
+        for pmid, date, vector in fs.iteritems():
+            sys.stdout.write("%d %d\n" % (pmid, date))
+            if pmid in fv:
+                sys.stdout.write("Warning: PMID %d was found already!\n")
+            else:
+                fv.add_record(pmid, date, vector)
+                assert fv.get_vector(pmid) == vector
+            sys.stdout.flush()
+        fv.con.commit()
 
 
 if __name__ == "__main__":

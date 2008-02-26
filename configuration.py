@@ -153,7 +153,7 @@ rc.randseed = None
 
 ## Parameters affecting FeatureScores 
 
-## Select features with at least this many features
+## Select features with at least this many occurrences
 rc.mincount = 2
 ## Don't select features of theses classes. e.g. ["mesh","issn"]
 rc.type_mask = []

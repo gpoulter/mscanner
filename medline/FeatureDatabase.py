@@ -180,8 +180,13 @@ class FeatureVectors:
                                 (pmid,)).fetchone() is not None
 
     def __len__(self):
-        """Return number of documents in the database"""
-        return self.con.execute("SELECT count(pmid) FROM docs").fetchone()[0]
+        """Return number of documents in the database. Caches the result
+        because it takes a few seconds on 16 million records."""
+        try:
+            return self._length
+        except AttributeError:
+            self._length = self.con.execute("SELECT count(pmid) FROM docs").fetchone()[0]
+            return self._length
 
 
     def add_record(self, pmid, date, featurevector):
@@ -192,6 +197,8 @@ class FeatureVectors:
         """
         self.con.execute("INSERT INTO docs VALUES(?,?,?)", (pmid, date, 
                           sqlite3.Binary(vb_encode(featurevector))))
+        if hasattr(self, "_length"):
+            del self._length
 
 
     def update_record(self, pmid, date, featurevector):
@@ -213,18 +220,14 @@ class FeatureVectors:
         return pmid, date, list(vb_decode(blob))
     
 
-    def get_vector(self, pmid):
-        """Retrieve just the feature vector of a record"""
-        return self.get_record(pmid)[2]
-
-
     def iteritems(self, mindate=None, maxdate=None):
         """Iterate over (pmid, date, featurevector) from the database.
         @param mindate, maxdate: Limit the dates to consider.
         """
+        self.con.execute("CREATE INDEX IF NOT EXISTS dateidx ON docs (date)")
         base = "SELECT * FROM docs "
         if mindate is not None and maxdate is not None:
-            cursor = self.con.execute(base+"WHERE date>=? AND date<=?", (mindate,maxdate))
+            cursor = self.con.execute(base+"WHERE date BETWEEN ? AND ?", (mindate,maxdate))
         elif mindate is not None:
             cursor = self.con.execute(base+"WHERE date>=?", (mindate,))
         elif maxdate is not None:
@@ -234,16 +237,33 @@ class FeatureVectors:
         for pmid, date, blob in cursor:
             vector = list(vb_decode(blob))
             yield pmid, date, vector
-    
-    def get_random(self, numrecords, mindate=0, maxdate=99999999):
-        """Get numrecord random records with dates in the specified range."""
-        pass
 
-    def get_records(self, pmidlist):
-        """Since it can be slow to query the database multiple times
-        for the same record, this creates a dictionary for looking up
-        vectors by PubMed ID"""
-        pass
+
+    def get_random(self, numrecords, mindate=0, maxdate=99999999):
+        """Return cursor iterating over PubMed IDs for numrecords random PubMed
+        IDs dates in the specified range."""
+        self.con.execute("CREATE INDEX IF NOT EXISTS dateidx ON docs (date)")
+        if numrecords > len(self):
+            numrecords = len(self)
+        for pmid, date, blob in self.con.execute(
+            "SELECT * FROM docs WHERE date BETWEEN ? AND ? ORDER BY random() LIMIT ?",
+            (mindate, maxdate, numrecords)):
+            yield pmid,date,nx.array(list(vb_decode(blob)),nx.uint32)
+
+
+    def get_vector(self, pmid):
+        """Retrieve the feature vector of a given record."""
+        return self.get_record(pmid)[2]
+
+
+    def get_vectors(self, pmidlist):
+        """Iterate over (pmid, feature vectors) for the specified records,
+        ordered by increasing PubMed ID. Feature vectors are numpy arrays.
+        @param pmidlist: List of PubMed IDs."""
+        for pmid,date,blob in self.con.execute(
+            "SELECT * FROM docs WHERE pmid in (" + \
+            (",".join(["?"]*len(pmidlist))) + ")", pmidlist):
+            yield pmid,date,nx.array(list(vb_decode(blob)),nx.uint32)
 
 
 

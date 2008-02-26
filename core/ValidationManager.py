@@ -213,7 +213,6 @@ class CrossValidation:
         self.pscores, self.nscores = cross_validate(
             self.featinfo, self.pos_vectors, self.neg_vectors, self.nfolds)
         logging.info("Updating feature scores.")
-        logging.debug(self.pos_counts)
         self.featinfo.update(self.pos_counts, self.neg_counts, 
                              len(self.positives), len(self.negatives))
 

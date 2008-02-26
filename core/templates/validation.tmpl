@@ -161,6 +161,14 @@ $VM -- Instance of ValidationBase
   </tr>
   $hr("h_min_infogain", """Minimum Information Gain.  In each fold, we
   exclude features with less than this information gain.""")
+  
+  <tr>
+    <td>Random Seed</td>
+    <td>$str($rc.randseed)</td>
+    $help("h_randseed")
+  </tr>
+  $hr("h_randseed", """Random seed for shuffling the data.  If None, the random
+  seed is set using the system clock.""")
 
   <tr>
     <td>Score threshold</td>

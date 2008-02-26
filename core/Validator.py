@@ -39,7 +39,7 @@ def make_partitions(nitems, nparts):
 
 
 def count_features(nfeats, featurevectors):
-    """Count occurrenes of each feature in a set of articles
+    """Count occurrenes of each feature in a set of articles.
     @param nfeats: Size of feature space.
     @param featurevectors: Iterable of feature vectors.
     @return: Array of length L{nfeats}, with the number of occurrences of each feature.

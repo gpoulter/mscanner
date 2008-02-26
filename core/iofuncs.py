@@ -40,7 +40,7 @@ def read_pmids(filename):
 
 def read_pmids_array(filename):
     """Read array of PubMed IDs one per line from file"""
-    return nx.array(read_pmids(filename), nx.int32)
+    return nx.array(read_pmids(filename), nx.uint32)
 
 
 def read_pmids_careful(filename, include=None, exclude=[]):
@@ -63,7 +63,7 @@ def read_pmids_careful(filename, include=None, exclude=[]):
             excluded.append(pmid)
         else:
             results.append(pmid)
-    return tuple(nx.array(a, nx.int32) for a in [results,broken,excluded])
+    return tuple(nx.array(a, nx.uint32) for a in [results,broken,excluded])
 
 
 def write_lines(filename, items, desc=None, sep="\t"):

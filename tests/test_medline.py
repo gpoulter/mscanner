@@ -54,20 +54,34 @@ class FeatureVectorsTests(unittest.TestCase):
     """FeatureVector SQLite database tests"""
     
     def test(self):
+        a1 = (1, 19990101, [1,3])
+        a2 = (2, 20000101, [2,3,5434,3243232])
+        a3 = (3, 20010101, [5,10,15])
+        a2b = (2, 20020101, [5,6,7])
+        # Test adding 1,2,3
         d = FeatureVectors(filename=None)
-        d.add_record(1, 19990101, [1,3]) 
-        d.add_record(2, 20000101, [2,3,5434,3243232])
-        self.failUnless(d.get_vector(1) == [1,3])
-        self.failUnless(d.get_vector(2) == [2,3,5434,3243232])
-        self.assertRaises(KeyError, d.get_vector, 3)
+        for a in a1,a2,a3: d.add_record(*a) 
+        self.failUnless(d.get_record(1) == a1)
+        self.failUnless(d.get_record(2) == a2)
+        self.assertRaises(KeyError, d.get_vector, 4)
         self.failUnless(1 in d)
         self.failUnless(2 in d)
-        self.failIf(3 in d)
+        self.failIf(4 in d)
+        self.assertEqual(len(d), 3)
+        # Test iteration
         filtered = list(d.iteritems(20000101,20020101))
-        self.assertEqual(len(filtered), 1)
-        self.assertEqual(filtered[0], (2, 20000101, [2,3,5434,3243232]))
-        self.assertEqual(len(d), 2)
-    
+        self.assertEqual(len(filtered), 2)
+        self.assertEqual(filtered[0], a2)
+        # Test updating
+        d.update_record(*a2b)
+        self.failUnless(d.get_record(2) == a2b)
+        # Test multi-get
+        v = [(p,t,list(v)) for (p,t,v) in d.get_vectors([3,2])]
+        self.assertEqual(v, [a2b,a3])
+        # Test random-get
+        v = [(p,t,list(v)) for (p,t,v) in d.get_random(3, 20000101)]
+        self.assertEqual(sorted(v), [a2b,a3])
+        
 
 class FeatureStreamTests(unittest.TestCase):
 
@@ -348,6 +362,7 @@ if __name__ == "__main__":
     unittest.main()
     #suite = unittest.TestLoader().loadTestsFromTestCase(ArticleTests)
     #suite = unittest.TestLoader().loadTestsFromTestCase(FeatureMappingTests)
+    #suite = unittest.TestLoader().loadTestsFromTestCase(FeatureVectorsTests)
     #unittest.TextTestRunner(verbosity=2).run(suite)
 
 

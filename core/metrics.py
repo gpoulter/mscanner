@@ -11,7 +11,7 @@ import numpy as nx
 import copy # used in PerformanceRanges
 
 from mscanner import update
-from mscanner.core.Validator import CrossValidator
+from mscanner.core.Validator import make_partitions
 
                                      
 __author__ = "Graham Poulter"                                        
@@ -473,10 +473,8 @@ class PerformanceRange:
         for vname in ["TP", "TN", "FP", "FN"]:
             setattr(self, vname, nx.zeros(self.nfolds, nx.float32))
         # Recreate the validation partitions in the score vectors
-        pstarts, psizes = CrossValidator.make_partitions(
-            len(self.pscores), self.nfolds)
-        nstarts, nsizes = CrossValidator.make_partitions(
-            len(self.nscores), self.nfolds)
+        pstarts, psizes = make_partitions(len(self.pscores), self.nfolds)
+        nstarts, nsizes = make_partitions(len(self.nscores), self.nfolds)
         # Calculate confusion matrix within each vector
         for fold, (pstart,psize,nstart,nsize) in \
             enumerate(zip(pstarts,psizes,nstarts,nsizes)):

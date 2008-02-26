@@ -74,9 +74,7 @@ fdata_cache = {}
 pmids_cache = {}
 
 class ResultsTable:
-    """Class for tabulating runtime parameters and performance statistics
-    results.
-    
+    """Tabulate runtime parameters and performance statistics results.
     @ivar fname: Name of file to which CSV table is written.
     @ivar stream: File object that its written to.
     """
@@ -94,7 +92,7 @@ class ResultsTable:
         self.stream.close()
         
     def add_results(self, vmanager):
-        """Add a row of results from a L{ValidationManager}."""
+        """Add a row of results from L{CrossValidation}."""
         v = vmanager.metric_vectors
         results = [vmanager.dataset, v.W, v.W_stderr, v.AvPrec, v.breakeven]
         fmt = "%s, %.4f, %.4f, %.3f, %.3f" + (", %.2f"*11) + "\n"

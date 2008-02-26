@@ -16,7 +16,8 @@ from mscanner.configuration import rc
 from mscanner.medline import Shelf
 from mscanner.medline.FeatureData import FeatureData
 from mscanner.medline.ArticleData import ArticleData
-from mscanner.core.FeatureScores import FeatureScores, FeatureCounts
+from mscanner.core.FeatureScores import FeatureScores
+from mscanner.core.Validator import count_features
 from mscanner.core import CitationTable, iofuncs
 from mscanner.fastscores.ScoreCalculator import ScoreCalculator
 from mscanner.fastscores.FeatureCounter import FeatureCounter
@@ -172,8 +173,8 @@ class QueryManager:
         
         # Count features from the positive articles
         pdocs = len(self.pmids)
-        pos_counts = FeatureCounts(
-            len(self.fdata.featmap), self.fdata.featuredb, self.pmids)
+        pos_counts = count_features(
+            len(self.fdata.featmap), [self.fdata.featuredb[p] for p in self.pmids])
         
         # Background is all of Medline minus input examples
         if self.t_mindate is None and self.t_maxdate is None:
@@ -224,7 +225,7 @@ class QueryManager:
         # Calculate decreasing (score, PMID) for input PMIDs
         logging.info("Calculating scores of the %d input documents.", len(self.pmids))
         self.inputs = zip(
-            self.featinfo.scores_of(self.fdata.featuredb, self.pmids), 
+            self.featinfo.scores_of([self.fdata.featuredb[p] for p in self.pmids]), 
             self.pmids)
         self.inputs.sort(reverse=True)
         # Calculate results as decreasing (score, PMID)

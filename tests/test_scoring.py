@@ -21,9 +21,10 @@ from mscanner.configuration import rc
 from mscanner.medline.FeatureDatabase import FeatureDatabase
 from mscanner.medline.FeatureStream import FeatureStream
 from mscanner.medline.FeatureMapping import FeatureMapping
-from mscanner.core.FeatureScores import FeatureScores, FeatureCounts
+from mscanner.core.FeatureScores import FeatureScores
 from mscanner.fastscores.ScoreCalculator import ScoreCalculator
 from mscanner.fastscores.FeatureCounter import FeatureCounter
+from mscanner.core.Validator import count_features
 from mscanner import tests
 
 
@@ -146,8 +147,8 @@ class FeatureScoresTests(unittest.TestCase):
             s.featdb[i] = s.featmap.make_vector({"Z":x})
         s.pdocs = len(s.pos)
         s.ndocs = len(s.neg)
-        s.pfreqs = FeatureCounts(len(s.featmap), s.featdb, s.pos)
-        s.nfreqs = FeatureCounts(len(s.featmap), s.featdb, s.neg)
+        s.pfreqs = count_features(len(s.featmap), [s.featdb[p] for p in s.pos])
+        s.nfreqs = count_features(len(s.featmap), [s.featdb[p] for p in s.neg])
 
 
     def test_TFIDF(s):
@@ -185,13 +186,6 @@ class FeatureScoresTests(unittest.TestCase):
         logging.debug("P counts: %s", pp.pformat(s.pfreqs))
         logging.debug("N counts: %s", pp.pformat(s.nfreqs))
     
-
-    def test_FeatureCounts(self):
-        """FeatureCounts for total occurrences of each feature in a collection."""
-        featdb = {1:[1,2], 2:[2,3], 3:[3,4]}
-        counts = FeatureCounts(5, featdb, [1,2,3])
-        self.assert_(nx.all(counts == [0,1,2,2,1]))
-
 
     def _scoremethodtester(s, scoremethod, answer):
         """Test a score calculation method"""

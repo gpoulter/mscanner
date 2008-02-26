@@ -17,7 +17,7 @@ import unittest
 
 from mscanner.configuration import rc
 from mscanner.core.FeatureScores import FeatureScores
-from mscanner.core.Validator import CrossValidator
+from mscanner.core.Validator import cross_validate, make_partitions, count_features
 from mscanner.core.metrics import PerformanceVectors
 from mscanner import tests
 
@@ -39,42 +39,32 @@ class PerformanceVectorsTests(unittest.TestCase):
 
 class ValidatorTests(unittest.TestCase):
 
-    def setUp(self):
-        self.prefix = path(tempfile.mkdtemp(prefix="valid-"))
-        logging.debug("Prefix is: %s", self.prefix)
-
-
-    def tearDown(self):
-        self.prefix.rmtree(ignore_errors=True)
-
 
     def test_make_partitions(self):
-        starts, sizes = CrossValidator.make_partitions(10,5)
+        """Test the calculation of split-points for partitioning the data"""
+        starts, sizes = make_partitions(10,5)
         self.assert_((starts == [0,2,4,6,8]).all())
         self.assert_((sizes == [2,2,2,2,2]).all())
-        starts, sizes = CrossValidator.make_partitions(33,5)
+        starts, sizes = make_partitions(33,5)
         self.assert_((starts == [0,7,14,21,27]).all())
         self.assert_((sizes == [7,7,7,6,6]).all())
 
 
-    def _make_validator(self, featinfo):
-        return CrossValidator(
-            featdb = {0:[1,2,3], 1:[1,3], 2:[1,3], 3:[1,3], 4:[1,2], 
-                      5:[1,2], 6:[1,2], 7:[1,2,3]},
-            featinfo = featinfo,
-            positives = nx.array([0, 1, 2, 3]),
-            negatives = nx.array([4, 5, 6, 7]),
-            nfolds = 4,
-        )
-    
+    def test_count_features(self):
+        """Count occurrences of features"""
+        features = [[1,2], [2,3], [3,4]]
+        counts = count_features(5, features)
+        self.assert_(nx.all(counts == [0,1,2,2,1]))
+
 
     def _check_scores(self, featinfo, cpscores, cnscores):
-        val = self._make_validator(featinfo)
-        pscores, nscores = val.validate(_randomise=False)
-        logging.debug("pscores: %s", pp.pformat(pscores))
-        logging.debug("pscores should be: %s", pp.pformat(cpscores))
-        logging.debug("nscores: %s", pp.pformat(nscores))
-        logging.debug("nscores  should be: %s", pp.pformat(cnscores))
+        positives = [ [1,2,3], [1,3], [1,3], [1,3] ]
+        negatives = [ [1,2], [1,2], [1,2], [1,2,3] ]
+        pscores, nscores = cross_validate(featinfo, positives, negatives, 4)
+        logging.debug("pscores  output: %s", pp.pformat(pscores))
+        logging.debug("pscores correct: %s", pp.pformat(cpscores))
+        logging.debug("nscores  output: %s", pp.pformat(nscores))
+        logging.debug("nscores correct: %s", pp.pformat(cnscores))
         self.assert_(nx.allclose(pscores,cpscores,rtol=1e-3))
         self.assert_(nx.allclose(nscores,cnscores,rtol=1e-3))
 
@@ -86,8 +76,8 @@ class ValidatorTests(unittest.TestCase):
         rc.type_mask = []
         self._check_scores(
             FeatureScores([0,8,5,5], "scores_laplace_split"),
-            nx.array([-1.09861231,  2.45673585,  2.45673585,  3.55534816]),
-            nx.array([-3.55534816, -2.45673585, -2.45673585,  1.09861231]))
+            nx.array([-1.09861207,  2.45673585,  2.45673585,  3.55534792], nx.float32),
+            nx.array([-3.55534792, -2.45673585, -2.45673585,  1.09861207], nx.float32))
 
 
 if __name__ == "__main__":

@@ -146,7 +146,7 @@ def vb_decode(bytestring):
     To read a gap: push the least 7 bits of current byte into the least bits of
     the output, and repeat, stopping when the high bit is set.
     
-    @param bytestream: Variable-byte-encoded string. 
+    @param bytestring: Variable-byte-encoded string. 
     @return: Iterator over the decoded values (smallest to biggest).
     """
     gap = 0 # Difference between latest array item and the previous one

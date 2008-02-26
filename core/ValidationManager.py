@@ -8,6 +8,7 @@ from contextlib import closing
 from itertools import chain, izip
 import logging
 import numpy as nx
+import random
 import time
 
 import warnings
@@ -17,11 +18,11 @@ from mscanner.configuration import rc
 from mscanner.medline.FeatureData import FeatureData
 from mscanner.medline.ArticleData import ArticleData
 from mscanner.core import iofuncs
-from mscanner.core.FeatureScores import FeatureScores, FeatureCounts
+from mscanner.core.FeatureScores import FeatureScores
 from mscanner.core.metrics import (PerformanceVectors, PerformanceRange, 
                                    PredictedMetrics)
 from mscanner.core.Plotter import Plotter
-from mscanner.core.Validator import CrossValidator
+from mscanner.core.Validator import cross_validate, count_features
 
 
                                      
@@ -40,7 +41,7 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
 
-class CrossValidation(object):
+class CrossValidation:
     """Carries out N-fold cross validation.
     
     @group Set in the constructor: outdir, dataset, adata, fdata, timestamp, logfile
@@ -61,8 +62,7 @@ class CrossValidation(object):
     sent to output directory as well (set automatically by __init__).
 
 
-    @group Set by L{validation}: featinfo, nfolds, positives, negatives,
-    notfound_pmids, pscores, nscores
+    @group Set by validation: featinfo, nfolds, positives, negatives, notfound_pmids
     
     @ivar featinfo: L{FeatureScores} instance for calculating feature scores.
 
@@ -73,16 +73,20 @@ class CrossValidation(object):
     @ivar negatives: IDs of negative articles.
 
     @ivar notfound_pmids: List of input PMIDs not found in the database.
-
+    
+    
+    @group Set by _load_vectors: pos_vectors, neg_vectors, pos_counts, neg_counts
+    pos_vectors: Feature vectors corresponding to positives.
+    neg_vectors: Feature vectors corresponding to negatives.
+    pos_counts: Number of occurrences of features in positives.
+    neg_counts: Number of occurrences of features in negatives.
+    
+    @group Set by _crossvalid_scores: pscores, nscores
     @ivar pscores: Result scores for positive articles.
-
     @ivar nscores: Result scores for negative articles.
 
-
-    @group Set by L{_get_performance}: metric_vectors, metric_range
-    
+    @group Set by _get_performance: metric_vectors, metric_range
     @ivar metric_vectors: L{PerformanceVectors} instance
-
     @ivar metric_range: L{PerformanceRange} instance
     """
 
@@ -132,16 +136,19 @@ class CrossValidation(object):
         self.featinfo.numdocs = self.adata.article_count # For scores_bgfreq
         # Try to load saved results
         try:
-            self.positives, self.pscores = iofuncs.read_scores_array(self.outdir/rc.report_positives)
-            self.negatives, self.nscores = iofuncs.read_scores_array(self.outdir/rc.report_negatives)
-            self._update_featscores(self.positives, self.negatives)
+            self.positives, self.pscores =\
+                iofuncs.read_scores_array(self.outdir/rc.report_positives)
+            self.negatives, self.nscores =\
+                iofuncs.read_scores_array(self.outdir/rc.report_negatives)
+            self._load_vectors(0)
+            self.featinfo.update(self.pos_counts, self.neg_counts, 
+                             len(self.positives), len(self.negatives))
             logging.debug("Successfully loaded saved cross validation results")
         # Failed to load saved results, so perform cross validation
         except IOError:
-            if not self._load_input(pos, neg):
-                return
-            self.pscores, self.nscores = \
-                self._crossvalid_scores(self.positives, self.negatives)
+            if not self._load_input(pos, neg):return
+            self._load_vectors(rc.randseed)
+            self._crossvalid_scores()
             iofuncs.write_scores(self.outdir/rc.report_positives,
                                  izip(self.pscores, self.positives))
             iofuncs.write_scores(self.outdir/rc.report_negatives, 
@@ -179,49 +186,41 @@ class CrossValidation(object):
             self._write_report()
 
 
-    def _crossvalid_scores(self, positives, negatives):
-        """Calculate article scores under cross validation.
-        
-        @note: L{positives} and L{negatives} come back shuffled by the cross
-        validation partitioning! (use rc.randseed if you need the same shuffle
-        every time)
-        
-        @note: Feature database lookups are slow so we cache them all
-        in a dictionary (may use a lot of memory).
-        
-        @note: Before we return, we update L{featinfo} to use all of the
-        training data (otherwise feature scores would reflect the
-        last validation fold).
-        
-        @param positives: Vector of relevant PubMed IDs
-        
-        @param negatives: Vector of irrelevant PubMed IDs
-        
-        @return: Two vectors, containing scores for the positive and negative
-        articles respectively, corresponding to the PubMed IDs in the
-        (shuffled) L{positives} and L{negatives} vectors. 
+    def _load_vectors(self, randseed):
+        """Shuffle the list of input articles (for the cross validator), then
+        load corresponding feature vectors and derive counts for the PubMed IDs
+        in L{positives} and L{negatives}.        
+        @param randseed: Random seed for shuffling (0 for no shuffle, None for
+        randomise)."""
+        if randseed != 0:
+            logging.debug("Shuffling positives and negatives with seed %s", str(randseed))
+            random.seed(randseed)
+            random.shuffle(self.positives)
+            random.shuffle(self.negatives)
+        self.pos_vectors = [self.fdata.featuredb[k] for k in self.positives]
+        self.neg_vectors = [self.fdata.featuredb[k] for k in self.negatives]
+        self.pos_counts = count_features(len(self.fdata.featmap), self.pos_vectors)
+        self.neg_counts = count_features(len(self.fdata.featmap), self.neg_vectors)
+
+
+    def _crossvalid_scores(self):
+        """Calculate article scores under cross validation. Use
+        L{_load_vectors} to first shuffle the articles and load the required
+        feature vectors. Before returning, we re-calculate feature scores using
+        all of the training data.
         """
         logging.info("Calculating scores under cross validation.")
-        self.validator = CrossValidator(
-            featdb = dict((k,self.fdata.featuredb[k]) for k in 
-                          chain(positives,negatives)),
-            featinfo = self.featinfo,
-            positives = positives,
-            negatives = negatives,
-            nfolds = self.nfolds,
-            randseed = rc.randseed,
-        )
-        pscores, nscores = self.validator.validate()
-        # Finally set feature scores using all available data
-        self._update_featscores(positives, negatives)
-        return pscores, nscores
+        self.pscores, self.nscores = cross_validate(
+            self.featinfo, self.pos_vectors, self.neg_vectors, self.nfolds)
+        logging.info("Updating feature scores.")
+        logging.debug(self.pos_counts)
+        self.featinfo.update(self.pos_counts, self.neg_counts, 
+                             len(self.positives), len(self.negatives))
 
 
     def _get_performance(self, threshold=None):
         """Calculate performance statistics.
-        
-        @param threshold: Specify a particular threshold, or None to estimate
-        using F measure."""
+        @param threshold: Score threshold, or None to use max F measure."""
         logging.info("Getting performance vectors (alpha=%s, utility_r=%s)", 
                      str(rc.alpha), str(rc.utility_r))
         v = PerformanceVectors(self.pscores, self.nscores, rc.alpha, rc.utility_r)
@@ -235,18 +234,6 @@ class CrossValidation(object):
         self.metric_range = PerformanceRange(
             self.pscores, self.nscores, self.nfolds, threshold, average)
 
-
-    def _update_featscores(self, pos, neg):
-        """Update the feature scores in L{featinfo} using the given 
-        vectors of positive and negative citations."""
-        logging.info("Updating feature scores.")
-        self.featinfo.update(
-            pos_counts = FeatureCounts(
-                len(self.fdata.featmap), self.fdata.featuredb, pos),
-            neg_counts = FeatureCounts(
-                len(self.fdata.featmap), self.fdata.featuredb, neg),
-            pdocs = len(pos),
-            ndocs = len(neg))
 
 
     def _write_report(self):
@@ -309,12 +296,12 @@ class CrossValidation(object):
         """
         if isinstance(pos, basestring):
             logging.info("Reading positive PMIDs from %s", pos.basename())
-            self.positives, self.notfound_pmids, exclude = \
+            self.positives, self.notfound_pmids, exclude =\
                 iofuncs.read_pmids_careful(pos, self.fdata.featuredb)
         else:
             logging.info("Using supplied array of positive PMIDs")
             self.positives = nx.array(pos, nx.int32)
-            
+        
         if isinstance(neg, int):
             logging.info("Selecting %d random PubMed IDs for background." % neg)
             maxnegs = self.adata.article_count - len(self.positives)
@@ -331,17 +318,15 @@ class CrossValidation(object):
             logging.info("Using supplied array of negative PMIDs")
             self.negatives = nx.array(neg, nx.int32)
             
-        # Writing out broken PubMed IDs
-        iofuncs.write_pmids(
-            self.outdir/rc.report_input_broken, self.notfound_pmids)
+        # Report broken PubMed IDs
+        iofuncs.write_pmids(self.outdir/rc.report_input_broken, self.notfound_pmids)
         
         # Checking that we have the input
         if len(self.positives)>0 and len(self.negatives)>0:
             return True
         else:
             logging.error("No valid PubMed IDs in at least one input (error page)")
-            iofuncs.no_valid_pmids_page(
-                self.outdir/rc.report_index, self.dataset, self.notfound_pmids)
+            iofuncs.no_valid_pmids_page(self.outdir/rc.report_index, self.dataset, self.notfound_pmids)
             return False
         return True
 

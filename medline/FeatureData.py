@@ -1,4 +1,4 @@
-"""Wraps the FeatureMapping, FeatureDatabase and FeatureStream objects,
+"""Wraps the FeatureMapping, FeatureVectors and FeatureStream objects,
 so that they are opened and closed together, and articles are added
 to all three representations at the same time."""
 
@@ -49,7 +49,7 @@ class FeatureData:
     """
     
     def __init__(self, numtype, featmap, featdb, fstream, featurespace, rdonly=True):
-        """
+        """Constructor.
         @param numtype: Numpy type for FeatureDatabase (uint16 or uint32).
         """
         self.rdonly = rdonly
@@ -62,7 +62,7 @@ class FeatureData:
 
     @staticmethod 
     def Defaults(featurespace, numtype, rdonly=True):
-        """Initialise L{FeatureData} using standard file paths. L{ftype},
+        """Initialise L{FeatureData} using standard file paths. numtype,
         L{featurespace} and L{rdonly} are as in the constructor."""
         base = rc.articles_home / featurespace
         # Create feature database directory if necessary

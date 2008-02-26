@@ -33,6 +33,8 @@ class ArticleData:
     @ivar artdb: Mapping from PubMed ID to Article object.
     
     @ivar artlist_path: Path to file listing PubMed ID and record date.
+
+    @ivar artcount_path: Path to file with number of PubMed records.
     """
     
     def __init__(self, artdb_path, artlist_path, artcount_path):

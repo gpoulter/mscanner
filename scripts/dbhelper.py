@@ -20,6 +20,7 @@ from __future__ import with_statement
 from bsddb import db
 import codecs
 from contextlib import closing
+import logging
 import numpy as nx
 from path import path
 import random
@@ -127,15 +128,19 @@ def upgrade_featdb(infile, outfile):
     from mscanner.medline.FeatureStream import FeatureStream
     with closing(FeatureStream(path(infile),rdonly=True)) as fs:
         fv = FeatureVectors(outfile)
+        count = 0
         for pmid, date, vector in fs.iteritems():
-            sys.stdout.write("%d %d\n" % (pmid, date))
             if pmid in fv:
-                sys.stdout.write("Warning: PMID %d was found already!\n")
+                logging.warning("PMID %d was found already!\n")
             else:
                 fv.add_record(pmid, date, vector)
-                assert fv.get_vector(pmid) == vector
-            sys.stdout.flush()
+                #assert fv.get_vector(pmid) == vector
+            count += 1
+            if count % 10000 == 0:
+                logging.debug("Written %d articles.", count)
+                fv.con.commit()
         fv.con.commit()
+        logging.debug("Wrote %d (%d) articles in total.", count, len(fv))
 
 
 if __name__ == "__main__":

@@ -86,16 +86,13 @@ class FeatureScores(object):
         return FeatureScores(featmap, rc.scoremethod)
 
 
-    def scores_of(self, featdb, pmids):
-        """Calculate vector of scores given an iterable of PubMed IDs.
-        
-        @param featdb: Mapping from PMID to feature vector
-        @param pmids: Iterable of keys into L{featdb}
-        @return: Vector containing document scores corresponding to the pmids.
+    def scores_of(self, docs):
+        """Calculate scores of a list of documents.
+        @param docs: List/iterable of feature vectors.
+        @return: Vector of scores corresponding to L{docs}.
         """
-        off = self.base + self.prior
-        sc = self.scores
-        return nx.array([off+nx.sum(sc[featdb[d]]) for d in pmids], nx.float32)
+        return self.base + self.prior +\
+               nx.array([nx.sum(self.scores[d]) for d in docs], nx.float32)
 
 
     def update(self, pos_counts, neg_counts, pdocs, ndocs, prior=None):
@@ -199,15 +196,12 @@ class FeatureScores(object):
 
     def scores_bayes(s, pos_a, pos_ab, neg_a, neg_ab):
         """Estimate support scores of features assuming documents are generated
-        by a multivariate Bernoulli distribution. Applies the L{mask}
-        attribute. Feature non-occurrence is modeled as a base score for the
-        document with no features, and an adjustment to the feature occurrence
-        scores.
-        
-        This method sets L{pfreqs}, L{nfreqs}, L{success_scores} and
-        L{failure_scores} only on selected features. E.g. L{pfreqs}[i] is the
-        score of the feature with ID L{features}[i]. However, L{scores} is for
-        all features. L{scores}[i] is the score of feature with ID of i.
+        by a multivariate Bernoulli distribution. For non-occurring features,
+        we use a base score and adjust the score for feature occurrence.
+        Evaluation of frequencies is done only on selected features (the
+        feature ID for each item is the corresponding item in L{features}), but
+        the final L{scores} array is full-length (feature ID of each item is
+        the array index).
         
         @param pos_a, pos_ab: Beta prior (a=successes, ab=total) for relevant articles.
         @param neg_a, neg_ab: Beta prior (a=successes, ab=total) for irrelevant articles.
@@ -304,31 +298,24 @@ class FeatureScores(object):
         
         def __init__(s, featscores):
             fs = featscores
-            
             s.feats_selected = sum(fs.selected)
             s.feats_total = len(fs.selected)
-            
             s.pos_docs = fs.pdocs
             s.neg_docs = fs.ndocs
-            
             s.pos_occurrences = int(nx.sum(fs.pos_selected))
             s.neg_occurrences = int(nx.sum(fs.neg_selected))
-            
             s.pos_average = s.pos_occurrences / fs.pdocs if fs.pdocs > 0 else 0.0
             s.neg_average = s.neg_occurrences / fs.ndocs if fs.ndocs > 0 else 0.0
-            
             s.pos_distinct = sum(fs.pos_selected != 0)
             s.neg_distinct = sum(fs.neg_selected != 0)
 
 
     @property
     def tfidf(self):
-        """Vector of TF-IDF scores for each feature in L{features}.  That is,
-        for unmasked features only.
-        
-        To obtain term frequency (TF) we treat the positive corpus as a single
-        large document. To obtain inverse document frequency (IDF), we consider
-        each Medline record to be a separate document."""
+        """Vector of TF-IDF scores for each selected feature. To obtain term
+        frequency (TF) we treat the positive corpus as a single large document.
+        To obtain inverse document frequency (IDF), we consider each Medline
+        record to be a separate document."""
         try: 
             return self._tfidf
         except AttributeError: 
@@ -380,21 +367,3 @@ class FeatureScores(object):
             fname, ftype = s.featmap.get_feature(t)
             stream.write(u'%.3f,%d,%d,%d,%s,"%s"\n' % 
             (s.scores[t], s.pos_counts[t], s.neg_counts[t], t, ftype, fname))
-
-
-
-def FeatureCounts(nfeats, featdb, docids):
-    """Count occurrenes of each feature in a set of articles
-
-    @param nfeats: Size of feature space.
-
-    @param featdb: Dictionary to look up feature vector by document ID.
-
-    @param docids: Iterable of document IDs.
-
-    @return: Array of length L{nfeats}, with the number of occurrences of each feature.
-    """
-    counts = nx.zeros(nfeats, nx.int32)
-    for docid in docids:
-        counts[featdb[docid]] += 1
-    return counts

@@ -234,6 +234,17 @@ class FeatureVectors:
         for pmid, date, blob in cursor:
             vector = list(vb_decode(blob))
             yield pmid, date, vector
+    
+    def get_random(self, numrecords, mindate=0, maxdate=99999999):
+        """Get numrecord random records with dates in the specified range."""
+        pass
+
+    def get_records(self, pmidlist):
+        """Since it can be slow to query the database multiple times
+        for the same record, this creates a dictionary for looking up
+        vectors by PubMed ID"""
+        pass
+
 
 
 

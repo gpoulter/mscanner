@@ -73,8 +73,7 @@ def load_pickles(*pickles):
         with closing(GzipFile(pickle, "rb")) as zf:
             articles = cPickle.load(zf)
         updater.add_articles(articles, sync=False)
-    updater.sync() # Only syncing writes FeatureMapping to disk.
-    updater.close() # Closing won't write the FeatureMapping.
+    updater.close()
 
     
 def save_pickle(filename):

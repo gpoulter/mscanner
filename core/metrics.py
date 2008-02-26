@@ -441,11 +441,7 @@ class PerformanceRange:
     @ivar threshold: Predict documents above this score to be positive.
     @ivar average: L{PerformanceMetrics} globally estimated using all folds
     
-    @ivar TP: Vector for number of TP in each fold
-    @ivar TN: Vector for number of TN in each fold
-    @ivar FP: Vector for number of FP in each fold
-    @ivar FN: Vector for number of FN in each fold
-    
+    @ivar TP, TN, FP, FN: Vector with number of TP, TN, FP, FN in each fold
     @ivar minimum: L{PerformanceMetrics} with the miminum values across folds
     @ivar maximum: L{PerformanceMetrics} with the maximum values across folds
     """

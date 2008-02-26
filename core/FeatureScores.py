@@ -52,10 +52,10 @@ class FeatureScores(object):
     @ivar features: Array listing the feature IDs of the L{selected} features.
 
     @ivar pos_selected: Array with number of positive documents for each
-    selected feature, corresponding to L{features}.
+    selected feature (corresponds with L{features}).
     
     @ivar neg_selected: Array with number of negative documents for each
-    selected feature, corresponding to L{features}.
+    selected feature (corresponds with L{features}).
 
     @ivar prior: The prior log odds of relevance.  If None, estimate
     using the log of the ratio of relevant to irrelevant articles in the data.
@@ -104,6 +104,7 @@ class FeatureScores(object):
         # Set attributes from parameters
         self.pdocs = pdocs
         self.ndocs = ndocs
+        assert len(pos_counts) == len(neg_counts)
         self.pos_counts = pos_counts
         self.neg_counts = neg_counts
         self.prior = prior

@@ -32,6 +32,7 @@ class PerformanceVectorsTests(unittest.TestCase):
         logging.debug("PerformanceVectors: %s", pp.pformat(p.__dict__))
         
     def test_PerformanceRange(self):
+        # Does range calculation really need testing?
         pass
 
 
@@ -58,8 +59,8 @@ class ValidatorTests(unittest.TestCase):
 
     def _make_validator(self, featinfo):
         return CrossValidator(
-            featdb = {0:[0,1,2], 1:[0,1], 2:[0,1], 3:[0,1], 4:[1,2], 
-                      5:[1,2], 6:[1,2], 7:[0,1,2]},
+            featdb = {0:[1,2,3], 1:[1,3], 2:[1,3], 3:[1,3], 4:[1,2], 
+                      5:[1,2], 6:[1,2], 7:[1,2,3]},
             featinfo = featinfo,
             positives = nx.array([0, 1, 2, 3]),
             negatives = nx.array([4, 5, 6, 7]),
@@ -84,7 +85,7 @@ class ValidatorTests(unittest.TestCase):
         rc.min_infogain = 0
         rc.type_mask = []
         self._check_scores(
-            FeatureScores([2,5,7], "scores_laplace_split"),
+            FeatureScores([0,8,5,5], "scores_laplace_split"),
             nx.array([-1.09861231,  2.45673585,  2.45673585,  3.55534816]),
             nx.array([-3.55534816, -2.45673585, -2.45673585,  1.09861231]))
 

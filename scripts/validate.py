@@ -14,7 +14,7 @@ import sys
 
 from mscanner.configuration import rc
 from mscanner.core import iofuncs
-from mscanner.core.ValidationManager import SplitValidation, CrossValidation
+from mscanner.core.ValidationManager import CrossValidation
 from mscanner.medline.FeatureData import FeatureData
 from mscanner.medline.ArticleData import ArticleData
 

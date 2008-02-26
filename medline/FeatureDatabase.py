@@ -168,6 +168,12 @@ class FeatureVectors:
           pmid INTEGER PRIMARY KEY, date INTEGER, features BLOB)""")
 
 
+    def close(self):
+        """Close the underlying database"""
+        self.con.commit()
+        self.con.close()
+
+
     def __contains__(self, pmid):
         """Detect whether a vector for a document is already stored"""
         return self.con.execute("SELECT pmid FROM docs WHERE pmid=?",

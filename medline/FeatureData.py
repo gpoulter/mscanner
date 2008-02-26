@@ -75,7 +75,7 @@ class FeatureData:
         """Shut down the databases"""
         self.featuredb.close()
         self.fstream.close()
-        self.featmap.con.close()
+        self.featmap.close()
 
 
     def add_articles(self, articles):

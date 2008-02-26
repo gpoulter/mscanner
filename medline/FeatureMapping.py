@@ -50,6 +50,12 @@ class FeatureMapping:
             self.con.execute("INSERT INTO fmap VALUES(0, '', '', 0)")
 
 
+    def close(self):
+        """Close the underlying database"""
+        self.con.commit()
+        self.con.close()
+
+
     def get_feature(self, fid):
         """Retrieve (feature name, feature type) given feature ID."""
         row = self.con.execute(

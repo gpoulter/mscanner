@@ -40,7 +40,7 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
 
-class ValidationBase(object):
+class CrossValidation(object):
     """Carries out N-fold cross validation.
     
     @group Set in the constructor: outdir, dataset, adata, fdata, timestamp, logfile
@@ -132,13 +132,11 @@ class ValidationBase(object):
         self.featinfo.numdocs = self.adata.article_count # For scores_bgfreq
         # Try to load saved results
         try:
-            self.positives, self.pscores = iofuncs.read_scores_array(
-                self.outdir/rc.report_positives)
-            self.negatives, self.nscores = iofuncs.read_scores_array(
-                self.outdir/rc.report_negatives)
+            self.positives, self.pscores = iofuncs.read_scores_array(self.outdir/rc.report_positives)
+            self.negatives, self.nscores = iofuncs.read_scores_array(self.outdir/rc.report_negatives)
             self._update_featscores(self.positives, self.negatives)
             logging.debug("Successfully loaded saved cross validation results")
-        # Failed to load, so perform cross validation
+        # Failed to load saved results, so perform cross validation
         except IOError:
             if not self._load_input(pos, neg):
                 return

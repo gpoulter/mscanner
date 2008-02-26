@@ -41,40 +41,49 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
 class ValidationBase(object):
-    """Base class for all validation operations.
+    """Carries out N-fold cross validation.
     
-    Derived classes need to calculate all attributes other than those set in
-    the constructor. The attributes are required by L{_write_report}.
-    
-    @group Set in the constructor: outdir, dataset, timestamp, adata, fdata
+    @group Set in the constructor: outdir, dataset, adata, fdata, timestamp, logfile
 
     @ivar outdir: Path to directory for output files, which is created if it
     does not exist.
     
     @ivar dataset: Title of the dataset to use when printing reports
 
-    @param adata: Selected ArticleData (article database).
+    @ivar adata: Selected ArticleData (article database).
     
-    @param fdata: Selected FeatureData (document representation of articles).
+    @ivar fdata: Selected FeatureData (document representation of articles).
+
+    @ivar timestamp: Time at the start of the operation (set automatically by
+    __init__).
+
+    @ivar logfile: logging.FileHandler so that log output is
+    sent to output directory as well (set automatically by __init__).
 
 
-    @ivar timestamp: Time at the start of the operation
+    @group Set by L{validation}: featinfo, nfolds, positives, negatives,
+    notfound_pmids, pscores, nscores
     
-    @ivar pscores: Result scores for positive articles
+    @ivar featinfo: L{FeatureScores} instance for calculating feature scores.
 
-    @ivar nscores: Result scores for negative articles
+    @ivar nfolds: Number of cross validation folds (may not be relevant).
 
-    @ivar featinfo: L{FeatureScores} instance for calculating feature scores
+    @ivar positives: IDs of positive articles.
 
-    @ivar nfolds: Number of cross validation folds (may not be relevant)
+    @ivar negatives: IDs of negative articles.
 
-    @ivar notfound_pmids: List of input PMIDs not found in the database
+    @ivar notfound_pmids: List of input PMIDs not found in the database.
 
+    @ivar pscores: Result scores for positive articles.
+
+    @ivar nscores: Result scores for negative articles.
+
+
+    @group Set by L{_get_performance}: metric_vectors, metric_range
+    
     @ivar metric_vectors: L{PerformanceVectors} instance
 
     @ivar metric_range: L{PerformanceRange} instance
-    
-    @ivar logfile: logging.FileHandler for logging to output directory
     """
 
     
@@ -82,25 +91,94 @@ class ValidationBase(object):
         if not outdir.exists():
             outdir.makedirs()
             outdir.chmod(0777)
-        # Set attributes from constructor parameters
+        # Attributes from constructor parameters
         self.outdir = outdir
         self.dataset = dataset
         self.adata = adata
         self.fdata = fdata
-        # Set additional attributes
         self.timestamp = time.time() 
+        self.logfile = iofuncs.open_logfile(self.outdir/rc.report_logfile)
+        # Additional attributes for 
         self.nfolds = None
         self.pscores = None
         self.nscores = None
+        self.notfound_pmids = []
         self.featinfo = None
         self.metric_vectors = None
         self.metric_range = None
-        self.notfound_pmids = []
-        self.logfile = iofuncs.open_logfile(self.outdir/rc.report_logfile)
 
 
     def __del__(self):
         iofuncs.close_logfile(self.logfile)
+
+
+    def validation(self, pos, neg, nfolds=10):
+        """Loads data and perform cross validation to calculate scores
+        on that data.
+        
+        @note: This saves articles scores to the report directory, and 
+        if possible it will load load those scores instead of calculating
+        from scratch.
+        
+        @param pos, neg: Parameters for L{_load_input}
+        
+        @param nfolds: Number of validation folds to use.
+        """
+        logging.info("START: Cross validation for %s", self.dataset)
+        # Keep our own number of folds attribute
+        self.nfolds = nfolds
+        self.notfound_pmids = []
+        self.featinfo = FeatureScores.Defaults(self.fdata.featmap)
+        self.featinfo.numdocs = self.adata.article_count # For scores_bgfreq
+        # Try to load saved results
+        try:
+            self.positives, self.pscores = iofuncs.read_scores_array(
+                self.outdir/rc.report_positives)
+            self.negatives, self.nscores = iofuncs.read_scores_array(
+                self.outdir/rc.report_negatives)
+            self._update_featscores(self.positives, self.negatives)
+            logging.debug("Successfully loaded saved cross validation results")
+        # Failed to load, so perform cross validation
+        except IOError:
+            if not self._load_input(pos, neg):
+                return
+            self.pscores, self.nscores = \
+                self._crossvalid_scores(self.positives, self.negatives)
+            iofuncs.write_scores(self.outdir/rc.report_positives,
+                                 izip(self.pscores, self.positives))
+            iofuncs.write_scores(self.outdir/rc.report_negatives, 
+                                 izip(self.nscores, self.negatives))
+
+
+    def report_validation(self):
+        """Report cross validation results, using default threshold of 0"""
+        if len(self.positives)>0 and len(self.negatives)>0:
+            self._get_performance(0.0)
+            self._write_report()
+
+    
+    def report_predicted(self, relevant_low, relevant_high, medline_size):
+        """Experimental: report predicted query performance
+        
+        @param relevant_low: Minimum expected relevant articles in Medline
+        
+        @param relevant_high: Maximum expected relevant articles in Medline
+
+        @param medline_size: Number of articles in rest of Medline, or None
+        to use local database size minus relevant articles.
+        """
+        if len(self.positives)>0 and len(self.negatives)>0:
+            logging.debug("Reporting performance prediction metrics")
+            # Calculate the performance
+            self._get_performance()
+            if medline_size is None:
+                medline_size = self.adata.article_count - len(self.positives)
+            v = self.metric_vectors
+            self.pred_low = PredictedMetrics(
+                v.TPR, v.FPR, v.uscores, relevant_low, medline_size)
+            self.pred_high = PredictedMetrics(
+                v.TPR, v.FPR, v.uscores, relevant_high, medline_size)
+            self._write_report()
 
 
     def _crossvalid_scores(self, positives, negatives):
@@ -217,151 +295,7 @@ class ValidationBase(object):
         with iofuncs.FileTransaction(self.outdir/rc.report_index, "w") as ft:
             Template(file=str(rc.templates/"validation.tmpl"), 
                      filter="Filter", searchList=dict(VM=self)).respond(ft)
-
-
-
-def SplitValidation(ValidationBase):
-    """Carries out split-sample validation, as in the 2005 TREC
-    Genomics Track categorisation task.
-    """
-
-    def validation(self, fptrain, fntrain, fptest, fntest):
-        """Carry out split-sample validation.  
-        
-        @note: All corpora are represented as lists of PubMed IDs.
-        
-        @param fptrain: File with positive training examples
-        
-        @param fntrain: File with negative training examples
-
-        @param fptest: File with positive testing examples
-
-        @param fntest: File with negative testing examples
-        """
-        logging.info("START: Split validation for %s", self.dataset)
-        s = self
-        s.nfolds = 1 # Effectively a single fold
-        s.ptrain, s.ntrain = None, None
-        s.ptest, s.ntest = None, None
-        s.notfound_pmids = []
-        s.ptrain, broke, excl = iofuncs.read_pmids_careful(fptrain, s.fdata.featuredb)
-        s.ptest, broke, excl = iofuncs.read_pmids_careful(fptest, s.fdata.featuredb)
-        s.ntrain, broke, excl = iofuncs.read_pmids_careful(fntrain, s.fdata.featuredb, set(s.ptrain))
-        s.ntest, broke, excl = iofuncs.read_pmids_careful(fntest, s.fdata.featuredb, set(s.ptest))
-        if len(s.ptrain)>0 and len(s.ptest)>0 \
-           and len(s.ntrain)>0 and len(s.ntest)>0:
-            self.featinfo = FeatureScores.Defaults(self.fdata.featmap)
-            self.featinfo.numdocs = self.adata.article_count # For scores_bgfreq
-            s._get_scores()
-            s._get_performance()
-            s._write_report()
-        else:
-            logging.error("At least one input file contained no valid PubMed IDs")
-            return
-
-
-    def _get_scores(self):
-        """Get performance statistics using split validation. 
-        
-        The training sample is used to calculate feature scores, which are then
-        used to get the scores of the testing sample. Cross validation is used
-        on the training sample to calculate a threshold optimising utility. The
-        threshold is then applied to the testing sample to obtain performance
-        metrics."""
-        s = self
-        logging.debug("Calculating cross-validated scores on training data")
-        train_pscores, train_nscores = s._crossvalid_scores(s.ptrain, s.ntrain)
-        logging.debug("Calculating scores of testing data")
-        s.pscores = s.featinfo.scores_of(s.fdata.featuredb, s.ptest)
-        s.nscores = s.featinfo.scores_of(s.fdata.featuredb, s.ntest)
-        logging.debug("Optimising threshold on training data")
-        trainperf = PerformanceVectors(
-            train_pscores, train_nscores, rc.alpha, rc.utility_r)
-        threshold = trainperf.threshold_maximising(trainperf.U)[0]
-        logging.debug("Calculating performance on testing data")
-        self._get_performance(threshold)
-
-
-
-class CrossValidation(ValidationBase):
-    """Carries out N-fold cross validation.
-
-    @group Additional attributes: positives, negatives
-
-    @ivar positives: IDs of positive articles
-
-    @ivar negatives: IDs of negative articles
-    """
-    
-
-    def validation(self, pos, neg, nfolds=10):
-        """Loads data and perform cross validation to calculate scores
-        on that data.
-        
-        @note: This saves articles scores to the report directory, and 
-        if possible it will load load those scores instead of calculating
-        from scratch.
-        
-        @param pos, neg: Parameters for L{_load_input}
-        
-        @param nfolds: Number of validation folds to use.
-        """
-        logging.info("START: Cross validation for %s", self.dataset)
-        # Keep our own number of folds attribute
-        self.nfolds = nfolds
-        self.notfound_pmids = []
-        self.featinfo = FeatureScores.Defaults(self.fdata.featmap)
-        self.featinfo.numdocs = self.adata.article_count # For scores_bgfreq
-        # Try to load saved results
-        try:
-            self.positives, self.pscores = iofuncs.read_scores_array(
-                self.outdir/rc.report_positives)
-            self.negatives, self.nscores = iofuncs.read_scores_array(
-                self.outdir/rc.report_negatives)
-            self._update_featscores(self.positives, self.negatives)
-            logging.debug("Successfully loaded saved cross validation results")
-        # Failed to load, so perform cross validation
-        except IOError:
-            if not self._load_input(pos, neg):
-                return
-            self.pscores, self.nscores = \
-                self._crossvalid_scores(self.positives, self.negatives)
-            iofuncs.write_scores(self.outdir/rc.report_positives,
-                                 izip(self.pscores, self.positives))
-            iofuncs.write_scores(self.outdir/rc.report_negatives, 
-                                 izip(self.nscores, self.negatives))
-
-
-    def report_validation(self):
-        """Report cross validation results, using default threshold of 0"""
-        if len(self.positives)>0 and len(self.negatives)>0:
-            self._get_performance(0.0)
-            self._write_report()
-
-    
-    def report_predicted(self, relevant_low, relevant_high, medline_size):
-        """Experimental: report predicted query performance
-        
-        @param relevant_low: Minimum expected relevant articles in Medline
-        
-        @param relevant_high: Maximum expected relevant articles in Medline
-
-        @param medline_size: Number of articles in rest of Medline, or None
-        to use local database size minus relevant articles.
-        """
-        if len(self.positives)>0 and len(self.negatives)>0:
-            logging.debug("Reporting performance prediction metrics")
-            # Calculate the performance
-            self._get_performance()
-            if medline_size is None:
-                medline_size = self.adata.article_count - len(self.positives)
-            v = self.metric_vectors
-            self.pred_low = PredictedMetrics(
-                v.TPR, v.FPR, v.uscores, relevant_low, medline_size)
-            self.pred_high = PredictedMetrics(
-                v.TPR, v.FPR, v.uscores, relevant_high, medline_size)
-            self._write_report()
-
+   
 
     def _load_input(self, pos, neg):
         """Sets L{positives} and L{negatives} by various means

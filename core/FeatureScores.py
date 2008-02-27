@@ -239,7 +239,7 @@ class FeatureScores(object):
     def scores_bgfreq(s):
         """The prior is 'background frequency' successes, out of 1 total occurrence 
         in each class."""
-        bgvec = s.background_vector
+        bgvec = s.featmap.counts[s.selected] / s.numdocs
         s.scores_bayes(bgvec, 1, bgvec, 1)
 
 
@@ -255,16 +255,6 @@ class FeatureScores(object):
         s.nfreqs[s.nfreqs == 0.0] = 1e-8
         s.scores = nx.log(s.pfreqs) - nx.log(s.nfreqs)
         s.scores[~s.selected] = 0
-
-
-    @property
-    def background_vector(s):
-        """Array with the background probability of occurrence of each selected
-        feature."""
-        if not hasattr(s, "_background_vector"):
-            # WARNING: This requires s.numdocs set from len(FeatureData.featuredb)
-            s._background_vector = s.featmap.counts[s.selected] / s.numdocs
-        return s._background_vector
 
 
     @property 

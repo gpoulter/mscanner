@@ -120,13 +120,13 @@ class FeatureMapping:
     @property
     def counts(self):
         """Array with the number of occurrences of each feature. Array index is
-        the feature ID.
-        
-        Note that the first element (0) is a dummy feature with count zero,
-        because the feature ID is the SQLite ROWID, which starts from 1."""
+        the feature ID. Note that the first element (0) is a dummy feature with
+        count zero, because the feature ID is the SQLite ROWID, which starts
+        from 1."""
         try:
             return self._counts
         except AttributeError:
+            logging.debug("Querying occurrence counts for all features.")
             self._counts = nx.zeros(len(self), nx.uint32)
             for id,count in self.con.execute("SELECT id,count FROM fmap ORDER BY id"):
                 self._counts[id] = count

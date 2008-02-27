@@ -240,11 +240,13 @@ def mainloop():
     # Pre-load the article list vector and size of index
     len(updater.fdata_list[0].featuredb)
     updater.fdata_list[0].featuredb.pmids_array()
+    updater.fdata_list[0].featmap.counts
     if usewords:
-        logging.debug("Setting length, pmids for word index.")
+        logging.debug("Setting length, pmids, feature counts for word index.")
         # Shortcut: copy the database params from the MeSH index
         updater.fdata_list[1].featuredb._length = updater.fdata_list[0].featuredb._length
         updater.fdata_list[1].featuredb._pmids = updater.fdata_list[0].featuredb._pmids
+        updater.fdata_list[1].featmap.counts
     try:
         logging.debug("Queue is now running.")
         # Time of last output clean

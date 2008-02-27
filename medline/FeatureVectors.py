@@ -113,8 +113,8 @@ class FeatureVectors:
 
     def iteritems(self, decode=True):
         """Iterate over (pmid, date, featurevector) from the database. 
-        @param decode: If True, featurevector is a list. If False, it's the
-        vb_encoded string."""
+        @param decode: If True, featurevector is a list. If False, 
+        featurevector is a vb_encoded buffer object."""
         for pmid, date, blob in self.con.execute("SELECT * FROM docs"):
             if decode: 
                 blob = list(vb_decode(blob))

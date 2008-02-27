@@ -87,22 +87,24 @@ class FeatureData:
         self.fstream.flush()
 
 
-    def add_articles(self, articles):
+    def add_articles(self, articles, check=True):
         """Incrementally add new articles to the existing feature 
         database, stream and feature map.  
-        
-        @param articles: Iterator over Article objects."""
+        @param articles: Iterator over Article objects.
+        @param check: If True, check for already-added articles to avoid 
+        inconsistent overwrites (but slow and unnecessary if regenerating).
+        """
         if self.rdonly:
             raise NotImplementedError("Attempt to write to read-only databases")
         logging.debug("Adding articles to %s", endpath(self.featmap.filename.dirname()))
         for article in counter(articles):
             pmid = article.pmid
-            if pmid not in self.featuredb:
-                date = DateAsInteger(article.date_completed)
-                features = getattr(article, self.featurespace)()
-                featvec = vb_encode(self.featmap.add_article(features))
-                self.featuredb.add_record(pmid, date, featvec)
-                self.fstream.additem(pmid, date, featvec)
+            if check and (pmid in self.featuredb): continue
+            date = DateAsInteger(article.date_completed)
+            features = getattr(article, self.featurespace)()
+            featvec = vb_encode(self.featmap.add_article(features))
+            self.featuredb.add_record(pmid, date, featvec)
+            self.fstream.additem(pmid, date, featvec)
         self.commit()
 
 
@@ -125,7 +127,7 @@ class FeatureData:
             logging.info("Regenerating map,db,stream %s.", endpath(self.featmap.filename.dirname()))
             if not (do_stream and do_featuredb):
                 raise ValueError("Cannot regenerate feature map without doing stream/database as well.")
-            self.add_articles(artdb.itervalues())
+            self.add_articles(artdb.itervalues(), check=False)
         # Regenerate feature stream from database
         elif do_stream: 
             logging.info("Regenerating FeatureStream %s.", endpath(self.fstream.filename))

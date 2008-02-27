@@ -98,31 +98,28 @@ class FeatureMapping:
     def make_vector(self, featuredict):
         """Calculate vector of feature IDs representing an instance, given a
         dictionary with the types and names of the features of the instance
-        
-        @param featuredict: Dictionary whose keys are feature types, with
-        values being a list of feature names of that type, such as
-        C{{'mesh':['A','B','C']}}.
-     
+        @param featuredict: Dictionary keyed by feature type, where each value
+        is a list of feature strings of that type C{{'mesh':['A','B']}}
         @return: Vector of feature IDs.
         """
-        vector = []
+        vector = [] # Feature vector
         for ftype, featlist in featuredict.iteritems():
             if len(featlist) > 0:
                 for fid, in self.con.execute(
                     "SELECT id FROM fmap WHERE type='" + ftype + "' AND name IN "
                     + self.holders(len(featlist)), featlist):
                     vector.append(fid)
-        # Sort vector prior to compression by EncodedFeatureStream
+        # Variable Byte Encoding requires a sorted vector
         vector.sort() 
         return vector
 
 
     @property
     def counts(self):
-        """Array with the number of occurrences of each feature. Array index is
-        the feature ID. Note that the first element (0) is a dummy feature with
-        count zero, because the feature ID is the SQLite ROWID, which starts
-        from 1."""
+        """Array with the number of occurrences of each feature, indexed by
+        feature ID. First element (index 0) is a dummy feature with count zero,
+        because the feature ID/index is the SQLite ROWID, which by default
+        starts from 1."""
         try:
             return self._counts
         except AttributeError:
@@ -144,11 +141,13 @@ class FeatureMapping:
 
 
     def add_article(self, featuredict):
-        """Add an article to the feature map. Increments the occurrence
-        count for features already represented.
+        """Add an article to the feature map. Increments the occurrence count
+        for features already represented. Also returns the feature vector
+        (same result as make_vector, which does not alter occurrence counts).
         
         @param featuredict: Dictionary keyed by feature type, where each value
         is a list of feature strings of that type C{{'mesh':['A','B']}}."""
+        vector = [] # Feature vector under construction
         c = self.con.cursor()
         for ftype, featurelist in featuredict.iteritems():
             for fname in featurelist:
@@ -157,8 +156,14 @@ class FeatureMapping:
                 if row is None:
                     c.execute("INSERT INTO fmap (type,name,count) VALUES(?,?,?)",
                               (ftype, fname, 1))
+                    fid = c.lastrowid
                 else:
                     c.execute("UPDATE fmap SET count=(count+1) WHERE id=?", row)
+                    fid = row[0]
+                vector.append(fid)
         c.close()
-        # Will need to recalculate count vector if number of features changed
+        # Variable Byte Encoding requires a sorted vector
+        vector.sort() 
+        # Number of feature may have changed, invalidating _counts array.
         delattrs(self, "_counts")
+        return vector

@@ -74,17 +74,22 @@ class FeatureVectors:
         """Store a feature vector in the databse.
         @param pmid: PubMed ID of document
         @param date: Record date
-        @param featurevector: List/array/iterable of feature IDs
+        @param featurevector: List/array/iterable of feature IDs, or a string 
+        with the vb_encoded representation of the array.
         """
+        if not isinstance(featurevector, str):
+            featurevector = vb_encode(featurevector)
         self.con.execute("INSERT INTO docs VALUES(?,?,?)", (pmid, date, 
-                          sqlite3.Binary(vb_encode(featurevector))))
+                          sqlite3.Binary(featurevector)))
         delattrs(self, "_length", "_pmids")
 
 
     def update_record(self, pmid, date, featurevector):
-        """Update a record's vector and date. Parameters as for L{add_record}."""
+        """Update a record's vector and date. Parameters are as for L{add_record}."""
+        if not isinstance(featurevector, str):
+            featurevector = vb_encode(featurevector)
         self.con.execute("UPDATE docs SET date=?, features=? WHERE pmid=?", 
-                         (date, sqlite3.Binary(vb_encode(featurevector)), pmid))
+                         (date, sqlite3.Binary(featurevector), pmid))
     
     
     def get_records(self, pmidlist):
@@ -106,15 +111,18 @@ class FeatureVectors:
         self.con.commit()
 
 
-    def iteritems(self):
-        """Iterate over (pmid, date, featurevector) from the database."""
+    def iteritems(self, decode=True):
+        """Iterate over (pmid, date, featurevector) from the database. 
+        @param decode: If True, featurevector is a list. If False, it's the
+        vb_encoded string."""
         for pmid, date, blob in self.con.execute("SELECT * FROM docs"):
-            yield pmid, date, list(vb_decode(blob))
+            if decode: 
+                blob = list(vb_decode(blob))
+            yield pmid, date, blob
 
 
     def pmids_array(self):
-        """Return a vector of PubMed IDs in the database (may have been
-        scrambled by get_random). Caches the result for later."""
+        """Get array of the PubMed IDs in the database, with caching."""
         try:
             return self._pmids
         except AttributeError:

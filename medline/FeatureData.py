@@ -11,7 +11,7 @@ import sys
 from mscanner.configuration import rc
 from mscanner.medline.FeatureMapping import FeatureMapping
 from mscanner.medline.FeatureVectors import FeatureVectors
-from mscanner.medline.FeatureStream import FeatureStream, DateAsInteger
+from mscanner.medline.FeatureStream import FeatureStream, DateAsInteger, vb_encode
 from mscanner import endpath
 
 
@@ -100,11 +100,9 @@ class FeatureData:
             if pmid not in self.featuredb:
                 date = DateAsInteger(article.date_completed)
                 features = getattr(article, self.featurespace)()
-                self.featmap.add_article(features)
-                featvec = self.featmap.make_vector(features)
+                featvec = vb_encode(self.featmap.add_article(features))
                 self.featuredb.add_record(pmid, date, featvec)
                 self.fstream.additem(pmid, date, featvec)
-        sys.stdout.write("\n")
         self.commit()
 
 
@@ -131,16 +129,15 @@ class FeatureData:
         # Regenerate feature stream from database
         elif do_stream: 
             logging.info("Regenerating FeatureStream %s.", endpath(self.fstream.filename))
-            for pmid, date, featvec in counter(self.featuredb.iteritems()):
+            for pmid, date, featvec in counter(self.featuredb.iteritems(decode=False)):
                 self.fstream.additem(pmid, date, featvec)
         # Regenerate feature database from feature stream
         elif do_featuredb: 
             logging.info("Regenerating FeatureVectors %s.", endpath(self.featuredb.filename))
-            for pmid, date, featvec in counter(self.fstream.iteritems()):
+            for pmid, date, featvec in counter(self.fstream.iteritems(decode=False)):
                 self.featuredb.add_record(pmid, date, featvec)
         self.commit()
-        ## Disabled index generation because we're not using the index right now.
-        ##self.featuredb.create_index()
+        logging.info("Index regeneration complete.")
 
 
 def counter(iter):

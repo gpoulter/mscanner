@@ -95,14 +95,14 @@ class FeatureMappingTests(unittest.TestCase):
         fm = FeatureMapping(filename=None)
         a1 = dict(Q=["A","B"], T=["A","C"])
         # Test adding of a feature vector
-        fm.add_article(a1)
+        self.assertEqual(fm.add_article(a1), [1,2,3,4])
         self.assertEqual(fm.make_vector(a1), [1,2,3,4])
         self.assertEqual([fm.get_feature(i) for i in [1,2,3,4]], [("A","Q"), ("B","Q"),("A","T"),("C","T")])
         self.assert_(nx.all(fm.counts == [0,1,1,1,1]))
         self.assert_(nx.all(fm.type_mask("Q") == [1,1,1,0,0]))
         # Test read/write of unicode characters
         a2 = {"Q":["B", u"D\xd8"]}
-        fm.add_article(a2)
+        self.assertEqual(fm.add_article(a2), [2,5])
         logging.debug("%s", str(fm.get_feature(5)))
         # Test removing of a feature vector
         self.assert_(nx.all(fm.counts == [0,1,2,1,1,1]))

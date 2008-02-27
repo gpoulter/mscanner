@@ -64,22 +64,24 @@ class FeatureStream:
 
 
     def additem(self, pmid, date, features):
-        """Add a (pmid,date,features) record to the FeatureStream
-        @param pmid: PubMed ID (string or integer).
-        @param date: The YYYYMMDD integer date for the record.
-        @param features: Array/list/iterable of feature IDs."""
+        """Add a (pmid,date,features) record to the FeatureStream 
+        @param pmid: PubMed ID (string or integer). 
+        @param date: The integer date (YYYYMMDD) for the record. 
+        @param features: Array/list/iterable of sorted feature IDs, or
+        variable-byte-encoded string/buffer representing the array."""
         if not isinstance(date, int): 
             raise ValueError("Date must be integer format")
-        vbstring = vb_encode(features)
-        self.stream.write(struct.pack("IIH", int(pmid), date, len(vbstring)))
-        self.stream.write(vbstring)
+        if not (isinstance(features, str) or isinstance(features, buffer)):
+            features = vb_encode(features)
+        self.stream.write(struct.pack("IIH", int(pmid), date, len(features)))
+        self.stream.write(features)
 
 
-    def readitem(self, pos=None):
+    def readitem(self, pos=None, decode=True):
         """Read a feature stream record from the current location.
-        @param pos: Seek to this file position. Very bad if wrong! 
-        @return: (PubMed ID, YYYYMMDD, feature vector) as (int,int,list) from
-        the stream."""
+        @param pos: Seek to this file position.  Be careful! 
+        @param decode: If True, return a vector. If False, return encoded string.
+        @return: (PubMed ID, YYYYMMDD, features) as (int,int,list/string)."""
         if pos is not None:
             self.stream.seek(pos)
         head = self.stream.read(4+4+2)
@@ -87,17 +89,20 @@ class FeatureStream:
         pmid, date, nbytes = struct.unpack("IIH", head)
         if nbytes > self.max_bytes:
             raise ValueError("Vector too long (%d) due to bad seek.", nbytes)
-        return pmid, date, list(vb_decode(self.stream.read(nbytes)))
+        if decode:
+            return pmid, date, list(vb_decode(self.stream.read(nbytes)))
+        else:
+            return pmid, date, self.stream.read(nbytes)
 
 
-    def iteritems(self):
-        """Iterate over records obtained via of L{readitem}. This is quite slow
-        - ScoreCalculator and FeatureCounter in L{mscanner.fastscores} use C
-        code to iterate rapidly over the feature stream."""
-        item = self.readitem(0)
+    def iteritems(self, decode=True):
+        """Iterate over records using L{readitem}.
+        @param decode: Passed on to L{readitem}.
+        """
+        item = self.readitem(0, decode)
         while item is not None:
             yield item
-            item = self.readitem()
+            item = self.readitem(None, decode)
         self.stream.seek(0,2) # Go to EOF
 
 

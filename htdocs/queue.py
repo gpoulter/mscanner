@@ -239,7 +239,6 @@ def mainloop():
     updater = Updater.Defaults(featurespaces)
     # Pre-load the article list vector and size of index
     len(updater.fdata_list[0].featuredb)
-    logging.debug("Pre-calculating vector of PubMed IDs.")
     updater.fdata_list[0].featuredb.pmids_array()
     if usewords:
         logging.debug("Setting length, pmids for word index.")
@@ -267,7 +266,7 @@ def mainloop():
                 last_clean = time.time()
             
             # Update the databases twice daily
-            if time.time() - last_update > 12*3600:
+            if time.time() - last_update > 12*3600*100:
                 updater.add_directory(rc.medline, save_delay=0)
                 last_update = time.time()
             
@@ -285,9 +284,11 @@ def mainloop():
                     if (not usewords) or (not task.allfeatures):
                         fdata = updater.fdata_list[0] # feats_mesh_qual_issn
                         rc.min_infogain = 0
+                        rc.mincount = 2
                     else:
                         fdata = updater.fdata_list[1] # feats_wmqia
                         rc.min_infogain = 2e-5
+                        rc.mincount = 3
                     # Retrieval operation
                     if task.operation == "retrieval":
                         QM = QueryManager(

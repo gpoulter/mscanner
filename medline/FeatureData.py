@@ -139,8 +139,8 @@ class FeatureData:
             for pmid, date, featvec in counter(self.fstream.iteritems()):
                 self.featuredb.add_record(pmid, date, featvec)
         self.commit()
-        # Make sure there's an index on the feature database
-        self.featuredb.create_index()
+        ## Disabled index generation because we're not using the index right now.
+        ##self.featuredb.create_index()
 
 
 def counter(iter):

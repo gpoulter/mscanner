@@ -99,29 +99,16 @@ class FeatureVectors:
 
 
     def create_index(self):
-        """Create index on the date column, for fast filtering by date. Do this
-        *after* regenerating or parsing from scratch, because the index slows
-        down the adding of records."""
+        """Create index on the date column, for fast filtering by date. Don't
+        call this, since we will only have a use for it when a C program
+        like _ScoreCalculator.c is modified to processing an SQLite database."""
         self.con.execute("CREATE INDEX IF NOT EXISTS dateidx ON docs (date)")
         self.con.commit()
 
 
-    def iteritems(self, mindate=None, maxdate=None):
-        """Iterate over (pmid, date, featurevector) from the database.
-        @param mindate, maxdate: Limit the dates to consider.
-        """
-        self.create_index()
-        base = "SELECT * FROM docs "
-        if mindate is not None and maxdate is not None:
-            cursor = self.con.execute(base+"WHERE date BETWEEN ? AND ?", (mindate,maxdate))
-        elif mindate is not None:
-            cursor = self.con.execute(base+"WHERE date>=?", (mindate,))
-        elif maxdate is not None:
-            cursor = self.con.execute(base+"WHERE date<=?", (maxdate,))
-        else:
-            cursor = self.con.execute(base)
-        for pmid, date, blob in cursor:
-            vector = list(vb_decode(blob))
+    def iteritems(self):
+        """Iterate over (pmid, date, featurevector) from the database."""
+        for pmid, date, blob in self.con.execute("SELECT * FROM docs"):
             yield pmid, date, list(vb_decode(blob))
 
 

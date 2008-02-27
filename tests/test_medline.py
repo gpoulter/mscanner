@@ -48,9 +48,9 @@ class FeatureVectorsTests(unittest.TestCase):
         self.failIf(4 in d)
         self.assertEqual(len(d), 3)
         # Test iteration
-        filtered = list(d.iteritems(20000101,20020101))
-        self.assertEqual(len(filtered), 2)
-        self.assertEqual(filtered[0], a2)
+        filtered = list(d.iteritems())
+        self.assertEqual(len(filtered), 3)
+        self.assertEqual(filtered[1], a2)
         # Test updating
         d.update_record(*a2b)
         self.failUnless(d.get_records([2]).next() == a2b)
@@ -327,11 +327,11 @@ xmltext = u'''<?xml version="1.0"?>
 
 if __name__ == "__main__":
     tests.start_logger()
-    #unittest.main()
+    unittest.main()
     #suite = unittest.TestLoader().loadTestsFromTestCase(ArticleTests)
     #suite = unittest.TestLoader().loadTestsFromTestCase(FeatureMappingTests)
     #suite = unittest.TestLoader().loadTestsFromTestCase(FeatureVectorsTests)
-    suite = unittest.TestLoader().loadTestsFromTestCase(UpdaterTests)
-    unittest.TextTestRunner(verbosity=2).run(suite)
+    #suite = unittest.TestLoader().loadTestsFromTestCase(UpdaterTests)
+    #unittest.TextTestRunner(verbosity=2).run(suite)
 
 

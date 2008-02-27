@@ -14,7 +14,6 @@ import logging
 import numpy as nx
 from path import path
 import pprint as pp
-import random
 import sys
 
 from mscanner.configuration import rc

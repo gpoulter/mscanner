@@ -59,7 +59,7 @@ def medline():
     a Medline directory."""
     logging.info("Updating MScanner from " + rc.medline.relpath())
     updater = Updater.Defaults(featurespaces)
-    updater.add_directory(rc.medline, save_delay=3)
+    updater.add_directory(rc.medline, save_delay=0)
     return updater
 
 

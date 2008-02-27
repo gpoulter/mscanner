@@ -21,7 +21,7 @@ import unittest
 from mscanner.configuration import rc
 from mscanner.medline.Article import Article
 from mscanner.medline.FeatureData import FeatureData
-from mscanner.medline.FeatureVectors import FeatureVectors
+from mscanner.medline.FeatureVectors import FeatureVectors, random_subset
 from mscanner.medline.FeatureStream import FeatureStream
 from mscanner.medline.FeatureMapping import FeatureMapping
 from mscanner.medline.Updater import Updater
@@ -40,8 +40,8 @@ class FeatureVectorsTests(unittest.TestCase):
         # Test adding 1,2,3
         d = FeatureVectors(filename=None)
         for a in a1,a2,a3: d.add_record(*a) 
-        self.failUnless(d.get_records([1]).next() == a1)
-        self.failUnless(d.get_records([2]).next() == a2)
+        self.assertEqual(d.get_records([1]).next(), a1)
+        self.assertEqual(d.get_records([2]).next(), a2)
         self.assertEqual(list(d.get_records([4])), [])
         self.failUnless(1 in d)
         self.failUnless(2 in d)
@@ -54,10 +54,12 @@ class FeatureVectorsTests(unittest.TestCase):
         # Test updating
         d.update_record(*a2b)
         self.failUnless(d.get_records([2]).next() == a2b)
-        # Test random-get
-        self.assertEqual(sorted(d.get_random(3, 20000101)), [a2b,a3])
         # Test multi-get
         self.assertEqual(list(d.get_records([3,2])), [a2b,a3])
+        # Test PMID vector
+        self.failUnless(nx.all(d.pmids_array() == [1,2,3]))
+        # Test random subset
+        logging.debug(random_subset(2, d.pmids_array(), []))
         
 
 class FeatureStreamTests(unittest.TestCase):
@@ -199,11 +201,13 @@ class UpdaterTests(unittest.TestCase):
                 (u'Q4', 'qual'), (u'Q5', 'qual'), (u'Q7', 'qual'), 
                 (u'T1', 'mesh'), (u'T2', 'mesh'), (u'T3', 'mesh'), (u'T6', 'mesh'), 
                 (u'0301-4851', 'issn')]))
+        self.assertEqual(len(m.fdata_list[0].featuredb), 2)
         m.close()
         # Test regeneration
         logging.debug("Removing MeSH featuredb")
         m.fdata_list[0].featuredb.filename.remove()
         m = update.regenerate()
+        logging.debug(str(m.fdata_list[0].featuredb.pmids_array()))
         self.assertEqual(len(m.fdata_list[0].featuredb), 2)
         m.close()
         # Test save/load pickle

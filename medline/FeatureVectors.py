@@ -3,6 +3,7 @@
 import numpy as nx
 import logging
 import struct
+from mscanner import delattrs
 
 
                                      
@@ -77,8 +78,7 @@ class FeatureVectors:
         """
         self.con.execute("INSERT INTO docs VALUES(?,?,?)", (pmid, date, 
                           sqlite3.Binary(vb_encode(featurevector))))
-        if hasattr(self, "_length"):
-            del self._length
+        delattrs(self, "_length", "_pmids")
 
 
     def update_record(self, pmid, date, featurevector):
@@ -103,6 +103,7 @@ class FeatureVectors:
         *after* regenerating or parsing from scratch, because the index slows
         down the adding of records."""
         self.con.execute("CREATE INDEX IF NOT EXISTS dateidx ON docs (date)")
+        self.con.commit()
 
 
     def iteritems(self, mindate=None, maxdate=None):
@@ -124,18 +125,50 @@ class FeatureVectors:
             yield pmid, date, list(vb_decode(blob))
 
 
-    def get_random(self, numrecords, mindate=0, maxdate=99999999):
-        """Return cursor iterating over PubMed IDs for numrecords random PubMed
-        IDs dates in the specified range."""
-        self.create_index()
-        if numrecords > len(self):
-            numrecords = len(self)
-        for pmid, date, blob in self.con.execute(
-            "SELECT * FROM docs WHERE date BETWEEN ? AND ? ORDER BY random() LIMIT ?",
-            (mindate, maxdate, numrecords)):
-            yield pmid, date, list(vb_decode(blob))
+    def pmids_array(self):
+        """Return a vector of PubMed IDs in the database (may have been
+        scrambled by get_random). Caches the result for later."""
+        try:
+            return self._pmids
+        except AttributeError:
+            pmids = nx.zeros(len(self), nx.uint32)
+            logging.debug("Loading vector of PubMed IDs from index")
+            count = 0
+            for pmid, in self.con.execute("SELECT pmid FROM docs"):
+                pmids[count] = pmid
+                count += 1
+            self._pmids = pmids
+            return self._pmids
 
 
-
-
+def random_subset(k, pool, exclude):
+    """Choose a random list of k items from an array
+    
+    This is a good algorithm when the pool array is large (say, 16 million
+    items), we don't mind if the order of pool gets scrambled, and we have to
+    exclude certain items from being selected.
+    
+    @param k: Number of items to choose from pool
+    @param pool: Array of items to choose from (will be scrambled!)
+    @param exclude: Set of items that may not be chosen
+    @return: A new array of the chosen items
+    """
+    from random import randint
+    import numpy as nx
+    n = len(pool)
+    assert 0 <= k <= n
+    for i in xrange(k):
+        # Non-selected items are in 0 ... n-i-1
+        # Selected items are n-i ... n
+        dest = n-i-1
+        choice = randint(0, dest) # 0 ... n-i-1 inclusive
+        while pool[choice] in exclude:
+            choice = randint(0, dest)
+        # Move the chosen item to the end, where so it will be part of the
+        # selected items in the next iteration. Note: this works using single
+        # items - it but would break with slices due to their being views into
+        # the vector.
+        pool[dest], pool[choice] = pool[choice], pool[dest]
+    # Phantom iteration: selected are n-k ... n
+    return nx.array(pool[n-k:])
 

@@ -232,13 +232,20 @@ def logit(probability):
 
 def mainloop():
     """Look for descriptor files every second"""
+    usewords = True # Whether to include feats_wmqia capability
     # The updater contains references to the databases
-    updater = Updater.Defaults(["feats_mesh_qual_issn","feats_wmqia"])
-    # Pre-load the article list vector
-    logging.debug("Calculating length of mesh index.")
+    featurespaces = ["feats_mesh_qual_issn"]
+    if usewords: featurespaces.append("feats_wmqia")
+    updater = Updater.Defaults(featurespaces)
+    # Pre-load the article list vector and size of index
     len(updater.fdata_list[0].featuredb)
-    logging.debug("Calculating length of word index.")
-    len(updater.fdata_list[1].featuredb)
+    logging.debug("Pre-calculating vector of PubMed IDs.")
+    updater.fdata_list[0].featuredb.pmids_array()
+    if usewords:
+        logging.debug("Setting length, pmids for word index.")
+        # Shortcut: copy the database params from the MeSH index
+        updater.fdata_list[1].featuredb._length = updater.fdata_list[0].featuredb._length
+        updater.fdata_list[1].featuredb._pmids = updater.fdata_list[0].featuredb._pmids
     try:
         logging.debug("Queue is now running.")
         # Time of last output clean
@@ -275,7 +282,7 @@ def mainloop():
                 task._filename.utime(None) 
                 try:
                     # Configure feature space
-                    if not task.allfeatures:
+                    if (not usewords) or (not task.allfeatures):
                         fdata = updater.fdata_list[0] # feats_mesh_qual_issn
                         rc.min_infogain = 0
                     else:

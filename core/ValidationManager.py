@@ -16,6 +16,7 @@ warnings.simplefilter("ignore", UserWarning)
 
 from mscanner.configuration import rc
 from mscanner.medline.FeatureData import FeatureData
+from mscanner.medline.FeatureVectors import random_subset
 from mscanner.core import iofuncs
 from mscanner.core.FeatureScores import FeatureScores
 from mscanner.core.metrics import (PerformanceVectors, PerformanceRange, 
@@ -73,8 +74,6 @@ class CrossValidation:
     @ivar negatives: IDs of negative articles.
 
     @ivar notfound_pmids: List of input PubMed IDs not found in the database.
-    
-    @ivar random_negatives: If True, we have selected negatives at random from the database.
     
     @group Set by _load_vectors: pos_vectors, neg_vectors, pos_counts, neg_counts
     pos_vectors: Feature vectors corresponding to positives.
@@ -194,20 +193,20 @@ class CrossValidation:
         in L{positives} and L{negatives}.        
         @param randseed: Random seed for shuffling (0 for no shuffle, None for
         randomise)."""
-        if randseed != 0:
-            random.seed(randseed)
-            logging.debug("Shuffling positives and negatives with seed %s", str(randseed))
         # Get the feature vectors for the positives (sorted by PubMed ID, then shuffle)
         pos_data = list((p,nx.array(v,nx.uint32)) for (p,d,v) in 
                         self.fdata.featuredb.get_records(self.positives))
-        if randseed != 0: random.shuffle(pos_data)
+        neg_data = list((p,nx.array(v,nx.uint32)) for (p,d,v) in 
+                        self.fdata.featuredb.get_records(self.negatives))
+        # Shuffle the feature vectors
+        if randseed != 0:
+            logging.debug("Shuffling positives and negatives with seed %s", str(randseed))
+            random.seed(randseed)
+            random.shuffle(pos_data)
+            random.shuffle(neg_data)
+        # Extract separate PubMed ID and vector lists
         self.positives, self.pos_vectors = zip(*pos_data)
-        # Get the feature vectors for the negatives (sorted by PubMed ID, then shuffle)
-        if not self.random_negatives:
-            neg_data = list((p,nx.array(v,nx.uint32)) for (p,d,v) in 
-                            self.fdata.featuredb.get_records(self.negatives))
-            if randseed != 0: random.shuffle(neg_data)
-            self.negatives, self.neg_vectors = zip(*neg_data)
+        self.negatives, self.neg_vectors = zip(*neg_data)
         # Count feature occurrences
         self.pos_counts = count_features(len(self.fdata.featmap), self.pos_vectors)
         self.neg_counts = count_features(len(self.fdata.featmap), self.neg_vectors)
@@ -313,15 +312,13 @@ class CrossValidation:
         
         # Get random PubMed IDs
         if isinstance(neg, int):
-            logging.info("Selecting %d random PubMed IDs for irrelevant examples." % neg)
             # Cap number of negatives requested to the maximum available
             maxnegs = len(self.fdata.featuredb) - len(self.positives)
             if neg > maxnegs: neg = maxnegs
+            logging.info("Selecting %d random PubMed IDs for irrelevant examples." % neg)
             # Signal that the negatives are randomly sampled
-            self.random_negatives = True
-            self.negatives, self.neg_vectors =\
-                zip(*((p,nx.array(v,nx.uint32)) for (p,d,v) in 
-                    self.fdata.featuredb.get_random(neg)))
+            self.negatives = random_subset(
+                neg, self.fdata.featuredb.pmids_array(), set(self.positives))
         # Read PubMed IDs from file
         elif isinstance(neg, basestring):
             logging.info("Reading irrelevant PubMed IDs from %s", neg.basename())

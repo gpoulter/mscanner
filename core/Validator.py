@@ -3,7 +3,6 @@
 from __future__ import division
 import logging
 import numpy as nx
-import random
 
 from mscanner import update
 from mscanner.core.FeatureScores import FeatureScores

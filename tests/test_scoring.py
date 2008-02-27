@@ -18,7 +18,7 @@ import tempfile
 import unittest
 
 from mscanner.configuration import rc
-from mscanner.medline.FeatureDatabase import FeatureDatabase
+from mscanner.medline.FeatureVectors import FeatureVectors
 from mscanner.medline.FeatureStream import FeatureStream
 from mscanner.medline.FeatureMapping import FeatureMapping
 from mscanner.core.FeatureScores import FeatureScores

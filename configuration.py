@@ -56,14 +56,8 @@ rc.web_root = "http://mscanner.stanford.edu/"
 
 ## ARTICLE DATABASE FILES (in articles_home)
 
-## Path to database environment directory
-rc.db_env_home = path("db_home")
 ## Path to Article object database
 rc.articledb = path("articles.db")
-## Path to list of of article IDs
-rc.articlelist = path("articles.txt")
-## Path to number of articles
-rc.articlecount = path("numarticles.txt")
 ## Path to track Medline files that have already been added
 rc.tracker = path("processed.txt")
 ## Path for log file
@@ -71,12 +65,12 @@ rc.logfile = path("lastlog.txt")
 
 ## FEATURE DATABASE FILES (in a subdir of articles_home)
 
-## Base name for DB of MeSH-features for each article
-rc.featuredb = path("features.db")
-## Base name for binary stream of PMIDs and MeSH-feature arrays
-rc.featurestream = path("features.stream")
 ## Base name for feature<->ID mapping for MeSH features
 rc.featuremap = path("featuremap.sqlite")
+## Base name for DB of MeSH-features for each article
+rc.featuredb = path("featvectors.sqlite")
+## Base name for binary stream of PubMed IDs and MeSH-feature arrays
+rc.featurestream = path("features.stream")
 
 ### COMMON REPORT FILES
 
@@ -91,9 +85,9 @@ rc.report_logfile = path("logging.txt")
 
 ### QUERY REPORT FILES
 
-## Name of list of scores of input PMIDs
+## Name of list of scores of input PubMed IDs
 rc.report_input_scores = path("inputs.txt")
-## Name of list of broken input PMIDs
+## Name of list of broken input PubMed IDs
 rc.report_input_broken = path("broken.txt")
 ## Name of result score file
 rc.report_result_scores = path("results.txt")
@@ -108,13 +102,13 @@ rc.report_result_all_zip = path(rc.report_result_all + ".zip")
 
 ### VALIDATION REPORT FILES
 
-## Name of file with positive PMIDs and scores
+## Name of file with positive PubMed IDs and scores
 rc.report_positives = path("positives.txt")
-## Name of file with broken positive PMIDs
+## Name of file with broken positive PubMed IDs
 rc.report_positives_broken = path("positives_broken.txt")
-## Name of file with negative PMIDs and scores
+## Name of file with negative PubMed IDs and scores
 rc.report_negatives = path("negatives.txt")
-## Name of file with excluded negative PMIDs
+## Name of file with excluded negative PubMed IDs
 rc.report_negatives_exclude = path("negatives_exclude.txt")
 ## Name of histogram file
 rc.report_artscores_img = path("artscores.png")

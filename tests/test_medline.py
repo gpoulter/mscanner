@@ -21,33 +21,12 @@ import unittest
 from mscanner.configuration import rc
 from mscanner.medline.Article import Article
 from mscanner.medline.FeatureData import FeatureData
-from mscanner.medline.ArticleData import ArticleData
-from mscanner.medline.FeatureDatabase import FeatureDatabase, FeatureVectors
+from mscanner.medline.FeatureVectors import FeatureVectors
 from mscanner.medline.FeatureStream import FeatureStream
 from mscanner.medline.FeatureMapping import FeatureMapping
 from mscanner.medline.Updater import Updater
+from mscanner.scripts import update
 from mscanner import tests
-
-
-class FeatureDatabaseTests(unittest.TestCase):
-    
-    def test_FeatureDatabase(self):
-        """Store feature vectors in FeatureDatabase and read them back."""
-        d = FeatureDatabase(nx.uint32)
-        d.setitem(1, nx.array([1,3], d.ftype)) #eliminate duplicate features
-        d.setitem(2, nx.array([2,3], d.ftype))
-        self.assert_(all(d.getitem(1) == [1,3]))
-        self.assert_(all(d.getitem(2) == [2,3]))
-        self.assertRaises(KeyError, d.getitem, 3)
-        self.failUnless(1 in d)
-        self.failUnless(2 in d)
-        self.failIf(3 in d)
-        self.assertEqual(d.keys(), ['2','1'])
-        self.assertEqual(list(d.__iter__()), ['2','1'])
-        self.assertEqual(len(d), 2)
-        d.delitem(2)
-        self.failIf(2 in d)
-        self.assertRaises(ValueError, d.setitem, 4, nx.array([3.3,4]))
 
 
 class FeatureVectorsTests(unittest.TestCase):
@@ -61,9 +40,9 @@ class FeatureVectorsTests(unittest.TestCase):
         # Test adding 1,2,3
         d = FeatureVectors(filename=None)
         for a in a1,a2,a3: d.add_record(*a) 
-        self.failUnless(d.get_record(1) == a1)
-        self.failUnless(d.get_record(2) == a2)
-        self.assertRaises(KeyError, d.get_vector, 4)
+        self.failUnless(d.get_records([1]).next() == a1)
+        self.failUnless(d.get_records([2]).next() == a2)
+        self.assertEqual(list(d.get_records([4])), [])
         self.failUnless(1 in d)
         self.failUnless(2 in d)
         self.failIf(4 in d)
@@ -74,13 +53,11 @@ class FeatureVectorsTests(unittest.TestCase):
         self.assertEqual(filtered[0], a2)
         # Test updating
         d.update_record(*a2b)
-        self.failUnless(d.get_record(2) == a2b)
-        # Test multi-get
-        v = [(p,t,list(v)) for (p,t,v) in d.get_vectors([3,2])]
-        self.assertEqual(v, [a2b,a3])
+        self.failUnless(d.get_records([2]).next() == a2b)
         # Test random-get
-        v = [(p,t,list(v)) for (p,t,v) in d.get_random(3, 20000101)]
-        self.assertEqual(sorted(v), [a2b,a3])
+        self.assertEqual(sorted(d.get_random(3, 20000101)), [a2b,a3])
+        # Test multi-get
+        self.assertEqual(list(d.get_records([3,2])), [a2b,a3])
         
 
 class FeatureStreamTests(unittest.TestCase):
@@ -163,35 +140,11 @@ class XMLParserTests(unittest.TestCase):
         self.art_equal(b, b_correct)
 
 
-class ArticleDataTests(unittest.TestCase):
-    """Tests of ArticleData"""
-    
-    def setUp(self):
-        self.home = path(tempfile.mkdtemp(prefix="adata-"))
-        rc.articles_home = self.home
-
-    def tearDown(self):
-        self.home.rmtree(ignore_errors=True)
-        
-    def test(self):
-        """Tests of ArticleData"""
-        adata = ArticleData.Defaults()
-        adata.add_articles([Article(33,date_completed=(1980,01,01)),
-                            Article(44,date_completed=(1990,01,02))])
-        self.assertEqual(adata.article_count, 2)
-        all(adata.article_list == [33,44])
-        adata.artlist_path.remove()
-        adata.artcount_path.remove()
-        adata.regenerate_artlist()
-        self.assertEqual(adata.article_count, 2)
-        all(adata.article_list == [33,44])
-
-
 class FeatureDataTests(unittest.TestCase):
     """Tests of FeatureData"""
     
     def setUp(self):
-        self.home = path(tempfile.mkdtemp(prefix="adata-"))
+        self.home = path(tempfile.mkdtemp(prefix="fdata-"))
         rc.articles_home = self.home
 
     def tearDown(self):
@@ -199,44 +152,44 @@ class FeatureDataTests(unittest.TestCase):
         
     def test(self):
         """Tests of FeatureData"""
-        articles = [
-            Article(333,date_completed=(1990,01,01),meshterms=[("A","B"),"C"]),
-            Article(444,date_completed=(1990,01,01),meshterms=[("D","B"),"E"])]
-        fd = FeatureData.Defaults("feats_mesh_qual_issn", nx.uint16, False)
-        fd.add_articles(articles)
+        articles = {
+            "333": Article(333,date_completed=(1990,01,01),meshterms=[("A","B"),"C"]),
+            "444": Article(444,date_completed=(1990,01,01),meshterms=[("D","B"),"E"]),
+            }
+        fd = FeatureData.Defaults("feats_mesh_qual_issn", False)
+        fd.add_articles(articles.itervalues())
         fd.close()
         fd.featuredb.filename.remove()
         fd.featmap.filename.remove()
         fd.fstream.filename.remove()
-        fd = FeatureData.Defaults("feats_mesh_qual_issn", nx.uint16, False)
+        fd = FeatureData.Defaults("feats_mesh_qual_issn", False)
         fd.regenerate(articles)
+        self.assertEqual(len(fd.featmap), 6)
+        self.assertEqual(len(fd.featuredb), 2)
         fd.close()
 
 
 class UpdaterTests(unittest.TestCase):
-    """Tests L{Updater}, L{ArticleData}, L{FeatureData}"""
+    """Tests L{Updater}"""
 
     def setUp(self):
         self.home = path(tempfile.mkdtemp(prefix="medline-"))
         rc.articles_home = self.home
+        rc.medline = self.home
 
     def tearDown(self):
         self.home.rmtree(ignore_errors=True)
 
-    def test_Updater(self):
-        """Parse a sample directory and compare against known feature counts"""
+    def test(self):
+        """Parse a sample directory and compare against known feature counts.
+        """
         h = self.home
-        xml = h/"test.xml"
-        test_pmids = h/"pmids.txt"
-        featurespaces = [("feats_mesh_qual_issn", nx.uint16),
-                         ("feats_wmqia", nx.uint16)]
-        m = Updater.Defaults(featurespaces)
-        xml.write_text(xmltext)
-        m.add_directory(h, save_delay=1)
-        #logging.debug("ARTICLES.TXT: " + "".join((h/"articles.txt").lines()))
-        a = [ m.adata.artdb[x] for x in ["1","2"] ]
+        update.featurespaces = ["feats_mesh_qual_issn", "feats_wmqia"]
+        (h/"test.xml").write_text(xmltext)
+        # Tests Updater.Defaults and add_directory
+        m = update.medline()
+        a = [ m.artdb[x] for x in ["1","2"] ]
         #logging.debug("Articles: %s", repr(a))
-        #logging.debug("%s", repr(m.fdata_list[1].featmap.con.execute("SELECT name,type FROM fmap").fetchall()))
         self.assertEqual(a[0].pmid, 1)
         self.assertEqual(a[1].pmid, 2)
         self.assert_(nx.all(m.fdata_list[0].featmap.counts == [0, 2, 2, 2, 1, 2, 2, 2, 2]))
@@ -246,6 +199,17 @@ class UpdaterTests(unittest.TestCase):
                 (u'Q4', 'qual'), (u'Q5', 'qual'), (u'Q7', 'qual'), 
                 (u'T1', 'mesh'), (u'T2', 'mesh'), (u'T3', 'mesh'), (u'T6', 'mesh'), 
                 (u'0301-4851', 'issn')]))
+        m.close()
+        # Test regeneration
+        logging.debug("Removing MeSH featuredb")
+        m.fdata_list[0].featuredb.filename.remove()
+        m = update.regenerate()
+        self.assertEqual(len(m.fdata_list[0].featuredb), 2)
+        m.close()
+        # Test save/load pickle
+        (h/"pmids.txt").write_lines(["1","2"])
+        update.save_pickle(h/"pmids.txt")
+        m = update.load_pickles(h/"pmids.pickle.gz")
 
 
 
@@ -359,10 +323,11 @@ xmltext = u'''<?xml version="1.0"?>
 
 if __name__ == "__main__":
     tests.start_logger()
-    unittest.main()
+    #unittest.main()
     #suite = unittest.TestLoader().loadTestsFromTestCase(ArticleTests)
     #suite = unittest.TestLoader().loadTestsFromTestCase(FeatureMappingTests)
     #suite = unittest.TestLoader().loadTestsFromTestCase(FeatureVectorsTests)
-    #unittest.TextTestRunner(verbosity=2).run(suite)
+    suite = unittest.TestLoader().loadTestsFromTestCase(UpdaterTests)
+    unittest.TextTestRunner(verbosity=2).run(suite)
 
 

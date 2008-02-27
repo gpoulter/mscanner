@@ -3,7 +3,7 @@
 from mscanner import delattrs
 import logging
 import numpy as nx
-import sqlite3
+from pysqlite2 import dbapi2 as sqlite3
 
                                      
 __author__ = "Graham Poulter"                                        

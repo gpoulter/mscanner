@@ -27,32 +27,31 @@ from contextlib import closing
 import cPickle
 from gzip import GzipFile
 import logging
-import numpy as nx
 from path import path
 import sys
 
-from mscanner.medline.ArticleData import ArticleData
 from mscanner.medline.Updater import Updater
 from mscanner.configuration import rc
 from mscanner.core import iofuncs
 
 featurespaces = [
-    ("feats_mesh_qual_issn", nx.uint16), 
-    ("feats_wmqia", nx.uint32),
-    ("feats_wmqia_filt", nx.uint32),
-    ("feats_iedb_word", nx.uint32),
-    ("feats_iedb_concat", nx.uint32),
-    ("feats_word_nofold", nx.uint32),
-    ("feats_word_num", nx.uint32),
-    ("feats_word_strip", nx.uint32),
+    "feats_mesh_qual_issn",
+    "feats_wmqia", 
+    #"feats_wmqia_filt",
+    #"feats_iedb_word", 
+    #"feats_iedb_concat",
+    #"feats_word_nofold",
+    #"feats_word_num", 
+    #"feats_word_strip",
 ]
 
 
 def regenerate():
-    """Regenerate the FeatureMap, FeatureStream, FeatureDatabase
+    """Regenerate the FeatureMap, FeatureStream, FeatureVectors
     and article list - but only those that have been deleted from dist."""
     updater = Updater.Defaults(featurespaces)
     updater.regenerate()
+    return updater
 
 
 def medline():
@@ -61,6 +60,7 @@ def medline():
     logging.info("Updating MScanner from " + rc.medline.relpath())
     updater = Updater.Defaults(featurespaces)
     updater.add_directory(rc.medline, save_delay=3)
+    return updater
 
 
 def load_pickles(*pickles):    
@@ -72,8 +72,8 @@ def load_pickles(*pickles):
         logging.debug("Updating database from pickle %s", pickle.basename())
         with closing(GzipFile(pickle, "rb")) as zf:
             articles = cPickle.load(zf)
-        updater.add_articles(articles, sync=False)
-    updater.close()
+        updater.add_articles(articles)
+    return updater
 
     
 def save_pickle(filename):
@@ -82,14 +82,15 @@ def save_pickle(filename):
     
     @param filename: Path to list of PubMed IDs.
     """
+    from mscanner.medline import Shelf
     filename = path(filename)
     pickle = filename.stripext() + ".pickle.gz"
     logging.debug("Retrieving articles for file %s", filename.basename())
-    adata = ArticleData.Defaults()
+    artdb = Shelf.open(rc.articles_home/rc.articledb,'r')
     articles = []
     for pmid in iofuncs.read_pmids(filename):
         try:
-            articles.append(adata.artdb[str(pmid)])
+            articles.append(artdb[str(pmid)])
         except KeyError:
             logging.debug("%d not found in database", pmid)
     logging.debug("Writing articles to pickle %s", pickle.basename())

@@ -5,6 +5,7 @@ from __future__ import division
 
 import codecs
 from contextlib import closing
+from itertools import izip
 import logging
 import numpy as nx
 from path import path
@@ -15,7 +16,6 @@ warnings.simplefilter("ignore", UserWarning)
 from mscanner.configuration import rc
 from mscanner.medline import Shelf
 from mscanner.medline.FeatureData import FeatureData
-from mscanner.medline.ArticleData import ArticleData
 from mscanner.core.FeatureScores import FeatureScores
 from mscanner.core.Validator import count_features
 from mscanner.core import CitationTable, iofuncs
@@ -51,7 +51,7 @@ class QueryManager:
     
     @ivar limit: Maximum number of results (may be fewer due to threshold)
     
-    @param adata: Selected ArticleData (article database).
+    @param artdb: Shelf of Article objects by PubMed ID.
     
     @param fdata: Selected FeatureData (document representation of articles).
 
@@ -68,24 +68,29 @@ class QueryManager:
     occurrences in Medline background corpus (defaults to mindate, maxdate).
     
     
+    @group From _load_input: pmids, notfound_pmids, pmids_vectors
+
+    @ivar pmids: Array of input PubMed IDs.
     
-    @ivar timestamp: Time at the start of the operation.
+    @ivar notfound_pmids: List of input PubMed IDs not found in the database
+
+    @ivar pmid_vectors: List of corresponding feature vectors.
     
-    @ivar pmids: Sequence of input PubMed IDs (list/vector) from L{_load_input}
+    
     
     @ivar featinfo: FeatureScores with feature scores, from L{query}
     
-    @ivar inputs: List of (pmid, score) for input PMIDs
+    @ivar inputs: List of (pmid, score) for input PubMed IDs
     
-    @ivar results: List of (pmid, score) for result PMIDs
+    @ivar results: List of (pmid, score) for result PubMed IDs
     
-    @ivar notfound_pmids: List of input PMIDs not found in the database
+    @ivar timestamp: Time at the start of the operation.
     
     @ivar logfile: logging.FileHandler for logging to output directory
     """
 
 
-    def __init__(self, outdir, dataset, limit, adata, fdata,
+    def __init__(self, outdir, dataset, limit, artdb, fdata,
                  threshold=None, prior=None, 
                  mindate=None, maxdate=None, 
                  t_mindate=None, t_maxdate=None):
@@ -96,7 +101,7 @@ class QueryManager:
         self.outdir = outdir
         self.dataset = dataset
         self.limit = limit
-        self.adata = adata
+        self.artdb = artdb
         self.fdata = fdata
         self.threshold = threshold
         self.prior = prior
@@ -123,7 +128,7 @@ class QueryManager:
         
         @param input: Path to a list of PubMed IDs, or the list itself.
         
-        @param train_exclude: PMIDs to exclude from background when training
+        @param train_exclude: PubMed IDs to exclude from background when training
         """
         logging.info("START: Query for %s", self.dataset)
         if not self._load_input(input):
@@ -143,6 +148,7 @@ class QueryManager:
         to a set PubMed IDs.
         
         @return: True on success, False on failure."""
+        # Try to read PubMed IDs from text file
         if isinstance(input, basestring):
             logging.info("Loading PubMed IDs from %s", input.basename())
             self.pmids, self.notfound_pmids, exclude = \
@@ -151,54 +157,56 @@ class QueryManager:
                 self.outdir/rc.report_input_broken, self.notfound_pmids)
         else:
             self.pmids = input # Hope its a list/vector
-        if len(self.pmids) > 0:
-            return True
-        else:
+        # Failed to read any PubMed IDs
+        if len(self.pmids) == 0:
             logging.error("No valid PubMed IDs in %s", input.basename())
             iofuncs.no_valid_pmids_page(
                 self.outdir/rc.report_index, self.dataset, self.notfound_pmids)
             return False
+        # Pre-load vectors from feature database
+        self.pmids, self.pmids_vectors =\
+            zip(*((p, nx.array(v,nx.uint32)) for (p,d,v) in 
+                self.fdata.featuredb.get_records(self.pmids)))
+        return True
 
 
     def _make_feature_info(self, train_exclude=None):
         """Generate the L{featinfo} attribute using the L{pmids}
         as examples of relevant citations.
         
-        @param train_exclude: PMIDs to exclude from background when training
+        @param train_exclude: PubMed IDs to exclude from background when training
         """
         logging.info("Making scores for %d features", len(self.fdata.featmap))
         # Initialise the score object without occurrence counts
         self.featinfo = FeatureScores.Defaults(self.fdata.featmap)
-        self.featinfo.numdocs = self.adata.article_count # For scores_bgfreq
+        self.featinfo.numdocs = len(self.fdata.featuredb) # For scores_bgfreq
         
         # Count features from the positive articles
         pdocs = len(self.pmids)
-        pos_counts = count_features(
-            len(self.fdata.featmap), [self.fdata.featuredb[p] for p in self.pmids])
+        pos_counts = count_features(len(self.fdata.featmap), self.pmids_vectors)
         
         # Background is all of Medline minus input examples
         if self.t_mindate is None and self.t_maxdate is None:
-            logging.info("Background PMIDs = Medline - input PMIDs")
-            ndocs = self.adata.article_count - len(self.pmids)
+            logging.info("Background PubMed IDs = Medline - input PubMed IDs")
+            ndocs = len(self.fdata.featuredb) - len(self.pmids)
             neg_counts = nx.array(self.fdata.featmap.counts, nx.int32) - pos_counts
         
         # Background is Medline within a specific date range
         else:
             logging.info("Counting Medline between %s and %s for background.", 
                          str(self.t_mindate), str(self.t_maxdate))
-            # Use this option to exclude more than just the training PMIDs
+            # Use this option to exclude more than just the training PubMed IDs
             if train_exclude is None:
                 train_exclude = self.pmids
             # Call the C program to count features
             ndocs, neg_counts = FeatureCounter(
                 docstream = self.fdata.fstream.filename,
-                numdocs = self.adata.article_count,
+                numdocs = len(self.fdata.featuredb),
                 numfeats = len(self.fdata.featmap),
                 mindate = self.t_mindate,
                 maxdate = self.t_maxdate,
                 exclude = train_exclude,
                 ).c_counts()
-            
         
         # Evaluating feature scores from the counts
         logging.info("Calculating feature scores from counts.")
@@ -214,26 +222,22 @@ class QueryManager:
 
     def _save_results(self):
         """Write L{inputs} and L{results} with scores in the report directory."""
-        iofuncs.write_scores(self.outdir/rc.report_input_scores, 
-                             self.inputs, sort=True)
-        iofuncs.write_scores(self.outdir/rc.report_result_scores, 
-                             self.results, sort=True)
+        iofuncs.write_scores(self.outdir/rc.report_input_scores, self.inputs, sort=True)
+        iofuncs.write_scores(self.outdir/rc.report_result_scores, self.results, sort=True)
 
 
     def _make_results(self):
         """Perform the query to generate L{inputs} and L{results}"""
-        # Calculate decreasing (score, PMID) for input PMIDs
+        # Calculate decreasing (score, PMID) for input PubMed IDs
         logging.info("Calculating scores of the %d input documents.", len(self.pmids))
-        self.inputs = zip(
-            self.featinfo.scores_of([self.fdata.featuredb[p] for p in self.pmids]), 
-            self.pmids)
+        self.inputs = zip(self.featinfo.scores_of(self.pmids_vectors), self.pmids)
         self.inputs.sort(reverse=True)
         # Calculate results as decreasing (score, PMID)
         logging.info("Calculating Medline scores between %s to %s", 
                      str(self.mindate), str(self.maxdate))
         self.results = ScoreCalculator(
             path(self.fdata.fstream.stream.name),
-            self.adata.article_count,
+            len(self.fdata.featuredb),
             self.featinfo.scores,
             self.featinfo.base+self.featinfo.prior,
             self.limit,
@@ -269,7 +273,7 @@ class QueryManager:
         
         logging.debug("Writing citations to %s", rc.report_input_citations)
         self.inputs.sort(reverse=True)
-        inputs = [ (s,self.adata.artdb[str(p)]) for s,p in self.inputs]
+        inputs = [ (s,self.artdb[str(p)]) for s,p in self.inputs]
         CitationTable.write_citations(
             "input", self.dataset, inputs, 
             self.outdir/rc.report_input_citations, 
@@ -277,7 +281,7 @@ class QueryManager:
         
         logging.debug("Writing citations to %s", rc.report_result_citations)
         self.results.sort(reverse=True)
-        outputs = [ (s,self.adata.artdb[str(p)]) for s,p in self.results[:maxreport] ]
+        outputs = [ (s,self.artdb[str(p)]) for s,p in self.results[:maxreport] ]
         CitationTable.write_citations(
             "output", self.dataset, outputs,
             self.outdir/rc.report_result_citations, 

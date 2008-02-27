@@ -10,8 +10,8 @@ import time
 from mscanner.configuration import rc
 from mscanner.medline.Article import Article
 from mscanner.medline.FeatureData import FeatureData
-from mscanner.medline.ArticleData import ArticleData
 from mscanner.medline.FeatureStream import DateAsInteger
+from mscanner.medline import Shelf
 
 
                                      
@@ -32,25 +32,25 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 class Updater:    
     """Updates the databases with incoming Medline records. Reads data from XML
-    files, and writes to L{ArticleData} and L{FeatureData} objects.
+    files, and writes to article database and L{FeatureData} indexes.
     
-    @ivar adata: L{ArticleData} instance containing article database.
+    @ivar artdb: L{Shelf} for looking up Article objects by PubMed ID
     @ivar fdata_list: List of L{FeatureData} instances for article representations.
     @ivar tracker: Path to the list of completed Medline XML files.
     @ivar stopwords: Set of words not to use as features.
     """
 
 
-    def __init__(self, adata, fdata_list, tracker):
+    def __init__(self, artdb, fdata_list, tracker):
         """Constructor parameters set corresponding instance variables."""
-        self.adata = adata
+        self.artdb = artdb
         self.fdata_list = fdata_list
         self.tracker = tracker
 
 
     def close(self):
-        """Close all L{ArticleData} and L{FeatureData} instances"""
-        self.adata.close()
+        """Close article database and L{FeatureData} instances"""
+        self.artdb.close()
         for fdata in self.fdata_list:
             fdata.close()
 
@@ -58,31 +58,31 @@ class Updater:
     @staticmethod
     def Defaults(featurespaces):
         """Construct an Updater using default path names.
-        
-        @param featurespaces: List of (feature space name, numpy type) pairs.
-        The name specifies a feature-getting method on L{Article}, and the
-        numpy type is uint16/uint32 for FeatureDatabase."""
+        @param featurespaces: List of feature space names to load, each of
+        which specifies a feature-getting method on L{Article}."""
+        # Create new database root if necessary
+        base = rc.articles_home
+        if not base.exists(): base.makedirs()
         return Updater(
-            ArticleData.Defaults(), 
-            [FeatureData.Defaults(name, numtype, rdonly=False) 
-                for name, numtype in featurespaces], 
+            Shelf.open(base/rc.articledb),
+            [FeatureData.Defaults(fs, rdonly=False) for fs in featurespaces], 
             rc.articles_home/rc.tracker)
     
 
     def regenerate(self):
-        """Regenerate L{FeatureData} from the L{ArticleData}."""
-        self.adata.regenerate_artlist()
+        """Regenerate L{FeatureData}, possibly from the article database."""
         for fdata in self.fdata_list:
-            fdata.regenerate(self.adata.artdb.itervalues())
+            fdata.regenerate(self.artdb)
 
 
-    def add_articles(self, articles, sync=True):
-        """Add a list of new article objects to L{ArticleData} and
-        L{FeatureData} instances.
+    def add_articles(self, articles):
+        """Add a list of new article objects to article database and L{FeatureData}.
         @param articles: List of Article objects to add.
-        @param sync: If True, synchronise feature maps after adding."""
+        """
         logging.warn("Adding articles to databases. DO NOT INTERRUPT!")
-        self.adata.add_articles(articles)
+        for art in articles:
+            self.artdb[str(art.pmid)] = art
+        self.artdb.sync()
         for fdata in self.fdata_list:
             fdata.add_articles(articles)
 
@@ -130,7 +130,7 @@ class Updater:
                 infile.close()
             # Add the articles to the databases
             try:
-                self.add_articles(articles, sync=False)
+                self.add_articles(articles)
                 done.add(filename.basename())
                 self.tracker.write_lines(sorted(done))
                 logging.info("Added %d articles from file %d out of %d (%s)", 

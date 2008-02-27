@@ -22,7 +22,7 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
 def write_pmids(filename, pmids):
-    """Write list of PMIDs one per line to file"""
+    """Write list of PubMed IDs one per line to file"""
     with open(filename, "w") as f:
         f.write("\n".join(str(s) for s in pmids))
 
@@ -122,11 +122,11 @@ def read_scores_array(filename):
 
 
 def no_valid_pmids_page(filename, dataset, pmids):
-    """Print an error page when no valid PMIDs were found
+    """Print an error page when no valid PubMed IDs were found
     
     @param filename: Path to output file
 
-    @param pmids: List of any provided PMIDs (all invalid)
+    @param pmids: List of any provided PubMed IDs (all invalid)
     """
     from Cheetah.Template import Template
     from mscanner.configuration import rc

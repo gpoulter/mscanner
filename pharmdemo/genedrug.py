@@ -260,7 +260,7 @@ class GeneDrugFinder:
     def __init__(self, gdcache, genefinder, drugfinder):
         """Caching proxy for gene-drug filtering
         
-        @param gdcache: A dictionary, or path to shelf. This maps PMID string
+        @param gdcache: A dictionary, or path to shelf. This maps PubMed ID string
         to a drug:set(genes) mapping.
         
         @param genefinder: L{GeneFinder} instance

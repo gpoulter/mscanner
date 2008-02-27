@@ -36,7 +36,7 @@ class ScoreCalculator:
     
     @ivar numdocs: Number of documents in the stream of feature vectors.
     
-    @ivar featscores: Numpy array of double-precision feature scores.
+    @ivar featscores: Numpy array of single-precision feature scores.
     
     @ivar offset: Sum of the Bayesian prior score and the base log likelihood 
     of an article with no features.
@@ -49,7 +49,7 @@ class ScoreCalculator:
     
     @ivar maxdate: YYYYMMDD as integer: ignore documents after this date.
 
-    @ivar exclude: Set of PMIDs that are not allowed to appear in the results.
+    @ivar exclude: Set of PubMed IDs that are not allowed to appear in the results.
     """
     
     score_base = path(__file__).dirname() / "_ScoreCalculator"
@@ -177,7 +177,7 @@ class ScoreCalculator:
     def cscore_dll(s):
         """Calculate article scores, using ctypes to call cscores"""
         logging.info("Performing query using ScoreCalculator.cscore_dll")
-        from ctypes import cdll, byref, c_int, c_void_p, c_char_p, c_float, c_double
+        from ctypes import cdll, byref, c_int, c_void_p, c_char_p, c_float
         import itertools
         import numpy as nx
         # Set up arguments and call cscore2 function using ctypes

@@ -45,7 +45,8 @@ class StatusPage:
         web.header('Content-Type', 'text/html; charset=utf-8') 
         page = status.status()
         page.queue = queue.QueueStatus()
-        page.log_lines = (rc.articles_home/rc.logfile).lines()[-30:]
+        if (rc.articles_home/rc.logfile).exists():
+            page.log_lines = (rc.articles_home/rc.logfile).lines()[-30:]
         page.inputs = StatusForm()
         dataset = "" # The task to print the status for
         if page.queue.running is not None:

@@ -16,7 +16,6 @@ warnings.simplefilter("ignore", UserWarning)
 
 from mscanner.configuration import rc
 from mscanner.medline.FeatureData import FeatureData
-from mscanner.medline.ArticleData import ArticleData
 from mscanner.core import iofuncs
 from mscanner.core.FeatureScores import FeatureScores
 from mscanner.core.metrics import (PerformanceVectors, PerformanceRange, 
@@ -44,15 +43,13 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 class CrossValidation:
     """Carries out N-fold cross validation.
     
-    @group Set in the constructor: outdir, dataset, adata, fdata, timestamp, logfile
+    @group Set in the constructor: outdir, dataset, fdata, timestamp, logfile
 
     @ivar outdir: Path to directory for output files, which is created if it
     does not exist.
     
     @ivar dataset: Title of the dataset to use when printing reports
 
-    @ivar adata: Selected ArticleData (article database).
-    
     @ivar fdata: Selected FeatureData (document representation of articles).
 
     @ivar timestamp: Time at the start of the operation (set automatically by
@@ -62,18 +59,22 @@ class CrossValidation:
     sent to output directory as well (set automatically by __init__).
 
 
-    @group Set by validation: featinfo, nfolds, positives, negatives, notfound_pmids
+    @group Set by validation: featinfo, nfolds
     
     @ivar featinfo: L{FeatureScores} instance for calculating feature scores.
 
     @ivar nfolds: Number of cross validation folds (may not be relevant).
 
+
+    @group Set by _load_input: positives, negatives, notfound_pmids, random_negatives
+    
     @ivar positives: IDs of positive articles.
 
     @ivar negatives: IDs of negative articles.
 
-    @ivar notfound_pmids: List of input PMIDs not found in the database.
+    @ivar notfound_pmids: List of input PubMed IDs not found in the database.
     
+    @ivar random_negatives: If True, we have selected negatives at random from the database.
     
     @group Set by _load_vectors: pos_vectors, neg_vectors, pos_counts, neg_counts
     pos_vectors: Feature vectors corresponding to positives.
@@ -91,14 +92,13 @@ class CrossValidation:
     """
 
     
-    def __init__(self, outdir, dataset, adata, fdata):
+    def __init__(self, outdir, dataset, fdata):
         if not outdir.exists():
             outdir.makedirs()
             outdir.chmod(0777)
         # Attributes from constructor parameters
         self.outdir = outdir
         self.dataset = dataset
-        self.adata = adata
         self.fdata = fdata
         self.timestamp = time.time() 
         self.logfile = iofuncs.open_logfile(self.outdir/rc.report_logfile)
@@ -110,6 +110,7 @@ class CrossValidation:
         self.featinfo = None
         self.metric_vectors = None
         self.metric_range = None
+        self.random_negatives = False
 
 
     def __del__(self):
@@ -133,9 +134,10 @@ class CrossValidation:
         self.nfolds = nfolds
         self.notfound_pmids = []
         self.featinfo = FeatureScores.Defaults(self.fdata.featmap)
-        self.featinfo.numdocs = self.adata.article_count # For scores_bgfreq
+        self.featinfo.numdocs = len(self.fdata.featuredb) # For scores_bgfreq
         # Try to load saved results
         try:
+            logging.debug("Checking if there are saved results to load...")
             self.positives, self.pscores =\
                 iofuncs.read_scores_array(self.outdir/rc.report_positives)
             self.negatives, self.nscores =\
@@ -143,7 +145,7 @@ class CrossValidation:
             self._load_vectors(0)
             self.featinfo.update(self.pos_counts, self.neg_counts, 
                              len(self.positives), len(self.negatives))
-            logging.debug("Successfully loaded saved cross validation results")
+            logging.debug("Successfully loaded results")
         # Failed to load saved results, so perform cross validation
         except IOError:
             if not self._load_input(pos, neg):return
@@ -177,7 +179,7 @@ class CrossValidation:
             # Calculate the performance
             self._get_performance()
             if medline_size is None:
-                medline_size = self.adata.article_count - len(self.positives)
+                medline_size = len(self.fdata.featuredb) - len(self.positives)
             v = self.metric_vectors
             self.pred_low = PredictedMetrics(
                 v.TPR, v.FPR, v.uscores, relevant_low, medline_size)
@@ -193,12 +195,20 @@ class CrossValidation:
         @param randseed: Random seed for shuffling (0 for no shuffle, None for
         randomise)."""
         if randseed != 0:
-            logging.debug("Shuffling positives and negatives with seed %s", str(randseed))
             random.seed(randseed)
-            random.shuffle(self.positives)
-            random.shuffle(self.negatives)
-        self.pos_vectors = [self.fdata.featuredb[k] for k in self.positives]
-        self.neg_vectors = [self.fdata.featuredb[k] for k in self.negatives]
+            logging.debug("Shuffling positives and negatives with seed %s", str(randseed))
+        # Get the feature vectors for the positives (sorted by PubMed ID, then shuffle)
+        pos_data = list((p,nx.array(v,nx.uint32)) for (p,d,v) in 
+                        self.fdata.featuredb.get_records(self.positives))
+        if randseed != 0: random.shuffle(pos_data)
+        self.positives, self.pos_vectors = zip(*pos_data)
+        # Get the feature vectors for the negatives (sorted by PubMed ID, then shuffle)
+        if not self.random_negatives:
+            neg_data = list((p,nx.array(v,nx.uint32)) for (p,d,v) in 
+                            self.fdata.featuredb.get_records(self.negatives))
+            if randseed != 0: random.shuffle(neg_data)
+            self.negatives, self.neg_vectors = zip(*neg_data)
+        # Count feature occurrences
         self.pos_counts = count_features(len(self.fdata.featmap), self.pos_vectors)
         self.neg_counts = count_features(len(self.fdata.featmap), self.neg_vectors)
 
@@ -287,34 +297,41 @@ class CrossValidation:
         @param pos: Path to file of input PubMed IDs, or something convertible
         to an integer array.
 
-        @param neg: Path to file of input negative PMIDs, or something
+        @param neg: Path to file of input negative PubMed IDs, or something
         convertible to integer array, or an integer representing the
         number of PubMed IDs to select at random from the database.
         
         @return: True if the load was successful, False otherwise.
         """
         if isinstance(pos, basestring):
-            logging.info("Reading positive PMIDs from %s", pos.basename())
+            logging.info("Reading relevant PubMed IDs from %s", pos.basename())
             self.positives, self.notfound_pmids, exclude =\
                 iofuncs.read_pmids_careful(pos, self.fdata.featuredb)
         else:
-            logging.info("Using supplied array of positive PMIDs")
+            logging.info("Using supplied array of positive PubMed IDs")
             self.positives = nx.array(pos, nx.int32)
         
+        # Get random PubMed IDs
         if isinstance(neg, int):
-            logging.info("Selecting %d random PubMed IDs for background." % neg)
-            maxnegs = self.adata.article_count - len(self.positives)
+            logging.info("Selecting %d random PubMed IDs for irrelevant examples." % neg)
+            # Cap number of negatives requested to the maximum available
+            maxnegs = len(self.fdata.featuredb) - len(self.positives)
             if neg > maxnegs: neg = maxnegs
-            self.negatives = self._random_subset(
-                neg, self.adata.article_list, set(self.positives))
+            # Signal that the negatives are randomly sampled
+            self.random_negatives = True
+            self.negatives, self.neg_vectors =\
+                zip(*((p,nx.array(v,nx.uint32)) for (p,d,v) in 
+                    self.fdata.featuredb.get_random(neg)))
+        # Read PubMed IDs from file
         elif isinstance(neg, basestring):
-            logging.info("Reading negative PMIDs from %s", neg.basename())
+            logging.info("Reading irrelevant PubMed IDs from %s", neg.basename())
             self.negatives, notfound, exclude = iofuncs.read_pmids_careful(
                     neg, self.fdata.featuredb, set(self.positives))
             self.notfound_pmids = list(self.notfound_pmids) + list(notfound)
             iofuncs.write_pmids(self.outdir/rc.report_negatives_exclude, exclude)
+        # Use PubMed IDs from parameter
         else:
-            logging.info("Using supplied array of negative PMIDs")
+            logging.info("Using supplied array of irrelevant PubMed IDs")
             self.negatives = nx.array(neg, nx.int32)
             
         # Report broken PubMed IDs
@@ -328,36 +345,3 @@ class CrossValidation:
             iofuncs.no_valid_pmids_page(self.outdir/rc.report_index, self.dataset, self.notfound_pmids)
             return False
         return True
-
-
-    @staticmethod
-    def _random_subset(k, pool, exclude):
-        """Choose a random subset of k articles from pool
-        
-        This is a good algorithm when the pool is large (say, 16 million
-        items), we don't mind if the order of pool gets scrambled, and we have
-        to exclude certain items from being selected.
-        
-        @param k: Number of items to choose from pool
-        @param pool: Array of items to choose from (will be scrambled!)
-        @param exclude: Set of items that may not be chosen
-        @return: A new array of the chosen items
-        """
-        from random import randint
-        import numpy as nx
-        n = len(pool)
-        assert 0 <= k <= n
-        for i in xrange(k):
-            # Non-selected items are in 0 ... n-i-1
-            # Selected items are n-i ... n
-            dest = n-i-1
-            choice = randint(0, dest) # 0 ... n-i-1 inclusive
-            while pool[choice] in exclude:
-                choice = randint(0, dest)
-            # Move the chosen item to the end, where so it will be part of the
-            # selected items in the next iteration. Note: this works using single
-            # items - it but would break with slices due to their being views into
-            # the vector.
-            pool[dest], pool[choice] = pool[choice], pool[dest]
-        # Phantom iteration: selected are n-k ... n
-        return nx.array(pool[n-k:])

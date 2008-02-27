@@ -262,7 +262,7 @@ class FeatureScores(object):
         """Array with the background probability of occurrence of each selected
         feature."""
         if not hasattr(s, "_background_vector"):
-            # WARNING: This requires s.numdocs set from ArticleData.article_count
+            # WARNING: This requires s.numdocs set from len(FeatureData.featuredb)
             s._background_vector = s.featmap.counts[s.selected] / s.numdocs
         return s._background_vector
 

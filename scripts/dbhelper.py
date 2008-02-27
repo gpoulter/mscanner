@@ -24,11 +24,10 @@ import logging
 import numpy as nx
 from path import path
 import random
-import sqlite3
+from pysqlite2 import dbapi2 as sqlite3
 import sys
 
 from mscanner.core import iofuncs
-from mscanner.medline.Updater import Updater
 from mscanner.medline import Shelf
 
     
@@ -51,38 +50,28 @@ def dbkeys(dbfile, keylist):
     f.close()
     
 
-def pmid_dates(artdb, infile, outfile):
-    """Get dates for PMIDs listed in L{infile}, writing PMID,date pairs
-    to L{outfile} in increasing order of date.
-    
-    @param artdb: Path to Shelf with Article objects
-    @param infile: Path to PubMed IDs (PMID lines)
+def pmid_dates(featdb, infile, outfile):
+    """Get dates for PubMed IDs listed in L{infile}, writing PubMed ID and date
+    pairs to L{outfile} in increasing order of date.
+    @param featdb: Path to SQlite FeatureVectors.
+    @param infile: Path to PubMed IDs (PMID lines).
     @param outfile: Path to write PMID YYYYMMDD lines to."""
-    from mscanner.medline.FeatureStream import DateAsInteger
-    lines = []
-    adb = Shelf.open(artdb, "r")
-    input = open(infile, "r")
-    for line in input:
-        if line.startswith("#"): 
-            continue
-        pmid = int(line.split()[0])
-        try:
-            date = DateAsInteger(adb[str(pmid)].date_completed)
-            lines.append((pmid,date))
-        except KeyError, e:
-            print e.message
-    adb.close()
-    input.close()
-    lines.sort(key=lambda x:x[1])
+    from mscanner.medline.FeatureVectors import FeatureVectors
+    from mscanner.core.iofuncs import read_pmids
+    fdb = FeatureVectors(featdb)
+    pmids = read_pmids(infile)
+    records = list((p,d) for (p,d,v) in fdb.get_records(pmids))
+    fdb.close()
+    records.sort(key=lambda x:x[1])
     with open(outfile, "w") as f:
-        for line in lines:
-            f.write("%s %08d\n" % line)
+        for pmid, date in records:
+            f.write("%d %08d\n" % (pmid,date))
     
 
 def select_lines(infile, outfile, mindate="00000000", maxdate="99999999", N="0"):
-    """Select random PMIDs from L{infile} and write them to L{outfile}.
+    """Select random PubMed IDs from L{infile} and write them to L{outfile}.
     
-    @param infile: Read PMID YYYYMMDD lines from this path.
+    @param infile: Read PubMed ID YYYYMMDD lines from this path.
     @param outfile: Write selected lines to this path.
     @param mindate, maxdate: Only consider YYYYMMDD strings between these values.
     @param N: (string) Number of lines to pint (N="0" outputs all matching lines)
@@ -103,44 +92,6 @@ def select_lines(infile, outfile, mindate="00000000", maxdate="99999999", N="0")
         for line in lines:
             f.write("%s %s\n" % line)
     return lines
-
-
-def upgrade_featmap(infile, outfile):
-    """Read in the old FeatureMapping text format and write the SQLite version"""
-    with closing(codecs.open(infile, "rb", "utf-8")) as input:
-        input.readline() # Get past article count
-        with closing(sqlite3.connect(outfile)) as con:
-            con.execute("""CREATE TABLE IF NOT EXISTS fmap (
-              id INTEGER PRIMARY KEY,
-              type TEXT, name TEXT, count INTEGER,
-              UNIQUE(type,name) )""")
-            for fid, line in enumerate(input):
-                fname, ftype, count = line.split("\t")
-                count = int(count)
-                con.execute("INSERT INTO fmap VALUES(?,?,?,?)", 
-                            (fid, ftype, fname, count))
-            con.commit()
-
-
-def upgrade_featdb(infile, outfile):
-    """Read in FeatureStream write SQLite version"""
-    from mscanner.medline.FeatureDatabase import FeatureVectors
-    from mscanner.medline.FeatureStream import FeatureStream
-    with closing(FeatureStream(path(infile),rdonly=True)) as fs:
-        fv = FeatureVectors(outfile)
-        count = 0
-        for pmid, date, vector in fs.iteritems():
-            if pmid in fv:
-                logging.warning("PMID %d was found already!\n")
-            else:
-                fv.add_record(pmid, date, vector)
-                #assert fv.get_vector(pmid) == vector
-            count += 1
-            if count % 10000 == 0:
-                logging.debug("Written %d articles.", count)
-                fv.con.commit()
-        fv.con.commit()
-        logging.debug("Wrote %d (%d) articles in total.", count, len(fv))
 
 
 if __name__ == "__main__":

@@ -16,7 +16,6 @@ from mscanner.configuration import rc
 from mscanner.core import iofuncs
 from mscanner.core.ValidationManager import CrossValidation
 from mscanner.medline.FeatureData import FeatureData
-from mscanner.medline.ArticleData import ArticleData
 
                                      
 __author__ = "Graham Poulter"                                        
@@ -70,7 +69,7 @@ spaces = {
 # Cache of loaded feature space databases (featurespace->FeatureData)
 fdata_cache = {}
 
-# Cache of loaded data sets (path->array of PMIDs)
+# Cache of loaded data sets (path->array of PubMed IDs)
 pmids_cache = {}
 
 class ResultsTable:
@@ -101,25 +100,27 @@ class ResultsTable:
 
 
 def get_dataset(dataset, fdata):
-    """Given a data set name, return (pos, neg) pair of arrays of PMIDs for
+    """Given a data set name, return (pos, neg) pair of arrays of PubMed IDs for
     positive and negative articles."""
     if dataset not in dataset_map:
         raise ValueError("Invalid Data Set %s" % dataset)
     # Get pair of incomplete paths
     dspaths = list(dataset_map[dataset])
     results = []
-    for dspath in dspaths:
+    # Loop over two elements: pos and neg
+    for dspath in dspaths: 
         if isinstance(dspath, str):
-            # Complete the path, and cache loaded PMIDs for later
+            # Complete the path, and cache loaded PubMed IDs for later
             try:
                 pmids = pmids_cache[dspath]
             except KeyError:
+                logging.debug("Reading PMIDs for %s", dspath)
                 pmids, notfound, exclude = \
                      iofuncs.read_pmids_careful(rc.corpora / dspath, fdata.featuredb)
                 pmids_cache[dspath] = pmids
             results.append(pmids)
         else:
-            # Let ValidationManager load the data
+            # Not a string, let ValidationManager sort it out
             results.append(dspath)
     # Convert list back to array
     return tuple(results)
@@ -150,17 +151,12 @@ def base_valid(outdir, dataset, featurespace, tab=None, df=None, ig=None):
     # Set information gain cutoff
     if ig is not None:
         rc.min_infogain = ig
-    # Choose feature types
-    if featurespace == "feats_mesh_qual_issn":
-        ftype = nx.uint16
-    else:
-        ftype = nx.uint32
     # Cache loaded feature spaces (saves a few seconds)
     if featurespace not in fdata_cache:
-        fdata_cache[featurespace] = FeatureData.Defaults(featurespace, ftype)
+        fdata_cache[featurespace] = FeatureData.Defaults(featurespace)
     fdata = fdata_cache[featurespace]
     # Perform cross validation
-    op = CrossValidation(outdir, title, adata, fdata)
+    op = CrossValidation(outdir, title, fdata)
     op.validation(*get_dataset(dataset, fdata))
     op.report_validation()
     if tab is not None:
@@ -256,9 +252,9 @@ def compare_wordextract(ds):
 def bmc(*datasets):
     """Do the cross-validation on the sample topics from the BMC manuscript."""
     fs = "meshqi"
-    #rc.scoremethod = "scores_bgfreq"
-    rc.scoremethod = "scores_laplace_split"
-    rc.mincount = 2
+    rc.scoremethod = "scores_bgfreq"
+    #rc.scoremethod = "scores_laplace_split"
+    rc.mincount = 0
     rc.min_infogain = 0
     rc.positives_only = False
     fspace, rc.type_mask = spaces[fs]
@@ -283,7 +279,5 @@ def gdsmall():
 
 if __name__ == "__main__":
     iofuncs.start_logger(logfile=False)
-    if sys.argv[1] in locals():
-        adata = ArticleData.Defaults()
     # Call the named function with provided arguments
     locals()[sys.argv[1]](*sys.argv[2:])

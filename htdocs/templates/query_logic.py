@@ -130,7 +130,7 @@ QueryForm = forms.Form(
     validators = [
     forms.Validator(lambda x: (x.operation == "retrieval") or
                     (x.operation == "validate" and len(parse_pmids(x.positives)) >= 30),
-                    "Must have at least 30 PMIDs to do validation")
+                    "Must have at least 30 PubMed IDs to do validation")
     ]
 )
 """Structure of the query form"""

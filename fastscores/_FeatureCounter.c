@@ -83,13 +83,13 @@ int main (int argc, char **argv)
     unsigned int gap = 0; // Gap between feature IDs
     unsigned int last = 0; // Value of previous decoded feature ID
 
-    // Allocate space for list of excluded PMIDs 
+    // Allocate space for list of excluded PubMed IDs 
     unsigned int *excluded = (unsigned int*) malloc (numexcluded * sizeof(int));
     
     // Allocate space for vector of feature counts 
     int *featcounts = (int*) malloc (numfeats * sizeof(int));
 
-    // Read the excluded PMIDs from input
+    // Read the excluded PubMed IDs from input
     fread(excluded, sizeof(int), numexcluded, stdin);
 
     // Initialise the feature counts to zero

@@ -42,7 +42,7 @@ class Exporter:
         @param articles: List of Article objects. Requires pmid, title,
         abstract and genedrug fields. with genedrug field
         
-        @return: Mapping from (gene,drug) pair to list of PMIDs
+        @return: Mapping from (gene,drug) pair to list of PubMed IDs
         """
         # Count gene-drug co-occurrences from articles
         gdcounter = {}

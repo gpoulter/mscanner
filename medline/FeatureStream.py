@@ -28,11 +28,11 @@ class FeatureStream:
     @note: Each feature vector is compressed using variable byte encoding. See
     http://nlp.stanford.edu/IR-book/html/htmledition/variable-byte-codes-1.html.
     
-    @ivar stream: File object underlying the stream.
-    
     @ivar filename: Path to the file holding the feature stream.
     
     @ivar rdonly: Boolean for whether to open the stream read-only or appendable.
+
+    @ivar stream: File object underlying the stream.    
     """
     
     
@@ -65,11 +65,8 @@ class FeatureStream:
 
     def additem(self, pmid, date, features):
         """Add a (pmid,date,features) record to the FeatureStream
-        
         @param pmid: PubMed ID (string or integer).
-        
         @param date: The YYYYMMDD integer date for the record.
-        
         @param features: Array/list/iterable of feature IDs."""
         if not isinstance(date, int): 
             raise ValueError("Date must be integer format")
@@ -80,9 +77,7 @@ class FeatureStream:
 
     def readitem(self, pos=None):
         """Read a feature stream record from the current location.
-        
         @param pos: Seek to this file position. Very bad if wrong! 
-        
         @return: (PubMed ID, YYYYMMDD, feature vector) as (int,int,list) from
         the stream."""
         if pos is not None:

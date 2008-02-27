@@ -21,7 +21,6 @@ from mscanner.configuration import rc
 from mscanner.core import iofuncs
 from mscanner.core.QueryManager import QueryManager
 from mscanner.medline.FeatureData import FeatureData
-from mscanner.medline.ArticleData import ArticleData
 from mscanner.medline.FeatureStream import DateAsInteger
 
 

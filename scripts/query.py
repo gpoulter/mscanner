@@ -13,7 +13,7 @@ from mscanner.configuration import rc
 from mscanner.core import iofuncs
 from mscanner.core.QueryManager import QueryManager
 from mscanner.medline.FeatureData import FeatureData
-from mscanner.medline.ArticleData import ArticleData
+from mscanner.medline import Shelf
 
 
                                      
@@ -55,13 +55,8 @@ def base_query(outdir, dataset, featurespace, limit=500, df=None, ig=None):
     # Set information gain cutoff
     if ig is not None:
         rc.min_infogain = ig
-    # Choose feature types
-    if featurespace == "feats_mesh_qual_issn":
-        ftype = nx.uint16
-    else:
-        ftype = nx.uint32
-    fdata = FeatureData.Defaults(featurespace, ftype)
-    QM = QueryManager(outdir, title, limit, adata, fdata, threshold=0)
+    fdata = FeatureData.Defaults(featurespace)
+    QM = QueryManager(outdir, title, limit, artdb, fdata, threshold=0)
     QM.query(rc.corpora / dataset_map[dataset])
     QM.write_report()
     fdata.close()
@@ -74,7 +69,7 @@ def bmc(*datasets):
     fdata = FeatureData.Defaults("feats_mesh_qual_issn", nx.uint16)
     for dataset in datasets:
         QM = QueryManager(groupdir / dataset, dataset, limit=1000,
-                          adata=adata, fdata=fdata, threshold=0, prior=None)
+                          artdb=artdb, fdata=fdata, threshold=0, prior=None)
         QM.query(rc.corpora / dataset_map[dataset])
         QM.write_report()
     fdata.close()
@@ -92,7 +87,7 @@ def gdsmall():
 if __name__ == "__main__":
     iofuncs.start_logger(logfile=False)
     if sys.argv[1] in locals():
-        adata = ArticleData.Defaults()
+        artdb = Shelf.open(rc.articles_home/rc.articledb, 'r')
     # Call the named function with provided arguments
     locals()[sys.argv[1]](*sys.argv[2:])
     

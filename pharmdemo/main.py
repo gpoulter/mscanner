@@ -21,7 +21,6 @@ from mscanner.core import iofuncs
 from mscanner.core.QueryManager import QueryManager
 from mscanner.core.ValidationManager import CrossValidation
 from mscanner.medline.FeatureData import FeatureData
-from mscanner.medline.ArticleData import ArticleData
 from mscanner.pharmdemo import genedrug
 from mscanner.pharmdemo.Exporter import Exporter
 
@@ -76,7 +75,7 @@ class PharmdemoQuery(QueryManager):
         gd_articles = []
         gd_pmids = set()
         for score, pmid in chain(self.results, self.inputs):
-            a = self.adata.artdb[str(pmid)]
+            a = self.artdb[str(pmid)]
             a.genedrug = gdfinder[a]
             if len(a.genedrug) > 0:
                 gd_articles.append(a)
@@ -103,10 +102,10 @@ class PharmdemoValidation(CrossValidation):
         @return: Set of PubMed IDs which have gene-drug co-occurrences.
         """
         logging.info("Getting gene-drug associations") 
-        adata = ArticleData.Defaults()
-        pos_arts = [ adata.artdb[x] for x in self.positives ]
-        neg_arts = [ adata.artdb[x] for x in self.negatives ]
-        adata.close()
+        artdb = Shelf(rc.articles_home/rc.articledb,'r')
+        pos_arts = [artdb[x] for x in self.positives]
+        neg_arts = [artdb[x] for x in self.negatives]
+        artdb.close()
         gdfinder = genedrug.open_genedrug_finder(
             rc.genedrug, rc.drugtable, rc.gapscore)
         postfilter = set()

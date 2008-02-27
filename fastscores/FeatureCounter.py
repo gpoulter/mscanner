@@ -25,7 +25,7 @@ class FeatureCounter:
     
     @ivar maxdate: YYYYMMDD as integer: ignore documents after this date.
 
-    @ivar exclude: PMIDs that are not allowed to appear in the results.
+    @ivar exclude: PubMed IDs that are not allowed to appear in the results.
     """
 
 

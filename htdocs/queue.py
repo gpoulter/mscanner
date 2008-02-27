@@ -233,13 +233,14 @@ def logit(probability):
 def mainloop():
     """Look for descriptor files every second"""
     # The updater contains references to the databases
-    updater = Updater.Defaults([
-        ("feats_mesh_qual_issn", nx.uint16),
-        ("feats_wmqia", nx.uint32),
-    ])
+    updater = Updater.Defaults(["feats_mesh_qual_issn","feats_wmqia"])
     # Pre-load the article list vector
-    updater.adata.article_list 
+    logging.debug("Calculating length of mesh index.")
+    len(updater.fdata_list[0].featuredb)
+    logging.debug("Calculating length of word index.")
+    len(updater.fdata_list[1].featuredb)
     try:
+        logging.debug("Queue is now running.")
         # Time of last output clean
         last_clean = time.time()
         # Time of last database update
@@ -273,14 +274,20 @@ def mainloop():
                 # Update task file mod time for the status display
                 task._filename.utime(None) 
                 try:
-                    # Choose MeSH+Abstract or MeSH-only feature space
-                    fdata = updater.fdata_list[1 if task.allfeatures else 0]
+                    # Configure feature space
+                    if not task.allfeatures:
+                        fdata = updater.fdata_list[0] # feats_mesh_qual_issn
+                        rc.min_infogain = 0
+                    else:
+                        fdata = updater.fdata_list[1] # feats_wmqia
+                        rc.min_infogain = 2e-5
+                    # Retrieval operation
                     if task.operation == "retrieval":
                         QM = QueryManager(
                             outdir=outdir, 
                             dataset=task.dataset,
                             limit=task.limit,
-                            adata=updater.adata,
+                            artdb=updater.artdb,
                             fdata=fdata,
                             threshold=task.minscore,
                             prior=logit(task.prevalence),
@@ -291,11 +298,11 @@ def mainloop():
                         time.sleep(5)
                         QM.write_report()
                         QM.__del__()
+                    # Cross validation operation
                     elif task.operation == "validate":
                         VM = CrossValidation(
-                            outdir=outdir, 
+                            outdir=outdir,
                             dataset=task.dataset,
-                            adata=updater.adata,
                             fdata=fdata)                        
                         VM.validation(task._filename, task.numnegs)
                         VM.report_validation()

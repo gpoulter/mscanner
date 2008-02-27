@@ -6,10 +6,11 @@ from __future__ import with_statement
 from contextlib import closing
 import logging
 import numpy as nx
+import sys
 
 from mscanner.configuration import rc
 from mscanner.medline.FeatureMapping import FeatureMapping
-from mscanner.medline.FeatureDatabase import FeatureDatabase
+from mscanner.medline.FeatureVectors import FeatureVectors
 from mscanner.medline.FeatureStream import FeatureStream, DateAsInteger
 from mscanner import endpath
 
@@ -30,44 +31,45 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
 class FeatureData:
-    """Wraps the L{FeatureMapping}, L{FeatureDatabase} and L{FeatureStream}
-    objects. Different L{FeatureData} instances are possible for the same
-    L{ArticleData} collection, depending on the choice of feature extraction
-    method.
+    """Wraps the L{FeatureMapping}, L{FeatureVectors} and L{FeatureStream}
+    objects. There may be multiple L{FeatureData} indexes for the same database
+    of articles, depending on the choice of feature extraction method.
 
     @ivar featmap: L{FeatureMapping} between feature names and feature IDs.
     
-    @ivar featuredb: Mapping from PubMed ID to list of features.
+    @ivar featuredb: L{FeatureVectors} to look up feature vectors by PubMed ID.
     
-    @ivar fstream: L{FeatureStream} of (PMID, date, feature vector).
+    @ivar fstream: L{FeatureStream} of (PMID, date, feature vector) records.
     
     @ivar featurespace: Name of a method of L{Article} which will generate
     the features, which is also the subdirectory in rc.articles_home where
     the feature databases are to be kep.
     
-    @ivar rdonly: If True, open all databases read-only.
+    @ivar rdonly: If True, treat all databases as read-only.
     """
     
-    def __init__(self, numtype, featmap, featdb, fstream, featurespace, rdonly=True):
+    def __init__(self, featmap, featdb, fstream, featurespace, rdonly=True):
         """Constructor.
-        @param numtype: Numpy type for FeatureDatabase (uint16 or uint32).
+        @param featmap: Path to FeatureMapping.
+        @param featdb: Path to FeatureVectors.
+        @param fstream: Path to FeatureStream.
         """
+        logging.debug("Loading features from %s", endpath(featmap.dirname()))
         self.rdonly = rdonly
-        logging.debug("Loading feature mapping from %s", endpath(featmap))
         self.featmap = FeatureMapping(featmap)
-        self.featuredb = FeatureDatabase(numtype, featdb, "r" if rdonly else "c")
+        self.featuredb = FeatureVectors(featdb)
         self.fstream = FeatureStream(fstream, rdonly)
         self.featurespace = featurespace
 
 
     @staticmethod 
-    def Defaults(featurespace, numtype, rdonly=True):
-        """Initialise L{FeatureData} using standard file paths. numtype,
-        L{featurespace} and L{rdonly} are as in the constructor."""
+    def Defaults(featurespace, rdonly=True):
+        """Initialise L{FeatureData} using standard file paths. L{featurespace}
+        and L{rdonly} are as in the constructor."""
+        # Create index directory if necessary
         base = rc.articles_home / featurespace
-        # Create feature database directory if necessary
         if not base.exists(): base.makedirs()
-        return FeatureData(numtype, base/rc.featuremap, base/rc.featuredb, 
+        return FeatureData(base/rc.featuremap, base/rc.featuredb, 
                            base/rc.featurestream, featurespace, rdonly)
     
 
@@ -78,65 +80,79 @@ class FeatureData:
         self.featmap.close()
 
 
+    def commit(self):
+        """Commit transactions"""
+        self.featmap.con.commit()
+        self.featuredb.con.commit()
+        self.fstream.flush()
+
+
     def add_articles(self, articles):
         """Incrementally add new articles to the existing feature 
         database, stream and feature map.  
         
-        @param articles: Iterable Article objects."""
+        @param articles: Iterator over Article objects."""
         if self.rdonly:
             raise NotImplementedError("Attempt to write to read-only databases")
         logging.debug("Adding articles to %s", endpath(self.featmap.filename.dirname()))
-        for article in articles:
+        for article in counter(articles):
             pmid = article.pmid
             if pmid not in self.featuredb:
                 date = DateAsInteger(article.date_completed)
                 features = getattr(article, self.featurespace)()
                 self.featmap.add_article(features)
                 featvec = self.featmap.make_vector(features)
-                self.featuredb[str(pmid)] = featvec
+                self.featuredb.add_record(pmid, date, featvec)
                 self.fstream.additem(pmid, date, featvec)
-        self.featuredb.sync()
-        self.fstream.flush()
-        self.featmap.con.commit()
-        
-        
-    def regenerate(self, articles):
+        sys.stdout.write("\n")
+        self.commit()
+
+
+    def regenerate(self, artdb):
         """Regenerate feature map, feature stream and feature database, but
         only if they have been deleted. FeatureMapping is flushed to disk only
         at the end.
         
-        @param articles: Iterable of all Article objects in the L{ArticleData}."""
+        @param artdb: Dictionary of Article objects keyed by PubMed ID."""
         if self.rdonly:
             raise NotImplementedError("Failed: may not write read-only databases.")
         do_featmap = len(self.featmap) == 1
         do_stream = self.fstream.filename.size == 0
         do_featuredb = len(self.featuredb) == 0
         if not (do_featmap or do_stream or do_featuredb):
-            logging.info("Done: nothing to do as databases already have data.")
+            logging.info("Regen: nothing to do as databases already have data.")
             return
+        # Regenerate map, db, stream
         if do_featmap:
-            logging.info("Regen feature map %s.", endpath(self.featmap.filename))
+            logging.info("Regenerating map,db,stream %s.", endpath(self.featmap.filename.dirname()))
             if not (do_stream and do_featuredb):
-                raise ValueError("Cannot regenerate feature map without regenerating feature stream and database")
-        if do_stream: 
-            logging.info("Regen feature stream %s.", endpath(self.fstream.filename))
-        if do_featuredb: 
-            logging.info("Regen feature database %s.", endpath(self.featuredb.filename))
-        for count, article in enumerate(articles):
-            pmid = article.pmid
-            date = DateAsInteger(article.date_completed)
-            features = getattr(article, self.featurespace)()
-            if count % 10000 == 0:
-                logging.debug("Regenerated %d articles.", count)
-                self.featmap.con.commit()
-            if do_featmap:
-                self.featmap.add_article(features)
-            if do_stream or do_featuredb:
-                featvec = self.featmap.make_vector(features)
-                if do_stream:
-                    self.fstream.additem(pmid, date, featvec)                
-                if do_featuredb:
-                    self.featuredb[str(pmid)] = featvec
-        self.featuredb.sync()
-        self.fstream.flush()
-        self.featmap.con.commit()
+                raise ValueError("Cannot regenerate feature map without doing stream/database as well.")
+            self.add_articles(artdb.itervalues())
+        # Regenerate feature stream from database
+        elif do_stream: 
+            logging.info("Regenerating FeatureStream %s.", endpath(self.fstream.filename))
+            for pmid, date, featvec in counter(self.featuredb.iteritems()):
+                self.fstream.additem(pmid, date, featvec)
+        # Regenerate feature database from feature stream
+        elif do_featuredb: 
+            logging.info("Regenerating FeatureVectors %s.", endpath(self.featuredb.filename))
+            for pmid, date, featvec in counter(self.fstream.iteritems()):
+                self.featuredb.add_record(pmid, date, featvec)
+        self.commit()
+        # Make sure there's an index on the feature database
+        self.featuredb.create_index()
+
+
+def counter(iter):
+    """Passes through the iterator, printing '.' on stdout after every 1000
+    items.  Adds a newline at the end."""
+    count = 0
+    for x in iter:
+        yield x
+        count += 1
+        if count >= 1000:
+            sys.stdout.write(".")
+            sys.stdout.flush()
+            count = 0
+    sys.stdout.write("\n")
+    sys.stdout.flush()

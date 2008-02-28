@@ -50,7 +50,8 @@ def regenerate():
     """Regenerate the FeatureMap, FeatureStream, FeatureVectors
     and article list - but only those that have been deleted from dist."""
     updater = Updater.Defaults(featurespaces)
-    updater.regenerate()
+    for fdata in updater.fdata_list:
+        fdata.regenerate(updater.artdb)
     return updater
 
 
@@ -60,6 +61,18 @@ def medline():
     logging.info("Updating MScanner from " + rc.medline.relpath())
     updater = Updater.Defaults(featurespaces)
     updater.add_directory(rc.medline, save_delay=0)
+    return updater
+
+
+def vacuum(mincount):
+    """Remove low-frequency features from the index, remapping the feature vectors.
+    @param mincount: Keep features with at least this many occurrences.
+    """
+    mincount = int(mincount)
+    logging.info("Vacuuming features with counts less than %d", mincount)
+    updater = Updater.Defaults(featurespaces)
+    for fdata in updater.fdata_list:
+        fdata.vacuum(mincount=mincount)
     return updater
 
 

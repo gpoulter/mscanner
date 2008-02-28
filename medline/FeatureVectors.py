@@ -65,9 +65,23 @@ class FeatureVectors:
         try:
             return self._length
         except AttributeError:
-            logging.debug("Querying number of documents in database.")
+            logging.debug("Querying number of documents in the index.")
             self._length = self.con.execute("SELECT count(pmid) FROM docs").fetchone()[0]
             return self._length
+
+
+    def pmids_array(self):
+        """Get array of the PubMed IDs in the database, with caching."""
+        try:
+            return self._pmids
+        except AttributeError:
+            self._pmids = nx.zeros(len(self), nx.uint32)
+            logging.debug("Querying array of all PubMed IDs in the index.")
+            count = 0
+            for pmid, in self.con.execute("SELECT pmid FROM docs"):
+                self._pmids[count] = pmid
+                count += 1
+            return self._pmids
 
 
     def add_record(self, pmid, date, featurevector):
@@ -103,14 +117,6 @@ class FeatureVectors:
             yield pmid, date, list(vb_decode(blob))
 
 
-    def create_index(self):
-        """Create index on the date column, for fast filtering by date. Don't
-        call this, since we will only have a use for it when a C program
-        like _ScoreCalculator.c is modified to processing an SQLite database."""
-        self.con.execute("CREATE INDEX IF NOT EXISTS dateidx ON docs (date)")
-        self.con.commit()
-
-
     def iteritems(self, decode=True):
         """Iterate over (pmid, date, featurevector) from the database. 
         @param decode: If True, featurevector is a list. If False, 
@@ -121,19 +127,6 @@ class FeatureVectors:
             yield pmid, date, blob
 
 
-    def pmids_array(self):
-        """Get array of the PubMed IDs in the database, with caching."""
-        try:
-            return self._pmids
-        except AttributeError:
-            pmids = nx.zeros(len(self), nx.uint32)
-            logging.debug("Loading vector of PubMed IDs from index")
-            count = 0
-            for pmid, in self.con.execute("SELECT pmid FROM docs"):
-                pmids[count] = pmid
-                count += 1
-            self._pmids = pmids
-            return self._pmids
 
 
 def random_subset(k, pool, exclude):

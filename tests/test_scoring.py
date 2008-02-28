@@ -189,7 +189,7 @@ class FeatureScoresTests(unittest.TestCase):
 
     def _scoremethodtester(s, scoremethod, answer):
         """Test a score calculation method"""
-        rc.mincount = 0
+        rc.mincount = 1
         rc.min_infogain = 0
         rc.type_mask = []
         logging.info("FeatureScores(%s)", scoremethod)
@@ -210,11 +210,6 @@ class FeatureScoresTests(unittest.TestCase):
         self._scoremethodtester("scores_bgfreq", 
             [ 0, 2.24819092, -2.24819092,  2.248191  ,  0.        , -2.248191  ])
 
-
-    def test_scores_laplace_split(self):
-        """Score calculation using split-laplace counts."""
-        self._scoremethodtester("scores_laplace_split", 
-            [ 0, 1.43508453, -1.43508453,  1.43508453,  0.        , -1.43508453])
 
     def test_scores_laplace_split(self):
         """Score calculation using split-laplace counts."""

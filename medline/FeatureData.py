@@ -95,14 +95,15 @@ class FeatureData:
         inconsistent overwrites (but slow and unnecessary if regenerating).
         """
         if self.rdonly:
-            raise NotImplementedError("Attempt to write to read-only databases")
+            raise NotImplementedError("Attempt to write to read-only index.")
         logging.debug("Adding articles to %s", endpath(self.featmap.filename.dirname()))
         for article in counter(articles):
             pmid = article.pmid
             if check and (pmid in self.featuredb): continue
             date = DateAsInteger(article.date_completed)
             features = getattr(article, self.featurespace)()
-            featvec = vb_encode(self.featmap.add_article(features))
+            self.featmap.add_article(features)
+            featvec = vb_encode(self.featmap.make_vector(features))
             self.featuredb.add_record(pmid, date, featvec)
             self.fstream.additem(pmid, date, featvec)
         self.commit()
@@ -115,7 +116,7 @@ class FeatureData:
         
         @param artdb: Dictionary of Article objects keyed by PubMed ID."""
         if self.rdonly:
-            raise NotImplementedError("Failed: may not write read-only databases.")
+            raise NotImplementedError("Failed: may not write read-only index.")
         do_featmap = len(self.featmap) == 1
         do_stream = self.fstream.filename.size == 0
         do_featuredb = len(self.featuredb) == 0
@@ -140,6 +141,30 @@ class FeatureData:
                 self.featuredb.add_record(pmid, date, featvec)
         self.commit()
         logging.info("Index regeneration complete.")
+
+
+    def vacuum(self, mincount):
+        """Remove features from the index having less than the specified number
+        of occurrences. This is useful with word features, where millions of
+        features would go unselected anyway, wasting memory. We renumber the
+        features for the smaller vector."""
+        logging.info("Vacuuming index %s.", endpath(self.featmap.filename.dirname()))
+        if self.rdonly:
+            raise NotImplementedError("Failed: may not write read-only index.")
+        lookup = self.featmap.vacuum(mincount)
+        oldname = self.fstream.filename
+        newname = oldname + ".new"
+        fstream_new = FeatureStream(newname, rdonly=False)
+        for pmid, date, featvec in counter(self.fstream.iteritems()):
+            featvec = vb_encode(lookup[f] for f in featvec if lookup[f] != -1)
+            self.featuredb.update_record(pmid, date, featvec)
+            fstream_new.additem(pmid, date, featvec)
+        fstream_new.close()
+        self.fstream.close()
+        newname.move(oldname)
+        self.fstream = FeatureStream(oldname, rdonly=False)
+        self.commit()
+        logging.info("Index vacuuming complete.")
 
 
 def counter(iter):

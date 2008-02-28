@@ -130,7 +130,6 @@ class FeatureScores(object):
         """
         from mscanner.configuration import rc
         selected = nx.ones(len(s.pos_counts), nx.bool)
-        selected[0] = False
         if rc.type_mask:
             # Keep only features that are not of the specified types
             selected &= ~s.featmap.type_mask(rc.type_mask)
@@ -141,9 +140,8 @@ class FeatureScores(object):
             # Keep only features found in a relevant article
             selected &= (s.pos_counts != 0)
         if rc.min_infogain > 0:
-            # Keep features above the information gain limit. Information gain
-            # is expensive so only calculate it on features that have passed so
-            # far.
+            # Keep features by information gain. Infogain is expensive to 
+            # calculate, so do it only for features that have passed so far.
             selected[selected] &= (s.infogain(selected) >= rc.min_infogain)
         return selected
 
@@ -262,9 +260,8 @@ class FeatureScores(object):
         try: 
             return self._stats
         except AttributeError: 
-            pass
-        self._stats = self.FeatureStats(self)
-        return self._stats
+            self._stats = self.FeatureStats(self)
+            return self._stats
 
 
     class FeatureStats:

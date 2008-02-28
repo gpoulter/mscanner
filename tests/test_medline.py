@@ -95,20 +95,26 @@ class FeatureMappingTests(unittest.TestCase):
         fm = FeatureMapping(filename=None)
         a1 = dict(Q=["A","B"], T=["A","C"])
         # Test adding of a feature vector
-        self.assertEqual(fm.add_article(a1), [1,2,3,4])
+        fm.add_article(a1)
         self.assertEqual(fm.make_vector(a1), [1,2,3,4])
         self.assertEqual([fm.get_feature(i) for i in [1,2,3,4]], [("A","Q"), ("B","Q"),("A","T"),("C","T")])
         self.assert_(nx.all(fm.counts == [0,1,1,1,1]))
-        self.assert_(nx.all(fm.type_mask("Q") == [1,1,1,0,0]))
+        self.assert_(nx.all(fm.type_mask("Q") == [0,1,1,0,0]))
         # Test read/write of unicode characters
         a2 = {"Q":["B", u"D\xd8"]}
-        self.assertEqual(fm.add_article(a2), [2,5])
+        fm.add_article(a2)
+        self.assertEqual(fm.make_vector(a2), [2,5])
         logging.debug("%s", str(fm.get_feature(5)))
-        # Test removing of a feature vector
+        # Test uncounting an instance
         self.assert_(nx.all(fm.counts == [0,1,2,1,1,1]))
         fm.remove_vector(fm.make_vector(a2))
-        del fm._counts
         self.assert_(nx.all(fm.counts == [0,1,1,1,1,0]))
+        # Test vacuuming (should delete first and last feature)
+        #logging.debug(str(list(fm.con.execute("SELECT * FROM fmap"))))
+        self.assert_(nx.all(fm.vacuum(1) == [-1,0,1,2,3,-1]))
+        self.assert_(nx.all(fm.counts == [1,1,1,1]))
+        #logging.debug(str(list(fm.con.execute("SELECT * FROM fmap"))))
+        # Close database
         fm.con.close()
 
 
@@ -158,16 +164,24 @@ class FeatureDataTests(unittest.TestCase):
             "333": Article(333,date_completed=(1990,01,01),meshterms=[("A","B"),"C"]),
             "444": Article(444,date_completed=(1990,01,01),meshterms=[("D","B"),"E"]),
             }
+        # Test adding of articles
         fd = FeatureData.Defaults("feats_mesh_qual_issn", False)
         fd.add_articles(articles.itervalues())
         fd.close()
+        # Test regeneration of FeatureData preservs article counts
         fd.featuredb.filename.remove()
         fd.featmap.filename.remove()
         fd.fstream.filename.remove()
         fd = FeatureData.Defaults("feats_mesh_qual_issn", False)
         fd.regenerate(articles)
-        self.assertEqual(len(fd.featmap), 6)
+        self.assert_(nx.all(fd.featmap.counts == [0,2,1,1,1,1]))
         self.assertEqual(len(fd.featuredb), 2)
+        # Test vacuuming of low-count features
+        fd.vacuum(mincount=2)
+        self.assert_(nx.all(fd.featmap.counts == [2]))
+        self.assertEqual(list(fd.featuredb.get_records([444,333])), 
+                         [(333, 19900101, [0]), (444, 19900101, [0])])
+        #logging.debug(str(list(fd.featmap.con.execute("SELECT * FROM fmap"))))
         fd.close()
 
 
@@ -214,6 +228,11 @@ class UpdaterTests(unittest.TestCase):
         (h/"pmids.txt").write_lines(["1","2"])
         update.save_pickle(h/"pmids.txt")
         m = update.load_pickles(h/"pmids.pickle.gz")
+        m.close()
+        # Test vacuum
+        m = update.vacuum(mincount="2")
+        self.assertEqual(len(m.fdata_list[0].featuredb), 2)
+        self.assert_(nx.all(m.fdata_list[0].featmap.counts == [2,2,2,2,2,2,2]))
 
 
 
@@ -331,6 +350,7 @@ if __name__ == "__main__":
     #suite = unittest.TestLoader().loadTestsFromTestCase(ArticleTests)
     #suite = unittest.TestLoader().loadTestsFromTestCase(FeatureMappingTests)
     #suite = unittest.TestLoader().loadTestsFromTestCase(FeatureVectorsTests)
+    #suite = unittest.TestLoader().loadTestsFromTestCase(FeatureDataTests)
     #suite = unittest.TestLoader().loadTestsFromTestCase(UpdaterTests)
     #unittest.TextTestRunner(verbosity=2).run(suite)
 

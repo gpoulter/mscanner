@@ -253,10 +253,12 @@ def bmc(*datasets):
     """Do the cross-validation on the sample topics from the BMC manuscript."""
     fs = "meshqi"
     rc.scoremethod = "scores_bgfreq"
-    #rc.scoremethod = "scores_laplace_split"
-    rc.mincount = 0
+    rc.mincount = 1
     rc.min_infogain = 0
     rc.positives_only = False
+    #rc.scoremethod = "scores_laplace_split"
+    #rc.mincount = 2
+    #rc.min_infogain = 2e-5
     fspace, rc.type_mask = spaces[fs]
     s = base / "bmc" / "valid"
     tab = ResultsTable(s/"summary.txt", append=True)

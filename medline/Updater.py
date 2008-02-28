@@ -69,12 +69,6 @@ class Updater:
             rc.articles_home/rc.tracker)
     
 
-    def regenerate(self):
-        """Regenerate L{FeatureData}, possibly from the article database."""
-        for fdata in self.fdata_list:
-            fdata.regenerate(self.artdb)
-
-
     def add_articles(self, articles):
         """Add a list of new article objects to article database and L{FeatureData}.
         @param articles: List of Article objects to add.

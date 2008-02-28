@@ -1,6 +1,7 @@
 """Provides a mapping between feature strings and their integer IDs"""
 
 from mscanner import delattrs
+from itertools import izip
 import logging
 import numpy as nx
 from pysqlite2 import dbapi2 as sqlite3
@@ -45,9 +46,8 @@ class FeatureMapping:
           id INTEGER PRIMARY KEY,
           type TEXT, name TEXT, count INTEGER,
           UNIQUE(type,name) )""")
-        # Make sure a dummy feature occupies the zeroth index
-        if self.con.execute("SELECT * FROM fmap LIMIT 1").fetchone() is None:
-            self.con.execute("INSERT INTO fmap VALUES(0, '', '', 0)")
+        # Make sure that feature 0 exists (create a dummy if necessary)
+        self.con.execute("INSERT OR IGNORE INTO fmap VALUES(0, '', '', 0)")
 
 
     def close(self):
@@ -56,62 +56,14 @@ class FeatureMapping:
         self.con.close()
 
 
-    def get_feature(self, fid):
-        """Retrieve (feature name, feature type) given feature ID."""
-        row = self.con.execute(
-            "SELECT name, type FROM fmap WHERE id=?", (fid,)).fetchone()
-        if row is None:
-            raise KeyError("Invalid key: %s" % str(key))
-        return row
-
-
     def __len__(self):
-        """Return number of features in the table"""
-        return self.con.execute("SELECT count(id) FROM fmap").fetchone()[0]
-
-
-    @staticmethod
-    def holders(n):
-        """Return a '(?,?,?)' place-holder tuple with n question marks"""
-        if n < 1:
-            raise ValueError("Must have at least one '?' in the tuple")
-        return "(?" + (",?" * (n-1)) + ")"
-
-
-    def type_mask(self, ftypes):
-        """Boolean array to mark features of the specified type.
-        
-        @param ftypes: List of feature types to exclude, e.g. ["mesh","issn"].
-        
-        @return: Boolean array indexed by feature ID. True positions correspond
-        to features of the types specified in L{ftypes}."""
-        mask = nx.zeros(len(self), nx.bool)
-        mask[0] = True # Always mask the dummy feature
-        if len(ftypes) > 0:
-            for fid, in self.con.execute(
-                "SELECT id FROM fmap WHERE type IN "+
-                self.holders(len(ftypes)), ftypes):
-                mask[fid] = True
-        return mask
-    
-    
-    def make_vector(self, featuredict):
-        """Calculate vector of feature IDs representing an instance, given a
-        dictionary with the types and names of the features of the instance
-        @param featuredict: Dictionary keyed by feature type, where each value
-        is a list of feature strings of that type C{{'mesh':['A','B']}}
-        @return: Vector of feature IDs.
-        """
-        vector = [] # Feature vector
-        for ftype, featlist in featuredict.iteritems():
-            if len(featlist) > 0:
-                for fid, in self.con.execute(
-                    "SELECT id FROM fmap WHERE type='" + ftype + "' AND name IN "
-                    + self.holders(len(featlist)), featlist):
-                    vector.append(fid)
-        # Variable Byte Encoding requires a sorted vector
-        vector.sort() 
-        return vector
+        """Return number of features in the table."""
+        try:
+            return self._length
+        except AttributeError:
+            logging.debug("Querying length of FeatureMapping.")
+            self._length = self.con.execute("SELECT count(id) FROM fmap").fetchone()[0]
+            return self._length
 
 
     @property
@@ -123,47 +75,107 @@ class FeatureMapping:
         try:
             return self._counts
         except AttributeError:
-            logging.debug("Querying occurrence counts for all features.")
+            logging.debug("Querying occurrence counts from FeatureMapping.")
             self._counts = nx.zeros(len(self), nx.uint32)
             for id,count in self.con.execute("SELECT id,count FROM fmap ORDER BY id"):
                 self._counts[id] = count
             return self._counts
 
 
+    @staticmethod
+    def holders(n):
+        """Return a '(?,?,?)' place-holder tuple with n question marks"""
+        if n < 1:
+            raise ValueError("Must have at least one '?' in the tuple")
+        return "(?" + (",?" * (n-1)) + ")"
+
+
+    def type_mask(self, ftypes):
+        """Get boolean array to mark features of the specified type.
+        @param ftypes: List of feature types, such as ["mesh","issn"].
+        @return: Boolean array indexed by feature ID where True positions
+        correspond to features of the types specified in L{ftypes}."""
+        mask = nx.zeros(len(self), nx.bool)
+        if len(ftypes) > 0:
+            for fid, in self.con.execute(
+                "SELECT id FROM fmap WHERE type IN "+
+                self.holders(len(ftypes)), ftypes):
+                mask[fid] = True
+        return mask
+    
+    
     def remove_vector(self, featurevector):
-        """Remove an article's feature vector from the feature map by
-        decrementing the stored count of each feature (also decrements
-        L{counts}). Does NOT remove features whose count has dropped to
-        zero."""
+        """Remove an instance from the background count by decrementing the
+        occurrence count of each of its features. Does NOT delete features
+        whose count has dropped to zero."""
         self.con.execute("UPDATE fmap SET count=(count-1) WHERE id IN "+
                          self.holders(len(featurevector)), featurevector)
         self._counts[featurevector] -= 1
 
 
+    def vacuum(self, mincount):
+        """Delete features with fewer than the specified number of occurrences.
+        @return: Array mapping old feature IDs to new, or -1 for deleted features."""
+        keep = self.counts >= mincount
+        nkeep, numfeats = sum(keep), len(keep)
+        logging.info("Keeping %d features (at least %d occurrences). Deleting %d features out of %d.",
+                     nkeep, mincount, numfeats-nkeep, numfeats)
+        # lookup[oldid] == newid or -1
+        lookup = nx.zeros(len(self.counts),nx.int32) - 1
+        lookup[keep] = nx.arange(0, nkeep, dtype=nx.int32)
+        # Map oldfeatures[keep] -> lookup[keep], delete oldfeatures[~keep]
+        oldfeatures = nx.arange(0, numfeats, dtype=nx.int32)
+        # Perform the feature deletion and update
+        self.con.execute("DELETE FROM fmap WHERE count<?", (mincount,))
+        self.con.executemany("UPDATE fmap SET id=? WHERE id=?", 
+                             izip(lookup[keep],oldfeatures[keep]))
+        delattrs(self, "_counts", "_length")
+        return lookup
+
+
+    def get_feature(self, fid):
+        """Retrieve feature (name, type) for a given feature ID. 
+        @raise KeyError: if feature ID does not exist."""
+        row = self.con.execute(
+            "SELECT name, type FROM fmap WHERE id=?", (fid,)).fetchone()
+        if row is None:
+            raise KeyError("Invalid key: %s" % str(key))
+        return row
+
+
     def add_article(self, featuredict):
-        """Add an article to the feature map. Increments the occurrence count
-        for features already represented. Also returns the feature vector
-        (same result as make_vector, which does not alter occurrence counts).
+        """For each feature, insert it with count 1, or increment count of the
+        existing feature. Also returns the feature vector (same result as
+        make_vector, which does not alter occurrence counts).
         
         @param featuredict: Dictionary keyed by feature type, where each value
         is a list of feature strings of that type C{{'mesh':['A','B']}}."""
-        vector = [] # Feature vector under construction
         c = self.con.cursor()
         for ftype, featurelist in featuredict.iteritems():
             for fname in featurelist:
-                row = c.execute("SELECT id FROM fmap WHERE type=? AND name=?", 
-                                (ftype, fname)).fetchone()
-                if row is None:
-                    c.execute("INSERT INTO fmap (type,name,count) VALUES(?,?,?)",
-                              (ftype, fname, 1))
-                    fid = c.lastrowid
-                else:
-                    c.execute("UPDATE fmap SET count=(count+1) WHERE id=?", row)
-                    fid = row[0]
-                vector.append(fid)
+                try:
+                    c.execute("INSERT INTO fmap VALUES(NULL,?,?,?)", (ftype, fname, 1))
+                except sqlite3.IntegrityError:
+                    c.execute("UPDATE fmap SET count=(count+1) WHERE type=? AND name=?", (ftype,fname))
         c.close()
-        # Variable Byte Encoding requires a sorted vector
+        # Feature counts have changed
+        delattrs(self, "_counts", "_length")
+
+
+    def make_vector(self, featuredict):
+        """Get array of feature IDs representing an instance, given a
+        dictionary with the types and names of the features of the instance
+        @param featuredict: Dictionary keyed by feature type, where each value
+        is a list of feature strings of that type C{{'mesh':['A','B']}}
+        @return: Array of feature IDs. 
+        """
+        vector = [] # Feature vector
+        for ftype, featlist in featuredict.iteritems():
+            if len(featlist) > 0:
+                for fid, in self.con.execute(
+                    "SELECT id FROM fmap WHERE type='" + ftype + "' AND name IN "
+                    + self.holders(len(featlist)), featlist):
+                    vector.append(fid)
+        # Sorted vector needed for variable byte encoding
         vector.sort() 
-        # Number of feature may have changed, invalidating _counts array.
-        delattrs(self, "_counts")
         return vector

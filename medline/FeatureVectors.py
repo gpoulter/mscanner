@@ -54,6 +54,11 @@ class FeatureVectors:
         self.con.close()
 
 
+    def commit(self):
+        """Commit pending transactions in the underlying connection"""
+        self.con.commit()
+
+
     def __contains__(self, pmid):
         """Detect whether a vector for a document is already stored"""
         return self.con.execute("SELECT pmid FROM docs WHERE pmid=?",

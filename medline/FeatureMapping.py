@@ -1,5 +1,6 @@
 """Provides a mapping between feature strings and their integer IDs"""
 
+from __future__ import with_statement
 from mscanner import delattrs
 from itertools import izip
 import logging
@@ -56,6 +57,11 @@ class FeatureMapping:
         """Close the underlying database"""
         self.con.commit()
         self.con.close()
+
+
+    def commit(self):
+        """Commit pending transactions in the underlying connection"""
+        self.con.commit()
 
 
     def __len__(self):
@@ -184,5 +190,88 @@ class FeatureMapping:
                     + self.holders(len(featlist)), featlist):
                     vector.append(fid)
         # Sorted vector needed for variable byte encoding
+        vector.sort() 
+        return vector
+
+
+
+
+class OldFeatureMapping:
+    """This version caches the mapping in a data structure, and only
+    writes to the database on commit."""
+    
+    def __init__(self, filename):
+        self.filename = filename
+        self.features = [("","")] # Lookup (fname, ftype) by fid
+        self.counts = [0]  # Lookup count by fid
+        self.feature_ids = {"":""} # Lookup fid by (ftype, fname)
+        if filename is not None and filename.exists():
+            self.load()
+
+    def close(self):
+        pass
+
+    def commit(self):
+        self.dump()
+
+    def load(self):
+        self.features = []
+        self.counts = []
+        self.feature_ids = {}
+        from contextlib import closing
+        with closing(sqlite3.connect(self.filename)) as con:
+            for fid, ftype, fname, count in con.execute("SELECT * from fmap"):
+                self.features.append((ftype, fname))
+                self.counts.append(int(count))
+                if ftype not in self.feature_ids:
+                    self.feature_ids[ftype] = {}
+                self.feature_ids[ftype][fname] = fid
+
+    def dump(self):
+        from contextlib import closing
+        if self.filename.exists(): self.filename.remove()
+        with closing(sqlite3.connect(self.filename)) as con:
+            con.execute("""CREATE TABLE fmap (
+              id INTEGER PRIMARY KEY,
+              type TEXT, name TEXT, count INTEGER,
+              UNIQUE(type,name) )""")
+            for fid, count in enumerate(self.counts):
+                fname, ftype = self.features[fid]
+                con.execute("INSERT INTO fmap VALUES(?,?,?,?)", 
+                            (fid, ftype, fname, count))
+            con.commit()
+
+    def __len__(self):
+        return len(self.counts)
+
+    def get_feature(self, fid):
+        return self.features[fid]
+
+    def type_mask(self, ftypes):
+        mask = nx.zeros(len(self), nx.bool)
+        if len(ftypes) > 0:
+            for ftype in ftypes:
+                for fid in self.feature_ids[ftype].itervalues():
+                    mask[fid] = True
+        return mask
+
+    def add_article(self, featuredict):
+        for ftype, featlist in featuredict.iteritems():
+            if ftype not in self.feature_ids:
+                self.feature_ids[ftype] = {}
+            fdict = self.feature_ids[ftype]
+            for fname in featlist:
+                if fname not in fdict:
+                    fdict[fname] = len(self.features)
+                    self.features.append((fname,ftype))
+                    self.counts.append(1)
+                else:
+                    self.counts[fdict[fname]] += 1
+
+    def make_vector(self, featuredict):
+        vector = []
+        for ftype, featlist in featuredict.iteritems():
+            for fname in featlist:
+                vector.append(self.feature_ids[ftype][fname])
         vector.sort() 
         return vector

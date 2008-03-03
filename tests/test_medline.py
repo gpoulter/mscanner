@@ -116,6 +116,28 @@ class FeatureMappingTests(unittest.TestCase):
         #logging.debug(str(list(fm.con.execute("SELECT * FROM fmap"))))
         # Close database
         fm.con.close()
+        
+        
+    def testOldFeatureMapping(self):
+        """OldFeatureMapping tests"""
+        from mscanner.medline.FeatureMapping import OldFeatureMapping
+        fm = OldFeatureMapping(filename=path("/t"))
+        a1 = dict(Q=["A","B"], T=["A","C"])
+        # Test adding of a feature vector
+        fm.add_article(a1)
+        self.assertEqual(fm.make_vector(a1), [1,2,3,4])
+        self.assertEqual([fm.get_feature(i) for i in [1,2,3,4]], [("A","Q"), ("B","Q"),("A","T"),("C","T")])
+        self.assert_(nx.all(fm.counts == [0,1,1,1,1]))
+        self.assert_(nx.all(fm.type_mask("Q") == [0,1,1,0,0]))
+        # Test read/write of unicode characters
+        a2 = {"Q":["B", u"D\xd8"]}
+        fm.add_article(a2)
+        self.assertEqual(fm.make_vector(a2), [2,5])
+        logging.debug("%s", str(fm.get_feature(5)))
+        fm.dump()
+        fm.load()
+        self.assertEqual(fm.make_vector(a2), [2,5])
+        path("/t").remove()
 
 
 
@@ -211,10 +233,8 @@ class UpdaterTests(unittest.TestCase):
         self.assert_(nx.all(m.fdata_list[0].featmap.counts == [0, 2, 2, 2, 1, 2, 2, 2, 2]))
         self.assertEqual(
             sorted(m.fdata_list[0].featmap.con.execute("SELECT name,type FROM fmap").fetchall()), 
-                sorted([(u'', u''),
-                (u'Q4', 'qual'), (u'Q5', 'qual'), (u'Q7', 'qual'), 
-                (u'T1', 'mesh'), (u'T2', 'mesh'), (u'T3', 'mesh'), (u'T6', 'mesh'), 
-                (u'0301-4851', 'issn')]))
+            sorted([(u'', u''), (u'Q4', 'qual'), (u'Q5', 'qual'), (u'Q7', 'qual'), 
+                (u'T1', 'mesh'), (u'T2', 'mesh'), (u'T3', 'mesh'), (u'T6', 'mesh'), (u'0301-4851', 'issn')]))
         self.assertEqual(len(m.fdata_list[0].featuredb), 2)
         m.close()
         # Test regeneration

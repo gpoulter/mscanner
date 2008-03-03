@@ -83,8 +83,8 @@ class FeatureData:
 
     def commit(self):
         """Commit transactions"""
-        self.featmap.con.commit()
-        self.featuredb.con.commit()
+        self.featmap.commit()
+        self.featuredb.commit()
         self.fstream.flush()
 
 
@@ -98,8 +98,6 @@ class FeatureData:
         if self.rdonly:
             raise NotImplementedError("Attempt to write to read-only index.")
         logging.debug("Adding articles to %s", endpath(self.featmap.filename.dirname()))
-        self.featmap.con.execute("BEGIN EXCLUSIVE TRANSACTION")
-        self.featuredb.con.execute("BEGIN EXCLUSIVE TRANSACTION")
         for article in counter(articles):
             pmid = article.pmid
             if check and (pmid in self.featuredb): continue

@@ -287,10 +287,12 @@ def mainloop():
                         fdata = updater.fdata_list[0] # feats_mesh_qual_issn
                         rc.min_infogain = 0
                         rc.mincount = 2
+                        rc.scoremethod = "scores_bgfreq"
                     else:
                         fdata = updater.fdata_list[1] # feats_wmqia
                         rc.min_infogain = 2e-5
                         rc.mincount = 3
+                        rc.scoremethod = "scores_laplace_split"
                     # Retrieval operation
                     if task.operation == "retrieval":
                         QM = QueryManager(

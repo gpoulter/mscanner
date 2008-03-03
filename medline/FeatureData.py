@@ -3,6 +3,7 @@ so that they are opened and closed together, and articles are added
 to all three representations at the same time."""
 
 from __future__ import with_statement
+from __future__ import division
 from contextlib import closing
 import logging
 import numpy as nx
@@ -167,16 +168,23 @@ class FeatureData:
         logging.info("Index vacuuming complete.")
 
 
-def counter(iter):
-    """Passes through the iterator, printing '.' on stdout after every 1000
-    items.  Adds a newline at the end."""
-    count = 0
+def counter(iter, per_dot=500, per_msg=10000):
+    """Passes through the iterator, printing '.' on stdout after every
+    per_dots items and a timing message after every per_msg items."""
+    import time
+    count, count_inner = 0, 0
+    last_msg = time.time()
     for x in iter:
         yield x
         count += 1
-        if count >= 1000:
+        if count >= per_dot:
             sys.stdout.write(".")
             sys.stdout.flush()
             count = 0
+            count_inner += 1
+            if count_inner % (per_msg//per_dot) == 0:
+                sys.stdout.write(time.strftime("At %H:%M:%S") + " we reached %d after %d seconds\n" %
+                                 (count_inner*per_dot, int(time.time()-last_msg)))
+                last_msg = time.time()
     sys.stdout.write("\n")
     sys.stdout.flush()

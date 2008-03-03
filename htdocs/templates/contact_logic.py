@@ -10,7 +10,8 @@ __license__ = "GPL"
 
 ContactForm = forms.Form(
     
-    forms.Textbox(
+    #forms.Textbox(
+    forms.Hidden(
         "captcha",
         forms.Validator(lambda x: x == "orange", "Should be the word 'orange'"),
         label="The word 'orange'", size=10),
@@ -43,6 +44,7 @@ class ContactPage:
         web.header('Content-Type', 'text/html; charset=utf-8') 
         page = contact.contact()
         page.inputs = ContactForm()
+        page.inputs["captcha"].value = "orange"
         print page
     
     

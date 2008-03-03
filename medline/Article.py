@@ -143,16 +143,14 @@ class Article:
         return dict(mesh=headings, qual=quals, issn=issns)
 
 
-    def feats_word(self, numbers=False, lowcase=True):
+    def feats_word(self, numbers=False, lowcase=False):
         """Alphanumeric case-folded features derived from title and abstract/
         
         @return: Dictionary with the key 'word', and value being a list
         of word feature strings."""
         text = ""
-        if self.title is not None:
-            text = self.title + " "
-        if self.abstract is not None:
-            text += self.abstract
+        if self.title is not None: text = self.title + " "
+        if self.abstract is not None: text += self.abstract
         if lowcase: text = text.lower()
         # Strip non-word characters before and after a word
         r_word = re.compile(r"^\W*(.*?)\W*$", re.UNICODE)
@@ -160,7 +158,7 @@ class Article:
         r_number = re.compile(r'^[0-9eE\W]+$')
         # Split on space characters
         wordset = set()
-        for word in re.compile(r"\s|\'s|--|[!#$^\"{};:&]").split(text):
+        for word in re.compile(r"\s|\'s|--|[!/<>=#$^\"{};:&]").split(text):
             word = r_word.match(word).group(1)
             if len(word) > 1 and\
                (word.lower() not in stopwords) and\
@@ -171,9 +169,9 @@ class Article:
         return {"w":list(wordset)}
 
 
-    def feats_word_nofold(self):
+    def feats_word_fold(self):
         """Like L{feats_word}, but without case-folding."""
-        return self.feats_word(lowcase=False)
+        return self.feats_word(lowcase=True)
 
 
     def feats_word_num(self):
@@ -237,7 +235,7 @@ class Article:
                 text.extend(term)
         text = " ".join(text)
         words = set(x for x in text.split() if x.lower() not in stopwords)
-        return {"iedb":list(words)}
+        return {"w":list(words)}
 
 
     def feats_iedb_word(self):

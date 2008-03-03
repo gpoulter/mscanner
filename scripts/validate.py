@@ -33,7 +33,7 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 
 
 # Top-level directory for all outputs
-base = rc.root / "results"
+base = rc.root / "results" / "comparisons"
 
 # Data set codes to input paths
 dataset_map = {
@@ -50,8 +50,8 @@ spaces = {
     "iedbword":     ("feats_iedb_word", []),
     "iedbconcat":   ("feats_iedb_concat", []),
 
+    "wordfold":     ("feats_word_fold", []),
     "wordnum":      ("feats_word_num", []),
-    "wordnofold":   ("feats_word_nofold", []),
     "wordstrip":    ("feats_word_strip", []),
     
     "wmqia":        ("feats_wmqia", []),
@@ -126,7 +126,7 @@ def get_dataset(dataset, fdata):
     return tuple(results)
 
 
-def base_valid(outdir, dataset, featurespace, tab=None, df=None, ig=None):
+def base_valid(outdir, dataset, featurespace, tab=None, df=None, ig=None, skip=False):
     """General purpose cross-validation.
 
     @param outdir: Directory in which to place output dir (relative path from
@@ -139,7 +139,7 @@ def base_valid(outdir, dataset, featurespace, tab=None, df=None, ig=None):
     @param tab: Instance of L{ResultsTable}
     """
     # Skip the task if it's already been done
-    #if outdir.exists(): return
+    if skip and outdir.exists(): return
     # Make output directory and calculate title
     if not outdir.parent.exists(): 
         outdir.parent.makedirs()
@@ -163,8 +163,8 @@ def base_valid(outdir, dataset, featurespace, tab=None, df=None, ig=None):
         tab.add_results(op)
 
 
-def testing_precision():
-    """Testing the new 11-point precision-recall curves using interpolation"""
+def testing():
+    """Whatever I feel like testing today"""
     rc.mincount = 1
     rc.min_infogain = 2e-5
     rc.positives_only = False
@@ -174,79 +174,81 @@ def testing_precision():
     base_valid(s, "radiology", fspace)
 
 
-def compare_prior(ds):
+def compare_prior(*dslist):
     """Different priors"""
+    logging.info("COMPARING PRIORS")
     rc.mincount = 1
     rc.min_infogain = 2e-5
     rc.positives_only = False
-    s = base / "PRIOR" / "df1_ig2.0_all" / ds / ("sd%d"%rc.randseed)
-    tab = ResultsTable(s/"results.txt", append=False)
-    for fs in ["meshq","word","wmqia"]:
-        fspace, rc.type_mask = spaces[fs]
-        for method in ["bgfreq", "laplace_split", "laplace"]:
-            rc.scoremethod = "scores_" + method
-            base_valid(s/fs/method, ds, fspace, tab)
+    s = base / "PRIOR" / ("sd%d"%rc.randseed) / "df1_ig2"
+    tab = ResultsTable(s/"results.txt", append=True)
+    for ds in dslist:
+        for fs in ["meshq","word","wmqia"]:
+            fspace, rc.type_mask = spaces[fs]
+            for method in ["bgfreq", "laplace_split", "laplace"]:
+                rc.scoremethod = "scores_" + method
+                base_valid(s/ds/fs/method, ds, fspace, tab, skip=True)
 
 
-def compare_featselection(ds):
+def compare_featselection(*dslist):
     """Different feature selection approaches."""
+    logging.info("COMPARING FEATURE SELECTION")
     rc.scoremethod = "scores_laplace_split"
-    s = base / "SELN" / "lsplit" / ds / ("sd%d"%rc.randseed)
-    tab = ResultsTable(s/"results.txt", append=False)
-    for fs in ["meshq","word","wmqia"]:
-        fspace, rc.type_mask = spaces[fs]
-        # Information Gain
-        for ig in [0, 1e-5, 2e-5, 1e-4]:
-            base_valid(s/fs/("ig%.1f_df1_all"%(ig*1e5)), ds, fspace, tab, df=1, ig=ig)
-        # Document Frequency
-        for df in [0, 4, 8]:
-            base_valid(s/fs/("df%d_ig0_all"%df), ds, fspace, tab, df=df, ig=0)
-        # Only if present in a relevant example
-        rc.positives_only = True
-        base_valid(s/fs/"pos_df1_ig0", ds, fspace, tab, df=1, ig=0)
-        rc.positives_only = False
+    s = base / "SELN" / ("sd%d"%rc.randseed) / "lsplit"
+    tab = ResultsTable(s/"results.txt", append=True)
+    for ds in dslist:
+        for fs in ["meshq","word","wmqia"]:
+            fspace, rc.type_mask = spaces[fs]
+            # Varying: Information Gain
+            for ig in [0, 1e-5, 2e-5, 1e-4]:
+                base_valid(s/ds/fs/("ig%.1f_df1"%(ig*1e5)), ds, fspace, tab, df=1, ig=ig, skip=True)
+            # Varying: Document Frequency
+            for df in [0, 1, 2, 3, 4]:
+                base_valid(s/ds/fs/("df%d_ig0"%df), ds, fspace, tab, df=df, ig=0, skip=True)
+            # Varying: Whether to use relevant-only features
+            rc.positives_only = True
+            base_valid(s/ds/fs/"positives_only", ds, fspace, tab, df=1, ig=0, skip=True)
+            rc.positives_only = False
 
 
-def compare_featspace(ds):
+def compare_featspace(*dslist):
     """Different feature spaces"""
-    rc.mincount = 1
-    rc.min_infogain = 2e-5
-    rc.positives_only = True
+    logging.info("COMPARING FEATURE SPACES")
+    rc.mincount = 2
+    rc.min_infogain = 0
+    rc.positives_only = False
     rc.scoremethod = "scores_laplace_split"
-    s = base / "FSPACE" / "lsplit_df1_ig2.0_all" / ds / ("sd%d"%rc.randseed)
-    tab = ResultsTable(s/"results.txt", append=False)
-    for fs in spaces:
-        fspace, rc.type_mask = spaces[fs]
-        base_valid(s/fs, ds, fspace, tab)
+    s = base / "FSPACE" / ("sd%d"%rc.randseed) / "lsplit_df1_ig2"
+    tab = ResultsTable(s/"results.txt", append=True)
+    for ds in dslist:
+        for fs in ["mesh","qual","issn","word","author","meshqi","wmqia","wmqiafilt","iedbconcat"]:
+            fspace, rc.type_mask = spaces[fs]
+            base_valid(s/ds/fs, ds, fspace, tab, skip=True)
+
+
+def compare_wordextract(*dslist):
+    """Compare ways of extracting word features"""
+    logging.info("COMPARING WORD EXTRACTION")
+    rc.mincount = 2
+    rc.min_infogain = 0
+    rc.positives_only = False
+    rc.scoremethod = "scores_laplace_split"
+    rc.type_mask = []
+    s = base / "WORD" / ("sd%d"%rc.randseed) / "lsplit_df2_ig0"
+    tab = ResultsTable(s/"results.txt", append=True)
+    for ds in dslist:
+        for fs in ["word", "wordnum", "wordfold", "wordstrip", "iedbword" ]:
+            fspace, rc.type_mask = spaces[fs]
+            base_valid(s/ds/fs, ds, fspace, tab, skip=True)
 
 
 def compare_all(*dslist):
     """Perform all three aspect-comparisons (prior, featurespace and Document
     Frequency), on each of the given data sets."""
-    logging.info("COMPARING PRIORS")
-    for ds in dslist:
-        compare_prior(ds)
-    logging.info("COMPARING FEATURE SELECTION")
-    for ds in dslist:
-        compare_featselection(ds)
-    logging.info("COMPARING FEATURE SPACES")
-    for ds in dslist:
-        compare_featspace(ds)
-
-
-def compare_wordextract(ds):
-    """Different ways to extract word features"""
-    rc.mincount = 1
-    rc.min_infogain = 0
-    rc.positives_only = False
-    rc.scoremethod = "scores_laplace_split"
-    rc.type_mask = []
-    s = base / "WORD" / "lsplit_df1_ig0_all" / ds / ("sd%d"%rc.randseed)
-    tab = ResultsTable(s/"results.txt", append=False)
-    for fs in ["word", "wordnofold", "wordstrip", "wordnum"]:
-        fspace, rc.type_mask = spaces[fs]
-        base_valid(s/fs, ds, fspace, tab)
-    base_valid(s/"iedbword", ds, "feats_iedb_word", tab)
+    compare_wordextract(*dslist)
+    compare_prior(*dslist)
+    compare_featselection(*dslist)
+    compare_featspace(*dslist)
 
 
 def bmc(*datasets):

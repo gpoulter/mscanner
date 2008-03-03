@@ -138,7 +138,8 @@ class Form:
     
     @property
     def d(self):
-        """A storage dictionary of the form inputs (deleted by validates())"""
+        """Read-only Storage object with the form inputs. The result
+        is cached, which is cleared when validates() is called."""
         try:
             return self._d
         except AttributeError:

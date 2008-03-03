@@ -47,6 +47,8 @@ class FeatureMapping:
           type TEXT, name TEXT, count INTEGER,
           UNIQUE(type,name) )""")
         # Make sure that feature 0 exists (create a dummy if necessary)
+        self.con.execute("PRAGMA synchronous=OFF")
+        self.con.execute("PRAGMA cache_size=10000")
         self.con.execute("INSERT OR IGNORE INTO fmap VALUES(0, '', '', 0)")
 
 
@@ -150,14 +152,19 @@ class FeatureMapping:
         
         @param featuredict: Dictionary keyed by feature type, where each value
         is a list of feature strings of that type C{{'mesh':['A','B']}}."""
-        c = self.con.cursor()
-        for ftype, featurelist in featuredict.iteritems():
-            for fname in featurelist:
-                try:
-                    c.execute("INSERT INTO fmap VALUES(NULL,?,?,?)", (ftype, fname, 1))
-                except sqlite3.IntegrityError:
-                    c.execute("UPDATE fmap SET count=(count+1) WHERE type=? AND name=?", (ftype,fname))
-        c.close()
+        for ftype, featlist in featuredict.iteritems():
+            if len(featlist) > 0:
+                c = self.con.execute(
+                    "UPDATE fmap SET count=(count+1) WHERE type='"+ftype+"' AND name IN "
+                    + self.holders(len(featlist)), featlist)
+                if c.rowcount < len(featlist):
+                    c.executemany("INSERT OR IGNORE INTO fmap VALUES(NULL,'"+ftype+"',?,1)",
+                                  ((fname,) for fname in featlist))
+            ## The old way of inserting, which uses more queries
+            #for fname in featlist:
+            #    c = self.con.execute("UPDATE fmap SET count=(count+1) WHERE type=? AND name=?", (ftype,fname))
+            #    if c.rowcount == 0:
+            #        c.execute("INSERT INTO fmap VALUES(NULL,?,?,1)", (ftype, fname))
         # Feature counts have changed
         delattrs(self, "_counts", "_length")
 

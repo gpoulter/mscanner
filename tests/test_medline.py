@@ -118,10 +118,10 @@ class FeatureMappingTests(unittest.TestCase):
         fm.con.close()
         
         
-    def testOldFeatureMapping(self):
-        """OldFeatureMapping tests"""
-        from mscanner.medline.FeatureMapping import OldFeatureMapping
-        fm = OldFeatureMapping(filename=path("/t"))
+    def testMemoryFeatureMapping(self):
+        """MemoryFeatureMapping tests"""
+        from mscanner.medline.FeatureMapping import MemoryFeatureMapping
+        fm = MemoryFeatureMapping(filename=path("/t"))
         a1 = dict(Q=["A","B"], T=["A","C"])
         # Test adding of a feature vector
         fm.add_article(a1)

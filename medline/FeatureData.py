@@ -10,7 +10,7 @@ import numpy as nx
 import sys
 
 from mscanner.configuration import rc
-from mscanner.medline.FeatureMapping import FeatureMapping
+from mscanner.medline.FeatureMapping import FeatureMapping as FeatureMapping
 from mscanner.medline.FeatureVectors import FeatureVectors
 from mscanner.medline.FeatureStream import FeatureStream, DateAsInteger, vb_encode
 from mscanner import endpath

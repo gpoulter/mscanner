@@ -196,15 +196,35 @@ class FeatureMapping:
 
 
 
-class OldFeatureMapping:
-    """This version caches the mapping in a data structure, and only
-    writes to the database on commit."""
+class MemoryFeatureMapping:
+    """Implements the same interface as L{FeatureMapping} but does operations
+    in-memory instead of with SQL. It can be substituted for greater speed when
+    regenerating or adding articles.
+    
+    @note: Here, C{counts} is a list attribute, not the array property of
+    L{FeatureMapping}. The difference breaks scores_bgfreq and query operations.   
+    
+    We overwrite the whole SQLite database when commit() is called. Memory is
+    much faster than SQLite queries for adding articles. However, the data
+    structure takes too much memory when word features are used (MeSH features
+    are OK), so we must use L{FeatureMapping} in the task queue.
+
+    @ivar filename: The SQLite database to save to.
+
+    @ivar features: List for looking up (fname, ftype) by feature ID.
+    
+    @ivar counts: List for looking up occurrence count by feature ID.
+    
+    @ivar feature_ids: Nested dictionary, for looking up feature ID by
+    feature type and feature name.
+    """
     
     def __init__(self, filename):
         self.filename = filename
-        self.features = [("","")] # Lookup (fname, ftype) by fid
-        self.counts = [0]  # Lookup count by fid
-        self.feature_ids = {"":""} # Lookup fid by (ftype, fname)
+        # Simulate the insertion of (0,"","",0) in FeatureMapping
+        self.features = [("","")]
+        self.counts = [0]
+        self.feature_ids = {"":{"":0}}
         if filename is not None and filename.exists():
             self.load()
 

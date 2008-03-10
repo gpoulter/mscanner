@@ -134,7 +134,7 @@ class FeatureMappingTests(unittest.TestCase):
         fm.add_article(a2)
         self.assertEqual(fm.make_vector(a2), [2,5])
         logging.debug("%s", str(fm.get_feature(5)))
-        fm.dump()
+        fm.commit()
         fm.load()
         self.assertEqual(fm.make_vector(a2), [2,5])
         path("/t").remove()
@@ -227,7 +227,7 @@ class UpdaterTests(unittest.TestCase):
         # Tests Updater.Defaults and add_directory
         m = update.medline()
         a = [ m.artdb[x] for x in ["1","2"] ]
-        #logging.debug("Articles: %s", repr(a))
+        m.load_properties()
         self.assertEqual(a[0].pmid, 1)
         self.assertEqual(a[1].pmid, 2)
         self.assert_(nx.all(m.fdata_list[0].featmap.counts == [0, 2, 2, 2, 1, 2, 2, 2, 2]))
@@ -237,6 +237,7 @@ class UpdaterTests(unittest.TestCase):
                 (u'T1', 'mesh'), (u'T2', 'mesh'), (u'T3', 'mesh'), (u'T6', 'mesh'), (u'0301-4851', 'issn')]))
         self.assertEqual(len(m.fdata_list[0].featuredb), 2)
         m.close()
+        
         # Test regeneration
         logging.debug("Removing MeSH featuredb")
         m.fdata_list[0].featuredb.filename.remove()
@@ -244,11 +245,13 @@ class UpdaterTests(unittest.TestCase):
         logging.debug(str(m.fdata_list[0].featuredb.pmids_array()))
         self.assertEqual(len(m.fdata_list[0].featuredb), 2)
         m.close()
+        
         # Test save/load pickle
         (h/"pmids.txt").write_lines(["1","2"])
         update.save_pickle(h/"pmids.txt")
         m = update.load_pickles(h/"pmids.pickle.gz")
         m.close()
+        
         # Test vacuum
         m = update.vacuum(mincount="2")
         self.assertEqual(len(m.fdata_list[0].featuredb), 2)

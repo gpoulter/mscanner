@@ -72,20 +72,13 @@ class FeatureData:
         if not base.exists(): base.makedirs()
         return FeatureData(base/rc.featuremap, base/rc.featuredb, 
                            base/rc.featurestream, featurespace, rdonly)
-    
+
 
     def close(self):
         """Shut down the databases"""
         self.featuredb.close()
         self.fstream.close()
         self.featmap.close()
-
-
-    def commit(self):
-        """Commit transactions"""
-        self.featmap.commit()
-        self.featuredb.commit()
-        self.fstream.flush()
 
 
     def add_articles(self, articles, check=True):
@@ -107,7 +100,9 @@ class FeatureData:
             featvec = vb_encode(self.featmap.make_vector(features))
             self.featuredb.add_record(pmid, date, featvec)
             self.fstream.additem(pmid, date, featvec)
-        self.commit()
+        self.featuredb.commit()
+        self.fstream.flush()
+        self.featmap.commit()
 
 
     def regenerate(self, artdb):
@@ -130,17 +125,18 @@ class FeatureData:
             if not (do_stream and do_featuredb):
                 raise ValueError("Cannot regenerate feature map without doing stream/database as well.")
             self.add_articles(artdb.itervalues(), check=False)
-        # Regenerate feature stream from database
+        # Regenerate FeatureStream from FeatureVectors
         elif do_stream: 
             logging.info("Regenerating FeatureStream %s.", endpath(self.fstream.filename))
             for pmid, date, featvec in counter(self.featuredb.iteritems(decode=False)):
                 self.fstream.additem(pmid, date, featvec)
-        # Regenerate feature database from feature stream
+            self.fstream.flush()
+        # Regenerate FeatureVectors from FeatureStream
         elif do_featuredb: 
             logging.info("Regenerating FeatureVectors %s.", endpath(self.featuredb.filename))
             for pmid, date, featvec in counter(self.fstream.iteritems(decode=False)):
                 self.featuredb.add_record(pmid, date, featvec)
-        self.commit()
+            self.featuredb.commit()
         logging.info("Index regeneration complete.")
 
 
@@ -149,23 +145,25 @@ class FeatureData:
         of occurrences. This is useful with word features, where millions of
         features would go unselected anyway, wasting memory. We renumber the
         features for the smaller vector."""
-        logging.info("Vacuuming index %s.", endpath(self.featmap.filename.dirname()))
+        logging.info("FeatureData: vacuuming %s.", endpath(self.featmap.filename.dirname()))
         if self.rdonly:
             raise NotImplementedError("Failed: may not write read-only index.")
         lookup = self.featmap.vacuum(mincount)
         oldname = self.fstream.filename
         newname = oldname + ".new"
         fstream_new = FeatureStream(newname, rdonly=False)
+        logging.info("FeatureData: Starting replacement of old feature vectors")
         for pmid, date, featvec in counter(self.fstream.iteritems()):
             featvec = vb_encode(lookup[f] for f in featvec if lookup[f] != -1)
             self.featuredb.update_record(pmid, date, featvec)
             fstream_new.additem(pmid, date, featvec)
-        fstream_new.close()
-        self.fstream.close()
-        newname.move(oldname)
+        self.featuredb.commit()
+        # Replace old FeatureStream file
+        fstream_new.close()   # Close new
+        self.fstream.close()  # Close old
+        newname.move(oldname) # Replace old
         self.fstream = FeatureStream(oldname, rdonly=False)
-        self.commit()
-        logging.info("Index vacuuming complete.")
+        logging.info("FeatureData: Index vacuuming complete.")
 
 
 def counter(iter, per_dot=500, per_msg=10000):

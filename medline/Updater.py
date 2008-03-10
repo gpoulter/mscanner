@@ -68,6 +68,20 @@ class Updater:
             [FeatureData.Defaults(fs, rdonly=False) for fs in featurespaces], 
             rc.articles_home/rc.tracker)
     
+    
+    def load_properties(self):
+        """Precache long-to-load properties on L{FeatureData} and L{FeatureMapping}"""
+        # Load length, pmids, feature counts for first FeatureData
+        fdata = self.fdata_list[0]
+        narticles = len(fdata.featuredb)
+        pmids = fdata.featuredb.pmids_array()
+        fdata.featmap.counts
+        # Copy length, pmids and load featur counts for FeatureData
+        for fdata in self.fdata_list[1:]:
+            fdata.featuredb._length = narticles
+            fdata.featuredb._pmids = pmids
+            fdata.featmap.counts
+
 
     def add_articles(self, articles):
         """Add a list of new article objects to article database and L{FeatureData}.

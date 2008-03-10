@@ -34,10 +34,15 @@ class FeatureMapping:
     @ivar con: The SQLite database connection.
     
     @ivar filename: Path to SQLite database file.
+    
+    @ivar grow_features: If True, add new feature strings when encountered. If
+    False, ignore unknown feature strings (maintains a static feature space).
     """
 
-    def __init__(self, filename):
-        """Initialise the database"""
+    def __init__(self, filename, grow_features=True):
+        """Initialise the table of feature counts."""
+        self.filename = filename
+        self.grow_features = grow_features
         self.filename = filename
         if filename is None:
             self.con = sqlite3.connect(":memory:")
@@ -69,8 +74,11 @@ class FeatureMapping:
         try:
             return self._length
         except AttributeError:
-            logging.debug("Querying length of FeatureMapping.")
-            self._length = self.con.execute("SELECT count(id) FROM fmap").fetchone()[0]
+            if hasattr(self, "_counts"):
+                self._length = len(self._counts)
+            else:
+                logging.debug("FeatureMapping: Query number of features.")
+                self._length = self.con.execute("SELECT count(id) FROM fmap").fetchone()[0]
             return self._length
 
 
@@ -83,8 +91,8 @@ class FeatureMapping:
         try:
             return self._counts
         except AttributeError:
-            logging.debug("Querying occurrence counts from FeatureMapping.")
             self._counts = nx.zeros(len(self), nx.uint32)
+            logging.debug("FeatureMapping: Query occurrence counts vector.")
             for id,count in self.con.execute("SELECT id,count FROM fmap ORDER BY id"):
                 self._counts[id] = count
             return self._counts
@@ -126,8 +134,8 @@ class FeatureMapping:
         @return: Array mapping old feature IDs to new, or -1 for deleted features."""
         keep = self.counts >= mincount
         nkeep, numfeats = sum(keep), len(keep)
-        logging.info("Keeping %d features (at least %d occurrences). Deleting %d features out of %d.",
-                     nkeep, mincount, numfeats-nkeep, numfeats)
+        logging.info("FeatureMapping: Keeping %d, deleting %d out of %d (min %d occurrences).",
+                     nkeep, numfeats-nkeep, numfeats, mincount)
         # lookup[oldid] == newid or -1
         lookup = nx.zeros(len(self.counts),nx.int32) - 1
         lookup[keep] = nx.arange(0, nkeep, dtype=nx.int32)
@@ -137,6 +145,7 @@ class FeatureMapping:
         self.con.execute("DELETE FROM fmap WHERE count<?", (mincount,))
         self.con.executemany("UPDATE fmap SET id=? WHERE id=?", 
                              izip(lookup[keep],oldfeatures[keep]))
+        self.con.commit()
         delattrs(self, "_counts", "_length")
         return lookup
 
@@ -163,14 +172,9 @@ class FeatureMapping:
                 c = self.con.execute(
                     "UPDATE fmap SET count=(count+1) WHERE type='"+ftype+"' AND name IN "
                     + self.holders(len(featlist)), featlist)
-                if c.rowcount < len(featlist):
+                if c.rowcount < len(featlist) and self.grow_features:
                     c.executemany("INSERT OR IGNORE INTO fmap VALUES(NULL,'"+ftype+"',?,1)",
                                   ((fname,) for fname in featlist))
-            ## The old way of inserting, which uses more queries
-            #for fname in featlist:
-            #    c = self.con.execute("UPDATE fmap SET count=(count+1) WHERE type=? AND name=?", (ftype,fname))
-            #    if c.rowcount == 0:
-            #        c.execute("INSERT INTO fmap VALUES(NULL,?,?,1)", (ftype, fname))
         # Feature counts have changed
         delattrs(self, "_counts", "_length")
 
@@ -219,9 +223,10 @@ class MemoryFeatureMapping:
     feature type and feature name.
     """
     
-    def __init__(self, filename):
+    def __init__(self, filename, grow_features=True):
         self.filename = filename
-        # Simulate the insertion of (0,"","",0) in FeatureMapping
+        self.grow_features = grow_features
+        # Simulate insertion of the row (0,"","",0)
         self.features = [("","")]
         self.counts = [0]
         self.feature_ids = {"":{"":0}}
@@ -232,7 +237,18 @@ class MemoryFeatureMapping:
         pass
 
     def commit(self):
-        self.dump()
+        from contextlib import closing
+        if self.filename.exists(): self.filename.remove()
+        with closing(sqlite3.connect(self.filename)) as con:
+            con.execute("""CREATE TABLE fmap (
+              id INTEGER PRIMARY KEY,
+              type TEXT, name TEXT, count INTEGER,
+              UNIQUE(type,name) )""")
+            for fid, count in enumerate(self.counts):
+                fname, ftype = self.features[fid]
+                con.execute("INSERT INTO fmap VALUES(?,?,?,?)", 
+                            (fid, ftype, fname, count))
+            con.commit()
 
     def load(self):
         self.features = []
@@ -246,20 +262,6 @@ class MemoryFeatureMapping:
                 if ftype not in self.feature_ids:
                     self.feature_ids[ftype] = {}
                 self.feature_ids[ftype][fname] = fid
-
-    def dump(self):
-        from contextlib import closing
-        if self.filename.exists(): self.filename.remove()
-        with closing(sqlite3.connect(self.filename)) as con:
-            con.execute("""CREATE TABLE fmap (
-              id INTEGER PRIMARY KEY,
-              type TEXT, name TEXT, count INTEGER,
-              UNIQUE(type,name) )""")
-            for fid, count in enumerate(self.counts):
-                fname, ftype = self.features[fid]
-                con.execute("INSERT INTO fmap VALUES(?,?,?,?)", 
-                            (fid, ftype, fname, count))
-            con.commit()
 
     def __len__(self):
         return len(self.counts)
@@ -281,12 +283,12 @@ class MemoryFeatureMapping:
                 self.feature_ids[ftype] = {}
             fdict = self.feature_ids[ftype]
             for fname in featlist:
-                if fname not in fdict:
+                if fname in fdict:
+                    self.counts[fdict[fname]] += 1
+                elif self.grow_features:
                     fdict[fname] = len(self.features)
                     self.features.append((fname,ftype))
                     self.counts.append(1)
-                else:
-                    self.counts[fdict[fname]] += 1
 
     def make_vector(self, featuredict):
         vector = []

@@ -64,14 +64,18 @@ class FeatureVectors:
         return self.con.execute("SELECT pmid FROM docs WHERE pmid=?",
                                 (pmid,)).fetchone() is not None
 
+
     def __len__(self):
         """Return number of documents in the database. Caches the result
         because it takes a few seconds on 16 million records."""
         try:
             return self._length
         except AttributeError:
-            logging.debug("Querying number of documents in the index.")
-            self._length = self.con.execute("SELECT count(pmid) FROM docs").fetchone()[0]
+            if hasattr(self, "_pmids"):
+                self._length = len(self._pmids)
+            else:
+                logging.debug("FeatureVectors: Querying number of documents.")
+                self._length = self.con.execute("SELECT count(pmid) FROM docs").fetchone()[0]
             return self._length
 
 
@@ -81,7 +85,7 @@ class FeatureVectors:
             return self._pmids
         except AttributeError:
             self._pmids = nx.zeros(len(self), nx.uint32)
-            logging.debug("Querying array of all PubMed IDs in the index.")
+            logging.debug("FeatureVectors: Querying for array PubMed IDs.")
             count = 0
             for pmid, in self.con.execute("SELECT pmid FROM docs"):
                 self._pmids[count] = pmid

@@ -233,20 +233,15 @@ def logit(probability):
 def mainloop():
     """Look for descriptor files every second"""
     usewords = True # Whether to include feats_wmqia capability
-    # The updater contains references to the databases
     featurespaces = ["feats_mesh_qual_issn"]
-    if usewords: featurespaces.append("feats_wmqia")
+    if usewords: 
+        featurespaces.append("feats_wmqia")
+    # Pre-load vector of PMIDs, number of PMIDs, feature counts
     updater = Updater.Defaults(featurespaces)
-    # Pre-load the article list vector and size of index
-    len(updater.fdata_list[0].featuredb)
-    updater.fdata_list[0].featuredb.pmids_array()
-    updater.fdata_list[0].featmap.counts
-    if usewords:
-        logging.debug("Setting length, pmids, feature counts for word index.")
-        # Shortcut: copy the database params from the MeSH index
-        updater.fdata_list[1].featuredb._length = updater.fdata_list[0].featuredb._length
-        updater.fdata_list[1].featuredb._pmids = updater.fdata_list[0].featuredb._pmids
-        updater.fdata_list[1].featmap.counts
+    updater.load_properties()
+    if usewords: 
+        # Do not grow the word feature space
+        updater.fdata_list[1].featmap.grow_features = False
     try:
         logging.debug("Queue is now running.")
         # Time of last output clean
@@ -269,7 +264,9 @@ def mainloop():
             
             # Update the databases twice daily
             if time.time() - last_update > 12*3600*100:
+                logging.info("Looking for Medline updates")
                 updater.add_directory(rc.medline, save_delay=0)
+                updater.load_properties()
                 last_update = time.time()
             
             # Perform any queued tasks
@@ -290,7 +287,7 @@ def mainloop():
                         rc.scoremethod = "scores_bgfreq"
                     else:
                         fdata = updater.fdata_list[1] # feats_wmqia
-                        rc.min_infogain = 2e-5
+                        rc.min_infogain = 1e-5
                         rc.mincount = 3
                         rc.scoremethod = "scores_laplace_split"
                     # Retrieval operation

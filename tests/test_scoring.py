@@ -171,8 +171,7 @@ class FeatureScoresTests(unittest.TestCase):
         logging.debug("Information Gain: %s", pp.pformat(IG))
         # Note: first feature (with IG=0) was de-selected
         s.assert_(nx.allclose(IG, 
-        [ 0.02592725,  0.02592725,  0.02592725,  0.        ,  0.02592725]))
-
+        [ 0.03150494,  0.03150494,  0.03150494,  0.        ,  0.03150494]))
 
     def test_FeatureStats(s):
         """Feature statistics calculation."""

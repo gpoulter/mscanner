@@ -154,41 +154,31 @@ class FeatureScores(object):
         
         @return: Array over selected features with information gain values.
         """
+        def S(p): return -p*nx.log2(p) # Entropy in bits
         logging.debug("Calculating info gain on %d features out of %d", sum(selected), len(selected))
-        pos = s.pos_counts[selected]
-        neg = s.neg_counts[selected]
-                
-        # Entropy in bits
-        def info(p): 
-            return -p*nx.log2(p)
+        R = s.pdocs # relevant
+        I = s.ndocs # irrelevant
+        N = R+I # total 
+        R1 = s.pos_counts[selected] # relevant and term present
+        I1 = s.neg_counts[selected] # irrelevant and term present
+        N1 = R1+I1 # term present
         
-        # Number of documents
-        N = s.pdocs + s.ndocs
-        # Number documents that have term i 
-        T = pos + neg
+        # MAP est prob of term being present
+        p1 = (N1+1)/(N+2)  
+        # p0 = (N0+1)/(N+2) = 1-p1 with N0+N1=N
         
-        # Fraction of documents that have term i 
-        # (probability of term being present)
-        pT = T / N
+        # Entropy non-partitioned distribution of classes
+        SC = S(R/N) + S(I/N)
         
-        # Fraction of documents that are relevant
-        # (prior probability of relevance)
-        EpR = info(s.pdocs / N)
-        EpI = info(s.ndocs / N)
+        # Entropy of MAP est prob of relevance/irrelevance given term present
+        SCg1 = S((R1+1)/(N1+2)) + S((I1+1)/(N1+2))
         
-        # Fraction of relevant documents amonst documents that have term i
-        # (posterior probability of relevance given presence of term)
-        EpRgT = info((pos+1) / (T+2))
-        EpIgT = info((neg+1) / (T+2))
+        # Entropy of MAP est prob of relevance/irrelevance given term absent
+        # SCg0 = S((R0+1)/(N0+2)) + S((I0+1)/(N0+2)) with R0+R1=R, I0+I1=I, N0+N1=N
+        SCg0 = S((R+1-R1)/(N+2-N1)) + S((I+1-I1)/(N+2-N1)) 
         
-        # Fraction of relevant documents amongst documents not having term i
-        # (posterior probability of relevance given absence of term)
-        EpRgNT = info((s.pdocs+1-pos) / (N-T+2))
-        EpIgNT = info((s.ndocs+1-neg) / (N-T+2))
-        
-        # Information gain is entropy before knowing whether it's present or
-        # absent, minus expected entropy after knowing.
-        return (EpR+EpI) - (pT*(EpRgT+EpIgT) + (1-pT)*(EpRgNT+EpIgNT))
+        # Entropy diff between original and partitioned distribution of classes
+        return SC - (p1*SCg1 + (1-p1)*SCg0)  # p0+p1=1
     
 
 

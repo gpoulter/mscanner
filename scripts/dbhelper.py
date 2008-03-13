@@ -96,6 +96,6 @@ def select_lines(infile, outfile, mindate="00000000", maxdate="99999999", N="0")
 
 if __name__ == "__main__":
     # Call the named function with provided arguments
-    iofuncs.start_logger(logfile=False)
+    iofuncs.start_logger()
     locals()[sys.argv[1]](*sys.argv[2:])
 

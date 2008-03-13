@@ -113,5 +113,5 @@ def save_pickle(filename):
 
 if __name__ == "__main__":
     # Call the named function with provided arguments
-    iofuncs.start_logger(logfile=False)
+    iofuncs.start_logger()
     locals()[sys.argv[1]](*sys.argv[2:])

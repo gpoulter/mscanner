@@ -85,7 +85,7 @@ def gdsmall():
 
 
 if __name__ == "__main__":
-    iofuncs.start_logger(logfile=False)
+    iofuncs.start_logger()
     if sys.argv[1] in locals():
         artdb = Shelf.open(rc.articles_home/rc.articledb, 'r')
     # Call the named function with provided arguments

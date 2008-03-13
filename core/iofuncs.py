@@ -168,7 +168,7 @@ class FileTransaction(file):
 
 
 
-def start_logger(console=True, logfile=True):
+def start_logger(console=True, logfile=False):
     """Set up logging to file or console
     @param console: If True, log to the console.
     @param logfile: If True, log to rc.logfile."""

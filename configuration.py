@@ -53,6 +53,8 @@ rc.web_report_dir = lambda: rc.sources / "htdocs" / "static" / "output"
 rc.queue_path = lambda: rc.working / "queue"
 ## URL for the web root followed by a "/"
 rc.web_root = "http://mscanner.stanford.edu/"
+## File with process ID of the queue
+rc.queue_pid = rc.working / "queue_pid"
 
 ## ARTICLE DATABASE FILES (in articles_home)
 

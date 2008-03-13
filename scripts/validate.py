@@ -282,6 +282,6 @@ def gdsmall():
 
 
 if __name__ == "__main__":
-    iofuncs.start_logger(logfile=False)
+    iofuncs.start_logger()
     # Call the named function with provided arguments
     locals()[sys.argv[1]](*sys.argv[2:])

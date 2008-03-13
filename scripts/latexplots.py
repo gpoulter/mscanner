@@ -304,7 +304,7 @@ def do_subdirplots(subdirs):
 
 
 if __name__ == "__main__":
-    iofuncs.start_logger(logfile=False)
+    iofuncs.start_logger()
     if len(sys.argv) != 2:
         print "Please provide a Python expression"
     else:

@@ -250,6 +250,9 @@ def mainloop():
         last_update = time.time()
         while True:
             
+            # Touch the PID file
+            rc.queue_pid.write_text(str(os.getpid()))
+            
             # Delete oldest outputs daily
             if time.time() - last_clean > 24*3600:  
                 logging.info("Looking for old datasets")
@@ -320,7 +323,7 @@ def mainloop():
                 except ValueError, e:
                     logging.exception(e)
             else:
-                # Nothing to do so sleep before the next iteration
+                # Nothing to do, so sleep before the next iteration
                 time.sleep(1)
     finally:
         updater.close()
@@ -350,11 +353,14 @@ def populate_test_queue():
 
 
 if __name__ == "__main__":
-    iofuncs.start_logger()
+    if rc.queue_pid.exists() and rc.queue_pid.mtime >= time.time()-3600:
+        sys.exit()
+    iofuncs.start_logger(logfile=True)
     if len(sys.argv) == 2 and sys.argv[1] == "test":
         populate_test_queue()
     try:
         mainloop()
-    except KeyboardInterrupt:
-        pass
-    logging.shutdown()
+    finally:
+        logging.info("Shutting down queue")
+        logging.shutdown()
+        rc.queue_pid.remove()

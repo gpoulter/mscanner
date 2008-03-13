@@ -359,6 +359,7 @@ if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "test":
         populate_test_queue()
     try:
+        rc.queue_pid.write_text(str(os.getpid()))
         mainloop()
     finally:
         logging.info("Shutting down queue")

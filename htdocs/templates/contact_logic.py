@@ -51,24 +51,22 @@ class ContactPage:
     def POST(self):
         """Submit the contact form."""
         import re
-        sanitize = lambda s: re.sub(r"[/!#$%^&*{}[]|\\]+", "", s)
+        sane = lambda s: re.sub(r"[/!#$%^&*{}[]|\\]+", "", s)
         web.header('Content-Type', 'text/html; charset=utf-8') 
         page = contact.contact()
         cform = ContactForm()
         if cform.validates(web.input()):
-            email = sanitize(cform.d.email) or "nobody@maples.stanford.edu"
-            name = sanitize(cform.d.name)
-            message = sanitize(cform.d.message)
-            import smtplib
-            from email.mime.text import MIMEText
-            from mscanner.configuration import rc
-            msg = MIMEText(message)
-            msg['Subject'] = "Contact from MScanner"
-            msg['From'] = name + "<" + email + ">"
-            msg['To'] = rc.webmaster_email
-            server = smtplib.SMTP(rc.smtpserver)
             try:
-                server.sendmail(email, rc.webmaster_email, msg.as_string())
+                import smtplib
+                from email.mime.text import MIMEText
+                from mscanner.configuration import rc
+                fromaddr = sane(cform.d.email) or "nobody@maples.stanford.edu"
+                msg = MIMEText(sane(cform.d.message))
+                msg['Subject'] = "Contact from MScanner"
+                msg['From'] = sane(cform.d.name) + " <" + fromaddr + ">"
+                msg['To'] = rc.webmaster_email
+                server = smtplib.SMTP(rc.smtpserver)
+                server.sendmail(fromaddr, rc.webmaster_email, msg.as_string())
             except Exception, e:
                 page.success = False
                 page.error = str(e)
@@ -77,7 +75,9 @@ class ContactPage:
                 page.success = True
                 page.inputs = ContactForm()
             server.quit()
+            page.inputs["captcha"].value = "orange"
             print page
         else:
             page.inputs = cform
+            page.inputs["captcha"].value = "orange"
             print page

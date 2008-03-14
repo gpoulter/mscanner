@@ -167,8 +167,12 @@ class FeatureScoresTests(unittest.TestCase):
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
         IG = f.infogain()
         logging.debug("Information Gain: %s", pp.pformat(IG))
+        # Using split-Laplace smoothing
         s.assert_(nx.allclose(IG, 
-        [ 0, 0.03150494,  0.03150494,  0.03150494,  0.        ,  0.03150494]))
+        [ 0.,  0.0622789,  0.0622789,  0.0622789,  0.,        0.0622789]))
+        # Using Laplace smoothing
+        #[ 0.,  0.03485155,  0.03485155,  0.03485155,  0.,      0.03485155]))
+
 
     def test_FeatureStats(s):
         """Feature statistics calculation."""

@@ -147,37 +147,29 @@ class FeatureScores(object):
             selected &= (s._infogain >= rc.min_infogain)
         return selected
 
-
-    def infogain(s):
-        """Calculate the Information Gain (L{infogain}) of so-far-selecte features.
-        
-        @return: Array over selected features with information gain values.
-        """
-        def S(p): return -p*nx.log2(p) # Entropy in bits
-        R = s.pdocs # relevant
-        I = s.ndocs # irrelevant
-        N = R+I # total 
-        R1 = s.pos_counts # relevant and term present
-        I1 = s.neg_counts # irrelevant and term present
-        N1 = R1+I1 # term present
-        
-        # MAP est prob of term being present
-        p1 = (N1+1)/(N+2)  
-        # p0 = (N0+1)/(N+2) = 1-p1 with N0+N1=N
-        
-        # Entropy non-partitioned distribution of classes
-        SC = S(R/N) + S(I/N)
-        
-        # Entropy of MAP est prob of relevance/irrelevance given term present
-        SCg1 = S((R1+1)/(N1+2)) + S((I1+1)/(N1+2))
-        
-        # Entropy of MAP est prob of relevance/irrelevance given term absent
-        # SCg0 = S((R0+1)/(N0+2)) + S((I0+1)/(N0+2)) with R0+R1=R, I0+I1=I, N0+N1=N
-        SCg0 = S((R+1-R1)/(N+2-N1)) + S((I+1-I1)/(N+2-N1)) 
-        
-        # Entropy diff between original and partitioned distribution of classes
-        return SC - (p1*SCg1 + (1-p1)*SCg0)  # p0+p1=1
     
+    def infogain(s):
+        """Calculate information gain on features.  Not traditional - we calculate
+        information gain divided by entropy of original distribution, as a fractional
+        reduction in entropy.  This is because if the distribution is already low
+        entropy (high class skew), we cannot expect large information gains."""
+        def S(p): return -p*nx.log2(p) # Entropy in bits
+        q = s.pdocs/(s.pdocs+s.ndocs) # portion of pseudocount for relevant articles
+        R1 = s.pos_counts+q # relevant and term present
+        I1 = s.neg_counts+(1-q) # irrelevant and term present
+        R = s.pdocs+2*q # relevant
+        I = s.ndocs+2*(1-q) # irrelevant
+        N = R+I # total
+        N1 = R1+I1 # term present
+        N0 = N-N1 # term absent
+        I0 = I-I1 # irrelevant and term absent
+        R0 = R-R1 # relevant and term absent
+        SC = S(R/N) + S(I/N) # entropy of unpartitioned distribution
+        SR1 = (R1/N) * nx.log2(R1*N/(R*N1))
+        SI1 = (I1/N) * nx.log2(I1*N/(I*N1))
+        SR0 = (R0/N) * nx.log2(R0*N/(R*N0))
+        SI0 = (I0/N) * nx.log2(I0*N/(I*N0))
+        return (SR1 + SI1 + SR0 + SI0) / SC
 
 
     def scores_bayes(s, pos_a, pos_ab, neg_a, neg_ab):

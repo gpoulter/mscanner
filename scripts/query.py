@@ -64,15 +64,29 @@ def base_query(outdir, dataset, featurespace, limit=500, df=None, ig=None):
 
 def bmc(*datasets):
     """Do queries on the sample topics from the BMC manuscript."""
-    groupdir = base / "bmc" / "query"
+    groupdir = base / "bmc" / "query_mqi"
     if not base.exists(): base.mkdir()
-    fdata = FeatureData.Defaults("feats_mesh_qual_issn", nx.uint16)
+    fdata = FeatureData.Defaults("feats_mesh_qual_issn")
     for dataset in datasets:
         QM = QueryManager(groupdir / dataset, dataset, limit=1000,
                           artdb=artdb, fdata=fdata, threshold=0, prior=None)
         QM.query(rc.corpora / dataset_map[dataset])
         QM.write_report()
     fdata.close()
+
+
+def wmqia(*datasets):
+    groupdir = base / "bmc" / "query_wmqia_ig3e-8"
+    if not base.exists(): base.mkdir()
+    fdata = FeatureData.Defaults("feats_wmqia")
+    rc.min_infogain = 3e-8
+    for dataset in datasets:
+        QM = QueryManager(groupdir / dataset, dataset, limit=1000,
+                          artdb=artdb, fdata=fdata, threshold=0, prior=None)
+        QM.query(rc.corpora / dataset_map[dataset])
+        QM.write_report()
+    fdata.close()
+
     
     
 def gdsmall():

@@ -23,7 +23,7 @@ from mscanner.medline.Article import Article
 from mscanner.medline.FeatureData import FeatureData
 from mscanner.medline.FeatureVectors import FeatureVectors, random_subset
 from mscanner.medline.FeatureStream import FeatureStream
-from mscanner.medline.FeatureMapping import FeatureMapping
+from mscanner.medline.FeatureMapping import FeatureMapping, MemoryFeatureMapping
 from mscanner.medline.Updater import Updater
 from mscanner.scripts import update
 from mscanner import tests
@@ -120,8 +120,7 @@ class FeatureMappingTests(unittest.TestCase):
         
     def testMemoryFeatureMapping(self):
         """MemoryFeatureMapping tests"""
-        from mscanner.medline.FeatureMapping import MemoryFeatureMapping
-        fm = MemoryFeatureMapping(filename=path("/t"))
+        fm = MemoryFeatureMapping(filename=None)
         a1 = dict(Q=["A","B"], T=["A","C"])
         # Test adding of a feature vector
         fm.add_article(a1)
@@ -137,7 +136,6 @@ class FeatureMappingTests(unittest.TestCase):
         fm.commit()
         fm.load()
         self.assertEqual(fm.make_vector(a2), [2,5])
-        path("/t").remove()
 
 
 

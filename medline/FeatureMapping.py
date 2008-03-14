@@ -1,11 +1,12 @@
 """Provides a mapping between feature strings and their integer IDs"""
 
 from __future__ import with_statement
-from mscanner import delattrs
+from contextlib import closing
 from itertools import izip
 import logging
 import numpy as nx
 from pysqlite2 import dbapi2 as sqlite3
+from mscanner import delattrs
 
                                      
 __author__ = "Graham Poulter"                                        
@@ -44,10 +45,7 @@ class FeatureMapping:
         self.filename = filename
         self.grow_features = grow_features
         self.filename = filename
-        if filename is None:
-            self.con = sqlite3.connect(":memory:")
-        else:
-            self.con = sqlite3.connect(filename)
+        self.con = sqlite3.connect(filename or ":memory:")
         self.con.execute("""CREATE TABLE IF NOT EXISTS fmap (
           id INTEGER PRIMARY KEY,
           type TEXT, name TEXT, count INTEGER,
@@ -146,6 +144,7 @@ class FeatureMapping:
         self.con.executemany("UPDATE fmap SET id=? WHERE id=?", 
                              izip(lookup[keep],oldfeatures[keep]))
         self.con.commit()
+        self.con.execute("VACUUM")
         delattrs(self, "_counts", "_length")
         return lookup
 
@@ -230,16 +229,17 @@ class MemoryFeatureMapping:
         self.features = [("","")]
         self.counts = [0]
         self.feature_ids = {"":{"":0}}
-        if filename is not None and filename.exists():
-            self.load()
+        self.load()
 
     def close(self):
         pass
 
     def commit(self):
-        from contextlib import closing
-        if self.filename.exists(): self.filename.remove()
-        with closing(sqlite3.connect(self.filename)) as con:
+        if self.filename is None:
+            return
+        if self.filename.exists():
+            self.filename.remove()
+        with closing(sqlite3.connect(self.filename or ":memory:")) as con:
             con.execute("""CREATE TABLE fmap (
               id INTEGER PRIMARY KEY,
               type TEXT, name TEXT, count INTEGER,
@@ -251,11 +251,13 @@ class MemoryFeatureMapping:
             con.commit()
 
     def load(self):
+        if self.filename is None or not self.filename.exists():
+            return
         self.features = []
         self.counts = []
         self.feature_ids = {}
         from contextlib import closing
-        with closing(sqlite3.connect(self.filename)) as con:
+        with closing(sqlite3.connect(self.filename or ":memory:")) as con:
             for fid, ftype, fname, count in con.execute("SELECT * from fmap"):
                 self.features.append((ftype, fname))
                 self.counts.append(int(count))

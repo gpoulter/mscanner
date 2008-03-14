@@ -155,9 +155,9 @@ class FeatureScoresTests(unittest.TestCase):
         """Calculation of TF-IDF."""
         f = FeatureScores(s.featmap, "scores_laplace_split")
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
-        #tfidfs = nx.array([])
-        #s.assert_(nx.allclose(f.tfidf, tfidfs))
         logging.debug("FeatureScores.tfidf: %s", pp.pformat(f.tfidf))
+        tfidfs = nx.array([ 0.10939293,  0.07292862]) # Check this calculation
+        s.assert_(nx.allclose(f.tfidf, tfidfs))
 
 
     def test_InformationGain(s):
@@ -165,13 +165,10 @@ class FeatureScoresTests(unittest.TestCase):
         rc.min_infogain = 0.01
         f = FeatureScores(s.featmap, "scores_laplace_split")
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
-        selected = nx.ones(len(s.featmap), nx.bool)
-        selected[0] = False
-        IG = f.infogain(selected)
+        IG = f.infogain()
         logging.debug("Information Gain: %s", pp.pformat(IG))
-        # Note: first feature (with IG=0) was de-selected
         s.assert_(nx.allclose(IG, 
-        [ 0.03150494,  0.03150494,  0.03150494,  0.        ,  0.03150494]))
+        [ 0, 0.03150494,  0.03150494,  0.03150494,  0.        ,  0.03150494]))
 
     def test_FeatureStats(s):
         """Feature statistics calculation."""
@@ -202,6 +199,13 @@ class FeatureScoresTests(unittest.TestCase):
         logging.debug("Selected: %s", pp.pformat(f.features))
         logging.debug("Base %f, Scores: %s", f.base, pp.pformat(f.scores))
         s.assert_(nx.allclose(f.scores, nx.array(answer)))
+        # Test the CSV writing code
+        from cStringIO import StringIO
+        ostring = StringIO()
+        f._infogain = f.infogain()
+        f.write_csv(ostring)
+        ostring.reset()
+        logging.debug(ostring.read())
 
 
     def test_scores_bgfreq(self):

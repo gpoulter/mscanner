@@ -60,6 +60,8 @@ class FeatureScores(object):
     @ivar prior: The prior log odds of relevance.  If None, estimate
     using the log of the ratio of relevant to irrelevant articles in the data.
 
+    @ivar _infogain: Cached results of L{infogain} from L{get_selected}
+
 
     @group Set via scoremethod: scores, pfreqs, nfreqs, base
     
@@ -140,27 +142,23 @@ class FeatureScores(object):
             # Keep only features found in a relevant article
             selected &= (s.pos_counts != 0)
         if rc.min_infogain > 0:
-            # Keep features by information gain. Infogain is expensive to 
-            # calculate, so do it only for features that have passed so far.
-            selected[selected] &= (s.infogain(selected) >= rc.min_infogain)
+            # Keep features by information gain.
+            s._infogain = s.infogain()
+            selected &= (s._infogain >= rc.min_infogain)
         return selected
 
 
-    def infogain(s, selected):
+    def infogain(s):
         """Calculate the Information Gain (L{infogain}) of so-far-selecte features.
-        
-        @param selected: A boolean array over all features, where True marks
-        features that have passed feature selection so far.
         
         @return: Array over selected features with information gain values.
         """
         def S(p): return -p*nx.log2(p) # Entropy in bits
-        logging.debug("Calculating info gain on %d features out of %d", sum(selected), len(selected))
         R = s.pdocs # relevant
         I = s.ndocs # irrelevant
         N = R+I # total 
-        R1 = s.pos_counts[selected] # relevant and term present
-        I1 = s.neg_counts[selected] # irrelevant and term present
+        R1 = s.pos_counts # relevant and term present
+        I1 = s.neg_counts # irrelevant and term present
         N1 = R1+I1 # term present
         
         # MAP est prob of term being present
@@ -339,8 +337,11 @@ class FeatureScores(object):
         logging.info("There are %d selected features out of %d total.", sum(s.selected), len(s.selected))
         # Output features by decreasing score
         stream.write(u"score,pos_count,neg_count,termid,type,term\n")
-        if maxfeats is None: maxfeats = len(s.selected)
+        if maxfeats is None:
+            maxfeats = len(s.selected)
+        if not hasattr(s, "_infogain"):
+            s._infogain = nx.zeros(len(s.selected))
         for (score, t) in nlargest(maxfeats, izip(s.scores[s.selected], s.features)):
             fname, ftype = s.featmap.get_feature(t)
-            stream.write(u'%.3f,%d,%d,%d,%s,"%s"\n' % 
-            (s.scores[t], s.pos_counts[t], s.neg_counts[t], t, ftype, fname))
+            stream.write(u'%.3f,%.2e,%d,%d,%d,%s,"%s"\n' % 
+            (s.scores[t], s._infogain[t], s.pos_counts[t], s.neg_counts[t], t, ftype, fname))

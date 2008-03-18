@@ -224,8 +224,6 @@ class FeatureScoresTests(unittest.TestCase):
             [ 0, 1.43508453, -1.43508453,  1.43508453,  0.        , -1.43508453])
 
 
-
-
 if __name__ == "__main__":
     tests.start_logger()
     unittest.main()

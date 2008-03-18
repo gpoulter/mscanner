@@ -154,7 +154,7 @@ class FeatureScores(object):
         reduction in entropy.  This is because if the distribution is already low
         entropy (high class skew), we cannot expect large information gains."""
         def S(p): return -p*nx.log2(p) # Entropy in bits
-        q = s.pdocs/(s.pdocs+s.ndocs) # portion of pseudocount for relevant articles
+        q = s.pdocs/(s.pdocs+s.ndocs) # pseudocount for relevant articles
         R1 = s.pos_counts+q # relevant and term present
         I1 = s.neg_counts+(1-q) # irrelevant and term present
         R = s.pdocs+2*q # relevant
@@ -328,12 +328,12 @@ class FeatureScores(object):
         """
         logging.info("There are %d selected features out of %d total.", sum(s.selected), len(s.selected))
         # Output features by decreasing score
-        stream.write(u"score,pos_count,neg_count,termid,type,term\n")
+        stream.write(u"score,relIG,pos_count,neg_count,termid,type,term\n")
         if maxfeats is None:
             maxfeats = len(s.selected)
         if not hasattr(s, "_infogain"):
             s._infogain = nx.zeros(len(s.selected))
         for (score, t) in nlargest(maxfeats, izip(s.scores[s.selected], s.features)):
             fname, ftype = s.featmap.get_feature(t)
-            stream.write(u'%.3f,%.2e,%d,%d,%d,%s,"%s"\n' % 
+            stream.write(u'%.3f, %.2e, %d, %d, %d,%s,"%s"\n' % 
             (s.scores[t], s._infogain[t], s.pos_counts[t], s.neg_counts[t], t, ftype, fname))

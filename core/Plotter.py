@@ -188,6 +188,7 @@ class Plotter:
         sscores = scores.copy()
         sscores.sort()
         y, x = nx.histogram(scores, bins=self.bincount(sscores))
+        y[y==0] = 1.0 # Remove infinities in the log axis
         g.reset()
         g.title("Feature Score Histogram")
         g.xlabel("Feature Score")

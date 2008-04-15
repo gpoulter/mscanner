@@ -85,7 +85,7 @@ class ResultsTable:
         write_title = not (fname.exists() and append)
         self.stream = open(fname, "a" if append else "w")
         if write_title:
-            self.stream.write("Name, ROC, ROC SD, AvPrec, BEP, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0\n")
+            self.stream.write("Name, AvPrec, BEP, ROC, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0\n")
         
     def close(self):
         self.stream.close()
@@ -93,8 +93,8 @@ class ResultsTable:
     def add_results(self, vmanager):
         """Add a row of results from L{CrossValidation}."""
         v = vmanager.metric_vectors
-        results = [vmanager.dataset, v.W, v.W_stderr, v.AvPrec, v.breakeven]
-        fmt = "%s, %.4f, %.4f, %.3f, %.3f" + (", %.2f"*11) + "\n"
+        results = [vmanager.dataset, v.AvPrec, v.breakeven, v.W]
+        fmt = "%s, %.3f, %.3f, %.4f" + (", %.2f"*11) + "\n"
         self.stream.write(fmt % tuple(results + v.precision_11))
         self.stream.flush()
 
@@ -107,7 +107,7 @@ def get_dataset(dataset, fdata):
     # Get pair of incomplete paths
     dspaths = list(dataset_map[dataset])
     results = []
-    # Loop over two elements: pos and neg
+    # Loop over the two file names (pos and neg)
     for dspath in dspaths: 
         if isinstance(dspath, str):
             # Complete the path, and cache loaded PubMed IDs for later
@@ -120,9 +120,9 @@ def get_dataset(dataset, fdata):
                 pmids_cache[dspath] = pmids
             results.append(pmids)
         else:
-            # Not a string, let ValidationManager sort it out
+            # Path was not a string, let ValidationManager sort it out
             results.append(dspath)
-    # Convert list back to array
+    # List of [pos,neg] to tuple (pos,neg)
     return tuple(results)
 
 
@@ -164,77 +164,79 @@ def base_valid(outdir, dataset, featurespace, tab=None, df=None, ig=None, skip=F
 
 
 def testing():
-    """Whatever I feel like testing today"""
-    rc.mincount = 1
-    rc.min_infogain = 2e-5
+    """Miscellaneous individual tests"""
     rc.positives_only = False
     rc.scoremethod = "scores_laplace_split"
-    s = base / "PRIOR" / "df1_ig2.0_all_radiology_sd124_meshq_laplace_split"
-    fspace, rc.type_mask = spaces["meshq"]
-    base_valid(s, "radiology", fspace)
+    s = base / "df2_ig20_radiology_sd124_wmqia_lsplit"
+    fspace, rc.type_mask = spaces["wmqia"]
+    base_valid(s, "radiology", fspace, df=2, ig=2e-5)
 
 
 def compare_prior(*dslist):
     """Different priors"""
     logging.info("COMPARING PRIORS")
-    rc.mincount = 1
-    rc.min_infogain = 2e-5
     rc.positives_only = False
-    s = base / "PRIOR" / ("sd%d"%rc.randseed) / "df1_ig2"
+    s = base / ("smoothing_%d" % rc.randseed)
     tab = ResultsTable(s/"results.txt", append=True)
     for ds in dslist:
-        for fs in ["meshq","word","wmqia"]:
+        for fs in ["wmqia"]:
             fspace, rc.type_mask = spaces[fs]
             for method in ["bgfreq", "laplace_split", "laplace"]:
                 rc.scoremethod = "scores_" + method
-                base_valid(s/ds/fs/method, ds, fspace, tab, skip=True)
+                base_valid(s/ds/fs/"df2ig20"/method, ds, fspace, tab, df=2, ig=2e-5, skip=True)
+                base_valid(s/ds/fs/"ig0"/method, ds, fspace, tab, df=0, ig=2e-5, skip=True)
 
 
 def compare_featselection(*dslist):
     """Different feature selection approaches."""
     logging.info("COMPARING FEATURE SELECTION")
     rc.scoremethod = "scores_laplace_split"
-    s = base / "SELN" / ("sd%d"%rc.randseed) / "lsplit"
+    s = base / ("selection_%d" % rc.randseed)
     tab = ResultsTable(s/"results.txt", append=True)
     for ds in dslist:
-        for fs in ["meshq","word","wmqia"]:
+        for fs in ["wmqia"]:
             fspace, rc.type_mask = spaces[fs]
-            # Varying: Information Gain
-            for ig in [0, 1e-5, 2e-5, 1e-4]:
-                base_valid(s/ds/fs/("ig%.1f_df1"%(ig*1e5)), ds, fspace, tab, df=1, ig=ig, skip=True)
+            # Varying: Relative Information Gain
+            for ig in [1e-6, 1e-5, 2e-5, 1e-4, 1e-3]:
+                base_valid(s/ds/fs/("ig%d"%(int(ig*1e6))), ds, fspace, tab, df=0, ig=ig, skip=True)
             # Varying: Document Frequency
-            for df in [0, 1, 2, 3, 4]:
-                base_valid(s/ds/fs/("df%d_ig0"%df), ds, fspace, tab, df=df, ig=0, skip=True)
+            for df in [0, 1, 2, 3, 4, 8]:
+                base_valid(s/ds/fs/("df%d"%df), ds, fspace, tab, df=df, ig=0, skip=True)
             # Varying: Whether to use relevant-only features
             rc.positives_only = True
-            base_valid(s/ds/fs/"positives_only", ds, fspace, tab, df=1, ig=0, skip=True)
+            base_valid(s/ds/fs/"posonly", ds, fspace, tab, df=0, ig=0, skip=True)
             rc.positives_only = False
+            # Trying with best combination
+            df = 2
+            ig = 2e-5
+            base_valid(s/ds/fs/("df%dig%d"%(df,int(ig*1e6))), ds, fspace, tab, df=df, ig=ig, skip=True)
 
 
 def compare_featspace(*dslist):
     """Different feature spaces"""
     logging.info("COMPARING FEATURE SPACES")
-    rc.mincount = 2
+    rc.mincount = 0
     rc.min_infogain = 0
     rc.positives_only = False
     rc.scoremethod = "scores_laplace_split"
-    s = base / "FSPACE" / ("sd%d"%rc.randseed) / "lsplit_df1_ig2"
+    s = base / ("featspaces_%d" % rc.randseed)
     tab = ResultsTable(s/"results.txt", append=True)
     for ds in dslist:
-        for fs in ["mesh","qual","issn","word","author","meshqi","wmqia","wmqiafilt","iedbconcat"]:
+        for fs in ["meshnq","qual","issn","word","author","meshqi","wmqia","wmqiafilt","iedbconcat"]:
             fspace, rc.type_mask = spaces[fs]
-            base_valid(s/ds/fs, ds, fspace, tab, skip=True)
+            base_valid(s/ds/"ig0"/fs, ds, fspace, tab, df=0, ig=0, skip=True)
+            base_valid(s/ds/"ig20"/fs, ds, fspace, tab, df=0, ig=2e-5, skip=True)
 
 
 def compare_wordextract(*dslist):
     """Compare ways of extracting word features"""
     logging.info("COMPARING WORD EXTRACTION")
-    rc.mincount = 2
+    rc.mincount = 0
     rc.min_infogain = 0
     rc.positives_only = False
     rc.scoremethod = "scores_laplace_split"
     rc.type_mask = []
-    s = base / "WORD" / ("sd%d"%rc.randseed) / "lsplit_df2_ig0"
+    s = base / ("wordextract_%d" % rc.randseed)
     tab = ResultsTable(s/"results.txt", append=True)
     for ds in dslist:
         for fs in ["word", "wordnum", "wordfold", "wordstrip", "iedbword" ]:
@@ -245,19 +247,19 @@ def compare_wordextract(*dslist):
 def compare_all(*dslist):
     """Perform all three aspect-comparisons (prior, featurespace and Document
     Frequency), on each of the given data sets."""
-    compare_wordextract(*dslist)
-    compare_prior(*dslist)
     compare_featselection(*dslist)
+    compare_prior(*dslist)
     compare_featspace(*dslist)
+    compare_wordextract(*dslist)
 
 
 def bmc(*datasets):
     """Do the cross-validation on the sample topics from the BMC manuscript."""
     fs = "meshqi"
-    rc.scoremethod = "scores_bgfreq"
-    #rc.scoremethod = "scores_laplace_split"
+    #rc.scoremethod = "scores_bgfreq"
+    rc.scoremethod = "scores_laplace_split"
     rc.mincount = 1
-    rc.min_infogain = 0
+    rc.min_infogain = 1e-4
     rc.positives_only = False
     fspace, rc.type_mask = spaces[fs]
     s = base / "bmc" / "valid"

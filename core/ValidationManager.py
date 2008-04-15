@@ -200,7 +200,7 @@ class CrossValidation:
                         self.fdata.featuredb.get_records(self.negatives))
         # Shuffle the feature vectors
         if randseed != 0:
-            logging.debug("Shuffling positives and negatives with seed %s", str(randseed))
+            logging.debug("Shuffling pos/neg corpora with seed %s", str(randseed))
             random.seed(randseed)
             random.shuffle(pos_data)
             random.shuffle(neg_data)
@@ -279,9 +279,9 @@ class CrossValidation:
         plotter.plot_score_histogram(
             self.outdir/rc.report_artscores_img, p.pscores, p.nscores, 
             self.metric_range.threshold)
-        # Feature score histogram
+        # Feature score histogram for selected features only
         plotter.plot_feature_histogram(
-            self.outdir/rc.report_featscores_img, self.featinfo.scores)
+            self.outdir/rc.report_featscores_img, self.featinfo.scores[self.featinfo.selected])
         # Write index file
         logging.debug("FINISH: Writing %s for %s", rc.report_index, self.dataset)
         from Cheetah.Template import Template

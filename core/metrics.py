@@ -160,10 +160,11 @@ class PerformanceVectors:
         # PPV is precision
         self.PPV = s.TP / (s.TP + s.FP) 
         self.PPV[s.TP+s.FP == 0] = 1.0
-        # FM is F-Measure
+        # FM is F-Measurem FMa is the alpha-weighted F-Measures
+        nx.seterr(all='ignore')
         self.FM = 2 * s.TPR * s.PPV / (s.TPR + s.PPV) 
-        # FMa is the alpha-weighted F-Measures
         self.FMa = 1.0 / (alpha / s.PPV + (1 - alpha) / s.TPR)
+        nx.seterr(all='warn')
         # U is the utility function
         self.U = (s.utility_r * s.TP - s.FP) / (self.utility_r * len(s.pscores))
 

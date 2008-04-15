@@ -29,12 +29,10 @@ class PerformanceVectorsTests(unittest.TestCase):
             pscores = nx.array([1,2,3,4,4,5,5], dtype=nx.float32),
             nscores = nx.array([0,0,1,1,2,4,5], dtype=nx.float32),
             alpha = 0.5)
+        # Don't know how to test this for correctness - it would take
+        # a day to evaluate answers by hand.  Rather, just check that it
+        # doesn't give errors, and see if results are consistent on real data.
         logging.debug("PerformanceVectors: %s", pp.pformat(p.__dict__))
-        
-    def test_PerformanceRange(self):
-        # Does range calculation really need testing?
-        pass
-
 
 
 class ValidatorTests(unittest.TestCase):
@@ -76,8 +74,8 @@ class ValidatorTests(unittest.TestCase):
         rc.type_mask = []
         self._check_scores(
             FeatureScores([0,8,5,5], "scores_laplace_split"),
-            nx.array([-1.09861207,  2.45673585,  2.45673585,  3.55534792], nx.float32),
-            nx.array([-3.55534792, -2.45673585, -2.45673585,  1.09861207], nx.float32))
+            nx.array([-0.69314718,  1.79175949,  1.79175949,  2.48490667], nx.float32),
+            nx.array([-2.48490667, -1.79175949, -1.79175949,  0.69314718], nx.float32))
 
 
 if __name__ == "__main__":

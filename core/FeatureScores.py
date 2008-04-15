@@ -61,6 +61,8 @@ class FeatureScores(object):
     using the log of the ratio of relevant to irrelevant articles in the data.
 
     @ivar _infogain: Cached results of L{infogain} from L{get_selected}
+    
+    @ivar class_entropy: Calculated by L{infogain}, entropy of class variable
 
 
     @group Set via scoremethod: scores, pfreqs, nfreqs, base
@@ -108,11 +110,9 @@ class FeatureScores(object):
         self.neg_counts = neg_counts
         self.prior = prior
         if self.prior is None:
-            if pdocs == 0 or ndocs == 0:
-                self.prior = 0.0
-            else:
-                # Convert prior probability of relevance to a log odds
-                self.prior = nx.log(pdocs/ndocs)
+            # Convert "smoothed prior probability of relevance" to a log odds
+            theta_r = (pdocs+1)/(pdocs+ndocs+2)
+            self.prior = nx.log(theta_r/(1-theta_r))
         # Get boolean array for selected features
         self.selected = self.get_selected()
         # Get list of unmasked features and condensed count vectors
@@ -154,21 +154,27 @@ class FeatureScores(object):
         reduction in entropy.  This is because if the distribution is already low
         entropy (high class skew), we cannot expect large information gains."""
         def S(p): return -p*nx.log2(p) # Entropy in bits
-        q = s.pdocs/(s.pdocs+s.ndocs) # pseudocount for relevant articles
-        R1 = s.pos_counts+q # relevant and term present
-        I1 = s.neg_counts+(1-q) # irrelevant and term present
-        R = s.pdocs+2*q # relevant
-        I = s.ndocs+2*(1-q) # irrelevant
+        R1 = s.pos_counts.astype(nx.float32) # relevant and term present
+        I1 = s.neg_counts.astype(nx.float32) # irrelevant and term present
+        R = float(s.pdocs) # relevant
+        I = float(s.ndocs) # irrelevant
         N = R+I # total
         N1 = R1+I1 # term present
         N0 = N-N1 # term absent
         I0 = I-I1 # irrelevant and term absent
         R0 = R-R1 # relevant and term absent
+        nx.seterr(all='ignore')
         SC = S(R/N) + S(I/N) # entropy of unpartitioned distribution
+        s.class_entropy = SC
         SR1 = (R1/N) * nx.log2(R1*N/(R*N1))
         SI1 = (I1/N) * nx.log2(I1*N/(I*N1))
         SR0 = (R0/N) * nx.log2(R0*N/(R*N0))
         SI0 = (I0/N) * nx.log2(I0*N/(I*N0))
+        SR1[(R1 == 0) | (N1 == 0)] = 0
+        SI1[(I1 == 0) | (N1 == 0)] = 0
+        SR0[(R0 == 0) | (N0 == 0)] = 0
+        SI0[(I0 == 0) | (N0 == 0)] = 0
+        nx.seterr(all='warn')
         return (SR1 + SI1 + SR0 + SI0) / SC
 
 
@@ -208,10 +214,10 @@ class FeatureScores(object):
 
     def scores_laplace_split(s):
         """For feature probabilities we use a Laplace prior, of 1 success and 1
-        failure in total, split between the classes according to size. This
-        avoids class skew problems."""
-        p = s.pdocs / (s.pdocs + s.ndocs)
-        s.scores_bayes(p, 2*p, 1-p, 2*(1-p))
+        failure in total, split between the classes according to size. This 
+        avoids problems with class skew."""
+        p = (s.pdocs+1) / (s.pdocs + s.ndocs + 2)
+        s.scores_bayes(2*p, 4*p, 2*(1-p), 4*(1-p))
 
 
     def scores_bgfreq(s):
@@ -321,12 +327,12 @@ class FeatureScores(object):
 
     def write_csv(s, stream, maxfeats=None):
         """Write scores of selected features as CSV to an output stream.
-        
         @param stream: File-like object, supporting a unicode write method.
-        
         @param maxfeats: Write only the top N selected features (None for all selected).
         """
         logging.info("There are %d selected features out of %d total.", sum(s.selected), len(s.selected))
+        if hasattr(s, "class_entropy"):
+            logging.info("Entropy of class variable is %g", s.class_entropy)
         # Output features by decreasing score
         stream.write(u"score,relIG,pos_count,neg_count,termid,type,term\n")
         if maxfeats is None:

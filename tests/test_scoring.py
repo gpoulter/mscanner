@@ -141,7 +141,7 @@ class FeatureScoresTests(unittest.TestCase):
         # Calculate the necessaries
         s.featmap = FeatureMapping(filename=None)
         for x in s.articles:
-            s.featmap.add_article({"Z":x})
+            s.featmap.add_article({"Z":x}) # Z is name of feature space
         s.featdb = {}
         for i, x in enumerate(s.articles):
             s.featdb[i] = s.featmap.make_vector({"Z":x})
@@ -156,22 +156,26 @@ class FeatureScoresTests(unittest.TestCase):
         f = FeatureScores(s.featmap, "scores_laplace_split")
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
         logging.debug("FeatureScores.tfidf: %s", pp.pformat(f.tfidf))
-        tfidfs = nx.array([ 0.10939293,  0.07292862]) # Check this calculation
-        s.assert_(nx.allclose(f.tfidf, tfidfs))
+        # Check this calculation?
+        correct_tfidf = nx.array([ 0.10939293,  0.07292862]) 
+        s.assert_(nx.allclose(f.tfidf, correct_tfidf))
 
 
     def test_InformationGain(s):
         """Calculation of Information Gain."""
-        rc.min_infogain = 0.01
+        rc.min_infogain = 0.001
         f = FeatureScores(s.featmap, "scores_laplace_split")
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
         IG = f.infogain()
         logging.debug("Information Gain: %s", pp.pformat(IG))
-        # Using split-Laplace smoothing
         s.assert_(nx.allclose(IG, 
-        [ 0.,  0.0622789,  0.0622789,  0.0622789,  0.,        0.0622789]))
-        # Using Laplace smoothing
-        #[ 0.,  0.03485155,  0.03485155,  0.03485155,  0.,      0.03485155]))
+        [ 0.,  0.1908745,  0.1908745,  0.1908745,  0.  ,   0.1908745]))
+        # A particular feature from Radiology that shows up integer overflows
+        f.pdocs = 67
+        f.ndocs = 100000
+        f.pos_counts = nx.array([44])
+        f.neg_counts = nx.array([21])
+        s.assert_(nx.abs(f.infogain()[0] - 0.53909934) < 1e-6)
 
 
     def test_FeatureStats(s):
@@ -221,7 +225,7 @@ class FeatureScoresTests(unittest.TestCase):
     def test_scores_laplace_split(self):
         """Score calculation using split-laplace counts."""
         self._scoremethodtester("scores_laplace_split", 
-            [ 0, 1.43508453, -1.43508453,  1.43508453,  0.        , -1.43508453])
+            [ 0.,  0.98082924, -0.98082924,  0.98082924,  0. ,  -0.98082924 ])
 
 
 if __name__ == "__main__":

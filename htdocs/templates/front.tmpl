@@ -23,50 +23,46 @@ running at XX:XX GMT on YYYY/MM/DD.
 ##title and abstract, in addition to MeSH and journal features.  Queries
 ##may be a few seconds slower while we generate the new database.</p>
 
-<p><b>Getting started:</b> Go to the <a href="query">query</a> page, paste some
-<a href="http://en.wikipedia.org/wiki/PMID">PubMed IDs</a> into the box, enter a title for your query, and click "Submit
-Query". There is a "Help" button for each of the options, and the "Example"
-button will fill in some radiology PubMed IDs for you.</p>
+<p><b>Getting started:</b> Go to the <a href="query">query</a> page,
+paste some <a href="http://en.wikipedia.org/wiki/PMID">PubMed IDs</a>
+into the box, enter a title so you can identify the results later, and
+click "Submit Query". There is a "Help" button for each of the
+options, and the "Example" button will fill in some radiology PubMed
+IDs for you.</p>
 
 <p><b>What happens next?</b> You will be taken to the <a
 href="status">status</a> page to monitor the progress of your query, until a
 link to the results appears on the <a href="output">output</a> page. It should
 take roughly 90 seconds.</p>
 
-<p><b>What does MScanner do?</b> MScanner uses the examples you
-provided to learn what relevant articles should look like (compared to
-the rest of Medline). It returns articles that are most likely to be
-relevant.  The MScanner database is updated nightly.</p>
-
-<p><b>How many PubMed IDs do I need?</b> If the topic is narrow, MScanner can
-get a good estimate of its term distribution with as few as a dozen PubMed IDs.
-For broad topics, where many terms in the article could indicate relevance
-(database curators have this problem), you may need hundreds or thousands of
-examples.</p>
+<p><b>What does MScanner do?</b> MScanner uses the examples to learn
+how to distinguish relevant from irrelevant PubMed IDs, even for
+complex topics where thousands of terms might indicate relevance.
+It returns results by decreasing probability of relevance.  For simple
+topics a dozen PubMed IDs may be sufficient to learn its pattern
+of term usage, but to identify articles for a database like
+<a href="http://www.pharmgkb.org">PharmGKB</a> hundreds or thousands
+of training examples may be needed.</p>
  
-<p><b>What does the output look like?</b>  
-We have <a href="static/sample/query/pg07">sample results</a> from training
+<p><b>Can I see an example of the output?</b> There are <a
+href="static/sample/query/pg07">results</a> from training
 MScanner on articles for the <a
-href="http://www.pharmgkb.org">Pharmacogenetics KnowledgeBase</a></p>
+href="http://www.pharmgkb.org">Pharmacogenetics KnowledgeBase</a>. There are also
+10-fold cross validation <a
+href="static/sample/valid/pg07">performance statistics</a></p>
 
-<p><b>How effective is MScanner?</b> It depends on the training data. Instead
-of "Medline retrieval operation", select "Cross validation operation". You need
-at least 30 examples to perform cross validation. The performance statistics
+<p><b>How effective is MScanner?</b> Instead of "Medline retrieval
+operation", select "Cross validation operation". You will need at
+least 30 examples to perform cross validation. Performance statistics
 are explained on the output page.</p>
 
-<p><b>What does validation output look like?</b> Glad you asked. See the <a
-href="static/sample/valid/pg07">sample results</a> of 10-fold cross validation
-of the pharmacogenetics articles against 100,000 random articles in
-Medline.</p>
+<p><b>Source code?</b> Here is the <a
+href="static/mscanner-20080306.zip">latest source archive</a>. HTML
+documentation of the MScanner API is included. MScanner is released
+under the <a href="http://www.gnu.org/licenses">GNU General Public
+License</a>.</p>
 
-
-<p><b>Where is the source code?</b> MScanner is released under the <a
-href="http://www.gnu.org/licenses">GNU General Public License</a>. The latest
-release, 2008.02.20, uses features from title, abstract and author list in
-addition to MeSH terms and journal. Download the <a
-href="static/mscanner-20080220.zip">source archive</a>.</p>
-
-<p><b>What web browser should I use?</b> We have tested the site using <a
+<p><b>Web browser?</b> This site has been tested with <a
 href="http://www.mozilla.com/firefox/">Mozilla Firefox 2</a>, <a
 href="http://www.microsoft.com/windows/downloads/ie/getitnow.mspx">Internet
 Explorer 7</a>, <a href="http://www.apple.com/safari/download/">Safari 3</a>
@@ -77,10 +73,10 @@ href="contact">contact us</a> if you have problems.</p>
 
 <h2>Results for the BMC paper</h2>
 
-<p>On 20 February 2008, a paper on MScanner was published in <a
+<p>In February 2008, a paper on MScanner was published in <a
 href="http://www.biomedcentral.com/1471-2105/9/108/abstract">BMC
-Bioinformatics</a>. Below are the links to the original outputs used to produce
-the results in that paper:</p>
+Bioinformatics</a>.  Results in the paper are derivd from the cross
+validation performance statistics below:</p>
 
 <table>
 <tr>

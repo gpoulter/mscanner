@@ -85,9 +85,9 @@ as relevant training examples (the rest of Medline is used to approximate
 term frequencies in irrelevant articles).
 #end def
 
-#def help_allfeatures# Slow down query time from 60 seconds to 20 minutes 
-by using title and abstract words (not just MeSH terms).  Only use it
-if you need maximum accuracy, and don't mind waiting 20 minutes for results.
+#def help_allfeatures# Slow down query time from 90 seconds to 10 minutes 
+by using title and abstract words (not just MeSH terms).  This may
+improve recall if the classifier is tuned correctly. Please use it only if necessary!
 #end def
 
 #def help_dataset# The name of the task, to make it easier to locate on the
@@ -130,9 +130,10 @@ records to serve as irrelevant training examples.
 #def contents
 <div class="narrow">
 
-<p style="border-style:solid;border-width:1px;padding:1em">
-MScanner is offline for 09:30-10:30 GMT on Wed 27 February while the source code is upgraded.
-</p>
+##<p style="border-style:solid;border-width:1px;padding:1em"> The index
+##is regenerating after it was accidentally deleted on Monday 3 March.
+##This will take until Thursday 6 March.  I apologise for the
+##inconvenience.</p>
 
 #if $inputs.note is not None
 <p style="border-style:solid;border-width:1px;padding:1ex;border-color:red;">
@@ -148,7 +149,7 @@ $inputs.note
     $inputs["captcha"].render()
     <table>
       $form_row("positives")
-      ##$form_row("allfeatures")
+      $form_row("allfeatures")
       $form_row("dataset")
       $form_row("delcode")
     </table>

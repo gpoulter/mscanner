@@ -43,6 +43,7 @@ dataset_map = {
     "control":       ("Paper/control.txt", "Paper/medline100k.txt"),
     "gdsmall":       ("Test/gdsmall.txt", 30000),
     "iedb":          ("IEDB/iedb-pos-dates.txt", "IEDB/iedb-neg-dates.txt"),
+    "yael":          ("Yael/PharmGKB-2008.03.18.txt", "Paper/medline100k.txt"),
 }
 
 # Map feature space codes to full spaces and excluded classes
@@ -266,6 +267,15 @@ def bmc(*datasets):
     tab = ResultsTable(s/"summary.txt", append=True)
     for ds in datasets:
         base_valid(s/ds, ds, fspace, tab)
+
+
+def yael():
+    """New PharmGKB data set for Yael Garten"""
+    rc.scoremethod = "scores_laplace_split"
+    rc.mincount = 2
+    rc.min_infogain = 1e-5
+    fspace, rc.type_mask = spaces["wmqia"]
+    base_valid(base.parent / "yael" / "valid_wmqia_ig1e-5", "yael", fspace)
 
 
 def gdsmall():

@@ -75,16 +75,16 @@ def bmc(*datasets):
     fdata.close()
 
 
-def wmqia(*datasets):
-    groupdir = base / "bmc" / "query_wmqia_ig3e-8"
+def yael():
+    dataset = "query_wmqia_ig1e-5"
+    groupdir = base / "yael"
     if not base.exists(): base.mkdir()
     fdata = FeatureData.Defaults("feats_wmqia")
-    rc.min_infogain = 3e-8
-    for dataset in datasets:
-        QM = QueryManager(groupdir / dataset, dataset, limit=1000,
-                          artdb=artdb, fdata=fdata, threshold=0, prior=None)
-        QM.query(rc.corpora / dataset_map[dataset])
-        QM.write_report()
+    rc.min_infogain = 1e-5
+    QM = QueryManager(groupdir / dataset, dataset, limit=2000,
+                      artdb=artdb, fdata=fdata, threshold=0, prior=None)
+    QM.query(rc.corpora / "Yael" / "PharmGKB-2008.03.18.txt")
+    QM.write_report()
     fdata.close()
 
     
@@ -93,9 +93,9 @@ def gdsmall():
     ds = "gdsmall"
     s = base / ds / "query"
     rc.scoremethod = "scores_bgfreq"
-    base_query(s/"MQI_bgfreq_df1", ds, "feats_mesh_qual_issn", df=1)
+    base_query(s/"mqi_bgfreq_df1", ds, "feats_mesh_qual_issn", df=1)
     #rc.scoremethod = "scores_laplace_split"
-    #base_query(s/"WMQIA_bgfreq_df4", ds, "feats_wmqia", df=4)
+    #base_query(s/"wmqia_bgfreq_df4", ds, "feats_wmqia", df=4)
 
 
 if __name__ == "__main__":

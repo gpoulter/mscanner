@@ -403,6 +403,8 @@ class RegexValidator(Validator):
         self.msg = msg
     
     def valid(self, value):
+        if not isinstance(value, basestring):
+            return False
         return bool(self.rexp.match(value))
 
 

@@ -152,7 +152,7 @@ $VM -- Instance of ValidationBase
     $help("h_mincount")
   </tr>
   $hr("h_mincount", """Minimum Document Frequency.  In each fold, we
-  exclude features occurring fewer than this many times in the data""")
+  select features having at least this many occurrences in the training corpus.""")
   
   <tr>
     <td>Min Information Gain</td>
@@ -160,7 +160,8 @@ $VM -- Instance of ValidationBase
     $help("h_min_infogain")
   </tr>
   $hr("h_min_infogain", """Minimum Information Gain.  In each fold, we
-  exclude features with less than this information gain.""")
+  select features having at least this relative information gain 
+  (information gain divided by entropy of original class variable.""")
   
   <tr>
     <td>Random Seed</td>

@@ -4,85 +4,86 @@
 MScanner
 #end def title
 
-#def headertitle
-<h1>MScanner</h1><p style="margin:0">Retrieving Medline citations using examples</p>
-#end def headertitle
+#def header_text
+<h1>MScanner</h1>
+<p style="margin:0">a statistical classifier that filters the biomedical literature</p>
+#end def header_text
 
 #def contents
-<div class="narrow">
+<div class="narrow" style="margin:clear;font-size:large;">
 
-<!--
-<p style="font-weight:bold;">
-The queue has been paused to update the database.  The queue will continue
-running at XX:XX GMT on YYYY/MM/DD.
-</p>
--->
+##<p style="font-weight:bold;">
+##The queue has been paused to update the database.  The queue will continue
+##running at XX:XX GMT on YYYY/MM/DD.
+##</p>
+##<p style="border-style:solid;border-width:1px;padding:1ex;"></p>
 
-##<p style="border-style:solid;border-width:1px;padding:1ex;"> 22 Feb
-##2008: MScanner is being expanded to learn from word features in the
-##title and abstract, in addition to MeSH and journal features.  Queries
-##may be a few seconds slower while we generate the new database.</p>
+<p>The Medline bibliographic database indexes almost 17 million published
+articles in the biomedical literature. The standard way to search
+Medline is to perform a boolean keyword search on <a
+href="http://www.ncbi.nlm.nih.gov/sites/entrez?db=PubMed">PubMed</a>. Each
+Medline record is uniquely identified by its <em>PubMed ID</em>, and
+each record lists bibliographic information about a published articles,
+including title, abstract, journal, authors and Medical Subject Headings.</p>
 
-<p><b>Getting started:</b> Go to the <a href="query">query</a> page,
-paste some <a href="http://en.wikipedia.org/wiki/PMID">PubMed IDs</a>
-into the box, enter a title so you can identify the results later, and
-click "Submit Query". There is a "Help" button for each of the
-options, and the "Example" button will fill in some radiology PubMed
-IDs for you.</p>
+<p>Classifiers can be used to filter Medline for relevant articles, when there
+are thousands of terms which might indicate that a given article is relevant.
+Several biomedical databases already use classifiers to filter literature for
+curation, for example, to find articles that provide evidence for the
+interaction of a particular gene and drug. However, most classifiers are
+limited to filtering a subset of Medline, and substantial effort and expertise
+is necessary to develop a custom-built Medline filter. With MScanner, we have
+developed a more general classifier-filter that is tuned to the task of
+filtering Medline (but is not limited to one topic), and is exceptionally fast
+- fast enough to provide a web interface, so now anyone can train a classifier
+to filter Medline simply by providing a set of relevant training examples
+specified as PubMed IDs.</p>
 
-<p><b>What happens next?</b> You will be taken to the <a
-href="status">status</a> page to monitor the progress of your query, until a
-link to the results appears on the <a href="output">output</a> page. It should
-take roughly 90 seconds.</p>
+<p>To use MScanner, go to the <a href="query">submit a task</a> page. Then
+paste in a list of PubMed IDs, and click submit. These PubMed IDs should
+represent examples of articles to a particular topic. One might extract the
+PubMed IDs from a bibliography or a biomedical database being curated. The
+broader the topic (in terms of number of possibly-relevant terms), the more
+examples the classifier needs to get a good idea of the term distribution of
+the topic. If you have just one or a few PubMed IDs, the Related Articles
+feature on the <a
+href="http://www.ncbi.nlm.nih.gov/sites/entrez?db=PubMed">PubMed</a> search is
+probably what you want. Related Articles looks up the most similar
+articles to a given record.</p>
 
-<p><b>What does MScanner do?</b> MScanner uses the examples to learn
-how to distinguish relevant from irrelevant PubMed IDs, even for
-complex topics where thousands of terms might indicate relevance.
-It returns results by decreasing probability of relevance.  For simple
-topics a dozen PubMed IDs may be sufficient to learn its pattern
-of term usage, but to identify articles for a database like
-<a href="http://www.pharmgkb.org">PharmGKB</a> hundreds or thousands
-of training examples may be needed.</p>
- 
-<p><b>Can I see an example of the output?</b> There are <a
-href="static/sample/query/pg07">results</a> from training
-MScanner on articles for the <a
-href="http://www.pharmgkb.org">Pharmacogenetics KnowledgeBase</a>. There are also
-10-fold cross validation <a
-href="static/sample/valid/pg07">performance statistics</a></p>
+<p>On the submission form there is a <q>Help</q> button for each of the 
+advanced options.   After clicking <q>submit</q> you will be taken to
+the <a
+href="status">status</a> page to monitor the progress of the task, until a
+link to the results appears on the <a href="output">output</a> page.  Filtering
+Medline takes roughly 90 seconds when using MeSH terms, and about 3 minutes
+if title/abstract words are included.  At the bottom of the page,
+you can see results for the filtering and cross validation runs
+in the MScanner publication.  To evaluate MScanner's performance using
+cross validation, you will need at least 30 PubMed IDs (see results on
+sample topics below).</p>
 
-<p><b>How effective is MScanner?</b> Instead of "Medline retrieval
-operation", select "Cross validation operation". You will need at
-least 30 examples to perform cross validation. Performance statistics
-are explained on the output page.</p>
-
-<p><b>Source code?</b> Here is the <a
-href="static/mscanner-20080306.zip">latest source archive</a>. HTML
-documentation of the MScanner API is included. MScanner is released
-under the <a href="http://www.gnu.org/licenses">GNU General Public
+<p>Download the <a href="static/mscanner-20080306.zip">latest source code
+archive</a>. HTML documentation of the MScanner API is included. MScanner is
+released under the <a href="http://www.gnu.org/licenses">GNU General Public
 License</a>.</p>
 
-<p><b>Web browser?</b> This site has been tested with <a
+<p>This site was tested with <a
 href="http://www.mozilla.com/firefox/">Mozilla Firefox 2</a>, <a
 href="http://www.microsoft.com/windows/downloads/ie/getitnow.mspx">Internet
 Explorer 7</a>, <a href="http://www.apple.com/safari/download/">Safari 3</a>
-and <a href="http://www.opera.com/download/">Opera 9</a>. Some features may not
+and <a href="http://www.opera.com/download/">Opera 9</a>.  Some features may not
 work in older browsers or with JavaScript disabled. Please <a
 href="contact">contact us</a> if you have problems.</p>
 
-
-<h2>Results for the BMC paper</h2>
-
-<p>In February 2008, a paper on MScanner was published in <a
+<p>MScanner was published in <a
 href="http://www.biomedcentral.com/1471-2105/9/108/abstract">BMC
-Bioinformatics</a>.  Results in the paper are derivd from the cross
-validation performance statistics below:</p>
+Bioinformatics</a> in February 2008.   Below are results for
+the sample topics:</p>
 
 <table>
 <tr>
-<th>Training data</th>
-<th>Results</th>
-<th>Results</th>
+<th>Training data</th><th>Results</th><th>Results</th>
 </tr>
 <tr>
 <td>PG07 (Pharmacogenetics, 1595 citations)</td>
@@ -98,11 +99,6 @@ validation performance statistics below:</p>
 <td>Radiology (splenic imaging, 67 citations)</td>
 <td><a href="static/sample/query/radiology">retrieval</a></td>
 <td><a href="static/sample/valid/radiology">validation</a></td>
-</tr>
-<tr>
-<td>Control (randomly selected, 10000 citations)</td>
-<td></td>
-<td><a href="static/sample/valid/control">validation</a></td>
 </tr>
 </table>
  

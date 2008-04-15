@@ -1,11 +1,16 @@
 /*
-#C2D7EE; /* light blue (page background)
-#FFFFDD; /* pale yellow (row heading background)
-#A3C2E2; /* middle blue
-#F6F9FE; /* pale blue (header and body background)
-#93B2D2; /* pastel blue
-#EEEEEE; /* gray 1 (table background)
-#DDDDDD; /* gray 2 (table heading)
+Palette Overview
+
+#C2D7EE; /* light blue - html body
+#F6F9FE; /* pale blue - content and heading
+
+#FFFFDD; /* pale yellow - row head, footer
+
+#EEEEEE; /* gray 1 - column bg
+#DDDDDD; /* gray 2 - column bg
+
+#A3C2E2; /* middle blue -  not used
+#93B2D2; /* pastel blue - not used
 */
 
 html {
@@ -33,30 +38,35 @@ td {
 
 /************* BLOCK ELEMENTS ***********************/
 
+/* header is the title text at the top of the page*/
 div#header {
-    /* header for each page */
     margin: 0;
     padding: 0.3em;
     text-align: center;
     border-bottom-style: dotted;
     background-color: #F6F9FE; /* pale blue */ }
 div#header h1 {
+    /* text of the main heading */
     margin: 0; }
+
+/* contents is the box that varies between pages*/
 div#contents {
-    /* pad the contents a bit to keep it away from edges */
+    /* keep contents box away from edges */
     background-color: #F6F9FE; /* pale blue */
     padding: 1em;
     width: 100%; }
+
+/* footer has the copyright message at the bottom */
 div#footer {
-    /* footer for each page */
     border-top-style: dotted;
     background-color: #FFFFDD; /* pale yellow */
     width: 100%;
     padding: 1ex; }
+
+/* contents usually contains a nested narrow div for text */
 div.narrow { 
-    /* narrowed things for readability */
     padding-right: 2em;
-    max-width: 35em; }
+    max-width: 40em; }
 table.form th {
     text-align: left;
     font-weight: normal; }
@@ -65,13 +75,15 @@ table.form tr.error td {
 
 /***************** TOP MENU ******************8*/
 
+/* topmenu is a shared set of links to the app pages */ 
+
 div#topmenu {
-    /* container for the top menu */
+    /* container div for the shared menu */
     text-align: center;
-    border-bottom: dotted; }
+    border-bottom: dotted;
+}
 div#topmenu table {
     /* hold menu buttons in a table with separated cells */
-    width: 80%;
     margin: 0 auto 0 auto;
     border-collapse: separate;
     border-spacing: 1ex; }
@@ -82,7 +94,8 @@ div#topmenu td {
     /* simulate a button */
     background-color: #F6F9FE; /* pale blue */
     border: solid 2px black;
-    padding: 0.5ex; }
+    padding: 0.5ex 2ex 0.5ex 2ex; 
+}
 
 /********** STATUS BLOCK **********/
 

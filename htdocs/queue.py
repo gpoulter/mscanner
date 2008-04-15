@@ -85,8 +85,8 @@ descriptor_keys = dict(
     minscore=float,        # Minimum classifier score to predict relevance
     numnegs=int,           # Number of irrelevant articles for CV
     operation=str,         # "retrieval" or "validation"
-    prevalence=float,      # Fraction of relevant articles in Medline
     submitted=float,       # Timestamp when the task was submitted
+    prevalence=float,      # Prevalence of relevant articles in Medline (deprecated)
     )
 
 
@@ -222,14 +222,6 @@ def delete_output(dataset):
     dirpath.rmdir()
 
 
-
-def logit(probability):
-    if probability is None:
-        return None
-    else:
-        return math.log(probability/(1-probability))
-
-
 def mainloop():
     """Look for descriptor files every second"""
     usewords = True # Whether to include feats_wmqia capability
@@ -302,7 +294,7 @@ def mainloop():
                             artdb=updater.artdb,
                             fdata=fdata,
                             threshold=task.minscore,
-                            prior=logit(task.prevalence),
+                            prior=None,
                             mindate=task.mindate,
                             maxdate=None,
                             )
@@ -343,7 +335,6 @@ def populate_test_queue():
         minscore = 0.0, 
         numnegs = 1000, 
         operation = "validate", 
-        prevalence = 0.01,
         submitted = time.time())
     write_descriptor(rc.queue_path/task.dataset, pmids, task)
     task.operation = "retrieval"

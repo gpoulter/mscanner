@@ -103,12 +103,6 @@ QueryForm = forms.Form(
         label="Minimum date", size=12),
 
     forms.Textbox(
-        "prevalence", 
-        forms.Validator(lambda x: x.strip() == "" or 1e-6 <= float(x) <= 0.1,
-            "Should be empty, or a number between 0.000001 (10^-6) and 0.1"),
-        label="Estimated prevalence", size=8),
-    
-    forms.Textbox(
         "minscore", 
         forms.Validator(lambda x: -1000 <= float(x) <= 1000,
             "Should be between -1000 and +1000."),
@@ -149,7 +143,6 @@ form_defaults = dict(
     numnegs = 50000,
     operation = "retrieval",
     positives = "",
-    prevalence = "",
 )
 """Default values for the query form"""
 
@@ -182,9 +175,6 @@ class QueryPage:
             inputs.delcode = md5.new(delcode_plain).hexdigest()
             # Parse the date string to integer
             inputs.mindate = parse_date(inputs.mindate)
-            # Check for default prevalence
-            if inputs.prevalence.strip() == "":
-                inputs.prevalence = None 
             queue.write_descriptor(rc.queue_path / inputs.dataset, 
                                    parse_pmids(inputs.positives), inputs)
             # Sleep to make sure the file is done writing

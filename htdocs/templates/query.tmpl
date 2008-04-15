@@ -5,8 +5,14 @@ $inputs -- Form containing web browser input
 *#
 
 #def title
-Submit Query or Validation #slurp
+Submit a task#slurp
 #end def title
+
+#def header_text
+<h1>Submit a Task</h1>
+<p style="margin:0">Filter Medline, or evaluate classifier performance.</p>
+#end def header_text
+
 
 #def extraheaders
   ## Uncompressed javascript for debugging (77k)
@@ -80,60 +86,52 @@ Submit Query or Validation #slurp
 </tr>
 #end def
 
-#def help_positives# A list of PubMed IDs, one per line, to serve
-as relevant training examples (the rest of Medline is used to approximate
-term frequencies in irrelevant articles).
-#end def
+#def help_positives# A list of PubMed IDs, one per line, to serve as relevant
+training examples (the rest of Medline is used to approximate term frequencies
+in irrelevant articles). Any number of PubMed IDs may be submitted, but at
+least 10 is recommended. Broad topics may need hundreds or thousands of
+examples. #end def
 
-#def help_allfeatures# Slow down query time from 90 seconds to 10 minutes 
-by using title and abstract words (not just MeSH terms).  This may
-improve recall if the classifier is tuned correctly. Please use it only if necessary!
+#def help_allfeatures# Usually, the classifier is trained on MeSH terms and
+journal of publication of each Medline record. Select this box to include
+title/abstract/author as well, which slows down the query from 90 seconds to
+3-5 minutes. Feel free to select it if you are prepared to wait a bit
+longer for somewhat improved results.
 #end def
 
 #def help_dataset# The name of the task, to make it easier to locate on the
-results page (restriced to letters, numbers and .,;:- punctuation)#end def
+results page (the name is restricted to letters, numbers and .,;:-
+punctuation) #end def
 
-#def help_delcode# A short code that will be
-required if in order to delete the output (defaults to an empty code). 
-You may select "hide output" to prevent the results from being listed 
-on the <a href="output">output</a> page, in which case you need to 
-bookmark the location of the results to find them later.
+#def help_delcode# A short code that will be required to delete the output
+(defaults to an empty code). You may select "hide output" to prevent the
+results from being listed on the <a href="output">output</a> page, in which
+case you need to bookmark the location of the results to find them later. 
 #end def
 
-#def help_limit# Upper limit on the number of citations to return (may be
-set between 100 and 10000). 
+#def help_limit# Upper limit on the number of citations to return (may be set
+between 100 and 10000). #end def
+
+#def help_mindate# Limit Medline to records completed after this date.
+This feature is useful for monitoring for new literature.  This adds
+30 seconds to normal filtering, and adds 2 minutes if the <q>use all features</q>
+box is selected.
 #end def
 
-#def help_mindate# Filter Medline to contain only records completed after this
-date (useful for monitoring for new literature).  Using this option
-slows down retrieval by 30 seconds. Records are typically completed 
-1-3 months after publication date.
-#end def
+#def help_minscore# Advanced option: Only returns articles that score at least
+this much. You may want to use a negative threshold when the sample data
+includes very few articles it is more probable than irrelevance. #end def
 
-#def help_prevalence# Advanced option: specify the fraction of Medline that is
-relevant (prevalence). By default we estimate this using on input size. 
-Greater values yield more results by raising the prior probability of relevance. 
-#end def
-
-#def help_minscore# Advanced option: Only returns articles whose 
-score (logarithm of the probability ratio for relevance vs irrelevance)
-is greater than this.  Default of 0 means to predict relevance when
-it is more probable than irrelevance.
-#end def
-
-
-#def help_numnegs# In cross validation we select this many random Medline 
-records to serve as irrelevant training examples.
-#end def
+#def help_numnegs# In cross validation we select this many random Medline
+records to serve as irrelevant training examples. To perform cross validation
+you will also need to paste at least 30 relevant examples in the "Input Citations"
+box. #end def
 
 
 #def contents
 <div class="narrow">
 
-##<p style="border-style:solid;border-width:1px;padding:1em"> The index
-##is regenerating after it was accidentally deleted on Monday 3 March.
-##This will take until Thursday 6 March.  I apologise for the
-##inconvenience.</p>
+##<p style="border-style:solid;border-width:1px;padding:1em"></p>
 
 #if $inputs.note is not None
 <p style="border-style:solid;border-width:1px;padding:1ex;border-color:red;">
@@ -162,7 +160,6 @@ $inputs.note
     <table>
       $form_row("limit")
       $form_row("mindate")
-      $form_row("prevalence")
       $form_row("minscore")
     </table>
   </fieldset>

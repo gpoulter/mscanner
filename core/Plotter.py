@@ -55,33 +55,7 @@ class Plotter:
             return x, y
 
 
-    def plot_predictions(self, fname, predicted_low, predicted_high):
-        """Given L{PredictedMetrics} instance, plot the predicted query
-        performance (TPR and PPV vs number of results).
-        
-        @note: Two predictions are given, corresponding to upper and lower
-        bound guesses at the number of 
-        """
-        if fname.exists() and not self.overwrite: return
-        g = self.gnuplot
-        logging.debug("Plotting prediction curve to %s", fname.basename())
-        g.reset()
-        g.title("Prediction curve (TPR, PPV vs # results)")
-        g.ylabel("TPR, PPV")
-        g.xlabel("Number of results")
-        g("set terminal png")
-        g("set output '%s'" % fname)
-        # Only plot until 95% recall in both cases
-        pL = predicted_low
-        pH = predicted_high
-        seg = (pL.TPR < 0.95) | (pH.TPR < 0.95) 
-        g.plot(
-            Data(pL.results[seg], pL.TPR[seg], title="TPR low", with="lines"),
-            Data(pL.results[seg], pL.PPV[seg], title="PPV low", with="lines"),
-            Data(pH.results[seg], pH.TPR[seg], title="TPR high", with="lines"),
-            Data(pH.results[seg], pH.PPV[seg], title="PPV high", with="lines"))
 
-    
     def plot_roc(self, fname, FPR, TPR, marker_FPR):
         """ROC curve (TPR vs FPR)"""
         if fname.exists() and not self.overwrite: return

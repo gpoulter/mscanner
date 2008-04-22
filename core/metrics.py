@@ -397,40 +397,6 @@ class PerformanceMetrics:
 
 
 
-class PredictedMetrics:
-    """Predict the performance metrics vectors for query results
-    knowing only the true and false positive rates in testing.
-    
-    This also requires specifiying the size of the database against
-    which the query will be performed, and also the number of relevant
-    documents guessed to be present in the database.
-
-    @group Passed to constructor: TPR, FPR, thresholds, relevant, total
-    @ivar TPR: True Positive Rate in test corpus at each threshold (increasing)
-    @ivar FPR: False Positive Rate in test corpus at each threshold (increasing)
-    @ivar thresholds: Threshold scores corresponding to TPR and FPR (decreasing)
-    @ivar relevant: Number of relevant articles in database
-    @ivar total: Total number of articles in database
-    
-    @group Calculated in constructor: prevalence, TP, FP, results, precision
-    @ivar prevalence: Fraction of relevant articles in database
-    @ivar TP: Predicted number of true positives at each threshold
-    @ivar FP: Predicted number of false positives at each threshold
-    @ivar results: Predicted number of results at each threshold (TP+FP)
-    @ivar PPV: Predicted Precision (positive predictive value) at each threshold
-    """
-    
-    def __init__(self, TPR, FPR, thresholds, relevant, total):
-        """Constructor, calculates the predicted statistics"""
-        prevalence = relevant / total
-        TP = TPR * relevant
-        FP = FPR * (total - relevant)
-        results = TP + FP
-        PPV = TP / results
-        update(self, locals())
-
-
-
 class PerformanceRange:
     """Given a threshold, find the minimum and maximum for the precision,
     recall across the validation folds.

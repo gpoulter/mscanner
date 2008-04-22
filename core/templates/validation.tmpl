@@ -241,8 +241,6 @@ $VM -- Instance of ValidationBase
 
 </table>
 
-#if not $hasattr($VM, "pred_low")
-
 <div>
   <h2>Confusion Matrix at threshold
   <button class="toggle" id="toggle_h_cmatrix">?</button>
@@ -443,8 +441,6 @@ $VM -- Instance of ValidationBase
   </table> 
 </div>
 
-#end if cross validation results
-
 
 <div>
 #set global $stats = $VM.featinfo.stats
@@ -455,22 +451,6 @@ $VM -- Instance of ValidationBase
 <div>
   <h2>Performance graphs</h2>
 
-  #if $hasattr($VM, "pred_low")
-  <div><h3>Predicted performance</h3>
-    
-    <p>We predict recall and precision as a function of rank
-    in a retrieval situation (whole-Medline) for two values of prevalence
-    (fraction of Medline that is relevant)  We assume there are between
-    ${VM.pred_low.relevant} and ${VM.pred_high.relevant} relevant records 
-    remaining in Medline (which has ${VM.pred_low.total} records).  We
-    use true and false positive rates to estimate the number of true
-    and false positives at each rank.</p>
-    
-    <img src="$rc.report_prediction_img" alt="Predicted precision"/>
-  </div>
-  #end if query prediction graph
-
-
   <div><h3>Document score distributions</h3>
     <p>Normalised histograms (sum of bar areas normalised to 1), approximating
     probability distributions for relevant and irrelevant article scores. Good
@@ -478,14 +458,12 @@ $VM -- Instance of ValidationBase
     <img src="$rc.report_artscores_img" alt="Article score distributions"/>
   </div>
 
-
   <div><h3>Feature score distribution</h3>
     <p>Normalised histogram approximating the probability distribution
     for feature feature scores (after training on all available data).</p>
     <img src="$rc.report_featscores_img" alt="Feature score distribution"/>
   </div>
 
-#if not hasattr($VM, "pred_low")
   <div><h3>ROC Curve</h3>
     <p>True Positive Rate versus False Positive Rate.  The closer
     to the top left the curve gets, the better. Worst case is a diagonal
@@ -493,7 +471,6 @@ $VM -- Instance of ValidationBase
     positives).</p>
     <img src="$rc.report_roc_img" alt="ROC Curve"/>
   </div>
-  
   
   <div><h3>Precision-Recall Curve</h3>
     <p>Precision as a function of Recall.  The recall corresponding
@@ -507,7 +484,6 @@ $VM -- Instance of ValidationBase
     The chosen threshold is marked with a vertical line.</p>
     <img src="$rc.report_fmeasure_img" alt="Precision and Recall vs Threshold"/>
   </div>
-#end if cross validation results
 
 </div>
 

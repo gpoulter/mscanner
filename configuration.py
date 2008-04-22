@@ -122,8 +122,6 @@ rc.report_roc_img = path("roc.png")
 rc.report_prcurve_img = path("prcurve.png")
 ## Name of PRF vs threshold file
 rc.report_fmeasure_img = path("fmeasure.png")
-## Name of predicted precision graph
-rc.report_prediction_img = path("prediction.png")
 
 #### Non-Path parameters
 

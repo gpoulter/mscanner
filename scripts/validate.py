@@ -86,17 +86,18 @@ class ResultsTable:
         write_title = not (fname.exists() and append)
         self.stream = open(fname, "a" if append else "w")
         if write_title:
-            self.stream.write("Name, AvPrec, BEP, ROC, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0\n")
+            self.stream.write("Name, AvPrec, ROC, FSAGR, BEP, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0\n")
         
     def close(self):
         self.stream.close()
         
     def add_results(self, vmanager):
         """Add a row of results from L{CrossValidation}."""
-        v = vmanager.metric_vectors
-        results = [vmanager.dataset, v.AvPrec, v.breakeven, v.W]
-        fmt = "%s, %.3f, %.3f, %.4f" + (", %.2f"*11) + "\n"
-        self.stream.write(fmt % tuple(results + v.precision_11))
+        mv = vmanager.metric_vectors
+        results = [vmanager.dataset, mv.AvPrec, mv.W, 
+                   vmanager.featinfo.stats.aggressivity, mv.breakeven]
+        fmt = "%s, %.3f, %.4f, %.3f, %.3f" + (", %.2f"*11) + "\n"
+        self.stream.write(fmt % tuple(results + mv.precision_11))
         self.stream.flush()
 
 
@@ -225,8 +226,8 @@ def compare_featspace(*dslist):
     for ds in dslist:
         for fs in ["meshnq","qual","issn","word","author","meshqi","wmqia","wmqiafilt","iedbconcat"]:
             fspace, rc.type_mask = spaces[fs]
-            base_valid(s/ds/"ig0"/fs, ds, fspace, tab, df=0, ig=0, skip=True)
-            base_valid(s/ds/"ig20"/fs, ds, fspace, tab, df=0, ig=2e-5, skip=True)
+            base_valid(s/ds/"ig0"/fs, ds, fspace, tab, df=0, ig=0, skip=False)
+            base_valid(s/ds/"ig20"/fs, ds, fspace, tab, df=0, ig=2e-5, skip=False)
 
 
 def compare_wordextract(*dslist):

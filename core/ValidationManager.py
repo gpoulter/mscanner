@@ -19,8 +19,7 @@ from mscanner.medline.FeatureData import FeatureData
 from mscanner.medline.FeatureVectors import random_subset
 from mscanner.core import iofuncs
 from mscanner.core.FeatureScores import FeatureScores
-from mscanner.core.metrics import (PerformanceVectors, PerformanceRange, 
-                                   PredictedMetrics)
+from mscanner.core.metrics import PerformanceVectors, PerformanceRange
 from mscanner.core.Plotter import Plotter
 from mscanner.core.Validator import cross_validate, count_features
 
@@ -144,6 +143,7 @@ class CrossValidation:
             self._load_vectors(0)
             self.featinfo.update(self.pos_counts, self.neg_counts, 
                              len(self.positives), len(self.negatives))
+            self.featinfo.stats
             logging.debug("Successfully loaded results")
         # Failed to load saved results, so perform cross validation
         except IOError:
@@ -163,30 +163,6 @@ class CrossValidation:
             self._write_report()
 
     
-    def report_predicted(self, relevant_low, relevant_high, medline_size):
-        """Experimental: report predicted query performance
-        
-        @param relevant_low: Minimum expected relevant articles in Medline
-        
-        @param relevant_high: Maximum expected relevant articles in Medline
-
-        @param medline_size: Number of articles in rest of Medline, or None
-        to use local database size minus relevant articles.
-        """
-        if len(self.positives)>0 and len(self.negatives)>0:
-            logging.debug("Reporting performance prediction metrics")
-            # Calculate the performance
-            self._get_performance()
-            if medline_size is None:
-                medline_size = len(self.fdata.featuredb) - len(self.positives)
-            v = self.metric_vectors
-            self.pred_low = PredictedMetrics(
-                v.TPR, v.FPR, v.uscores, relevant_low, medline_size)
-            self.pred_high = PredictedMetrics(
-                v.TPR, v.FPR, v.uscores, relevant_high, medline_size)
-            self._write_report()
-
-
     def _load_vectors(self, randseed):
         """Shuffle the list of input articles (for the cross validator), then
         load corresponding feature vectors and derive counts for the PubMed IDs
@@ -221,7 +197,7 @@ class CrossValidation:
         logging.info("Calculating scores under cross validation.")
         self.pscores, self.nscores = cross_validate(
             self.featinfo, self.pos_vectors, self.neg_vectors, self.nfolds)
-        logging.info("Updating feature scores.")
+        logging.info("Updating feature scores after validation.")
         self.featinfo.update(self.pos_counts, self.neg_counts, 
                              len(self.positives), len(self.negatives))
 
@@ -259,22 +235,16 @@ class CrossValidation:
         t = self.metric_range.average
         # Do not overwriting existing plots
         plotter = Plotter(overwrite=False) 
-        # Predicted precision/recall performance
-        if hasattr(self, "pred_low") and hasattr(self, "pred_high"):
-            plotter.plot_predictions(self.outdir/rc.report_prediction_img, 
-                                     self.pred_low, self.pred_high)
-        # Report cross validation results instead of prediction results
-        else:
-            # ROC curve
-            plotter.plot_roc(
-                self.outdir/rc.report_roc_img, p.FPR, p.TPR, t.FPR)
-            # Precision-recall curve
-            plotter.plot_precision(
-                self.outdir/rc.report_prcurve_img, p.TPR, p.PPV, t.TPR)
-            # F-Measure curve
-            plotter.plot_fmeasure(
-                self.outdir/rc.report_fmeasure_img, p.uscores, p.TPR, p.PPV, 
-                p.FM, p.FMa, self.metric_range.threshold)
+        # ROC curve
+        plotter.plot_roc(
+            self.outdir/rc.report_roc_img, p.FPR, p.TPR, t.FPR)
+        # Precision-recall curve
+        plotter.plot_precision(
+            self.outdir/rc.report_prcurve_img, p.TPR, p.PPV, t.TPR)
+        # F-Measure curve
+        plotter.plot_fmeasure(
+            self.outdir/rc.report_fmeasure_img, p.uscores, p.TPR, p.PPV, 
+            p.FM, p.FMa, self.metric_range.threshold)
         # Article score histogram
         plotter.plot_score_histogram(
             self.outdir/rc.report_artscores_img, p.pscores, p.nscores, 

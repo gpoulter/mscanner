@@ -36,8 +36,8 @@ class FeatureScores(object):
     @ivar scoremethod: Name of the method to call for calculating feature scores.
     
     
-    @group Set by update: pdocs, ndocs, pos_counts, neg_counts, selected,
-    features, pos_selected, neg_selected, prior
+    @group Set by update: pdocs, ndocs, pos_counts, neg_counts, 
+    features,  prior
     
     @ivar pdocs: Number of positive documents.
     
@@ -47,9 +47,23 @@ class FeatureScores(object):
     
     @ivar neg_counts: Array with number of negative occurrences for each feature.
     
+    @ivar class_entropy: Calculated by L{infogain}, entropy of class variable
+
+    @ivar prior: The prior log odds of relevance.  If None, estimate
+    using the log of the ratio of relevant to irrelevant articles in the data.
+
+
+    @group Set by select_features: selected, features, infogain, 
+    pos_selected, feats_type_selected, neg_selected
+
     @ivar selected: Boolean array with True position corresponds to selected features.
     
     @ivar features: Array listing the feature IDs of the L{selected} features.
+
+    @ivar infogain: Cached results of L{infogain} from L{get_selected}.
+    
+    @ivar feats_type_selected: Boolean array where True positions correspond to
+    features whose types we are considering (a cached feature type mask).
 
     @ivar pos_selected: Array with number of positive documents for each
     selected feature (corresponds with L{features}).
@@ -57,12 +71,6 @@ class FeatureScores(object):
     @ivar neg_selected: Array with number of negative documents for each
     selected feature (corresponds with L{features}).
 
-    @ivar prior: The prior log odds of relevance.  If None, estimate
-    using the log of the ratio of relevant to irrelevant articles in the data.
-
-    @ivar _infogain: Cached results of L{infogain} from L{get_selected}
-    
-    @ivar class_entropy: Calculated by L{infogain}, entropy of class variable
 
 
     @group Set via scoremethod: scores, pfreqs, nfreqs, base
@@ -113,39 +121,40 @@ class FeatureScores(object):
             # Convert "smoothed prior probability of relevance" to a log odds
             theta_r = (pdocs+1)/(pdocs+ndocs+2)
             self.prior = nx.log(theta_r/(1-theta_r))
-        # Get boolean array for selected features
-        self.selected = self.get_selected()
+        # Make the arrays of selected features
+        self.select_features()
         # Get list of unmasked features and condensed count vectors
-        self.features = nx.arange(len(self.selected))[self.selected]
-        self.pos_selected = self.pos_counts[self.selected]
-        self.neg_selected = self.neg_counts[self.selected]
         # Call the method to calculate feature scores (it respects the mask)
         getattr(self, self.scoremethod)()
         # Get rid of TFIDF property to recalculate
         delattrs(self, "_stats", "_tfidf")
 
 
-    def get_selected(s):
-        """Return a boolean feature selection array. True positions correspond
-        to features that we keep.  Especially with word features, the
-        number of selected features must be kept reasonably small.
+    def select_features(s):
+        """Perform feature selection.  Is called during the L{update} method to 
+        set certain attributes relating to selected features (see class description).
         """
         from mscanner.configuration import rc
-        selected = nx.ones(len(s.pos_counts), nx.bool)
+        s.selected = nx.ones(len(s.pos_counts), nx.bool)
+        s.feats_type_selected = None
         if rc.type_mask:
             # Keep only features that are not of the specified types
-            selected &= ~s.featmap.type_mask(rc.type_mask)
+            s.feats_type_selected = ~s.featmap.type_mask(rc.type_mask)
+            s.selected &= s.feats_type_selected 
         if rc.mincount > 0:
             # Keep only features having enough occurrences
-            selected &= ((s.pos_counts + s.neg_counts) >= rc.mincount)
+            s.selected &= ((s.pos_counts + s.neg_counts) >= rc.mincount)
         if rc.positives_only:
             # Keep only features found in a relevant article
-            selected &= (s.pos_counts != 0)
+            s.selected &= (s.pos_counts != 0)
+        s.feats_infogain = None
         if rc.min_infogain > 0:
             # Keep features by information gain.
-            s._infogain = s.infogain()
-            selected &= (s._infogain >= rc.min_infogain)
-        return selected
+            s.feats_infogain = s.infogain()
+            s.selected &= (s.feats_infogain >= rc.min_infogain)
+        s.features = nx.arange(len(s.selected))[s.selected]
+        s.pos_selected = s.pos_counts[s.selected]
+        s.neg_selected = s.neg_counts[s.selected]
 
     
     def infogain(s):
@@ -254,7 +263,8 @@ class FeatureScores(object):
         """Stores statistics about a L{FeatureScores}
         
         @ivar feats_selected: Number of features that passed feature selection.
-        @ivar feats_total: Total number of features in the feature space.
+        @ivar feats_total: Total number of features in the database.
+        @ivar feats_represented: Total number of features in the training data.
         
         @ivar pos_docs, neg_docs: Number of documents in positive/negative
         corpus.
@@ -273,6 +283,13 @@ class FeatureScores(object):
             fs = featscores
             s.feats_selected = sum(fs.selected)
             s.feats_total = len(fs.selected)
+            if fs.feats_type_selected is None:
+                # Distinct features in data are those that occur at least once
+                s.feats_in_data = sum(fs.pos_counts+fs.neg_counts>0)
+            else:
+                # But only certain feature types are being considered
+                s.feats_in_data = sum((fs.pos_counts+fs.neg_counts)[fs.feats_type_selected]>0)
+            s.aggressivity = s.feats_in_data / s.feats_selected
             s.pos_docs = fs.pdocs
             s.neg_docs = fs.ndocs
             s.pos_occurrences = int(nx.sum(fs.pos_selected))
@@ -330,16 +347,17 @@ class FeatureScores(object):
         @param stream: File-like object, supporting a unicode write method.
         @param maxfeats: Write only the top N selected features (None for all selected).
         """
-        logging.info("There are %d selected features out of %d total.", sum(s.selected), len(s.selected))
+        logging.info("%d features selected from %d in training data (%d in database).", 
+                     s.stats.feats_selected, s.stats.feats_in_data, s.stats.feats_total)
         if hasattr(s, "class_entropy"):
             logging.info("Entropy of class variable is %g", s.class_entropy)
         # Output features by decreasing score
         stream.write(u"score,relIG,pos_count,neg_count,termid,type,term\n")
         if maxfeats is None:
             maxfeats = len(s.selected)
-        if not hasattr(s, "_infogain"):
-            s._infogain = nx.zeros(len(s.selected))
+        if s.feats_infogain is None:
+            s.feats_infogain = nx.zeros(len(s.selected))
         for (score, t) in nlargest(maxfeats, izip(s.scores[s.selected], s.features)):
             fname, ftype = s.featmap.get_feature(t)
             stream.write(u'%.3f, %.2e, %d, %d, %d,%s,"%s"\n' % 
-            (s.scores[t], s._infogain[t], s.pos_counts[t], s.neg_counts[t], t, ftype, fname))
+            (s.scores[t], s.feats_infogain[t], s.pos_counts[t], s.neg_counts[t], t, ftype, fname))

@@ -21,6 +21,7 @@ from mscanner.core import iofuncs
 from mscanner.core.QueryManager import QueryManager
 from mscanner.medline.FeatureData import FeatureData
 from mscanner.medline.FeatureStream import DateAsInteger
+from mscanner.medline import Shelf
 
 
 def truepos_vs_rank(results, test):
@@ -90,21 +91,25 @@ def plot_rank_performance(fname, textfname, tp_vs_rank,
 def compare_iedb_query():
     """We compare MScanner retrieval to the complex PubMed query
     used to create the gold standard for the IEDB classifier."""
-    dataset = "IEDBQuery-Long"
+    dataset = "IEDBQuery"
     rc.mincount = 0
-    outdir = rc.working / "output" / dataset
+    rc.min_infogain = 2e-5
+    rc.scoremethod = "scores_laplace_split"
+    rc.type_mask = []
+    outdir = rc.root/ "results" / "iedb-final-retrieval"
     if not outdir.exists(): outdir.makedirs()
     mindate, maxdate = 20040101, 20041231
     t_mindate, t_maxdate = 20040101, 20041231
-    trainpos_file = rc.corpora / "IEDB" / "iedb-pos-pre2004.txt"
-    testpos_file = rc.corpora / "IEDB" / "iedb-pos-2004.txt"
-    testneg_file = rc.corpora / "IEDB" / "iedb-neg-2004.txt"
+    IEDB = rc.corpora / "IEDB" / "Query Data"
+    trainpos_file = IEDB / "iedb-pos-pre2004.txt"
+    testpos_file = IEDB / "iedb-pos-2004.txt"
+    testneg_file = IEDB / "iedb-neg-2004.txt"
     N_testnegs = len(testneg_file.lines())
     testpos = set(iofuncs.read_pmids(testpos_file))
     limit = len(testpos) + N_testnegs
-    #fdata = FeatureData.Defaults_MeSH()
-    fdata = FeatureData.Defaults_All()
-    QM = QueryManager(outdir, dataset, limit, fdata=fdata,
+    fdata = FeatureData.Defaults("feats_wmqia")
+    artdb = Shelf.open(rc.articles_home/rc.articledb, 'r')
+    QM = QueryManager(outdir, dataset, limit, artdb=artdb, fdata=fdata,
                       mindate=mindate, maxdate=maxdate,
                       t_mindate=t_mindate, t_maxdate=t_maxdate)
     QM.query(trainpos_file)

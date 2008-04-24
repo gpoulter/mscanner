@@ -46,14 +46,15 @@ class FeatureMapping:
         self.grow_features = grow_features
         self.filename = filename
         self.con = sqlite3.connect(filename or ":memory:")
+        #self.con.execute("PRAGMA synchronous=OFF")
+        self.con.execute("PRAGMA cache_size=10000")
         self.con.execute("""CREATE TABLE IF NOT EXISTS fmap (
           id INTEGER PRIMARY KEY,
           type TEXT, name TEXT, count INTEGER,
           UNIQUE(type,name) )""")
         # Make sure that feature 0 exists (create a dummy if necessary)
-        self.con.execute("PRAGMA synchronous=OFF")
-        self.con.execute("PRAGMA cache_size=10000")
-        self.con.execute("INSERT OR IGNORE INTO fmap VALUES(0, '', '', 0)")
+        if self.con.execute("SELECT id FROM fmap WHERE id=0").fetchone() is None:
+            self.con.execute("INSERT OR IGNORE INTO fmap VALUES(0, '', '', 0)")
 
 
     def close(self):

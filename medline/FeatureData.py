@@ -167,7 +167,7 @@ class FeatureData:
         logging.info("FeatureData: Index vacuuming complete.")
 
 
-def counter(iter, per_dot=500, per_msg=10000):
+def counter(iter, per_dot=300, per_msg=3000):
     """Passes through the iterator, printing '.' on stdout after every
     per_dots items and a timing message after every per_msg items."""
     import time

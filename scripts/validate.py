@@ -258,14 +258,27 @@ def compare_all(*dslist):
 def bmc(*datasets):
     """Do the cross-validation on the sample topics from the BMC manuscript."""
     fs = "meshqi"
-    #rc.scoremethod = "scores_bgfreq"
-    rc.scoremethod = "scores_laplace_split"
+    rc.scoremethod = "scores_bgfreq"
     rc.mincount = 1
-    rc.min_infogain = 1e-4
+    rc.min_infogain = 0
     rc.positives_only = False
     fspace, rc.type_mask = spaces[fs]
     s = base / "bmc" / "valid"
-    tab = ResultsTable(s/"summary.txt", append=True)
+    tab = ResultsTable(s/"results.txt", append=True)
+    for ds in datasets:
+        base_valid(s/ds, ds, fspace, tab)
+
+
+def final(*datasets):
+    """Do the cross-validation on the sample topics from the BMC manuscript."""
+    fs = "wmqia"
+    rc.scoremethod = "scores_laplace_split"
+    rc.mincount = 0
+    rc.min_infogain = 2e-5
+    rc.positives_only = False
+    fspace, rc.type_mask = spaces[fs]
+    s = base / "final" / "valid"
+    tab = ResultsTable(s/"results.txt", append=True)
     for ds in datasets:
         base_valid(s/ds, ds, fspace, tab)
 

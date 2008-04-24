@@ -258,7 +258,7 @@ def mainloop():
                 last_clean = time.time()
             
             # Update the databases twice daily
-            if time.time() - last_update > 12*3600*100:
+            if time.time() - last_update > 24*3600:
                 logging.info("Looking for Medline updates")
                 updater.add_directory(rc.medline, save_delay=0)
                 updater.load_properties()
@@ -282,8 +282,8 @@ def mainloop():
                         rc.scoremethod = "scores_bgfreq"
                     else:
                         fdata = updater.fdata_list[1] # feats_wmqia
-                        rc.min_infogain = 1e-5
-                        rc.mincount = 3
+                        rc.min_infogain = 2e-5
+                        rc.mincount = 0
                         rc.scoremethod = "scores_laplace_split"
                     # Retrieval operation
                     if task.operation == "retrieval":
@@ -299,7 +299,6 @@ def mainloop():
                             maxdate=None,
                             )
                         QM.query(task._filename)
-                        time.sleep(5)
                         QM.write_report()
                         QM.__del__()
                     # Cross validation operation

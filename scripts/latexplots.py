@@ -42,7 +42,7 @@ this program. If not, see <http://www.gnu.org/licenses/>."""
 interactive = False
 npoints = 400
 mscanner_dir = path(r"C:\Documents and Settings\Graham\My Documents\data\MScanner")
-source_dir = mscanner_dir / "output"
+source_dir = mscanner_dir / "results"
 outdir = path(r"C:\Documents and Settings\Graham\My Documents\temporary")
 
 
@@ -147,24 +147,28 @@ def plot_score_density(fname, statlist):
         if idx == 0:
             legend(loc="upper left")
     custom_show(fname)
+    
+    
+def plot_score_density_individual(fbase, statlist, limits):
+    """Plots score density with one graph per file"""
+    rcParams["figure.figsize"] = [3.0,3.0]
+    #rcParams["xtick.labelsize"] = 20.0
+    #rcParams["ytick.labelsize"] = 20.0
+    for s, (x1,x2) in zip(statlist, limits):
+        logging.info("Plotting score densities to %s", fbase+s.title)
+        px, py = DensityPlotter.gaussian_kernel_pdf(s.pscores)
+        nx, ny = DensityPlotter.gaussian_kernel_pdf(s.nscores)
+        line_pos, = plot(px, py, color='red', label=r"Relevant")
+        line_neg, = plot(nx, ny, color='blue', label=r"Irrelevant")
+        line_threshold = axvline(
+            s.uscores[s.bep_index], color='green', linewidth=1, label=r"Threshold")
+        #ylabel("Probability density")
+        #xlabel("Document score")
+        axis([x1, x2, 0.0, None])
+        custom_show(fbase + s.title)
 
 
 
-def plot_score_histogram(fname, pscores, nscores):
-    """Plot histograms for pos/neg scores, with line to mark threshold"""
-    logging.info("Plotting article score histogram to %s", fname)
-    ##title("Article Score Histograms")
-    xlabel("Article Score")
-    ylabel("Article Density")
-    p_n, p_bins, p_patches = hist(pscores, bins=Plotter.bincount(pscores), normed=True)
-    n_n, n_bins, n_patches = hist(nscores, bins=Plotter.bincount(nscores), normed=True)
-    setp(p_patches, 'facecolor', 'r', 'alpha', 0.50, 'linewidth', 0.0)
-    setp(n_patches, 'facecolor', 'b', 'alpha', 0.50, 'linewidth', 0.0)
-    #p_y = normpdf(p_bins, mean(pscores), std(pscores))
-    #n_y = normpdf(n_bins, mean(nscores), std(nscores))
-    #p_l = plot(p_bins, p_y, 'r--', label=r"$\rm{Relevants}$")
-    #n_l = plot(n_bins, n_y, 'b--', label=r"$\rm{Irrelevant}$")
-    custom_show(fname)
 
 
 def plot_featscore_histogram(fname, fscores):
@@ -183,7 +187,7 @@ def plot_roc(fname, statlist):
     """Plots ROC curves overlayed"""
     logging.info("Plotting ROC grid to %s", fname)
     figure(figsize=(10,5))
-    formats = ["r-s", "b-D", "g-h", "c-"]
+    formats = ["r-s", "b-D", "g-h", "c-", "m-"]
     values = [smooth(s.TPR[::-1], s.FPR[::-1]) for s in statlist]
     # Plot complete ROC curve
     subplot(121)
@@ -213,7 +217,7 @@ def plot_precision(fname, statlist):
     # Dotted line for break-even point
     plot([0.0, 1.0], [0.0, 1.0], "k:")
     # Pairs of TPR and PPV vectors for plotting
-    formats = ["r-s", "b-D", "g-h", "c-o"]
+    formats = ["r-s", "b-D", "g-h", "c-o", "m-o"]
     for s, fmt in zip(statlist, formats):
         TPR, PPV = smooth(s.TPR[::-1], s.PPV[::-1])
         gplot(TPR, PPV, fmt, label=r"$\rm{"+s.title+r"}$", pos=0.5)
@@ -229,14 +233,14 @@ def plot_precision(fname, statlist):
 
 #### FUNCTIONS THAT USE THE ABOVE ####
 
-def do_iedb(fname):
+def do_iedb():
     """Plots retrieval test results for 20% of PharmGKB to see how MScanner
     and PubMed compare at retrieving the remaining 80%.
     """
     logging.info("Plotting Retrieval curve for PG07")
-    indir = source_dir / "11.21 IEDB Query"
+    indir = source_dir / "final-iedb-retrieval"
     iedb_precision = 0.306415
-    lines = (indir/"perf_vs_rank.txt").lines()
+    lines = (indir/"pr_rank.txt").lines()
     N = len(lines)
     precision = zeros(N, Float32)
     recall = zeros(N, Float32)
@@ -257,25 +261,29 @@ def do_iedb(fname):
     # Draw legends
     legend(loc=(0.05, 0.7))
     axis([0.0, N, 0.0, 1.0])
-    custom_show(fname)
+    custom_show("final-iedb-retrieval")
 
 
 def do_publication():
     """Draws figures for the BMC paper: including densities, ROC curve, PR
     curve, and PRF curve. """
-    indir = source_dir / "11.21 Cross Validation"
+    indir = source_dir / "final" / "final-valid"
     aidsbio = load_stats(indir, "aidsbio", "AIDSBio")
     radiology = load_stats(indir, "radiology", "Radiology")
     pg07 = load_stats(indir, "pg07", "PG07")
+    iedb = load_stats(indir, "iedb", "IEDB")
     control = load_stats(indir, "control", "Control")
-    all = (aidsbio, radiology, pg07, control)
-    #plot_score_density("fig3_density", all)
-    plot_roc("fig4_roc", all)
-    #plot_precision("fig5_pr", all)
+    #all = (aidsbio, radiology, pg07, iedb)
+    #plot_score_density("final-density", all)
+    all = (aidsbio, radiology, pg07, iedb, control)
+    plot_score_density_individual("density-", all,
+        [(-400,200), (-600,220), (-200,300), (-100,+100), (-100,+100)] )
+    #plot_roc("final-roc", all)
+    #plot_precision("final-precision", all)
 
 
 def do_testplots():
-    """Tests the plot functions using some old smaller datasets"""
+    """Test plotting with some smaller data sets"""
     global indir
     indir = source_dir / "Old Validation" / "070223 CV10 Daniel 2s"
     if not indir.isdir():
@@ -289,7 +297,7 @@ def do_testplots():
 
 
 def do_subdirplots(subdirs):
-    """Plots selected graphs for the datasets passed as parameters"""
+    """Draw figures for datasets provied in the parameters."""
     statlist = [load_stats(source_dir/path(d), d, d) for d in subdirs]
     fscores = [read_featscores(source_dir/path(d), d) for d in subdirs]
     #plot_score_density("cus_density", stats)

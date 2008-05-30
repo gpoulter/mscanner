@@ -249,9 +249,13 @@ class CrossValidation:
         plotter.plot_score_histogram(
             self.outdir/rc.report_artscores_img, p.pscores, p.nscores, 
             self.metric_range.threshold)
-        # Feature score histogram for selected features only
+        # Feature score histogram, but only use selected features 
+        # that occur at least once in the data (ignores features that
+        # have DF=0 but would be given scores when rc.mincount==0)
+        fi = self.featinfo
         plotter.plot_feature_histogram(
-            self.outdir/rc.report_featscores_img, self.featinfo.scores[self.featinfo.selected])
+            self.outdir/rc.report_featscores_img, 
+            fi.scores[fi.selected & (fi.pos_counts+fi.neg_counts)>0])
         # Write index file
         logging.debug("FINISH: Writing %s for %s", rc.report_index, self.dataset)
         from Cheetah.Template import Template

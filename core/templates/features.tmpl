@@ -23,25 +23,26 @@
       <td>$stats.neg_docs</td>
     </tr>
     <tr>
-      <th>Number of distinct features</th>
+      <th>Number of selected, occurring features</th>
       <td>$stats.pos_distinct</td>
       <td>$stats.neg_distinct</td>
     </tr>
     <tr>
-      <th>Total feature occurrences</th>
+      <th>Total occurrences of selected features</th>
       <td>$stats.pos_occurrences</td>
       <td>$stats.neg_occurrences</td>
     </tr>
     <tr>
-      <th>Terms per document</th>
+      <th>Selected features per Medline record</th>
       <td>#echo "%.3f" % $stats.pos_average #</td>
       <td>#echo "%.3f" % $stats.neg_average #</td>
     </tr>
     <tr>
       <td colspan="3">
-      $stats.feats_selected features are selected out of $stats.feats_in_data 
-      present in the data, for aggressivity of #echo "%.3f" % $stats.aggressivity #.
-      There are $stats.feats_total possible features.
+      Of the considered feature types, $stats.feats_selected features are selected out 
+      of $stats.feats_in_data occurring at least once in training data.  The aggressivity of
+      selection is #echo "%.3f" % $stats.aggressivity #.
+      The complete database lists $stats.feats_total potential features.
       </td>
     </tr>
   </tbody>

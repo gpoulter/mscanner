@@ -284,8 +284,8 @@ class FeatureScores(object):
             s.feats_selected = sum(fs.selected)
             s.feats_total = len(fs.selected)
             if fs.feats_type_selected is None:
-                # Distinct features in data are those that occur at least once
-                s.feats_in_data = sum(fs.pos_counts+fs.neg_counts>0)
+                # Distinct features in data are those that occur at least once.
+                s.feats_in_data = sum(fs.pos_counts+fs.neg_counts > 0)
             else:
                 # But only certain feature types are being considered
                 s.feats_in_data = sum((fs.pos_counts+fs.neg_counts)[fs.feats_type_selected]>0)
@@ -296,8 +296,8 @@ class FeatureScores(object):
             s.neg_occurrences = int(nx.sum(fs.neg_selected))
             s.pos_average = s.pos_occurrences / fs.pdocs if fs.pdocs > 0 else 0.0
             s.neg_average = s.neg_occurrences / fs.ndocs if fs.ndocs > 0 else 0.0
-            s.pos_distinct = sum(fs.pos_selected != 0)
-            s.neg_distinct = sum(fs.neg_selected != 0)
+            s.pos_distinct = sum(fs.pos_selected > 0)
+            s.neg_distinct = sum(fs.neg_selected > 0)
 
 
     @property

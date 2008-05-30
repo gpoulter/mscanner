@@ -153,13 +153,20 @@ class Plotter:
 
 
     def plot_feature_histogram(self, fname, scores):
-        """Histogram for feature scores
+        """Histogram for feature scores. Requires that there be no
+        -1.#IND (undefined 0/0) or -1.#INF (zero-division like 1/0) values,
+        as it messes up the histogram.  Only provide scores for
+        features present in the inital corpus.  Features with DF=0
+        (not present in a given corpus, although present somewhere in Medline) 
+        far outnumber DF>0 features, making the histogram look like a spike.
         
-        @param scores: List with scores of each feature"""
+        @param scores: List of feature weights."""
         if fname.exists() and not self.overwrite: return
         g = self.gnuplot
         logging.debug("Plotting feature score histogram to %s", fname.basename())
-        sscores = scores.copy()
+        # Sorting modifies the vector, but the provided vector must be
+        # left untouched to maintain the association with PubMed IDs.
+        sscores = scores.copy() 
         sscores.sort()
         y, x = nx.histogram(scores, bins=self.bincount(sscores))
         y[y==0] = 1.0 # Remove infinities in the log axis

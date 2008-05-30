@@ -174,19 +174,20 @@ def testing():
     base_valid(s, "radiology", fspace, df=2, ig=2e-5)
 
 
-def compare_prior(*dslist):
+def compare_smoothing(*dslist):
     """Different priors"""
-    logging.info("COMPARING PRIORS")
+    logging.info("COMPARING SMOOTHING METHODS")
     rc.positives_only = False
     s = base / ("smoothing_%d" % rc.randseed)
     tab = ResultsTable(s/"results.txt", append=True)
+    tab = None
     for ds in dslist:
         for fs in ["wmqia"]:
             fspace, rc.type_mask = spaces[fs]
             for method in ["bgfreq", "laplace_split", "laplace"]:
                 rc.scoremethod = "scores_" + method
-                base_valid(s/ds/fs/"df2ig20"/method, ds, fspace, tab, df=2, ig=2e-5, skip=True)
-                base_valid(s/ds/fs/"ig0"/method, ds, fspace, tab, df=0, ig=2e-5, skip=True)
+                base_valid(s/ds/fs/"ig20"/method, ds, fspace, tab, df=0, ig=2e-5, skip=True)
+                base_valid(s/ds/fs/"ig0"/method, ds, fspace, tab, df=0, ig=0, skip=True)
 
 
 def compare_featselection(*dslist):
@@ -250,9 +251,9 @@ def compare_all(*dslist):
     """Perform all three aspect-comparisons (prior, featurespace and Document
     Frequency), on each of the given data sets."""
     compare_featselection(*dslist)
-    compare_prior(*dslist)
-    compare_featspace(*dslist)
+    compare_smoothing(*dslist)
     compare_wordextract(*dslist)
+    #compare_featspace(*dslist)
 
 
 def bmc(*datasets):
@@ -267,6 +268,20 @@ def bmc(*datasets):
     tab = ResultsTable(s/"results.txt", append=True)
     for ds in datasets:
         base_valid(s/ds, ds, fspace, tab)
+
+
+def reproduce_iedb():
+    """Attempt to reproduce the IEDB classifier's ROC 0.846 to 0.848 result
+    without and with feature selection by imitating its parameters"""
+    fs = "iedbword"
+    rc.scoremethod = "scores_laplace"
+    rc.positives_only = False
+    fspace, rc.type_mask = spaces[fs]
+    s = base / "reproduce_iedb"
+    tab = ResultsTable(s/"results.txt", append=True)
+    base_valid(s+"_ig0", "iedb", fspace, tab, df=1, ig=0)
+    base_valid(s+"_df4ig20", "iedb", fspace, tab, df=4, ig=2.36e-5)
+
 
 
 def final(*datasets):

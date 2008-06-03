@@ -62,7 +62,22 @@ def base_query(outdir, dataset, featurespace, limit=500, df=None, ig=None):
     fdata.close()
     
 
-def bmc(*datasets):
+def final(*datasets):
+    """Do queries on the sample topics using final classifer."""
+    groupdir = base / "final-query"
+    if not base.exists(): base.mkdir()
+    fdata = FeatureData.Defaults("feats_wmqia")
+    rc.mincount = 0
+    rc.min_infogain = 2e-5
+    for dataset in datasets:
+        QM = QueryManager(groupdir / dataset, dataset, limit=1000,
+                          artdb=artdb, fdata=fdata, threshold=0, prior=None)
+        QM.query(rc.corpora / dataset_map[dataset])
+        QM.write_report()
+    fdata.close()
+
+
+def old(*datasets):
     """Do queries on the sample topics from the BMC manuscript."""
     groupdir = base / "bmc" / "query_mqi"
     if not base.exists(): base.mkdir()

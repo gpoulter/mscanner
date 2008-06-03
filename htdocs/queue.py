@@ -162,8 +162,8 @@ class QueueStatus:
     
     def _load_tasklist(self):
         """Populate L{tasklist}."""
-        current_time = time.time()
-        eligible_files = [f for f in rc.queue_path.files()]
+        maxtime = time.time() - 0.19 # Slept for 0.2 in query_logic.py
+        eligible_files = [f for f in rc.queue_path.files() if f.mtime < maxtime]
         self.tasklist = [read_descriptor(f) for f in eligible_files]
         self.tasklist.sort(key=lambda x:x.submitted)
         self.running = self.tasklist[0] if self.tasklist else None
@@ -239,7 +239,7 @@ def mainloop():
         # Time of last output clean
         last_clean = time.time()
         # Time of last database update
-        last_update = time.time()
+        last_update = 0 #time.time()
         while True:
             
             # Touch the PID file

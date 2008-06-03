@@ -178,7 +178,7 @@ class QueryPage:
             queue.write_descriptor(rc.queue_path / inputs.dataset, 
                                    parse_pmids(inputs.positives), inputs)
             # Sleep to make sure the file is done writing
-            time.sleep(0.1)
+            time.sleep(0.2)
             # Show status page for the task
             web.seeother("status?dataset=%s;delcode=%s" % 
                          (inputs.dataset, web.urlquote(delcode_plain)))

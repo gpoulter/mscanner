@@ -291,8 +291,9 @@ def final(*datasets):
     rc.mincount = 0
     rc.min_infogain = 2e-5
     rc.positives_only = False
+    rc.randseed = 124
     fspace, rc.type_mask = spaces[fs]
-    s = base / "final" / "valid"
+    s = base / "final-valid"
     tab = ResultsTable(s/"results.txt", append=True)
     for ds in datasets:
         base_valid(s/ds, ds, fspace, tab)

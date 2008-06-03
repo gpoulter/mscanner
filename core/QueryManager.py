@@ -267,9 +267,9 @@ class QueryManager:
         if maxreport is None or maxreport > len(self.results):
             maxreport = len(self.results)
         
-        logging.debug("Writing features to %s", rc.report_term_scores)
-        with closing(codecs.open(self.outdir/rc.report_term_scores, "wb", "utf-8")) as f:
-            self.featinfo.write_csv(f, rc.max_output_features)
+        #logging.debug("Writing features to %s", rc.report_term_scores)
+        #with closing(codecs.open(self.outdir/rc.report_term_scores, "wb", "utf-8")) as f:
+        #    self.featinfo.write_csv(f, rc.max_output_features)
         
         logging.debug("Writing citations to %s", rc.report_input_citations)
         self.inputs.sort(reverse=True)
@@ -299,8 +299,9 @@ class QueryManager:
                 zf.write(str(outfname), str(outfname.basename()))
         
         # Index.html
-        logging.debug("FINISH: Writing %s for %s", rc.report_index, self.dataset)
+        logging.debug("Writing %s", rc.report_index)
         from Cheetah.Template import Template
         with iofuncs.FileTransaction(self.outdir/rc.report_index, "w") as ft:
             Template(file=str(rc.templates/"results.tmpl"), 
                      filter="Filter", searchList=dict(QM=self)).respond(ft)
+        logging.debug("FINISH: Query for %s", self.dataset)

@@ -168,6 +168,17 @@ def plot_score_density_individual(fbase, statlist, limits):
         custom_show(fbase + s.title)
 
 
+def test_fontstuff():
+    #rcParams["xtick.labelsize"] = 20.0
+    #rcParams["ytick.labelsize"] = 20.0
+    #rcParams["axes.labelsize"] = 20.0
+    rcParams["figure.figsize"] = [2.8,2.8]
+    x = arange(0,10)
+    y = x**2
+    plot(x,y)
+    #xlabel("Test Label")
+    #ylabel("Test Label")
+    custom_show("test")
 
 
 
@@ -187,7 +198,7 @@ def plot_roc(fname, statlist):
     """Plots ROC curves overlayed"""
     logging.info("Plotting ROC grid to %s", fname)
     figure(figsize=(10,5))
-    formats = ["r-s", "b-D", "g-h", "c-", "m-"]
+    formats = ["r-", "b--", "g-.", "c:", "m-"]
     values = [smooth(s.TPR[::-1], s.FPR[::-1]) for s in statlist]
     # Plot complete ROC curve
     subplot(121)
@@ -195,7 +206,7 @@ def plot_roc(fname, statlist):
     ylabel(r"True Positive Rate (Recall)")
     xlabel(r"False Positive Rate (1-Specificity)")
     for (TPR, FPR), fmt, s  in zip(values, formats, statlist):
-        plot(FPR, TPR, fmt[0:2], label=s.title)
+        plot(FPR, TPR, fmt[0:], label=s.title)
     axis([0.0, 1.0, 0.0, 1.0])
     legend(loc="lower right")
     # Plot zoomed in ROC curve
@@ -203,7 +214,7 @@ def plot_roc(fname, statlist):
     ##title(r"Magnified ROC")
     xlabel(r"False Positive Rate (1-Specificity)")
     for (TPR, FPR), fmt, s  in zip(values, formats, statlist):
-        plot(FPR, TPR, fmt[0:2])
+        plot(FPR, TPR, fmt[0:])
     axis([0.0, 0.01, 0, 1.0])
     custom_show(fname)
 
@@ -217,7 +228,7 @@ def plot_precision(fname, statlist):
     # Dotted line for break-even point
     plot([0.0, 1.0], [0.0, 1.0], "k:")
     # Pairs of TPR and PPV vectors for plotting
-    formats = ["r-s", "b-D", "g-h", "c-o", "m-o"]
+    formats = ["r-", "b--", "g-.", "c:", "m-"]
     for s, fmt in zip(statlist, formats):
         TPR, PPV = smooth(s.TPR[::-1], s.PPV[::-1])
         gplot(TPR, PPV, fmt, label=r"$\rm{"+s.title+r"}$", pos=0.5)
@@ -254,10 +265,10 @@ def do_iedb():
         precision[i] = float(_prec)
     ylabel(r"Precision, Recall")
     xlabel(r"Rank")
-    plot(ranks, recall, "r", label="MScanner recall")
-    plot(ranks, precision, "b", label="MScanner precision")
-    plot(ranks, ranks/N, 'c', label="IEDB query recall")
-    plot(ranks, zeros(N)+iedb_precision, 'g', label="IEDB query precision")
+    plot(ranks, recall, "r-", label="MScanner recall")
+    plot(ranks, precision, "b--", label="MScanner precision")
+    plot(ranks, ranks/N, 'c:', label="IEDB query recall")
+    plot(ranks, zeros(N)+iedb_precision, 'g-.', label="IEDB query precision")
     # Draw legends
     legend(loc=(0.05, 0.7))
     axis([0.0, N, 0.0, 1.0])

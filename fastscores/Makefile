@@ -3,7 +3,7 @@
 F = _FeatureCounter
 C = _ScoreCalculator
 
-GCC = gcc -lm
+GCC = gcc 
 BINARIES = $(C) $(F)
 WINBINS = $(BINARIES:%=%.exe)
 
@@ -15,16 +15,16 @@ clean:
 ## Unix pipes approach
 
 $(F): $(F).c
-	$(GCC) -o $@ $<
+	$(GCC) -o $@ $< -lm
 
 $(C): $(C).c
-	$(GCC) -DCSCORE -o $@ $<
+	$(GCC) -DCSCORE -o $@ $< -lm
 	
 ## Shared library approach (but ctypes broken on Solaris)
 
 #$(C).so: $(C).c
-#	$(GCC) -shared -o $@ $<
+#	$(GCC) -shared -o $@ $< -lm
 
 #$(C).dll: $(C).c
-#	$(GCC) -mno-cygwin -shared -o $@ $<
+#	$(GCC) -mno-cygwin -shared -o $@ $< -lm
 

@@ -1,0 +1,6 @@
+*.wpr
+*.wpu
+*.pyc
+*.o
+fastscores/_FeatureCounter
+fastscores/_ScoreCalculator

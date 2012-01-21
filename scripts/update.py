@@ -36,7 +36,7 @@ from mscanner.core import iofuncs
 
 featurespaces = [
     "feats_mesh_qual_issn",
-    #"feats_wmqia",
+    "feats_wmqia",
     #"feats_wmqia_filt",
     #"feats_iedb_word", 
     #"feats_iedb_concat",

@@ -6,7 +6,7 @@ MScanner
 
 #def header_text
 <h1>MScanner</h1>
-<p style="margin:0">a statistical classifier that filters the biomedical literature</p>
+<p style="margin:0">Rapid statistical classification on the Medline database of biomedical literature</p>
 #end def header_text
 
 #def contents
@@ -18,41 +18,31 @@ MScanner
 ##</p>
 ##<p style="border-style:solid;border-width:1px;padding:1ex;"></p>
 
-<p>The Medline bibliographic database indexes almost 17 million published
-articles in the biomedical literature. The standard way to search
-Medline is to perform a boolean keyword search on <a
-href="http://www.ncbi.nlm.nih.gov/sites/entrez?db=PubMed">PubMed</a>. Each
-Medline record is uniquely identified by its <em>PubMed ID</em>, and
-each record lists bibliographic information about a published articles,
-including title, abstract, journal, authors and Medical Subject Headings.</p>
+<p>Please see the <a href="static/thesis.pdf">masters thesis</a> for 
+detailed information about the classifier.  The background chapter also
+provides a readable introduction to text classification.</a>
 
-<p>Classifiers can be used to filter Medline for relevant articles, when there
-are thousands of terms which might indicate that a given article is relevant.
-Several biomedical databases already use classifiers to filter literature for
-curation, for example, to find articles that provide evidence for the
-interaction of a particular gene and drug. However, most classifiers are
-limited to filtering a subset of Medline, and substantial effort and expertise
-is necessary to develop a custom-built Medline filter. With MScanner, we have
-developed a more general classifier-filter that is tuned to the task of
-filtering Medline (but is not limited to one topic), and is exceptionally fast
-- fast enough to provide a web interface, so now anyone can train a classifier
-to filter Medline simply by providing a set of relevant training examples
-specified as PubMed IDs.</p>
+<p>To use the service, just paste a list of <em>PubMed IDs</em>
+into the input box on the <a href="query">submit a task</a>  page.  There is a <q>Help</q> button for each of the 
+advanced options, but the defaults should be fine.  <a href="http://www.ncbi.nlm.nih.gov/sites/entrez?db=PubMed">PubMed</a> is
+a search engine for Medline.  This is a classifier, which learns
+what a topic looks like from the examples provided, to 
+distinguish relevant Medline records from irrelevant ones.  This
+is useful for curating biomedical databases (where hundreds of
+examples are available, having been used to curate database entries), and
+also to expand collections of citations.</p>
 
-<p>To use MScanner, go to the <a href="query">submit a task</a> page. Then
-paste in a list of PubMed IDs, and click submit. These PubMed IDs should
-represent examples of articles to a particular topic. One might extract the
-PubMed IDs from a bibliography or a biomedical database being curated. The
-broader the topic (in terms of number of possibly-relevant terms), the more
-examples the classifier needs to get a good idea of the term distribution of
-the topic. If you have just one or a few PubMed IDs, the Related Articles
-feature on the <a
-href="http://www.ncbi.nlm.nih.gov/sites/entrez?db=PubMed">PubMed</a> search is
-probably what you want. Related Articles looks up the most similar
-articles to a given record.</p>
+<p>The more examples the better. In fact, using only one example will often 
+return zero results: it specifies a very narrow topic, and it is unlikely 
+for anything in Medline to share enough features with the example to have a positive
+score.  We recommend using the Related Articles feature found on 
+<a href="http://www.ncbi.nlm.nih.gov/sites/entrez?db=PubMed">PubMed</a> 
+if you have just one
+example: it finds the most similar records in PubMed.  You may
+however set the score threshold down to -500 instead of zero to return
+even the negative-scoring results from the classifier.</p>
 
-<p>On the submission form there is a <q>Help</q> button for each of the 
-advanced options.   After clicking <q>submit</q> you will be taken to
+<p>After clicking <q>submit</q> you will be taken to
 the <a
 href="status">status</a> page to monitor the progress of the task, until a
 link to the results appears on the <a href="output">output</a> page.  Filtering
@@ -76,10 +66,9 @@ and <a href="http://www.opera.com/download/">Opera 9</a>.  Some features may not
 work in older browsers or with JavaScript disabled. Please <a
 href="contact">contact us</a> if you have problems.</p>
 
-<p>MScanner was published in <a
+<p>Below are results for the sample topics published in the MScanner paper in <a
 href="http://www.biomedcentral.com/1471-2105/9/108/abstract">BMC
-Bioinformatics</a> in February 2008.   Below are results for
-the sample topics:</p>
+Bioinformatics</a> in February 2008.   </p>
 
 <table>
 <tr>

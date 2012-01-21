@@ -146,8 +146,9 @@ class FeatureMapping:
         oldfeatures = nx.arange(0, numfeats, dtype=nx.int32)
         # Perform the feature deletion and update
         self.con.execute("DELETE FROM fmap WHERE count<?", (mincount,))
-        self.con.executemany("UPDATE fmap SET id=? WHERE id=?", 
-                             izip(lookup[keep],oldfeatures[keep]))
+        for newid, oldid in izip(lookup[keep],oldfeatures[keep]):
+            self.con.execute("UPDATE fmap SET id=? WHERE id=?",
+                             (int(newid), int(oldid)))
         self.con.commit()
         self.con.execute("VACUUM")
         delattrs(self, "_counts", "_length")
@@ -158,7 +159,7 @@ class FeatureMapping:
         """Retrieve feature (name, type) for a given feature ID. 
         @raise KeyError: if feature ID does not exist."""
         row = self.con.execute(
-            "SELECT name, type FROM fmap WHERE id=?", (fid,)).fetchone()
+            "SELECT name, type FROM fmap WHERE id=?", (int(fid),)).fetchone()
         if row is None:
             raise KeyError("Invalid key: %s" % str(key))
         return row

@@ -11,21 +11,6 @@ from path import path
 from mscanner.core.Storage import RCStorage
 
 
-                                     
-__author__ = "Graham Poulter"                                        
-__license__ = """This program is free software: you can redistribute it and/or
-modify it under the terms of the GNU General Public License as published by the
-Free Software Foundation, either version 3 of the License, or (at your option)
-any later version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with
-this program. If not, see <http://www.gnu.org/licenses/>."""
-
-
 rc = RCStorage()
 """Global configuration options"""
 
@@ -38,7 +23,7 @@ rc.root = lambda: rc.sources.parent
 ## Path to data directory (inputs and databases)
 rc.working = lambda: rc.root / "data"
 ## Path to ArticleData (with FeatureData subdirs)
-rc.articles_home = lambda: rc.working / "articles_iedb"
+rc.articles_home = lambda: rc.working / "articles_med12"
 ## Path to report templates
 rc.templates = lambda: rc.sources / "core" / "templates"
 ## Path to list of stop words
@@ -126,10 +111,9 @@ rc.report_fmeasure_img = path("fmeasure.png")
 #### Non-Path parameters
 
 ## Server for sending e-mails
-rc.smtpserver = "smtp.uct.ac.za" 
-#rc.smtpserver = "smtp.stanford.edu"
+rc.smtpserver = "smtp.stanford.edu"
 ## Email to send website queries to
-rc.webmaster_email = "xxxxxxxxxxxxxxxxxxxxxxxx"
+rc.webmaster_email = "graham.poulter@gmail.com"
 ## Base directory for the website
 rc.siteurl = "http://mscanner.stanford.edu"
 ## Whether to link to .js and .css files instead of including them
@@ -145,10 +129,10 @@ rc.citations_per_file = 250
 #rc.randseed = 124
 rc.randseed = None
 
-## Parameters affecting FeatureScores 
+## Parameters affecting FeatureScores
 
 ## Select features with at least this many occurrences
-rc.mincount = 2
+rc.mincount = 0
 ## Don't select features of theses classes. e.g. ["mesh","issn"]
 rc.type_mask = []
 ## Select features with at least this much Information Gain (IG)

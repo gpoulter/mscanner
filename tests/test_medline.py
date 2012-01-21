@@ -257,7 +257,7 @@ class UpdaterTests(unittest.TestCase):
 
 
 
-xmltext = u'''<?xml version="1.0"?>
+xmltext = '''<?xml version="1.0"?>
 <!DOCTYPE MedlineCitationSet PUBLIC 
 "-//NLM//DTD Medline Citation, 1st January 2007//EN"
 "http://www.nlm.nih.gov/databases/dtd/nlmmedline_070101.dtd">
@@ -362,8 +362,7 @@ xmltext = u'''<?xml version="1.0"?>
 </MeshHeadingList>
 </MedlineCitation>
 
-</MedlineCitationSet>
-'''
+</MedlineCitationSet>'''
 
 if __name__ == "__main__":
     tests.start_logger()

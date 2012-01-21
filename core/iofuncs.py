@@ -177,7 +177,7 @@ def start_logger(console=True, logfile=False):
     import logging
     rootlog = logging.getLogger()
     rootlog.setLevel(logging.DEBUG)
-    format = logging.Formatter("%(asctime)-9s %(levelname)-8s %(message)s", "%H:%M:%S")
+    format = logging.Formatter("%(asctime)-9s %(levelname)-8s %(message)s", "%Y-%m-%d %H:%M:%S")
     # Configure primary file logger
     if logfile:
         filelog = logging.FileHandler(rc.articles_home/rc.logfile, "a")

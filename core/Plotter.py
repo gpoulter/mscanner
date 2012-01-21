@@ -69,8 +69,9 @@ class Plotter:
         g.xlabel("False Positive Rate (FPR)")
         g("set terminal png")
         g("set output '%s'" % fname)
-        g.plot(Data(FPR, TPR, title="TPR", with="lines"),
-               Data([marker_FPR, marker_FPR], [0,0.99], title="threshold", with="lines"))
+        g("set style data lines")
+        g.plot(Data(FPR, TPR, title="TPR"),
+               Data([marker_FPR, marker_FPR], [0,0.99], title="threshold"))
 
 
     def plot_precision(self, fname, TPR, PPV, marker_TPR):
@@ -86,8 +87,9 @@ class Plotter:
         g.xlabel("Recall")
         g("set terminal png")
         g("set output '%s'" % fname)
-        g.plot(Data(TPR, PPV, title="Precision", with="lines", smooth="csplines"),
-               Data([marker_TPR, marker_TPR], [0,0.99], title="threshold", with="lines"))
+        g("set style data lines")
+        g.plot(Data(TPR, PPV, title="Precision", smooth="csplines"),
+               Data([marker_TPR, marker_TPR], [0,0.99], title="threshold"))
 
 
     def plot_fmeasure(self, fname, pscores, TPR, PPV, FM, FMa, threshold):
@@ -105,11 +107,12 @@ class Plotter:
         g.xlabel("Threshold Score")
         g("set terminal png")
         g("set output '%s'" % fname)
-        g.plot(Data(npscores, TPR, title="Recall",     with="lines"),
-               Data(npscores, PPV, title="Precision",  with="lines"),
-               Data(npscores, FM,  title="F1 Measure", with="lines"),
-               Data(npscores, FMa, title="F Measure",  with="lines"),
-               Data([threshold, threshold], [0,0.99], title="threshold", with="lines"))
+        g("set style data lines")
+        g.plot(Data(npscores, TPR, title="Recall"),
+               Data(npscores, PPV, title="Precision"),
+               Data(npscores, FM,  title="F1 Measure"),
+               Data(npscores, FMa, title="F Measure"),
+               Data([threshold, threshold], [0,0.99], title="threshold"))
 
 
     @staticmethod
@@ -145,11 +148,12 @@ class Plotter:
         #g("set arrow from %f,0 to %f,%f nohead lw 4 " % (
         #    threshold, threshold, max(chain(py,ny))))
         g("set style fill solid 1.0")
+        g("set style data boxes")
         threshold_height = max(chain(py, zy))
-        g.plot(Data(px, py, title="Positives", with="boxes"),
-               Data(zx, zy, title="Negatives", with="boxes"),
-               Data([threshold, threshold], [0, threshold_height], 
-                    title="threshold", with="lines lw 3"))
+        g.plot(Data(px, py, title="Positives"),
+               Data(zx, zy, title="Negatives"),
+               Data([threshold, threshold+1], [0, threshold_height], 
+                    title="threshold"))
 
 
     def plot_feature_histogram(self, fname, scores):
@@ -178,7 +182,8 @@ class Plotter:
         g("set terminal png")
         g("set output '%s'" % fname)
         g("set style fill solid 1.0")
-        g.plot(Data(x, y, with="boxes"))
+        g("set style data boxes")
+        g.plot(Data(x, y))
 
 
 
@@ -227,11 +232,12 @@ class DensityPlotter(Plotter):
         g.xlabel("Article score")
         g("set terminal png")
         g("set output '%s'" % fname)
+        g("set style data lines")
         threshold_height = max(chain(py, zy))
         g.plot(Data([threshold, threshold], [0, threshold_height], 
-                    title="threshold", with="lines"),
-               Data(px, py, title="Positives", with="lines"),
-               Data(zx, zy, title="Negatives", with="lines"))
+                    title="threshold"),
+               Data(px, py, title="Positives"),
+               Data(zx, zy, title="Negatives"))
         return overlap
 
 
@@ -247,6 +253,7 @@ class DensityPlotter(Plotter):
         g.ylabel("Probability Density")
         g("set terminal png")
         g("set output '%s'" % fname)
-        g.plot(Data(x, y, with="lines"))
+        g("set style data lines")
+        g.plot(Data(x, y))
 
 

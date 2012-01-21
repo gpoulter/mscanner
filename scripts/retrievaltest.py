@@ -82,10 +82,11 @@ def plot_rank_performance(fname, textfname, tp_vs_rank,
     logging.info("At end, Query recall is 1.0 and precision is %f", q_prec)
     logging.info("At end, MScanner recall is %f and precision is %f",
                  recall[-1], precision[-1])
-    g.plot(Data(ranks, recall, title="Recall", with="lines"),
-           Data(ranks, precision, title="Precision", with="lines"),
-           Data(ranks, q_recall, title="Query Recall", with="lines"),
-           Data([0,total_query], [q_prec,q_prec], title="Query Precision", with="lines"))
+    g("set style data lines")
+    g.plot(Data(ranks, recall, title="Recall"),
+           Data(ranks, precision, title="Precision"),
+           Data(ranks, q_recall, title="Query Recall"),
+           Data([0,total_query], [q_prec,q_prec], title="Query Precision"))
 
 
 def compare_iedb_query():

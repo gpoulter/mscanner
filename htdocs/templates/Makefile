@@ -3,7 +3,7 @@
 all: contact.py front.py output.py query.py status.py
 
 %.py: %.tmpl
-	${CHEETAH} compile $<
+	cheetah compile $<
 
 contact.py: page.py
 front.py: page.py

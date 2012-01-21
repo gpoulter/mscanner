@@ -49,5 +49,9 @@ class FrontPage:
 if __name__ == "__main__":
     try:
         web.run(urls, globals())
+    except AttributeError:
+        # try new web.py entry point
+        app = web.application(urls, globals())
+        app.run()
     except KeyboardInterrupt:
         pass

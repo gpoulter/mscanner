@@ -10,4 +10,5 @@
 /htdocs/templates/query.py
 /htdocs/templates/status.py
 /htdocs/templates/page.py
+/htdocs/static/output
 /help/api

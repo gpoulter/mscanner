@@ -303,5 +303,5 @@ class QueryManager:
         from Cheetah.Template import Template
         with iofuncs.FileTransaction(self.outdir/rc.report_index, "w") as ft:
             Template(file=str(rc.templates/"results.tmpl"), 
-                     filter="Filter", searchList=dict(QM=self)).respond(ft)
+                     filter="RawOrEncodedUnicode", searchList=dict(QM=self)).respond(ft)
         logging.debug("FINISH: Query for %s", self.dataset)

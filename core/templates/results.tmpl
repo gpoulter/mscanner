@@ -265,12 +265,13 @@ $QM -- QueryManager instance used for the query
   <th>Neg</th>
   </tr>
   </thead>
+  #import codecs
   #set best_tfidfs = $QM.featinfo.get_best_tfidfs(20)
   #for termid, tfidf, (term, termtype), score, pos, neg in best_tfidfs:
   <tr>
   <td>#echo "%.2f"%$tfidf#</td>
   <td>$termtype</td>
-  <td>$term</td>
+  <td>#echo codecs.encode($term, 'ascii', 'replace')#</td>
   <td>$termid</td>
   <td>#echo "%.2f"%$score#</td>
   <td>$pos</td>

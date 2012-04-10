@@ -17,7 +17,7 @@ rc = RCStorage()
 ## DYNAMIC PATHS
 
 ## This file is at the top source directory
-rc.sources = path(__file__).dirname()
+rc.sources = path(__file__).dirname().dirname()
 ## Path to root directory containing sources and data
 rc.root = lambda: rc.sources.parent
 ## Path to data directory (inputs and databases)
@@ -25,7 +25,7 @@ rc.working = lambda: rc.root / "data"
 ## Path to ArticleData (with FeatureData subdirs)
 rc.articles_home = lambda: rc.working / "articles_med12"
 ## Path to report templates
-rc.templates = lambda: rc.sources / "core" / "templates"
+rc.templates = lambda: rc.sources / "mscanner" / "core" / "templates"
 ## Path to list of stop words
 rc.stopwords = lambda: rc.sources / "stopwords.txt"
 ## Path to Medline XML

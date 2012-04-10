@@ -1,12 +1,4 @@
-"""Test suite for mscanner.medline
-
-                               
-
-@license: This source file is free software. It comes without any warranty, to
-the extent permitted by applicable law. You can redistribute it and/or modify
-it under the Do Whatever You Want Public License. Terms and conditions: 
-   0. Do Whatever You Want
-"""
+"""Test suite for mscanner.medline"""
 
 from __future__ import with_statement
 from contextlib import closing
@@ -17,6 +9,8 @@ import numpy as nx
 from path import path
 import tempfile
 import unittest
+from utility import start_logger
+import sys
 
 from mscanner.configuration import rc
 from mscanner.medline.Article import Article
@@ -24,14 +18,16 @@ from mscanner.medline.FeatureData import FeatureData
 from mscanner.medline.FeatureVectors import FeatureVectors, random_subset
 from mscanner.medline.FeatureStream import FeatureStream
 from mscanner.medline.FeatureMapping import FeatureMapping, MemoryFeatureMapping
-from mscanner.medline.Updater import Updater
-from mscanner.scripts import update
-from mscanner import tests
+#from mscanner.medline.Updater import Updater
+
+sys.path.insert(0, rc.sources / "scripts")
+update = __import__("update")
+del sys.path[0]
 
 
 class FeatureVectorsTests(unittest.TestCase):
     """FeatureVector SQLite database tests"""
-    
+
     def test(self):
         a1 = (1, 19990101, [1,3])
         a2 = (2, 20000101, [2,3,5434,3243232])
@@ -39,7 +35,7 @@ class FeatureVectorsTests(unittest.TestCase):
         a2b = (2, 20020101, [5,6,7])
         # Test adding 1,2,3
         d = FeatureVectors(filename=None)
-        for a in a1,a2,a3: d.add_record(*a) 
+        for a in a1,a2,a3: d.add_record(*a)
         self.assertEqual(d.get_records([1]).next(), a1)
         self.assertEqual(d.get_records([2]).next(), a2)
         self.assertEqual(list(d.get_records([4])), [])
@@ -60,17 +56,17 @@ class FeatureVectorsTests(unittest.TestCase):
         self.failUnless(nx.all(d.pmids_array() == [1,2,3]))
         # Test random subset
         logging.debug(random_subset(2, d.pmids_array(), []))
-        
+
 
 class FeatureStreamTests(unittest.TestCase):
 
     def setUp(self):
         self.fn = path(tempfile.mktemp())
-        
+
     def tearDown(self):
         if self.fn.isfile():
             self.fn.remove()
-        
+
     def test(self):
         """Write to FeatureStream, and read it all back."""
         pmids = (12,34,56)
@@ -116,8 +112,8 @@ class FeatureMappingTests(unittest.TestCase):
         #logging.debug(str(list(fm.con.execute("SELECT * FROM fmap"))))
         # Close database
         fm.con.close()
-        
-        
+
+
     def testMemoryFeatureMapping(self):
         """MemoryFeatureMapping tests"""
         fm = MemoryFeatureMapping(filename=None)
@@ -170,14 +166,14 @@ class XMLParserTests(unittest.TestCase):
 
 class FeatureDataTests(unittest.TestCase):
     """Tests of FeatureData"""
-    
+
     def setUp(self):
         self.home = path(tempfile.mkdtemp(prefix="fdata-"))
         rc.articles_home = self.home
 
     def tearDown(self):
         self.home.rmtree(ignore_errors=True)
-        
+
     def test(self):
         """Tests of FeatureData"""
         articles = {
@@ -199,7 +195,7 @@ class FeatureDataTests(unittest.TestCase):
         # Test vacuuming of low-count features
         fd.vacuum(mincount=2)
         self.assert_(nx.all(fd.featmap.counts == [2]))
-        self.assertEqual(list(fd.featuredb.get_records([444,333])), 
+        self.assertEqual(list(fd.featuredb.get_records([444,333])),
                          [(333, 19900101, [0]), (444, 19900101, [0])])
         #logging.debug(str(list(fd.featmap.con.execute("SELECT * FROM fmap"))))
         fd.close()
@@ -230,12 +226,12 @@ class UpdaterTests(unittest.TestCase):
         self.assertEqual(a[1].pmid, 2)
         self.assert_(nx.all(m.fdata_list[0].featmap.counts == [0, 2, 2, 2, 1, 2, 2, 2, 2]))
         self.assertEqual(
-            sorted(m.fdata_list[0].featmap.con.execute("SELECT name,type FROM fmap").fetchall()), 
-            sorted([(u'', u''), (u'Q4', 'qual'), (u'Q5', 'qual'), (u'Q7', 'qual'), 
+            sorted(m.fdata_list[0].featmap.con.execute("SELECT name,type FROM fmap").fetchall()),
+            sorted([(u'', u''), (u'Q4', 'qual'), (u'Q5', 'qual'), (u'Q7', 'qual'),
                 (u'T1', 'mesh'), (u'T2', 'mesh'), (u'T3', 'mesh'), (u'T6', 'mesh'), (u'0301-4851', 'issn')]))
         self.assertEqual(len(m.fdata_list[0].featuredb), 2)
         m.close()
-        
+
         # Test regeneration
         logging.debug("Removing MeSH featuredb")
         m.fdata_list[0].featuredb.filename.remove()
@@ -243,13 +239,13 @@ class UpdaterTests(unittest.TestCase):
         logging.debug(str(m.fdata_list[0].featuredb.pmids_array()))
         self.assertEqual(len(m.fdata_list[0].featuredb), 2)
         m.close()
-        
+
         # Test save/load pickle
         (h/"pmids.txt").write_lines(["1","2"])
         update.save_pickle(h/"pmids.txt")
         m = update.load_pickles(h/"pmids.pickle.gz")
         m.close()
-        
+
         # Test vacuum
         m = update.vacuum(mincount="2")
         self.assertEqual(len(m.fdata_list[0].featuredb), 2)
@@ -258,7 +254,7 @@ class UpdaterTests(unittest.TestCase):
 
 
 xmltext = '''<?xml version="1.0"?>
-<!DOCTYPE MedlineCitationSet PUBLIC 
+<!DOCTYPE MedlineCitationSet PUBLIC
 "-//NLM//DTD Medline Citation, 1st January 2007//EN"
 "http://www.nlm.nih.gov/databases/dtd/nlmmedline_070101.dtd">
 <MedlineCitationSet>
@@ -365,7 +361,7 @@ xmltext = '''<?xml version="1.0"?>
 </MedlineCitationSet>'''
 
 if __name__ == "__main__":
-    tests.start_logger()
+    start_logger()
     unittest.main()
     #suite = unittest.TestLoader().loadTestsFromTestCase(ArticleTests)
     #suite = unittest.TestLoader().loadTestsFromTestCase(FeatureMappingTests)

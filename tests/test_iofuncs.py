@@ -1,21 +1,12 @@
-"""Test suite for mscanner.utils
+"""Test suite for mscanner.utils"""
 
-                               
-
-@license: This source file is free software. It comes without any warranty, to
-the extent permitted by applicable law. You can redistribute it and/or modify
-it under the Do Whatever You Want Public License. Terms and conditions: 
-   0. Do Whatever You Want
-"""
-
-import logging
 import unittest
-from mscanner import tests
 from mscanner.core import iofuncs
+from utility import usetempfile
 
 class IOTests(unittest.TestCase):
-    
-    @tests.usetempfile
+
+    @usetempfile
     def test_read_pmids(self, fn):
         allpairs = [(10.0,1), (20.0,2), (30.0,3), (40.0,4), (50.0,5)]
         fn.write_lines(["# comment", "1 10", "2 20 blah", "3 30", "4 40", "5 50"])

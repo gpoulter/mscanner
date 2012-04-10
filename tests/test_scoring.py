@@ -1,46 +1,36 @@
-"""Test suite for mscanner.scoring
-
-                               
-
-@license: This source file is free software. It comes without any warranty, to
-the extent permitted by applicable law. You can redistribute it and/or modify
-it under the Do Whatever You Want Public License. Terms and conditions: 
-   0. Do Whatever You Want
-"""
+"""Test suite for mscanner.scoring"""
 
 from __future__ import with_statement
 import logging
 from contextlib import closing
 import numpy as nx
-from path import path
-import pprint as pp
-import tempfile
 import unittest
+import pprint as pp
+from utility import start_logger, usetempfile
 
 from mscanner.configuration import rc
-from mscanner.medline.FeatureVectors import FeatureVectors
+#from mscanner.medline.FeatureVectors import FeatureVectors
 from mscanner.medline.FeatureStream import FeatureStream
 from mscanner.medline.FeatureMapping import FeatureMapping
 from mscanner.core.FeatureScores import FeatureScores
 from mscanner.fastscores.ScoreCalculator import ScoreCalculator
 from mscanner.fastscores.FeatureCounter import FeatureCounter
 from mscanner.core.Validator import count_features
-from mscanner import tests
 
 
 class CScoreModuleTests(unittest.TestCase):
     """Tests of the L{cscore} package"""
-    
+
     def setUp(self):
         self.citations = [
-            (1,20010101,[4]), 
-            (2,20020101,[0,1,2]), 
-            (3,20030101,[0,2,3]), 
-            (4,20040101,[0,1]), 
+            (1,20010101,[4]),
+            (2,20020101,[0,1,2]),
+            (3,20030101,[0,2,3]),
+            (4,20040101,[0,1]),
             (5,20050101,[1,2,3]),
             (6,20050101,[1,140,145])]
 
-    
+
     """
     def test_ctypes(self):
         try:
@@ -60,7 +50,7 @@ class CScoreModuleTests(unittest.TestCase):
     """
 
 
-    @tests.usetempfile
+    @usetempfile
     def test_FeatureCounter(self, tmpfile):
         """Test the system for fast feature counting"""
         with closing(FeatureStream(tmpfile, rdonly=False)) as fs:
@@ -81,7 +71,7 @@ class CScoreModuleTests(unittest.TestCase):
         #self.assert_(nx.allclose(py_counts, c_counts))
 
 
-    @tests.usetempfile
+    @usetempfile
     def test_ScoreCalculator(self, tmpfile):
         """Consistency test between document score calculators."""
         featscores = nx.array([0.1, 5.0, 10.0, -5.0, -6.0] + [0]*145, nx.float32)
@@ -108,11 +98,11 @@ class CScoreModuleTests(unittest.TestCase):
         scores_pipe = nx.array([score for score,pmid in out_pipe])
         scores_py = nx.array([score for score,pmid in out_pyscore])
         self.assert_(nx.allclose(scores_pipe, scores_py))
-        # Compare pyscore and cscore_dll 
+        # Compare pyscore and cscore_dll
         """
-        try: 
+        try:
             import  ctypes
-        except ImportError: 
+        except ImportError:
             return
         out_dll = scorer.cscore_dll()
         logging.debug("out_dll: %s", pp.pformat(out_dll))
@@ -122,7 +112,7 @@ class CScoreModuleTests(unittest.TestCase):
 
 
 class FeatureScoresTests(unittest.TestCase):
-    
+
     def setUp(s):
         """Put together dummy article database and FeatureMapping"""
         s.articles = [
@@ -157,7 +147,7 @@ class FeatureScoresTests(unittest.TestCase):
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
         logging.debug("FeatureScores.tfidf: %s", pp.pformat(f.tfidf))
         # Check this calculation?
-        correct_tfidf = nx.array([ 0.10939293,  0.07292862]) 
+        correct_tfidf = nx.array([ 0.10939293,  0.07292862])
         s.assert_(nx.allclose(f.tfidf, correct_tfidf))
 
 
@@ -168,7 +158,7 @@ class FeatureScoresTests(unittest.TestCase):
         f.update(s.pfreqs, s.nfreqs, s.pdocs, s.ndocs)
         IG = f.infogain()
         logging.debug("Information Gain: %s", pp.pformat(IG))
-        s.assert_(nx.allclose(IG, 
+        s.assert_(nx.allclose(IG,
         [ 0.,  0.1908745,  0.1908745,  0.1908745,  0.  ,   0.1908745]))
         # A particular feature from Radiology that shows up integer overflows
         f.pdocs = 67
@@ -189,7 +179,7 @@ class FeatureScoresTests(unittest.TestCase):
         logging.debug("Feature Statistics: %s", pp.pformat(t.__dict__))
         logging.debug("P counts: %s", pp.pformat(s.pfreqs))
         logging.debug("N counts: %s", pp.pformat(s.nfreqs))
-    
+
 
     def _scoremethodtester(s, scoremethod, answer):
         """Test a score calculation method"""
@@ -218,18 +208,18 @@ class FeatureScoresTests(unittest.TestCase):
 
     def test_scores_bgfreq(self):
         """Score calculation using background counts."""
-        self._scoremethodtester("scores_bgfreq", 
+        self._scoremethodtester("scores_bgfreq",
             [ 0, 2.24819092, -2.24819092,  2.248191  ,  0.        , -2.248191  ])
 
 
     def test_scores_laplace_split(self):
         """Score calculation using split-laplace counts."""
-        self._scoremethodtester("scores_laplace_split", 
+        self._scoremethodtester("scores_laplace_split",
             [ 0.,  0.98082924, -0.98082924,  0.98082924,  0. ,  -0.98082924 ])
 
 
 if __name__ == "__main__":
-    tests.start_logger()
+    start_logger()
     unittest.main()
     #suite = unittest.TestLoader().loadTestsFromTestCase(FeatureScoreTests)
     #suite = unittest.TestSuite()

@@ -1,15 +1,6 @@
-"""Test suite for mscanner.medline.Shelf
-
-                               
-
-@license: This source file is free software. It comes without any warranty, to
-the extent permitted by applicable law. You can redistribute it and/or modify
-it under the Do Whatever You Want Public License. Terms and conditions: 
-   0. Do Whatever You Want
-"""
+"""Test suite for mscanner.medline.Shelf"""
 
 from bsddb import db
-import logging
 from path import path
 import tempfile
 import unittest

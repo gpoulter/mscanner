@@ -1,25 +1,15 @@
-"""Test suite for mscanner.validation
-
-                               
-
-@license: This source file is free software. It comes without any warranty, to
-the extent permitted by applicable law. You can redistribute it and/or modify
-it under the Do Whatever You Want Public License. Terms and conditions: 
-   0. Do Whatever You Want
-"""
+"""Test suite for mscanner.validation"""
 
 import logging
 import numpy as nx
-from path import path
 import pprint as pp
-import tempfile
 import unittest
 
 from mscanner.configuration import rc
 from mscanner.core.FeatureScores import FeatureScores
 from mscanner.core.Validator import cross_validate, make_partitions, count_features
 from mscanner.core.metrics import PerformanceVectors
-from mscanner import tests
+from utility import start_logger
 
 
 class PerformanceVectorsTests(unittest.TestCase):
@@ -79,5 +69,5 @@ class ValidatorTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    tests.start_logger()
+    start_logger()
     unittest.main()

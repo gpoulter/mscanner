@@ -2,8 +2,9 @@
 *.wpu
 *.pyc
 *.o
-/fastscores/_FeatureCounter
-/fastscores/_ScoreCalculator
+*.egg-info
+/mscanner/fastscores/_FeatureCounter
+/mscanner/fastscores/_ScoreCalculator
 /htdocs/templates/contact.py
 /htdocs/templates/front.py
 /htdocs/templates/output.py

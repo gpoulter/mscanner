@@ -1,0 +1,4 @@
+path.py==2.2.2
+gnuplot-py==1.8
+Cheetah==2.4.4
+numpy==1.5.1

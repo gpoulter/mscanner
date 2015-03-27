@@ -1,5 +1,4 @@
-# mscanner
-Automatically exported from 
+# MScanner
 
 MScanner retrieves Medline abstracts using machine learning. The input is a list of
 PubMed IDs of articles on some topic, and the output is a page of articles most relevant 
@@ -11,3 +10,5 @@ abstracts per second single-threaded.
 
 * The service is hosted at http://mscanner.stanford.edu
 * The issue tracker is on [Trello](https://trello.com/board/mscanner-board/4f0d30714ac4a64f673a2dda)
+
+Automatically exported from https://code.google.com/p/mscanner/
